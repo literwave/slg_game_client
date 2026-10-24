@@ -13,6 +13,8 @@ import WorldCommand from '../world/WorldCommand';
 import LoginCommand from '../login/LoginCommand';
 import { hasId, idKey } from '../network/pto/ProtocolCommand';
 import { aoiTroopMotion } from '../world/MarchPath';
+import TroopCommand from '../general/TroopCommand';
+import type { WorldEntity, MarchInfo } from '../world/WorldCommand';
 
 @ccclass('MapArmyLogic')
 export default class MapArmyLogic extends Component {
@@ -27,12 +29,16 @@ export default class MapArmyLogic extends Component {
     protected _armyPool: NodePool = new NodePool();
     protected _arrowPool: NodePool = new NodePool();
     private aoiArmies = new Map<string, ArmyLogic>();
+    private troopBindings = new Map<string, number>();
 
     protected onLoad(): void {
         EventMgr.on(LogicEvent.updateArmyList, this.onUpdateArmyList, this);
         EventMgr.on(LogicEvent.updateArmy, this.onUpdateArmy, this);
         EventMgr.on(LogicEvent.updateWorldEntities, this.syncWorldEntities, this);
         EventMgr.on(LogicEvent.updateMyRole, this.syncWorldEntities, this);
+        EventMgr.on(LogicEvent.updateMarches, this.syncWorldEntities, this);
+        EventMgr.on(LogicEvent.updateTroopList, this.syncWorldEntities, this);
+        EventMgr.on(LogicEvent.updateMyGenerals, this.syncWorldEntities, this);
         EventMgr.on(CoreEvent.gameReady, this.syncWorldEntities, this);
         this.initArmys();
         this.syncWorldEntities();
@@ -49,6 +55,7 @@ export default class MapArmyLogic extends Component {
         })
         this.aoiArmies.forEach(logic => logic.destroy());
         this.aoiArmies.clear();
+        this.troopBindings.clear();
     }
 
     protected update():void {
@@ -62,7 +69,8 @@ export default class MapArmyLogic extends Component {
         // 地图加载完成前可能已经收到列表，gameReady 会再次使用缓存进行同步。
         if (!MapUtil.areaCellSize || !this.parentLayer) return;
         // 地图实体全部以 AOI 为准，march_list 仅用于本人部队面板与操作状态。
-        // AOI 没有 troopIdx，不能从 entityId 拆编号或把自己的两种数据各画一遍。
+        // AOI 没有 troopIdx；仅在完整路径和时间戳唯一匹配本人 march 时关联编队。
+        // 不拆 entityId，不按列表顺序/同一驻留坐标猜身份，也不重复生成地图实体。
         const entities = Array.from(WorldCommand.getInstance().entities.values())
             .filter(e => hasId(e.entityId) && !!aoiTroopMotion(e));
         const ownerId = LoginCommand.getInstance().proxy.getRoleData()?.userId;
@@ -71,6 +79,7 @@ export default class MapArmyLogic extends Component {
             if (current.has(id)) continue;
             this._armyPool.put(logic.aniNode); this._arrowPool.put(logic.arrowNode); logic.clear();
             this.aoiArmies.delete(id);
+            this.troopBindings.delete(id);
         }
         for (const entity of entities) {
             const id = idKey(entity.entityId);
@@ -80,8 +89,25 @@ export default class MapArmyLogic extends Component {
                 logic.aniNode.parent = this.parentLayer; logic.arrowNode.parent = this.parentLayer;
                 this.aoiArmies.set(id, logic);
             }
-            logic.setWorldEntity(entity, hasId(ownerId) && idKey(ownerId) === idKey(entity.ownerId), logic.aniNode, logic.arrowNode);
+            const own = hasId(ownerId) && idKey(ownerId) === idKey(entity.ownerId);
+            if (own && !this.troopBindings.has(id)) {
+                const candidates = WorldCommand.getInstance().marches.values().filter(m => this.matchesMarch(entity, m));
+                if (candidates.length === 1 && entities.filter(e => idKey(e.ownerId) === idKey(ownerId)
+                    && this.matchesMarch(e, candidates[0])).length === 1) {
+                    this.troopBindings.set(id, candidates[0].troopIdx);
+                }
+            }
+            if (!own) this.troopBindings.delete(id);
+            const troopIdx = own ? this.troopBindings.get(id) : 0;
+            const troop = troopIdx ? TroopCommand.getInstance().proxy.getTroop(troopIdx) : null;
+            logic.setWorldEntity(entity, own, logic.aniNode, logic.arrowNode, troop);
         }
+    }
+
+    private matchesMarch(entity: WorldEntity, march: MarchInfo): boolean {
+        return march.state === 1 && entity.path?.length >= 2 && march.path?.length === entity.path.length
+            && Math.abs(entity.startTime - march.startTime) < .001 && Math.abs(entity.endTime - march.endTime) < .001
+            && entity.path.every((p, i) => Math.abs(p.x - march.path[i].x) < .00001 && Math.abs(p.y - march.path[i].y) < .00001);
     }
 
     protected initArmys(): void {

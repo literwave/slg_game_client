@@ -3,7 +3,10 @@ import DateUtil from "../../utils/DateUtil";
 import MapUtil from "../MapUtil";
 import { Vec2, Node, Animation, Vec3, UITransform, Color, Graphics, Sprite } from "cc";
 import type { MarchInfo, WorldEntity } from '../../world/WorldCommand';
-import { aoiTroopMotion, buildMarchPath, MarchMotion, MarchPath, sampleMarchPath } from '../../world/MarchPath';
+import { aoiTroopMotion, MarchMotion, MarchPath } from '../../world/MarchPath';
+import MarchPlayback from '../../world/MarchPlayback';
+import MarchFormation from './MarchFormation';
+import type { TroopData } from '../../general/TroopProxy';
 
 export default class ArmyLogic {
     public data: ArmyData = null;
@@ -20,8 +23,11 @@ export default class ArmyLogic {
     private march: MarchMotion = null;
     private marchPath: MarchPath = null;
     private marching = false;
+    private playback: MarchPlayback = null;
+    private formation: MarchFormation = null;
 
     public clear() {
+        this.formation?.destroy(); this.formation = null; this.playback = null;
         this.data = null;
         this.aniNode = null;
         this.arrowNode = null;
@@ -77,6 +83,7 @@ export default class ArmyLogic {
     }
 
     public setArmyData(data: ArmyData, aniNode: Node, arrowNode: Node): void {
+        this.formation?.destroy(); this.formation = null; this.playback = null;
         this.march = null; this.marchPath = null;
         const marker = aniNode.getChildByName('WorldTroopMarker'); if (marker) marker.active = false;
         const route = arrowNode.getChildByName('WorldMarchRoute'); if (route) route.active = false;
@@ -137,11 +144,13 @@ export default class ArmyLogic {
         this.setMotion(march, aniNode, arrowNode, new Color(230, 202, 126, 185));
     }
 
-    public setWorldEntity(entity: WorldEntity, own: boolean, aniNode: Node, arrowNode: Node): void {
+    public setWorldEntity(entity: WorldEntity, own: boolean, aniNode: Node, arrowNode: Node, troop: TroopData | null = null): void {
         const motion = aoiTroopMotion(entity);
         if (!motion) { aniNode.active = arrowNode.active = false; return; }
         // 其他玩家不一定是敌方，只用不同颜色区别于本人，不推断同盟/敌对关系。
         const color = own ? new Color(111, 190, 233, 230) : new Color(237, 188, 98, 230);
+        if (!this.formation) this.formation = new MarchFormation(aniNode);
+        this.formation.configure(troop, own);
         this.setMotion(motion, aniNode, arrowNode, color);
         let marker = aniNode.getChildByName('WorldTroopMarker');
         if (!marker) {
@@ -152,12 +161,16 @@ export default class ArmyLogic {
         const g = marker.getComponent(Graphics); g.clear();
         g.strokeColor = color; g.lineWidth = 2;
         g.fillColor = new Color(color.r, color.g, color.b, 45);
-        g.ellipse(0, -8, 25, 11); g.fill(); g.stroke();
+        g.ellipse(0, 0, 20, 9); g.fill(); g.stroke();
     }
 
     private setMotion(march: MarchMotion, aniNode: Node, arrowNode: Node, routeColor: Color): void {
-        this.data = null; this.march = march; this.marchPath = buildMarchPath(march);
+        this.data = null; this.march = march;
+        if (!this.playback) this.playback = new MarchPlayback();
+        const changed = this.playback.setMotion(march, DateUtil.getServerTime(), DateUtil.monotonicNow());
+        this.marchPath = this.playback.path;
         this.aniNode = aniNode; this.arrowNode = arrowNode;
+        if (!changed) return;
         arrowNode.angle = 0; arrowNode.setPosition(0, 0, 0); arrowNode.setScale(1, 1, 1);
         arrowNode.setSiblingIndex(0);
         const sprite = arrowNode.getComponent(Sprite); if (sprite) sprite.enabled = false;
@@ -178,11 +191,16 @@ export default class ArmyLogic {
     }
 
     private updateMarch(): Vec2 {
-        const sample = sampleMarchPath(this.march, this.marchPath, DateUtil.getServerTime());
+        const sample = this.playback?.sample(DateUtil.monotonicNow());
         if (!sample) { this.aniNode.active = this.arrowNode.active = false; return null; }
         const point = new Vec2(sample.position.x, sample.position.y), pixel = MapUtil.mapCellToPixelPoint(point);
         this.aniNode.active = true; this.aniNode.setPosition(pixel.x, pixel.y, 0);
         this.arrowNode.active = sample.moving;
+        if (this.formation) {
+            this.formation.update(this.playback, sample);
+            this.marching = sample.moving;
+            return point;
+        }
         const animation = this.aniNode.getComponent(Animation);
         if (animation && sample.moving) {
             const next = MapUtil.mapCellToPixelPoint(new Vec2(sample.towards.x, sample.towards.y));
