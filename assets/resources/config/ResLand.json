@@ -1,0 +1,862 @@
+[
+  {
+    "Id": 101,
+    "Type": 1,
+    "Level": 1,
+    "Name": "1级粮田",
+    "Desc": "贫瘠的农田，驻有少量流寇",
+    "Icon": "",
+    "OutputItem": 1,
+    "Capacity": 2000,
+    "GatherSpeed": 200,
+    "MonsterGroups": [
+      1,
+      2
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 500
+      }
+    ],
+    "OpenCond": {
+      "level": 1
+    }
+  },
+  {
+    "Id": 102,
+    "Type": 1,
+    "Level": 2,
+    "Name": "2级粮田",
+    "Desc": "初具规模的粮田",
+    "Icon": "",
+    "OutputItem": 1,
+    "Capacity": 4000,
+    "GatherSpeed": 300,
+    "MonsterGroups": [
+      1,
+      2,
+      3
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 800
+      }
+    ],
+    "OpenCond": {
+      "level": 1
+    }
+  },
+  {
+    "Id": 103,
+    "Type": 1,
+    "Level": 3,
+    "Name": "3级粮田",
+    "Desc": "连片耕作的粮田",
+    "Icon": "",
+    "OutputItem": 1,
+    "Capacity": 7000,
+    "GatherSpeed": 450,
+    "MonsterGroups": [
+      2,
+      3,
+      4
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 1200
+      }
+    ],
+    "OpenCond": {
+      "level": 2
+    }
+  },
+  {
+    "Id": 104,
+    "Type": 1,
+    "Level": 4,
+    "Name": "4级粮田",
+    "Desc": "丰产的粮田",
+    "Icon": "",
+    "OutputItem": 1,
+    "Capacity": 11000,
+    "GatherSpeed": 600,
+    "MonsterGroups": [
+      3,
+      4
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 1800
+      }
+    ],
+    "OpenCond": {
+      "level": 3
+    }
+  },
+  {
+    "Id": 105,
+    "Type": 1,
+    "Level": 5,
+    "Name": "5级粮田",
+    "Desc": "富庶粮仓",
+    "Icon": "",
+    "OutputItem": 1,
+    "Capacity": 16000,
+    "GatherSpeed": 800,
+    "MonsterGroups": [
+      4,
+      5,
+      6
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 2500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 10
+      }
+    ],
+    "OpenCond": {
+      "level": 4
+    }
+  },
+  {
+    "Id": 106,
+    "Type": 1,
+    "Level": 6,
+    "Name": "6级粮田",
+    "Desc": "膏腴粮田",
+    "Icon": "",
+    "OutputItem": 1,
+    "Capacity": 22000,
+    "GatherSpeed": 1000,
+    "MonsterGroups": [
+      5,
+      6
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 3500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 20
+      }
+    ],
+    "OpenCond": {
+      "level": 5
+    }
+  },
+  {
+    "Id": 107,
+    "Type": 1,
+    "Level": 7,
+    "Name": "7级粮田",
+    "Desc": "万顷良田",
+    "Icon": "",
+    "OutputItem": 1,
+    "Capacity": 30000,
+    "GatherSpeed": 1300,
+    "MonsterGroups": [
+      6,
+      7,
+      8
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 5000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 30
+      }
+    ],
+    "OpenCond": {
+      "level": 6
+    }
+  },
+  {
+    "Id": 108,
+    "Type": 1,
+    "Level": 8,
+    "Name": "8级粮田",
+    "Desc": "天下粮仓",
+    "Icon": "",
+    "OutputItem": 1,
+    "Capacity": 40000,
+    "GatherSpeed": 1600,
+    "MonsterGroups": [
+      7,
+      8
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 7000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 50
+      }
+    ],
+    "OpenCond": {
+      "level": 7
+    }
+  },
+  {
+    "Id": 109,
+    "Type": 1,
+    "Level": 9,
+    "Name": "9级粮田",
+    "Desc": "九州粮仓",
+    "Icon": "",
+    "OutputItem": 1,
+    "Capacity": 52000,
+    "GatherSpeed": 2000,
+    "MonsterGroups": [
+      8,
+      9,
+      10
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 10000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 80
+      }
+    ],
+    "OpenCond": {
+      "level": 8
+    }
+  },
+  {
+    "Id": 110,
+    "Type": 1,
+    "Level": 10,
+    "Name": "10级粮田",
+    "Desc": "帝王粮仓",
+    "Icon": "",
+    "OutputItem": 1,
+    "Capacity": 68000,
+    "GatherSpeed": 2500,
+    "MonsterGroups": [
+      9,
+      10,
+      101
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 15000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 100
+      }
+    ],
+    "OpenCond": {
+      "level": 9
+    }
+  },
+  {
+    "Id": 201,
+    "Type": 2,
+    "Level": 1,
+    "Name": "1级林场",
+    "Desc": "稀疏林地，偶有流寇出没",
+    "Icon": "",
+    "OutputItem": 2,
+    "Capacity": 2000,
+    "GatherSpeed": 200,
+    "MonsterGroups": [
+      1,
+      2
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 500
+      }
+    ],
+    "OpenCond": {
+      "level": 1
+    }
+  },
+  {
+    "Id": 202,
+    "Type": 2,
+    "Level": 2,
+    "Name": "2级林场",
+    "Desc": "可伐的林场",
+    "Icon": "",
+    "OutputItem": 2,
+    "Capacity": 4000,
+    "GatherSpeed": 300,
+    "MonsterGroups": [
+      2,
+      3
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 800
+      }
+    ],
+    "OpenCond": {
+      "level": 1
+    }
+  },
+  {
+    "Id": 203,
+    "Type": 2,
+    "Level": 3,
+    "Name": "3级林场",
+    "Desc": "茂密林场",
+    "Icon": "",
+    "OutputItem": 2,
+    "Capacity": 7000,
+    "GatherSpeed": 450,
+    "MonsterGroups": [
+      2,
+      3,
+      4
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 1200
+      }
+    ],
+    "OpenCond": {
+      "level": 2
+    }
+  },
+  {
+    "Id": 204,
+    "Type": 2,
+    "Level": 4,
+    "Name": "4级林场",
+    "Desc": "成片林场",
+    "Icon": "",
+    "OutputItem": 2,
+    "Capacity": 11000,
+    "GatherSpeed": 600,
+    "MonsterGroups": [
+      3,
+      4,
+      5
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 1800
+      }
+    ],
+    "OpenCond": {
+      "level": 3
+    }
+  },
+  {
+    "Id": 205,
+    "Type": 2,
+    "Level": 5,
+    "Name": "5级林场",
+    "Desc": "深山林场",
+    "Icon": "",
+    "OutputItem": 2,
+    "Capacity": 16000,
+    "GatherSpeed": 800,
+    "MonsterGroups": [
+      4,
+      5,
+      6
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 2500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 10
+      }
+    ],
+    "OpenCond": {
+      "level": 4
+    }
+  },
+  {
+    "Id": 206,
+    "Type": 2,
+    "Level": 6,
+    "Name": "6级林场",
+    "Desc": "万木林场",
+    "Icon": "",
+    "OutputItem": 2,
+    "Capacity": 22000,
+    "GatherSpeed": 1000,
+    "MonsterGroups": [
+      5,
+      6,
+      7
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 3500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 20
+      }
+    ],
+    "OpenCond": {
+      "level": 5
+    }
+  },
+  {
+    "Id": 207,
+    "Type": 2,
+    "Level": 7,
+    "Name": "7级林场",
+    "Desc": "古木林场",
+    "Icon": "",
+    "OutputItem": 2,
+    "Capacity": 30000,
+    "GatherSpeed": 1300,
+    "MonsterGroups": [
+      6,
+      7,
+      8
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 5000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 30
+      }
+    ],
+    "OpenCond": {
+      "level": 6
+    }
+  },
+  {
+    "Id": 208,
+    "Type": 2,
+    "Level": 8,
+    "Name": "8级林场",
+    "Desc": "神木林场",
+    "Icon": "",
+    "OutputItem": 2,
+    "Capacity": 40000,
+    "GatherSpeed": 1600,
+    "MonsterGroups": [
+      7,
+      8,
+      9
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 7000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 50
+      }
+    ],
+    "OpenCond": {
+      "level": 7
+    }
+  },
+  {
+    "Id": 209,
+    "Type": 2,
+    "Level": 9,
+    "Name": "9级林场",
+    "Desc": "九天林海",
+    "Icon": "",
+    "OutputItem": 2,
+    "Capacity": 52000,
+    "GatherSpeed": 2000,
+    "MonsterGroups": [
+      8,
+      9,
+      10
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 10000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 80
+      }
+    ],
+    "OpenCond": {
+      "level": 8
+    }
+  },
+  {
+    "Id": 210,
+    "Type": 2,
+    "Level": 10,
+    "Name": "10级林场",
+    "Desc": "仙木之林",
+    "Icon": "",
+    "OutputItem": 2,
+    "Capacity": 68000,
+    "GatherSpeed": 2500,
+    "MonsterGroups": [
+      9,
+      10,
+      102
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 15000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 100
+      }
+    ],
+    "OpenCond": {
+      "level": 9
+    }
+  },
+  {
+    "Id": 301,
+    "Type": 3,
+    "Level": 1,
+    "Name": "1级铁矿",
+    "Desc": "浅层矿脉，守卫较弱",
+    "Icon": "",
+    "OutputItem": 3,
+    "Capacity": 1500,
+    "GatherSpeed": 150,
+    "MonsterGroups": [
+      1,
+      2,
+      3
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 400
+      }
+    ],
+    "OpenCond": {
+      "level": 1
+    }
+  },
+  {
+    "Id": 302,
+    "Type": 3,
+    "Level": 2,
+    "Name": "2级铁矿",
+    "Desc": "初开的矿坑",
+    "Icon": "",
+    "OutputItem": 3,
+    "Capacity": 3000,
+    "GatherSpeed": 220,
+    "MonsterGroups": [
+      2,
+      3
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 600
+      }
+    ],
+    "OpenCond": {
+      "level": 2
+    }
+  },
+  {
+    "Id": 303,
+    "Type": 3,
+    "Level": 3,
+    "Name": "3级铁矿",
+    "Desc": "可采的铁矿",
+    "Icon": "",
+    "OutputItem": 3,
+    "Capacity": 5500,
+    "GatherSpeed": 350,
+    "MonsterGroups": [
+      3,
+      4,
+      5
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 900
+      }
+    ],
+    "OpenCond": {
+      "level": 3
+    }
+  },
+  {
+    "Id": 304,
+    "Type": 3,
+    "Level": 4,
+    "Name": "4级铁矿",
+    "Desc": "富矿矿脉",
+    "Icon": "",
+    "OutputItem": 3,
+    "Capacity": 9000,
+    "GatherSpeed": 480,
+    "MonsterGroups": [
+      4,
+      5
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 1400
+      }
+    ],
+    "OpenCond": {
+      "level": 4
+    }
+  },
+  {
+    "Id": 305,
+    "Type": 3,
+    "Level": 5,
+    "Name": "5级铁矿",
+    "Desc": "深掘铁矿",
+    "Icon": "",
+    "OutputItem": 3,
+    "Capacity": 13000,
+    "GatherSpeed": 650,
+    "MonsterGroups": [
+      5,
+      6,
+      7
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 2000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 10
+      }
+    ],
+    "OpenCond": {
+      "level": 5
+    }
+  },
+  {
+    "Id": 306,
+    "Type": 3,
+    "Level": 6,
+    "Name": "6级铁矿",
+    "Desc": "精铁矿脉",
+    "Icon": "",
+    "OutputItem": 3,
+    "Capacity": 18000,
+    "GatherSpeed": 850,
+    "MonsterGroups": [
+      6,
+      7
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 2800
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 20
+      }
+    ],
+    "OpenCond": {
+      "level": 6
+    }
+  },
+  {
+    "Id": 307,
+    "Type": 3,
+    "Level": 7,
+    "Name": "7级铁矿",
+    "Desc": "玄铁矿脉",
+    "Icon": "",
+    "OutputItem": 3,
+    "Capacity": 25000,
+    "GatherSpeed": 1100,
+    "MonsterGroups": [
+      7,
+      8,
+      9
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 4000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 30
+      }
+    ],
+    "OpenCond": {
+      "level": 7
+    }
+  },
+  {
+    "Id": 308,
+    "Type": 3,
+    "Level": 8,
+    "Name": "8级铁矿",
+    "Desc": "寒铁矿脉",
+    "Icon": "",
+    "OutputItem": 3,
+    "Capacity": 33000,
+    "GatherSpeed": 1400,
+    "MonsterGroups": [
+      8,
+      9
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 5500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 50
+      }
+    ],
+    "OpenCond": {
+      "level": 8
+    }
+  },
+  {
+    "Id": 309,
+    "Type": 3,
+    "Level": 9,
+    "Name": "9级铁矿",
+    "Desc": "龙铁矿脉",
+    "Icon": "",
+    "OutputItem": 3,
+    "Capacity": 43000,
+    "GatherSpeed": 1800,
+    "MonsterGroups": [
+      9,
+      10,
+      103
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 8000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 80
+      }
+    ],
+    "OpenCond": {
+      "level": 9
+    }
+  },
+  {
+    "Id": 310,
+    "Type": 3,
+    "Level": 10,
+    "Name": "10级铁矿",
+    "Desc": "神铁矿脉",
+    "Icon": "",
+    "OutputItem": 3,
+    "Capacity": 56000,
+    "GatherSpeed": 2200,
+    "MonsterGroups": [
+      10,
+      103,
+      201
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 12000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 100
+      }
+    ],
+    "OpenCond": {
+      "level": 10
+    }
+  }
+]

@@ -69,16 +69,7 @@ export class WebSock implements ISocket {
     }
 
     connect(options: any) {
-        if (this._ws) {
-            if (this._ws.readyState === WebSocket.CONNECTING) {
-                console.log("websocket connecting, wait for a moment...")
-                return false;
-            }
-            this._ws.onopen = null;
-            this._ws.onmessage = null;
-            this._ws.onerror = null;
-            this._ws.onclose = null;
-        }
+        this.close();
 
         let url = null;
         if (options.url) {
@@ -90,21 +81,20 @@ export class WebSock implements ISocket {
             url = `${protocol}://${ip}:${port}`;
         }
         console.log()
-        this._ws = new WebSocket(url);
-        this._ws.binaryType = options.binaryType ? options.binaryType : "arraybuffer";
-        this._ws.onmessage = (event) => {
-            this.onMessage(event.data);
-        };
-
-        this._ws.onopen = this.onConnected;
-        this._ws.onerror = this.onError;
-        this._ws.onclose = this.onClosed;
+        const socket = new WebSocket(url);
+        this._ws = socket;
+        socket.binaryType = options.binaryType ? options.binaryType : "arraybuffer";
+        // 旧连接已经排入浏览器事件队列的回调也必须失效，不能污染下一轮登录。
+        socket.onmessage = event => { if (this._ws === socket) this.onMessage(event.data); };
+        socket.onopen = event => { if (this._ws === socket) this.onConnected(event); };
+        socket.onerror = event => { if (this._ws === socket) this.onError(event); };
+        socket.onclose = event => { if (this._ws === socket) this.onClosed(event); };
 
         return true;
     }
 
     send(buffer: any) {
-        if (this._ws.readyState == WebSocket.OPEN) {
+        if (this._ws?.readyState == WebSocket.OPEN) {
             this._ws.send(buffer);
             return true;
         }
@@ -113,7 +103,11 @@ export class WebSock implements ISocket {
 
     close(code?: number, reason?: string) {
         this._key = "";
-        this._ws.close(code, reason);
+        const socket = this._ws;
+        this._ws = null;
+        if (!socket) return;
+        socket.onopen = socket.onmessage = socket.onerror = socket.onclose = null;
+        if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) socket.close(code, reason);
     }
 
 

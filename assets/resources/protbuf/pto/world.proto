@@ -42,7 +42,7 @@ message s2c_sync_troop {
 }
 
 // ---------- 行军 ----------
-// targetType → TargetType.Id（1回城 2打怪，预留扩展）
+// targetType → TargetType.Id（1回城 2打怪 3占领资源地）
 // state: 1行军中 2已到达
 message p_march_info {
 	uint32 troopIdx = 1;
@@ -53,7 +53,7 @@ message p_march_info {
 	int32 startTime = 6;
 	int32 endTime = 7;
 	uint32 state = 8;
-	repeated Common.p_pos path = 9;   // 拐点，含起点和终点
+	repeated Common.p_pos_f path = 9;   // 拐点，含起点和终点
 }
 
 // 发起行军
@@ -92,7 +92,7 @@ message s2c_req_march_list {
 }
 
 // ---------- AOI ----------
-// 视野内实体；entityType → EntityType.Id（1主城 2行军部队 3怪物组）
+// 视野内实体；entityType → EntityType.Id（1主城 2行军部队 3怪物组 4资源地）
 message p_aoi_entity {
 	int64 entityId = 1;
 	uint32 entityType = 2;

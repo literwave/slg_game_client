@@ -25,19 +25,22 @@ export enum NetNodeType {
     LoginServer,                    //登录服务器
 }
 
+export const MAX_RECONNECT_ATTEMPTS = 3;
+export const CONNECTION_TIMEOUT_MS = 10 * 1000;
+
 
 export interface NetConnectOptions {
     host?: string,              // 地址
     port?: number,              // 端口
     url?: string,               // url，与地址+端口二选一
-    autoReconnect?: number,     // -1 永久重连，0不自动重连，其他正整数为自动重试次数
+    autoReconnect?: number,     // 0 不自动重连；最多 MAX_RECONNECT_ATTEMPTS 次
     type?: NetNodeType,          //服务器类型
 }
 
 export class NetNode {
     protected _connectOptions: NetConnectOptions = null;
     protected _autoReconnect: number = 0;
-    protected _autoReconnectMax: number = 5;
+    protected _autoReconnectMax: number = MAX_RECONNECT_ATTEMPTS;
     protected _state: NetNodeState = NetNodeState.Closed;                   // 节点当前状态
     protected _socket: WebSock = null;                                      // Socket对象（可能是原生socket、websocket、wx.socket...)
     protected _timer: NetTimer = null;
@@ -45,13 +48,12 @@ export class NetNode {
 
     protected _keepAliveTimer: any = null;                                  // 心跳定时器
     protected _reconnectTimer: any = null;                                  // 重连定时器
+    protected _connectTimer: ReturnType<typeof setTimeout> | null = null;   // 连接及登录验证共用的单次超时
     protected _reconnectAttempt: number = 0;                                // 当前第几次重连
     /** 这次断开后要重新走网关登录 */
     protected _relogin: boolean = false;
     /** 主动关掉，不要接着重连。回到登录页走这条 */
     protected _manualClose: boolean = false;
-    /** 关掉当前连接后要改连的地址，比如从网关换回登录服 */
-    protected _pendingConnect: NetConnectOptions = null;
     protected _heartTime: number = 10 * 1000;                                 // 心跳间隔
     protected _receiveTime: number = 10 * 1000;                               // 多久没收到数据断开
     protected _reconnetTimeOut: number = 2 * 1000;                            // 重连间隔
@@ -72,27 +74,36 @@ export class NetNode {
     }
 
     public connect(options: NetConnectOptions): boolean {
-        console.log(`NetNode connect socket:`, options);
-        if (this._state != NetNodeState.Closed) {
-            this._pendingConnect = options;
-            this.closeSocket();
-            return true;
-        }
+        if (!options) return false;
+        // 只有显式登录/切服才开启新一轮预算；自动重连不能调用此入口。
+        this.closeSocket();
+        this._connectOptions = { ...options };
+        this._manualClose = false;
+        const limit = options.autoReconnect;
+        this._autoReconnectMax = Number.isFinite(limit) && limit >= 0
+            ? Math.min(MAX_RECONNECT_ATTEMPTS, Math.floor(limit)) : MAX_RECONNECT_ATTEMPTS;
+        this._autoReconnect = this._autoReconnectMax;
+        this._reconnectAttempt = 0;
         return this.openSocket(options);
     }
 
     protected openSocket(options: NetConnectOptions): boolean {
-        this._pendingConnect = null;
-        this._manualClose = false;
-        if (this._socket && this._state == NetNodeState.Closed) {
+        if (!this._manualClose && this._socket && this._state == NetNodeState.Closed) {
             this._state = NetNodeState.Connecting;
-            if (!this._socket.connect(options)) {
-                this._state = NetNodeState.Closed;
-                this.updateNetTips(NetTipsType.Connecting, false);
+            this._connectTimer = setTimeout(() => {
+                this._connectTimer = null;
+                this.dropConnection();
+            }, CONNECTION_TIMEOUT_MS);
+            try {
+                if (!this._socket.connect(options)) {
+                    this.onClosed(null);
+                    return false;
+                }
+            } catch (error) {
+                this.onError(error);
                 return false;
             }
 
-            this._connectOptions = options;
             this.updateNetTips(NetTipsType.Connecting, true);
             return true;
         }
@@ -116,7 +127,6 @@ export class NetNode {
     }
 
     protected initSocket() {
-        this._autoReconnect = this._autoReconnectMax;
         this._socket.onConnected = (event) => { this.onConnected(event) };
         this._socket.onUnpackMessage = (typeName, msg) => { this.onMessage(typeName, msg) };
         this._socket.onError = (event) => { this.onError(event) };
@@ -124,6 +134,7 @@ export class NetNode {
         this._socket.onGetKey = () => { this.onGetKey() };
 
         EventMgr.on(NetEvent.ServerHandShake, this.onChecked, this);
+        EventMgr.on(NetEvent.ServerSessionReady, this.onSessionReady, this);
     }
 
 
@@ -158,14 +169,13 @@ export class NetNode {
 
     // 网络连接成功
     protected onConnected(event) {
-        console.log("NetNode onConnected!")
-        this._autoReconnect = this._autoReconnectMax;
-        this._reconnectAttempt = 0;
+        if (this._manualClose || this._state !== NetNodeState.Connecting) return;
 
-        // 不需要握手包，连接成功直接视为验证通过
+        // 链路已可发送验证包；业务会话仍需等待 ServerSessionReady。
         this._state = NetNodeState.Working;
 
-        this.clearTimer();
+        // 网关必须等身份验证和基础信息完成，不能仅因 WebSocket 打开就重置重试次数。
+        if (this._connectOptions?.type !== NetNodeType.GateServer) this.clearConnectTimer();
         console.log("websocket onConnected:", event);
         this.onGetKey()
 
@@ -180,6 +190,7 @@ export class NetNode {
 
     // 连接验证成功，进入工作状态
     protected onChecked() {
+        if (this._manualClose || this._state !== NetNodeState.Working) return;
         console.log("NetNode onChecked!")
 
         // 关闭连接或重连中的状态显示
@@ -187,8 +198,8 @@ export class NetNode {
         this.updateNetTips(NetTipsType.ReConnecting, false);
 
         if (this._requests.length > 0) {
-            for (var i = 0; i < this._requests.length; i++) {
-                let req = this._requests[i];
+            const requests = this._requests.splice(0);
+            for (let req of requests) {
                 if (req.sended == false) {
                     this.socketSend(req);
                 }
@@ -198,9 +209,17 @@ export class NetNode {
         }
     }
 
+    protected onSessionReady(): void {
+        if (this._manualClose || this._state !== NetNodeState.Working
+            || this._connectOptions?.type !== NetNodeType.GateServer) return;
+        this.clearConnectTimer();
+        this._autoReconnect = this._autoReconnectMax;
+        this._reconnectAttempt = 0;
+    }
+
     // 接收到一个完整的消息包
     protected onMessage(typeName: string, msg): void {
-        if (msg) {
+        if (!this._manualClose && this._state === NetNodeState.Working && msg) {
             EventMgr.emit(typeName, msg);
         }
     }
@@ -211,105 +230,60 @@ export class NetNode {
 
     protected onError(event) {
         console.log("onError:", event);
-        this.restReq();
-        if (this._reconnectTimer !== null) {
-            return;
-        }
-        if (this._state != NetNodeState.Closed && this._socket) {
-            this._socket.close();
-        }
+        this.onClosed(event);
     }
 
     protected onClosed(event) {
-        console.log("onClosed:", event);
-        EventMgr.emit(NetEvent.ServerDisconnected);
-        if (this._reconnectTimer !== null && !this._manualClose) {
-            return;
-        }
+        if (this._manualClose || this._state === NetNodeState.Closed) return;
         this.clearTimer();
-        const manual = this._manualClose;
-        this._manualClose = false;
         this._state = NetNodeState.Closed;
-        if (manual) {
-            this._relogin = false;
-            this.openPending();
-            return;
-        }
+        this._requests.length = 0;
+        this._socket?.close();
+        EventMgr.emit(NetEvent.ServerDisconnected);
         this.tryConnet();
-    }
-
-    protected restReq() {
-        for (var i = 0; i < this._requests.length; i++) {
-            let req = this._requests[i];
-            req.sended = false;
-        }
     }
 
     /**
      * 重连
      */
     public tryConnet() {
-        if (this._reconnectTimer !== null) {
-            return;
-        }
-        console.log("tryConnet", this._autoReconnect)
+        if (this._manualClose || !this._connectOptions || this._reconnectTimer !== null
+            || this._state !== NetNodeState.Closed) return;
         if (this.isAutoReconnect()) {
-            if (this._autoReconnect > 0) {
-                this._reconnectAttempt = this._autoReconnectMax - this._autoReconnect + 1;
-            } else {
-                this._reconnectAttempt += 1;
-            }
+            this._autoReconnect -= 1;
+            this._reconnectAttempt += 1;
             this.updateNetTips(NetTipsType.ReConnecting, true);
+            this._relogin = this._connectOptions.type === NetNodeType.GateServer;
+            this._reconnectTimer = setTimeout(() => {
+                this._reconnectTimer = null;
+                if (!this._manualClose && this._connectOptions) this.openSocket(this._connectOptions);
+            }, this._reconnetTimeOut);
             EventMgr.emit(NetEvent.ServerReconnecting, {
                 attempt: this._reconnectAttempt,
                 maxAttempts: this._autoReconnectMax,
                 retryDelayMs: this._reconnetTimeOut,
             });
-            if (this._connectOptions && this._connectOptions.type == NetNodeType.GateServer) {
-                this._relogin = true;
-            }
-
-            this._state = NetNodeState.Closed;
-            this._reconnectTimer = setTimeout(() => {
-                this._reconnectTimer = null;
-                console.log("NetNode tryConnet!")
-                this.connect(this._connectOptions);
-                if (this._autoReconnect > 0) {
-                    this._autoReconnect -= 1;
-                }
-            }, this._reconnetTimeOut);
-            if (this._socket) {
-                this._socket.close();
-            }
         } else {
-            const gate = this._connectOptions && this._connectOptions.type == NetNodeType.GateServer;
-            const relogin = this._relogin || gate;
-            this._relogin = false;
-            this._state = NetNodeState.Closed;
-            if (relogin) {
-                EventMgr.emit(NetEvent.ServerReconnectFailed, {
-                    attempt: this._reconnectAttempt,
-                    maxAttempts: this._autoReconnectMax,
-                });
-            }
+            const state = { attempt: this._reconnectAttempt, maxAttempts: this._autoReconnectMax };
+            this.closeSocket();
+            EventMgr.emit(NetEvent.ServerReconnectFailed, state);
         }
 
     }
 
     /** 心跳超时或链路已死时关掉当前连接，交给重连。主动关闭请用 closeSocket */
     public dropConnection() {
+        if (this._manualClose) return;
         if (this._state == NetNodeState.Closed) {
             this.tryConnet();
             return;
         }
-        if (this._socket) {
-            this._socket.close();
-        }
+        this.onClosed(null);
     }
 
     // 主动关闭。取消正在进行的重连，不再自动重连网关
     public closeSocket(code?: number, reason?: string) {
-        console.log("closeSocket", code, reason);
+        const connected = this._state !== NetNodeState.Closed;
         this._manualClose = true;
         this._relogin = false;
         this._autoReconnect = 0;
@@ -317,28 +291,10 @@ export class NetNode {
         this.clearTimer();
         this._requests.length = 0;
         this._seqId = 1;
-
-        if (this._state == NetNodeState.Closed) {
-            this._manualClose = false;
-            this.openPending();
-            return;
-        }
-
-        if (this._socket) {
-            this._socket.close(code, reason);
-        } else {
-            this._manualClose = false;
-            this._state = NetNodeState.Closed;
-            this.openPending();
-        }
-    }
-
-    protected openPending(): void {
-        const options = this._pendingConnect;
-        this._pendingConnect = null;
-        if (options) {
-            this.openSocket(options);
-        }
+        this._state = NetNodeState.Closed;
+        this._connectOptions = null;
+        this._socket?.close(code, reason);
+        if (connected) EventMgr.emit(NetEvent.ServerDisconnected);
     }
 
 
@@ -353,8 +309,10 @@ export class NetNode {
         this.sendPack(requestIns, force);
     }
 
-    // 发起请求，如果当前处于重连中，进入缓存列表等待重连完成后发送
+    // 正在建连时暂存请求；连接失败即丢弃，重连只重新发起登录验证。
     public sendPack(obj: RequestObject, force: boolean = false): boolean {
+        // 登录页、重连间隔和已耗尽重试时，旧请求不能偷偷重新打开连接。
+        if (this._manualClose || this._state === NetNodeState.Closed) return false;
         if (!this.isHeartbeat(obj && obj.name)) {
             console.log("this._state", this._state);
         }
@@ -364,11 +322,6 @@ export class NetNode {
 
         else if (this._state == NetNodeState.Checking ||
             this._state == NetNodeState.Connecting) {
-            this._requests.push(obj);
-        }
-
-        else if (this._state == NetNodeState.Closed) {
-            this.connect(this._connectOptions);
             this._requests.push(obj);
         }
 
@@ -420,6 +373,7 @@ export class NetNode {
     }
 
     protected clearTimer() {
+        this.clearConnectTimer();
         if (this._keepAliveTimer !== null) {
             clearTimeout(this._keepAliveTimer);
             this._keepAliveTimer = null;
@@ -428,16 +382,22 @@ export class NetNode {
             clearTimeout(this._reconnectTimer);
             this._reconnectTimer = null;
         }
-        this._timer.destroy();
+        this._timer?.destroy();
+    }
+
+    private clearConnectTimer(): void {
+        if (this._connectTimer !== null) {
+            clearTimeout(this._connectTimer);
+            this._connectTimer = null;
+        }
     }
 
     public isAutoReconnect() {
-        return this._autoReconnect != 0;
+        return !this._manualClose && this._autoReconnect > 0;
     }
 
     public rejectReconnect() {
-        this._autoReconnect = 0;
-        this.clearTimer();
+        this.closeSocket();
     }
 
 

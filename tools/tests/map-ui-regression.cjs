@@ -59,6 +59,7 @@ function load(file, imports = {}, clock = Date, engine = cc) {
     const mod = { exports: {} };
     const localRequire = id => {
         if (id === 'cc') return engine;
+        if (id === './CityFootprint') return load('assets/scripts/map/CityFootprint.ts');
         if (Object.hasOwn(imports, id)) return imports[id];
         throw new Error(`Unmocked dependency ${file}: ${id}`);
     };
@@ -92,7 +93,7 @@ test('portrait clears the old image and ignores out-of-order loads, including ca
         getGeneralCfg: id => ({ resource: `card_${id}_v2.png` }),
         getGeneralTex: id => cache.get(id), setGeneralTex: (id, frame) => cache.set(id, frame),
         loadGeneralTex: id => ({ then: handler => requests.push({
-            url: portraitPaths.getGeneralPortraitPath(id, `card_${id}_v2.png`),
+            url: portraitPaths.getGeneralPortraitPath(`ui/hero/card_${id}_v2.png`),
             callback: (error, frame) => {
                 if (error) return handler(null);
                 cache.set(id, frame);
@@ -133,7 +134,7 @@ test('every configured hero resolves to a distinct imported UI portrait', () => 
     const paths = new Set();
     const uuids = new Set();
     for (const hero of heroes) {
-        const resource = portraitPaths.getGeneralPortraitPath(hero.Id, hero.Resources);
+        const resource = portraitPaths.getGeneralPortraitPath(hero.Icon);
         assert.ok(resource.startsWith('ui/hero/'));
         const filename = path.join(root, 'assets/resources', resource.replace(/\/spriteFrame$/, '.png'));
         assert.ok(fs.existsSync(filename), `missing portrait: ${hero.name}`);
@@ -145,7 +146,7 @@ test('every configured hero resolves to a distinct imported UI portrait', () => 
     }
     assert.equal(paths.size, heroes.length);
     assert.equal(uuids.size, heroes.length);
-    assert.equal(portraitPaths.getGeneralPortraitPath(1002), 'ui/hero/card_1002/spriteFrame');
+    assert.equal(portraitPaths.getGeneralPortraitPath(), '', '配置缺少Icon时不猜图片路径');
     console.log(`Verified ${heroes.length}/${heroes.length} configured portrait files.`);
 });
 
@@ -219,12 +220,11 @@ test('area visibility stays within map boundaries and old areas leave on far jum
     for (const [x, y] of [[1, 1], [16, 24], [155, 155], [1, 195], [199, 1], [100, 100], [110, 100], [1, 1]]) {
         const point = new Vec2(x, y);
         proxy.setCurCenterPoint(point, MapUtil.mapCellToPixelPoint(point));
-        const expected = [];
-        const ax = Math.floor(x / 10), ay = Math.floor(y / 10);
-        for (let row = Math.max(0, ay - 1); row <= Math.min(19, ay + 1); row++) {
-            for (let col = Math.max(0, ax - 1); col <= Math.min(19, ax + 1); col++) expected.push(col + row * 20);
-        }
-        assert.deepEqual([...visible].sort((a, b) => a - b), expected);
+        // 流式区域跟随实际视野和大城预留范围，不再固定为九宫格。
+        assert.deepEqual([...visible].sort((a, b) => a - b), [...proxy.visibleAreaIds].sort((a, b) => a - b));
+        assert.ok(visible.has(MapUtil.getAreaIdByCellPoint(x, y)));
+        assert.ok([...visible].every(id => id >= 0 && id < 400));
+        assert.ok(visible.size < 60, '远跳后必须清掉旧视野，不能不断累积区域');
         assert.equal(new Set(proxy.qryAreaIds).size, proxy.qryAreaIds.length);
         assert.ok(proxy.qryAreaIds.every(id => visible.has(id)));
     }
@@ -245,7 +245,9 @@ test('adding/removing a bookmark updates visible and retiring areas without per-
     tags.onLoad();
     const id = MapUtil.getIdByCellPoint(12, 12);
     const area = MapUtil.getAreaIdByCellPoint(12, 12);
-    proxy._mapResDatas[id] = { id, x: 12, y: 12, type: MapResType.WOOD };
+    const cells = Array.from({ length: 200 * 200 }, () => [0, 0]);
+    cells[id] = [MapResType.WOOD, 2];
+    proxy.initMapResConfig({ w: 200, h: 200, list: cells });
     tags.addArea(area);
     assert.equal(tags._itemMap.get(area).size, 0);
     proxy.updateMapPosTags([{ x: 12, y: 12, name: 'test' }]);
@@ -265,12 +267,13 @@ let now = 0;
 const sceneImports = { ...shared, '../core/CoreEvent': { CoreEvent }, '../map/MapProxy': proxyModule,
     '../map/MapCommand': asDefault(MapCommand), '../map/MapUtil': asDefault(MapUtil) };
 for (const name of ['MapBaseLayerLogic', 'MapResBuildLogic', 'MapBuildTipsLogic', 'MapCityLogic', 'MapLogic',
-    'MapResLogic', 'MapFacilityBuildLogic', 'MapBuildTagLogic', 'MapSysCityLogic']) {
+    'MapResLogic', 'MapFacilityBuildLogic', 'MapBuildTagLogic', 'MapSysCityLogic', 'WorldMapArt', 'WorldLandscape', 'WorldCampaign']) {
     sceneImports[`../map/${name}`] = asDefault(class {});
 }
 const MapScene = load('assets/scripts/scene/MapScene.ts', sceneImports, { now: () => now }).default;
 test('all map layers share a bounded recycle budget and still populate cells', () => {
     const scene = new MapScene();
+    scene._cmd = command;
     scene._ready = true;
     const counts = Array(7).fill(0);
     scene._recycleLayers = counts.map((_, i) => ({ recycleOneItem: () => { counts[i]++; now += 0.1; return true; } }));
@@ -291,7 +294,7 @@ test('empty cells create no invisible resource/tag nodes while cities and real r
     scene._itemLayers = Object.fromEntries(['res', 'build', 'facility', 'tag', 'tips', 'city', 'sysCity']
         .map(name => [name, { addItem: () => calls.push(name) }]));
     let type = 0, marked = false;
-    scene._cmd = { proxy: { getResData: () => ({ id: 1, type }), isPosTag: () => marked },
+    scene._cmd = { proxy: { getResData: () => ({ id: 1, type }), isPosTag: () => marked, getSysCityResData: () => null },
         buildProxy: { getBuild: () => null }, cityProxy: { getCity: () => null } };
     scene.addMapCell(1, 1, 1);
     assert.deepEqual(calls, []);

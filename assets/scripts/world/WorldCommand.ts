@@ -4,7 +4,9 @@ import { ServerConfig as S } from '../config/ServerConfig';
 import { LogicEvent as E } from '../common/LogicEvent';
 import { EventMgr } from '../utils/EventMgr';
 import LoginCommand from '../login/LoginCommand';
+import { resourceLandConfig, resourceLandForCell } from './ResourceLand';
 
+/** 路径中的p_pos_f保留小数；只有目的格和视野中心使用整数坐标。 */
 export interface WorldPosition { x: number; y: number; }
 export interface MarchInfo {
     troopIdx: number; targetType: number; targetId: number | string;
@@ -69,11 +71,35 @@ export default class WorldCommand extends ProtocolCommand {
         return sent;
     }
     march(troopIdx: number, targetType: number, targetId: number | string, targetPos: WorldPosition): boolean {
-        if (!uint(troopIdx) || [1, 2].indexOf(targetType) < 0 || !this.validPos(targetPos) || (targetType === 2 && !hasId(targetId))) return false;
+        if (!uint(troopIdx) || [1, 2, 3].indexOf(targetType) < 0 || !this.validPos(targetPos) || (targetType !== 1 && !hasId(targetId))) return false;
         return this.request(S.c2s_march, { troopIdx, targetType, targetId, targetPos }, `march:${troopIdx}`, () => this.requestMarches());
     }
     cancelMarch(troopIdx: number): boolean {
         return uint(troopIdx) && this.request(S.c2s_cancel_march, { troopIdx }, `march:${troopIdx}`, () => this.requestMarches());
+    }
+    resourceLandAt(x: number, y: number): WorldEntity | undefined {
+        const matches = Array.from(this.entities.values()).filter(e => e.entityType === 4 && e.pos?.x === x && e.pos?.y === y);
+        return matches.length === 1 ? matches[0] : undefined;
+    }
+    resourceLandIssue(x: number, y: number, mapType: number, level: number): string {
+        const cfg = resourceLandForCell(mapType, level);
+        if (!cfg) return mapType === 54 ? '石料资源配置尚未同步，请稍后重试' : '资源地配置尚未同步，请稍后重试';
+        const entity = this.resourceLandAt(x, y);
+        if (!entity) return '正在等待服务器同步该资源地，请稍后重试';
+        if (entity.cfgId !== cfg.Id) return '地图资源配置与服务器不一致，请更新地图配置';
+        const role = LoginCommand.getInstance().proxy.getRoleData();
+        if (hasId(role?.userId) && idKey(entity.ownerId) === idKey(role.userId)) return '这块资源地已归你所有';
+        if (role && cfg.OpenCond?.level && role.level < cfg.OpenCond.level) return `主公达到${cfg.OpenCond.level}级后可占领`;
+        return '';
+    }
+    occupyResourceLand(troopIdx: number, entityId: number | string): boolean {
+        const entity = this.entities.get(idKey(entityId));
+        const cfg = entity && resourceLandConfig(entity.cfgId);
+        const role = LoginCommand.getInstance().proxy.getRoleData();
+        if (!entity || entity.entityType !== 4 || !cfg || this.marches.get(troopIdx)?.state === 1
+            || hasId(role?.userId) && idKey(entity.ownerId) === idKey(role.userId)
+            || role && cfg.OpenCond?.level && role.level < cfg.OpenCond.level) return false;
+        return this.march(troopIdx, 3, entity.entityId, entity.pos);
     }
     /** 地图格子坐标，250ms 合并拖动上报；不用像素坐标代替格坐标。 */
     focus(pos: WorldPosition): void {

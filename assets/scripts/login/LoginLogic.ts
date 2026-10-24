@@ -8,7 +8,8 @@ import { AudioManager } from '../common/AudioManager';
 import { LogicEvent } from '../common/LogicEvent';
 import { NetManager } from "../network/socket/NetManager";
 import { GameConfig } from '../config/GameConfig';
-import { NetNodeType } from "../network/socket/NetNode";
+import { MAX_RECONNECT_ATTEMPTS, NetNodeType } from "../network/socket/NetNode";
+import { NetEvent } from '../network/socket/NetInterface';
 import { Tools } from '../utils/Tools';
 import EnterTransitionLogic from './EnterTransitionLogic';
 
@@ -51,6 +52,7 @@ export default class LoginLogic extends Component {
     private enterNode: Node | null = null;
     private enterLogic: EnterTransitionLogic | null = null;
     private overlayShown = false;
+    private reconnectAttempt = 0;
     private loginButton: Button | null = null;
     private loginButtonLabel: Label | null = null;
 
@@ -58,8 +60,8 @@ export default class LoginLogic extends Component {
         EventMgr.on(LogicEvent.loginComplete, this.onLoginComplete, this);
         EventMgr.on(LogicEvent.enterMap, this.onEnterMap, this);
         EventMgr.on(LogicEvent.createRole, this.onNeedCreateRole, this);
-        // 初始化登录服连接
-        NetManager.getInstance().connect({ url: GameConfig.loginUrl, type: NetNodeType.LoginServer });
+        EventMgr.on(NetEvent.ServerReconnecting, this.onServerReconnecting, this);
+        // 登录页保持空闲，只有用户点击登录才建立连接。
         var data = LocalCache.getLoginValidation();
         console.log("LoginLogic  data:", data)
 
@@ -93,6 +95,8 @@ export default class LoginLogic extends Component {
     }
 
     protected onDestroy(): void {
+        this.loginPending = false;
+        this.enterStarted = false;
         EventMgr.targetOff(this);
         this.unscheduleAllCallbacks();
     }
@@ -150,6 +154,7 @@ export default class LoginLogic extends Component {
         this.loginPending = true;
         this.setLoginButtonState(true, '正在登录…');
         this.scheduleOnce(this.onLoginTimeout, 12);
+        NetManager.getInstance().connect({ url: GameConfig.loginUrl, type: NetNodeType.LoginServer, autoReconnect: 0 });
         LoginCommand.getInstance().accountLogin(this.editName.string, this.editPass.string);
     }
 
@@ -228,10 +233,11 @@ export default class LoginLogic extends Component {
 
         this.enterStarted = true;
         this.mapReached = false;
+        this.reconnectAttempt = 0;
         this.setLoginButtonState(true, '正在进入山河…');
         NetManager.getInstance().close();
 
-        // 等登录服的 socket 完全关闭后，再切换网关连接
+        // 在下一帧之后切换网关，旧连接的回调已在 close 中解除。
         this.scheduleOnce(() => this.connectGateAndEnter(loginData), 0.5);
         // 连接通常很快，先让登录卡保持“正在进入”状态；超过 1 秒再展示过渡页
         this.scheduleOnce(() => {
@@ -240,7 +246,6 @@ export default class LoginLogic extends Component {
                 this.showEnterOverlay(loginData);
             }
         }, 1.0);
-        this.scheduleOnce(this.checkEnterProgress, 14);
     }
 
     private connectGateAndEnter(loginData: any): void {
@@ -250,97 +255,46 @@ export default class LoginLogic extends Component {
 
         NetManager.getInstance().connect({
             url: this.resolveGateUrl(loginData.gateAddr),
-            type: NetNodeType.GateServer
+            type: NetNodeType.GateServer,
+            autoReconnect: MAX_RECONNECT_ATTEMPTS
         });
         LoginCommand.getInstance().role_enterServer(loginData);
 
         if (this.enterLogic) {
             this.enterLogic.setStage(0.35, '正在验证身份');
         }
-        this.scheduleOnce(() => {
-            if (this.enterLogic && !this.mapReached) {
-                this.enterLogic.setStage(0.55, '正在连接服务器');
-            }
-        }, 1.2);
-        this.scheduleOnce(() => {
-            if (this.enterLogic && !this.mapReached) {
-                this.enterLogic.setStage(0.72, '正在同步战局');
-            }
-        }, 3.2);
-        this.scheduleOnce(() => {
-            if (this.enterLogic && !this.mapReached) {
-                this.enterLogic.setStage(0.88, '正在加载战场');
-            }
-        }, 7);
     }
 
-    private checkEnterProgress(): void {
-        if (!this.enterStarted || this.mapReached) {
-            return;
-        }
-        if (!this.overlayShown) {
-            const loginData = LoginCommand.getInstance().proxy.getLoginData();
-            if (loginData) {
-                this.setLoginContentVisible(false);
-                this.showEnterOverlay(loginData);
-            }
-        }
-        if (this.enterLogic) {
-            this.enterLogic.fail('连接服务器超时，请重试');
-        }
-    }
-
-    private retryEnter(): void {
-        if (!this.enterStarted) {
-            return;
-        }
-        const loginData = LoginCommand.getInstance().proxy.getLoginData();
-        if (!loginData) {
-            this.backToLogin();
-            return;
-        }
-
-        this.mapReached = false;
-        this.unschedule(this.checkEnterProgress);
-        NetManager.getInstance().close();
-        if (this.enterLogic) {
-            this.enterLogic.resetForRetry();
-        }
-        this.scheduleOnce(() => this.connectGateAndEnter(loginData), 0.5);
-        this.scheduleOnce(this.checkEnterProgress, 14);
+    private onServerReconnecting(state: { attempt?: number }): void {
+        if (!this.enterStarted || this.mapReached) return;
+        this.reconnectAttempt = state.attempt || 1;
+        this.enterLogic?.setStage(0.35, `连接中断，正在重连（${this.reconnectAttempt}/${MAX_RECONNECT_ATTEMPTS}）`);
     }
 
     private backToLogin(): void {
+        this.loginPending = false;
         this.enterStarted = false;
         this.mapReached = false;
         this.overlayShown = false;
-        this.unschedule(this.checkEnterProgress);
+        this.reconnectAttempt = 0;
+        this.unscheduleAllCallbacks();
         NetManager.getInstance().close();
+        LoginCommand.getInstance().resetClientState();
         if (this.enterLogic) {
             this.enterLogic.hide();
         }
         this.setLoginContentVisible(true);
         this.setLoginButtonState(false, '进入山河');
-        this.scheduleOnce(() => {
-            NetManager.getInstance().connect({ url: GameConfig.loginUrl, type: NetNodeType.LoginServer });
-        }, 0.5);
     }
 
     private resetLogin(message: string): void {
-        this.loginPending = false;
-        this.enterStarted = false;
-        this.overlayShown = false;
-        this.setLoginButtonState(false, '进入山河');
-        this.setLoginContentVisible(true);
-        if (this.enterLogic) {
-            this.enterLogic.hide();
-        }
+        this.backToLogin();
         EventMgr.emit(LogicEvent.showToast, message);
     }
 
     private onEnterMap(): void {
         this.mapReached = true;
-        this.unschedule(this.checkEnterProgress);
+        this.unscheduleAllCallbacks();
         if (this.enterLogic) {
             this.enterLogic.complete();
         }
@@ -348,7 +302,7 @@ export default class LoginLogic extends Component {
 
     private onNeedCreateRole(): void {
         this.mapReached = true;
-        this.unschedule(this.checkEnterProgress);
+        this.unscheduleAllCallbacks();
         this.setLoginContentVisible(false);
         if (this.enterLogic) {
             this.enterLogic.hide();
@@ -376,9 +330,11 @@ export default class LoginLogic extends Component {
             return;
         }
 
-        this.enterLogic.onRetry = () => this.retryEnter();
+        this.enterLogic.onRetry = null;
         this.enterLogic.onBack = () => this.backToLogin();
         this.enterLogic.play(loginData.account || this.accountName, this.selectedServerName);
+        this.enterLogic.setStage(0.35, this.reconnectAttempt
+            ? `连接中断，正在重连（${this.reconnectAttempt}/${MAX_RECONNECT_ATTEMPTS}）` : '正在连接服务器并验证身份');
         this.overlayShown = true;
     }
 

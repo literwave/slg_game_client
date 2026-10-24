@@ -20,6 +20,8 @@ export class LogicEvent {
     public static updateActivities = "updateActivities";
     public static updateRank = "updateRank";
     public static updateCityBuilds = "updateCityBuilds";
+    public static updateMailList = "updateMailList";
+    public static updateMailDetail = "updateMailDetail";
     public static allianceInvite = "allianceInvite";
 
 

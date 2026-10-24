@@ -226,6 +226,11 @@ export default class LoginCommand {
     /**玩家基础信息*/
     private onGetUserBaseInfo(data: any): void {
         if (!data || !this._serverReady) return;
+        EventMgr.emit(NetEvent.ServerSessionReady);
+        if (this._reconnecting) {
+            this._reconnecting = false;
+            EventMgr.emit(NetEvent.ServerReconnectSuccess);
+        }
         if (!data.name) {
             this._baseInfoReady = false;
             EventMgr.emit(LogicEvent.createRole);
@@ -387,10 +392,6 @@ export default class LoginCommand {
         };
         NetManager.getInstance().send(sendData);
         this.startHeartbeat();
-        if (this._reconnecting) {
-            this._reconnecting = false;
-            EventMgr.emit(NetEvent.ServerReconnectSuccess);
-        }
     }
 
     /** 网关重连成功后重新验证，不走旧的 account.reLogin */

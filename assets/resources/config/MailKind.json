@@ -1,0 +1,20 @@
+[
+  {
+    "Id": 1,
+    "Name": "系统",
+    "Enum": "SYSTEM",
+    "Desc": "系统邮件（欢迎、补偿、活动奖励等）"
+  },
+  {
+    "Id": 2,
+    "Name": "联盟",
+    "Enum": "ALLIANCE",
+    "Desc": "联盟相关通知"
+  },
+  {
+    "Id": 3,
+    "Name": "公告",
+    "Enum": "NOTICE",
+    "Desc": "运营公告"
+  }
+]

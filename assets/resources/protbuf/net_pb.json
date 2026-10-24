@@ -102,77 +102,78 @@
             "c2s_set_mail_lock": 79,
             "s2c_set_mail_lock": 80,
             "c2s_get_mail_reward": 81,
-            "s2c_get_mail_reward": 82
+            "s2c_get_mail_reward": 82,
+            "s2c_sync_mail": 83
         },
         "Rank": {
-            "c2s_req_rank_list": 83,
-            "s2c_req_rank_list": 84
+            "c2s_req_rank_list": 84,
+            "s2c_req_rank_list": 85
         },
         "Report": {
-            "c2s_req_report_list": 85,
-            "s2c_req_report_list": 86,
-            "c2s_req_report_detail": 87,
-            "s2c_req_report_detail": 88,
-            "c2s_req_report_replay": 89,
-            "s2c_req_report_replay": 90,
-            "s2c_sync_report": 91,
-            "c2s_read_report": 92,
-            "s2c_read_report": 93,
-            "c2s_del_report": 94,
-            "s2c_del_report": 95
+            "c2s_req_report_list": 86,
+            "s2c_req_report_list": 87,
+            "c2s_req_report_detail": 88,
+            "s2c_req_report_detail": 89,
+            "c2s_req_report_replay": 90,
+            "s2c_req_report_replay": 91,
+            "s2c_sync_report": 92,
+            "c2s_read_report": 93,
+            "s2c_read_report": 94,
+            "c2s_del_report": 95,
+            "s2c_del_report": 96
         },
         "Reward": {
-            "s2c_show_reward": 96,
-            "s2c_sync_user_diamond": 97
+            "s2c_show_reward": 97,
+            "s2c_sync_user_diamond": 98
         },
         "SystemOpen": {
-            "c2s_req_system_open": 98,
-            "s2c_req_system_open": 99,
-            "s2c_sync_system_open": 100
+            "c2s_req_system_open": 99,
+            "s2c_req_system_open": 100,
+            "s2c_sync_system_open": 101
         },
         "Task": {
-            "c2s_req_task_list": 101,
-            "s2c_req_task_list": 102,
-            "s2c_sync_task": 103,
-            "c2s_get_task_reward": 104,
-            "s2c_get_task_reward": 105
+            "c2s_req_task_list": 102,
+            "s2c_req_task_list": 103,
+            "s2c_sync_task": 104,
+            "c2s_get_task_reward": 105,
+            "s2c_get_task_reward": 106
         },
         "User": {
-            "c2s_user_base_info": 106,
-            "s2c_user_base_info": 107,
-            "s2c_sync_soldier": 108,
-            "s2c_sync_city_pos": 109,
-            "c2s_user_create": 110,
-            "s2c_user_create": 111,
-            "c2s_req_user_res": 112,
-            "s2c_req_user_res": 113,
-            "s2c_sync_user_res_list": 114,
-            "s2c_sys_notify_by_lanid": 115,
-            "s2c_tell_me": 116,
-            "c2s_gm_command": 117,
-            "s2c_gm_command_help": 118,
-            "c2s_change_head_icon": 119,
-            "s2c_change_head_icon": 120,
-            "c2s_client_load_ok": 121,
-            "s2c_client_load_ok": 122
+            "c2s_user_base_info": 107,
+            "s2c_user_base_info": 108,
+            "s2c_sync_soldier": 109,
+            "s2c_sync_city_pos": 110,
+            "c2s_user_create": 111,
+            "s2c_user_create": 112,
+            "c2s_req_user_res": 113,
+            "s2c_req_user_res": 114,
+            "s2c_sync_user_res_list": 115,
+            "s2c_sys_notify_by_lanid": 116,
+            "s2c_tell_me": 117,
+            "c2s_gm_command": 118,
+            "s2c_gm_command_help": 119,
+            "c2s_change_head_icon": 120,
+            "s2c_change_head_icon": 121,
+            "c2s_client_load_ok": 122,
+            "s2c_client_load_ok": 123
         },
         "World": {
-            "c2s_req_troop": 123,
-            "s2c_req_troop": 124,
-            "c2s_edit_troop": 125,
-            "s2c_edit_troop": 126,
-            "s2c_sync_troop": 127,
-            "c2s_march": 128,
-            "s2c_march": 129,
-            "c2s_cancel_march": 130,
-            "s2c_cancel_march": 131,
-            "s2c_sync_march": 132,
-            "c2s_req_march_list": 133,
-            "s2c_req_march_list": 134,
-            "c2s_aoi_focus": 135,
-            "s2c_aoi_enter": 136,
-            "s2c_aoi_leave": 137,
-            "s2c_aoi_update": 138
+            "c2s_req_troop": 124,
+            "s2c_req_troop": 125,
+            "c2s_edit_troop": 126,
+            "s2c_edit_troop": 127,
+            "s2c_sync_troop": 128,
+            "c2s_march": 129,
+            "s2c_march": 130,
+            "c2s_cancel_march": 131,
+            "s2c_cancel_march": 132,
+            "s2c_sync_march": 133,
+            "c2s_req_march_list": 134,
+            "s2c_req_march_list": 135,
+            "c2s_aoi_focus": 136,
+            "s2c_aoi_enter": 137,
+            "s2c_aoi_leave": 138,
+            "s2c_aoi_update": 139
         }
     }
 }

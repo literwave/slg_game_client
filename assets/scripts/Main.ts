@@ -5,6 +5,7 @@ import ProgressionCommand from './progression/ProgressionCommand';
 import BattleCommand from './battle/BattleCommand';
 import RankCommand from './rank/RankCommand';
 import BuildCommand from './build/BuildCommand';
+import MailCommand from './mail/MailCommand';
 import { _decorator, Component, Prefab, Node, instantiate, TiledMapAsset, JsonAsset, AudioSource, assert, Camera, screen, view, director, Director } from 'cc';
 const { ccclass, property } = _decorator;
 
@@ -113,6 +114,7 @@ export default class Main extends Component {
         BattleCommand.getInstance();
         RankCommand.getInstance();
         BuildCommand.getInstance();
+        MailCommand.getInstance();
         RewardCommand.getInstance();
         TroopCommand.getInstance();
 
@@ -146,6 +148,7 @@ export default class Main extends Component {
         BattleCommand.getInstance().clearData();
         RankCommand.getInstance().clearData();
         BuildCommand.getInstance().clearData();
+        MailCommand.getInstance().clearData();
         MapUICommand.getInstance().proxy.clearData();
         EventMgr.targetOff(this);
     }
@@ -173,6 +176,7 @@ export default class Main extends Component {
         BattleCommand.getInstance().clearData();
         RankCommand.getInstance().clearData();
         BuildCommand.getInstance().clearData();
+        MailCommand.getInstance().clearData();
         MapUICommand.getInstance().proxy.clearData();
         RewardCommand.getInstance().clearData();
     }
@@ -209,17 +213,9 @@ export default class Main extends Component {
     }
 
     private onServerReconnectFailed(): void {
-        if (!this._mapScene && !this._mapUIScene) {
-            this.enterLogin();
-            return;
-        }
-        const logic = this.ensureReconnectLogic();
-        if (!logic) {
-            this.enterLogin();
-            return;
-        }
-        this._reconnectNode.setSiblingIndex(this.topLayer() + 20);
-        logic.showFailed();
+        // 耗尽重连预算就结束本轮会话，加载页和战场均直接回到登录页。
+        EventMgr.emit(LogicEvent.enterLogin);
+        this.showTopToast('服务器连接失败，已返回登录，请稍后重试');
     }
 
     private ensureReconnectLogic(): ReconnectLogic | null {

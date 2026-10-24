@@ -28,29 +28,19 @@ def noise(x, y):
 
 def resource_level(x, y, rid, regions):
     radius = math.hypot(x - CENTER, y - CENTER)
-    # 资源州/王畿仍保留争夺区；出生州4级以上全部来自分散固定表。
-    roll = noise(x // 6, y // 6) % 100
+    # 按单格采样，不能用同一个6×6区块的随机数制造同等级条带。
+    roll = noise(x + 137, y + 293) % 100
     if rid < 6:
         # 每48格保留一个补给中心；基础层仅提供1→2→3级，避免整圈4级建筑。
         distance = max(abs(x % 48 - 24), abs(y % 48 - 24))
         local = noise(x, y) % 100
-        level = (1 if local < 55 else 2) if distance <= 5 else (2 if local < 75 else 3) if distance <= 11 else 3
+        level = (1 if local < 50 else 2) if distance <= 5 else (1 if local < 16 else 2 if local < 58 else 3)
         # 出生州4/5/6级完全由逐点坐标表覆盖。
         return level
     if rid < 9:
-        # 出关可先打4/5级；深入内圈才遇到7/8级。
-        if radius >= 240:
-            return 4 if roll < 30 else 5 if roll < 90 else 6
-        if radius >= 180:
-            return 5 if roll < 65 else 6 if roll < 97 else 7
-        if radius >= 130:
-            return 6 if roll < 65 else 7 if roll < 98 else 8
-        return 6 if roll < 20 else 7 if roll < 85 else 8
-    if radius >= 70:
-        return 6 if roll < 30 else 7 if roll < 90 else 8
-    if radius >= 35:
-        return 7 if roll < 65 else 8 if roll < 98 else 9
-    return 8 if roll < 80 else 9
+        # 2～5级始终混合；6～8级只来自固定散点，不形成内圈高级带。
+        return 2 if roll < 12 else 3 if roll < 42 else 4 if roll < 70 else 5
+    return 3 if roll < 5 else 4 if roll < 30 else 5 if roll < 65 else 6
 
 
 def build():
@@ -103,7 +93,7 @@ def build():
                 continue
             level = resource_level(x, y, rid, regions)
             # 局部类型轮换，避免新手附近只有一种资源造成卡粮/卡铁。
-            kind = 52 + (x + 2 * y + noise(x // 48, y // 48)) % 4
+            kind = 52 + noise(x + 419, y + 673) % 4
             resources.append([kind, level])
     # 每条走廊连通两个州，关口本身只有一个坐标，与现有要塞协议一致。
     corridor = set()
@@ -115,7 +105,7 @@ def build():
                     idx = (y + dy) * SIZE + x + dx
                     corridor.add(idx)
                     blocked[idx] = 0
-                    resources[idx] = [52 + (x + dx + 2 * (y + dy)) % 4, 3 if min(g['regions']) < 6 else 6]
+                    resources[idx] = [52 + noise(x + dx, y + dy) % 4, resource_level(x + dx, y + dy, ids[idx], regions)]
         # 中心收窄为单格关门；移除这一个关门格，八方向也不能从旁边绕过去。
         horizontal = abs(g['nx']) >= abs(g['ny'])
         for lateral in range(-5, 6):
@@ -125,7 +115,7 @@ def build():
                 idx = y * SIZE + x
                 if lateral == 0:
                     blocked[idx] = 0
-                    resources[idx] = [55, 3 if min(g['regions']) < 6 else 6]
+                    resources[idx] = [55, resource_level(x, y, ids[idx], regions)]
                     corridor.add(idx)
                 else:
                     blocked[idx] = 1
@@ -138,9 +128,11 @@ def build():
     cities = []
     for r in regions:
         cities.append(dict(name=r['name'] + ('州府' if r['tier'] == 0 else '都城') if r['id'] != 9 else '洛阳',
-                           x=r['x'], y=r['y'], level=4 if r['tier'] == 0 else 7 if r['tier'] == 1 else 10, region=r['id']))
+                           x=r['x'], y=r['y'], level=4 if r['tier'] == 0 else 7 if r['tier'] == 1 else 10, region=r['id'],
+                           footprintRadius=1 if r['tier'] == 0 else 2 if r['tier'] == 1 else 4,
+                           art='town' if r['tier'] == 0 else 'county' if r['tier'] == 1 else 'capital'))
     for c in cities:
-        radius = 3 if c['level'] >= 8 else 2 if c['level'] >= 5 else 1
+        radius = c['footprintRadius']
         for y in range(c['y'] - radius, c['y'] + radius + 1):
             for x in range(c['x'] - radius, c['x'] + radius + 1):
                 resources[y * SIZE + x] = [0, 0]
@@ -165,7 +157,8 @@ def build():
             continue
         x, y = idx % SIZE, idx // SIZE
         distance = max(abs(x % 48 - 24), abs(y % 48 - 24))
-        keep = (x + y) % 3 == 0 if distance <= 6 else noise(x // 3, y // 3) % 100 >= 60
+        # 空地也逐格采样，避免3×3资源团和斜向整排地块。
+        keep = noise(x + 71, y + 167) % 100 < (60 if distance <= 6 and ids[idx] < 6 else 40)
         if not keep:
             empty_cells.append(idx)
             resources[idx] = [0, 0]
@@ -198,10 +191,15 @@ def build():
         resources[idx] = [point['type'], point['level']]
         fixed_ids.add(idx)
         empty_set.discard(idx)
+    from resource_layout import apply_inner_resources, mix_resources
+    inner = apply_inner_resources(ROOT, resources, empty_set, blocked, region_at)
+    all_fixed_ids = fixed_ids | {p['y'] * SIZE + p['x'] for p in inner['points']}
+    mix_resources(resources, ids, empty_set, all_fixed_ids, noise)
     empty_cells = sorted(empty_set)
     strategy = dict(version=1, title='千里山河 · 破关逐鹿', width=SIZE, height=SIZE, seed=SEED,
                     fixedBirthResourceCount=len(fixed_ids),
                     fixedBirthLevels=[4, 5, 6], birthResourceMinDistance=dict(all=8, advanced=28, level6=48),
+                    resourceLayoutVersion=3, fixedInnerResourceCount=len(inner['points']), innerResourceSpacing=inner['spacing'],
                     regions=regions, gates=gates, cities=cities, spawnZones=spawn_zones,
                     stages=['立足出生州，发展资源与同盟', '铺路至关口，集结攻关', '控制资源州，争夺渡口与都城', '突破王畿三关，会战洛阳'])
     rivers = set(river)

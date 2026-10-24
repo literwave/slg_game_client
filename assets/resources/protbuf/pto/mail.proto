@@ -2,6 +2,9 @@ syntax = "proto3";
 
 package Mail;
 // 邮件相关
+// mailKind → MailKind.Id（1系统 2联盟 3公告）
+// mailId → Mail.Id（邮件模板；标题/正文/%s 替换见配置）
+// mailUid 为邮件唯一实例 id
 
 import "common.proto";
 
@@ -11,46 +14,53 @@ message c2s_req_mail_list {
 
 message s2c_req_mail_list {
 	int32 mailKind = 1;
-	Common.p_mail_info mailInfo = 2;
+	repeated Common.p_mail_info mailInfoList = 2;
 }
 
 message c2s_req_mail_detail {
 	int32 mailKind = 1;
-	int64 mailId = 2;
+	int64 mailUid = 2;
 }
 
 message s2c_req_mail_detail {
-	int64 mailId = 1;
+	int64 mailUid = 1;
 	repeated string detailList = 2;
 	repeated Common.p_reward_info rewardList = 3;
 }
 
 message c2s_del_mail_list {
 	int32 mailKind = 1;
-	repeated int64 mailIdList = 2;
+	repeated int64 mailUidList = 2;
 }
 
 message s2c_del_mail_list {
 	int32 mailKind = 1;
-	repeated int64 mailIdList = 2;
+	repeated int64 mailUidList = 2;
 }
 
 message c2s_set_mail_lock {
 	int32 mailKind = 1;
-	int64 mailId = 2;
+	int64 mailUid = 2;
 	bool isLock = 3;
 }
 
 message s2c_set_mail_lock {
 	int32 mailKind = 1;
-	int64 mailId = 2;
+	int64 mailUid = 2;
 	bool isLock = 3;
 }
 
+// k=mailKind，v=mailUid（字符串）
 message c2s_get_mail_reward {
-	repeated Common.p_common_info_int_str mailKindIdList = 1;
+	repeated Common.p_common_info_int_str mailKindUidList = 1;
 }
 
 message s2c_get_mail_reward {
-	repeated Common.p_common_info_int_str mailKindIdList = 1;
+	repeated Common.p_common_info_int_str mailKindUidList = 1;
+}
+
+// 新邮件推送（发信后）
+message s2c_sync_mail {
+	int32 mailKind = 1; // → MailKind.Id
+	Common.p_mail_info mailInfo = 2;
 }

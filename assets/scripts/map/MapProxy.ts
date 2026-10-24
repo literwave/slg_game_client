@@ -2,6 +2,7 @@ import { _decorator, TiledMapAsset, Vec2, game, view } from 'cc';
 import MapUtil from "./MapUtil";
 import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
+import { cityFootprintRadius } from './CityFootprint';
 
 
 export class MapResConfig {
@@ -202,14 +203,7 @@ export default class MapProxy {
 
             var resData = this._mapSysCityResDatas[index];
             var level = resData.level;
-            var dis = 0;
-            if (level >= 8) {
-                dis = 3;
-            } else if (level >= 5) {
-                dis = 2;
-            } else {
-                dis = 1;
-            }
+            const dis = cityFootprintRadius(level);
 
             if (dis >= Math.abs(x - resData.x) && dis >= Math.abs(y - resData.y)) {
                 return resData;

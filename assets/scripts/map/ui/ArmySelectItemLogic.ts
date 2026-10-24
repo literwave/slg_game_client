@@ -9,6 +9,11 @@ import GeneralHeadLogic from "./GeneralHeadLogic";
 import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
+import { TroopData } from '../../general/TroopProxy';
+import TroopCommand from '../../general/TroopCommand';
+import WorldCommand from '../../world/WorldCommand';
+import MapCommand from '../MapCommand';
+import MapUtil from '../MapUtil';
 
 @ccclass('ArmySelectItemLogic')
 export default class ArmySelectItemLogic extends Component {
@@ -39,6 +44,8 @@ export default class ArmySelectItemLogic extends Component {
     protected _cmd: number = 0;
     protected _toX: number = 0;
     protected _toY: number = 0;
+    private troopIdx = 0;
+    private resourceEntityId: number | string = 0;
 
     protected onLoad(): void {
         EventMgr.on(LogicEvent.updateArmy, this.onUpdateArmy, this);
@@ -51,13 +58,30 @@ export default class ArmySelectItemLogic extends Component {
     }
 
     protected onUpdateArmy(armyData: ArmyData): void {
-        if (armyData.id == this._data.id) {
+        if (this._data && armyData.id == this._data.id) {
             this.setArmyData(armyData, this._cmd, this._toX, this._toY);
         }
     }
 
     protected onClickItem(): void {
         AudioManager.instance.playClick();
+        if (this.troopIdx) {
+            const world = WorldCommand.getInstance();
+            const map = MapCommand.getInstance();
+            const cell = map.proxy.getResData(MapUtil.getIdByCellPoint(this._toX, this._toY));
+            const troop = TroopCommand.getInstance().proxy.getTroop(this.troopIdx);
+            const reason = map.campaignBlockReason(this._toX, this._toY)
+                || (cell ? world.resourceLandIssue(this._toX, this._toY, cell.type, cell.level) : '目标已失效');
+            const entity = world.resourceLandAt(this._toX, this._toY);
+            if (reason || !entity || String(entity.entityId) !== String(this.resourceEntityId)) {
+                EventMgr.emit(LogicEvent.showToast, reason || '目标已变更，请重新选择资源地'); return;
+            }
+            const leader = troop?.getHeroIdxAt(0);
+            if (!leader || troop.getSoldier(leader).count <= 0 || !world.occupyResourceLand(this.troopIdx, entity.entityId)) {
+                EventMgr.emit(LogicEvent.showToast, '部队暂无可用兵力、正在行军或请求尚未完成'); return;
+            }
+            EventMgr.emit(LogicEvent.closeArmyAelectUi); return;
+        }
         if (this.tipNode.active == false) {
             ArmyCommand.getInstance().generalAssignArmy(this._data.id, this._cmd, this._toX, this._toY);
             EventMgr.emit(LogicEvent.closeArmyAelectUi);
@@ -124,11 +148,38 @@ export default class ArmySelectItemLogic extends Component {
     }
 
     public setArmyData(data: ArmyData, cmd: number, x: number, y: number): void {
+        this.troopIdx = 0; this.resourceEntityId = 0;
         this._data = data;
         this._cmd = cmd;
         this._toX = x;
         this._toY = y;
         // console.log("setArmyData", arguments);
         this.updateItem();
+    }
+    public setTroopData(troop: TroopData, x: number, y: number): void {
+        this._data = null; this.troopIdx = troop.troopIdx; this._toX = x; this._toY = y;
+        const world = WorldCommand.getInstance();
+        this.resourceEntityId = world.resourceLandAt(x, y)?.entityId || 0;
+        const proxy = GeneralCommand.getInstance().proxy;
+        const heroes = [0, 1, 2].map(pos => proxy.getMyGeneral(troop.getHeroIdxAt(pos)));
+        const name = (index: number) => heroes[index] ? proxy.getGeneralCfg(heroes[index].cfgId)?.name || '武将' : '';
+        const leader = troop.getHeroIdxAt(0);
+        let count = 0, hurt = 0;
+        for (const hero of troop.getSortedHeroes()) {
+            const soldier = troop.getSoldier(hero.heroIdx); count += soldier.count; hurt += soldier.hurtCount;
+        }
+        const busy = world.marches.get(troop.troopIdx)?.state === 1;
+        const noSoldiers = !leader || troop.getSoldier(leader).count <= 0;
+        this.tipNode.active = busy || noSoldiers;
+        this.labelTip.string = busy ? '行军中…' : '主将兵力不足';
+        this.labelState.string = busy ? '行军中' : '待命';
+        this.labelName.string = name(0) || `部队${troop.troopIdx}`;
+        this.labelLv.string = heroes[0] ? String(heroes[0].level) : '';
+        this.headIcon.node.active = !!heroes[0];
+        if (heroes[0]) this.headIcon.getComponent(GeneralHeadLogic).setHeadId(heroes[0].cfgId);
+        this.labelVice1.string = name(1); this.labelVice2.string = name(2);
+        this.labelMorale.string = `伤兵 ${hurt}`;
+        this.labelSoldierCnt.string = `${count} 可用`;
+        this.progressSoldier.progress = count + hurt > 0 ? count / (count + hurt) : 0;
     }
 }

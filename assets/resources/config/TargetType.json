@@ -10,5 +10,11 @@
     "Name": "打怪",
     "Enum": "ATTACK_MONSTER",
     "Desc": "行军攻击怪物组"
+  },
+  {
+    "Id": 3,
+    "Name": "占领资源地",
+    "Enum": "OCCUPY_RES_LAND",
+    "Desc": "行军占领资源地（击败守卫后立即占领，无倒计时）"
   }
 ]

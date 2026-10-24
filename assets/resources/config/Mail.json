@@ -1,0 +1,102 @@
+[
+  {
+    "Id": 1,
+    "Name": "欢迎入驻",
+    "Kind": 1,
+    "Title": "欢迎来到乱世",
+    "Content": "主公初临乱世，特奉上启动物资，愿早日一统天下！",
+    "Icon": "",
+    "Sender": "系统",
+    "ExpireDay": 30
+  },
+  {
+    "Id": 2,
+    "Name": "奖励补发",
+    "Kind": 1,
+    "Title": "奖励补发",
+    "Content": "因背包已满或其他原因，奖励已通过邮件发放，请及时领取。",
+    "Icon": "",
+    "Sender": "系统",
+    "ExpireDay": 7
+  },
+  {
+    "Id": 3,
+    "Name": "活动奖励",
+    "Kind": 1,
+    "Title": "活动奖励",
+    "Content": "恭喜主公在活动「%s」中获得奖励，请查收。",
+    "Icon": "",
+    "Sender": "系统",
+    "ExpireDay": 14
+  },
+  {
+    "Id": 4,
+    "Name": "冲榜结算",
+    "Kind": 1,
+    "Title": "冲榜奖励",
+    "Content": "恭喜主公在「%s」中获得第%s名，奖励已发放，请查收。",
+    "Icon": "",
+    "Sender": "系统",
+    "ExpireDay": 14
+  },
+  {
+    "Id": 5,
+    "Name": "维护补偿",
+    "Kind": 1,
+    "Title": "维护补偿",
+    "Content": "服务器维护已结束，特奉上补偿物资，感谢主公耐心等待。",
+    "Icon": "",
+    "Sender": "系统",
+    "ExpireDay": 30
+  },
+  {
+    "Id": 6,
+    "Name": "开服犒赏",
+    "Kind": 1,
+    "Title": "开服犒赏",
+    "Content": "开服福利已送达，祝主公开疆拓土、马到成功！",
+    "Icon": "",
+    "Sender": "系统",
+    "ExpireDay": 7
+  },
+  {
+    "Id": 7,
+    "Name": "加入联盟",
+    "Kind": 2,
+    "Title": "加入联盟成功",
+    "Content": "您已成功加入联盟「%s」，与盟友共谋天下吧！",
+    "Icon": "",
+    "Sender": "联盟",
+    "ExpireDay": 7
+  },
+  {
+    "Id": 8,
+    "Name": "离开联盟",
+    "Kind": 2,
+    "Title": "离开联盟通知",
+    "Content": "您已离开联盟「%s」。",
+    "Icon": "",
+    "Sender": "联盟",
+    "ExpireDay": 7
+  },
+  {
+    "Id": 9,
+    "Name": "职位变更",
+    "Kind": 2,
+    "Title": "职位变更通知",
+    "Content": "您在联盟「%s」的职位已变更为「%s」。",
+    "Icon": "",
+    "Sender": "联盟",
+    "ExpireDay": 7
+  },
+  {
+    "Id": 10,
+    "Name": "系统公告",
+    "Kind": 3,
+    "Title": "%s",
+    "Content": "%s",
+    "Icon": "",
+    "Sender": "公告",
+    "ExpireDay": 30
+  }
+]

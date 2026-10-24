@@ -64,10 +64,11 @@ function load(file, deps = {}) {
     const mod = { exports: {} };
     new Function('require', 'module', 'exports', result.outputText)(id => {
         if (id === 'cc') return cc;
+        if (id === './CityFootprint') return load('assets/scripts/map/CityFootprint.ts');
         assert.ok(id in deps, `Unexpected import ${id}`);
         return deps[id];
     }, mod, mod.exports);
-    return mod.exports.default;
+    return mod.exports.default || mod.exports;
 }
 const MapUtil = load('assets/scripts/map/MapUtil.ts', { './MapCommand': {} });
 const mapNode = new Node();

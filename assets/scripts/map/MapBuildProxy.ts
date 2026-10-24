@@ -5,6 +5,7 @@ import {MapResType } from "./MapProxy";
 import MapUtil from "./MapUtil";
 import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
+import { cityFootprintRadius } from './CityFootprint';
 
 /**地图建筑和占领数据*/
 export class MapBuildData {
@@ -76,13 +77,7 @@ export class MapBuildData {
 
     public getCellRadius() :number {
         if (this.isSysCity()) {
-            if (this.level >= 8){
-                return 3
-            }else if (this.level >= 5){
-                return 2
-            }else {
-                return 1
-            }
+            return cityFootprintRadius(this.level);
         }else {
             return 0
         }

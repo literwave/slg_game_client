@@ -12,6 +12,7 @@ import MapUICommand from "./ui/MapUICommand";
 import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
 import WorldCampaign from './WorldCampaign';
+import LoginCommand from '../login/LoginCommand';
 
 export default class MapCommand {
     //单例
@@ -238,12 +239,14 @@ export default class MapCommand {
     }
 
     public campaignReachable(): Set<number> {
-        const home = this.cityProxy.getMyMainCity();
-        const owner = this.cityProxy;
+        const role = LoginCommand.getInstance().proxy.getRoleData();
+        const home = this.cityProxy.getMyMainCity() || role?.cityPos;
+        const myId = role?.userId || this.cityProxy.myId;
+        const unionId = role?.allianceId ?? this.cityProxy.myUnionId;
         return WorldCampaign.reachable(home ? WorldCampaign.regionAt(home.x, home.y) : -1, gate => {
             const build = this.buildProxy.getBuild(MapUtil.getIdByCellPoint(gate.x, gate.y));
-            return !!build && (build.rid > 0 && build.rid === owner.myId
-                || owner.myUnionId > 0 && build.unionId === owner.myUnionId);
+            return !!build && (build.rid > 0 && String(build.rid) === String(myId)
+                || unionId && String(unionId) !== '0' && String(build.unionId) === String(unionId));
         });
     }
 

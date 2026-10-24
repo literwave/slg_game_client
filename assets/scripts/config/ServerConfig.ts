@@ -73,6 +73,7 @@ const ServerConfig = {
     s2c_set_mail_lock: "Mail.s2c_set_mail_lock",
     c2s_get_mail_reward: "Mail.c2s_get_mail_reward",
     s2c_get_mail_reward: "Mail.s2c_get_mail_reward",
+    s2c_sync_mail: "Mail.s2c_sync_mail",
     c2s_req_rank_list: "Rank.c2s_req_rank_list",
     s2c_req_rank_list: "Rank.s2c_req_rank_list",
     c2s_req_report_list: "Report.c2s_req_report_list",

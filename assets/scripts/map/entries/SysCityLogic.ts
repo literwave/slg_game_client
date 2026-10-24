@@ -73,7 +73,7 @@ export default class SysCityLogic extends Component {
         if (icon) {
             icon.node.getComponent(UITransform).setAnchorPoint(.5, .3);
             icon.node.setPosition(0, 0, 0);
-            WorldMapArt.apply(icon, this._data.level >= 8 ? 'capital' : this._data.level >= 5 ? 'county' : 'town', width);
+            WorldMapArt.apply(icon, WorldMapArt.cityArt(this._data.level), width);
         }
         WorldMapArt.ownership(this.node, this.upSpr, this.downSpr,
             WorldMapArt.factionColor(this._data, MapCommand.getInstance().buildProxy), width * 1.15);

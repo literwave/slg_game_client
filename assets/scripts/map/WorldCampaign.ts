@@ -2,7 +2,7 @@ import WorldMapArt from './WorldMapArt';
 
 export interface CampaignRegion { id: number; name: string; tier: number; color: string; x: number; y: number; }
 export interface CampaignGate { id: string; name: string; x: number; y: number; regions: number[]; level: number; }
-export interface CampaignCity { name: string; x: number; y: number; level: number; region: number; }
+export interface CampaignCity { name: string; x: number; y: number; level: number; region: number; footprintRadius: number; art: string; }
 export interface CampaignMap { width: number; height: number; regions: CampaignRegion[]; gates: CampaignGate[]; cities: CampaignCity[]; stages: string[]; }
 
 /** 客户端通关提示和可达性；关隘归属始终读取服务器的占领数据。 */

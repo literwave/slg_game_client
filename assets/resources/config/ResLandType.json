@@ -1,0 +1,20 @@
+[
+  {
+    "Id": 1,
+    "Name": "粮田",
+    "Enum": "GRAIN",
+    "Desc": "产出粮草（对齐 Item.Id=1）"
+  },
+  {
+    "Id": 2,
+    "Name": "林场",
+    "Enum": "WOOD",
+    "Desc": "产出木材（对齐 Item.Id=2）"
+  },
+  {
+    "Id": 3,
+    "Name": "铁矿",
+    "Enum": "IRON",
+    "Desc": "产出铁矿（对齐 Item.Id=3）"
+  }
+]

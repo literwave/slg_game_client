@@ -42,6 +42,7 @@ export interface ISocket {
 export class NetEvent {
     public static ServerConnected: string = "ServerConnected";
     public static ServerHandShake: string = "ServerHandShake";
+    public static ServerSessionReady: string = "ServerSessionReady";
     public static ServerCheckLogin: string = "ServerCheckLogin";
     public static ServerDisconnected: string = "ServerDisconnected";
     public static ServerReconnecting: string = "ServerReconnecting";

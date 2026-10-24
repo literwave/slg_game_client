@@ -45,9 +45,10 @@ message p_hero_base_info {
 	repeated p_common_info skillList = 6; 
 }
 
+// mailId → Mail.Id（邮件模板）；mailUid 为邮件唯一实例 id
 message p_mail_info {
-	int32 mailType = 1;
-	int64 mailId = 2;
+	int32 mailId = 1;
+	int64 mailUid = 2;
 	string title = 3;
 	string content = 4;
 	bool isRead = 5;

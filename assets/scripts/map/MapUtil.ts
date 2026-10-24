@@ -1,5 +1,6 @@
 import { _decorator, Size, Vec2, size, v2, TiledMap, UITransform, game, view } from 'cc';
 import MapCommand from "./MapCommand";
+import { cityFootprintRadius } from './CityFootprint';
 
 export default class MapUtil {
     //地图像素大小
@@ -113,14 +114,7 @@ export default class MapUtil {
 
     public static getSideIdsForSysCity(x, y, level): number[] {
         let ids: number[] = [];
-        var dis = 0;
-        if(level >= 8){
-            dis = 3;
-        }else if(level >= 5){
-            dis = 2;
-        }else {
-            dis = 1;
-        }
+        const dis = cityFootprintRadius(level);
 
         //上
         for (let tx = x-dis; tx <= x+dis; tx++) {
@@ -182,7 +176,8 @@ export default class MapUtil {
 
     /** 按相机实际视野取区域，包含边缘建筑的余量；缩远时不再局限于九宫格。 */
     public static getVisibleAreaIds(center: Vec2, halfWidth: number, halfHeight: number): number[] {
-        const padding = 320;
+        // 最大城池9×9格，预留半座城的世界像素，避免城心离开视口后立绘突然消失。
+        const padding = Math.max(320, (2 * cityFootprintRadius(10) + 1) * this._tileSize.width / 2);
         const corners: Vec2[] = [];
         for (const x of [-1, 1]) for (const y of [-1, 1]) {
             corners.push(this.mapPixelToCellPoint(v2(center.x + x * (halfWidth + padding), center.y + y * (halfHeight + padding))));

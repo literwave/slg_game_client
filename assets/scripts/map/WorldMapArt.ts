@@ -1,4 +1,5 @@
 import { Color, EffectAsset, Graphics, JsonAsset, Node, resources, Sprite, SpriteFrame, UITransform } from 'cc';
+import { cityFootprintRadius } from './CityFootprint';
 
 /** 地图专用原创素材；入图时一次准备，地块复用时不再发起异步加载。 */
 export default class WorldMapArt {
@@ -9,7 +10,10 @@ export default class WorldMapArt {
     static campaign: any = null;
     static readonly playerCityWidth = 310;
 
-    static cityWidth(level: number): number { return level >= 8 ? 470 : level >= 5 ? 360 : 240; }
+    static cityWidth(level: number): number {
+        return (cityFootprintRadius(level) * 2 + 1) * 200 * .74;
+    }
+    static cityArt(level: number): string { return level >= 8 ? 'capital' : level >= 5 ? 'county' : 'town'; }
 
     static prepare(): Promise<void> {
         if (this.pending) return this.pending;

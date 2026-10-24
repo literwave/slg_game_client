@@ -59,11 +59,13 @@ function harness() {
     const net = load('network/socket/NetInterface').NetEvent;
     const config = load('core/ConfigManager').default.getInstance();
     config.loadConfigs([{ name: 'Global', json: [{ Id: 9, value1: 3 }] }]);
+    config.loadConfigs(['Mail', 'MailKind', 'ResLand', 'ResLandType'].map(name => ({ name, json: JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config', name + '.json'), 'utf8')) })));
     const commands = {
         union: load('union/UnionCommand').default.getInstance(), chat: load('chat/ChatCommand').default.getInstance(),
         world: load('world/WorldCommand').default.getInstance(), progress: load('progression/ProgressionCommand').default.getInstance(),
         battle: load('battle/BattleCommand').default.getInstance(), rank: load('rank/RankCommand').default.getInstance(),
         build: load('build/BuildCommand').default.getInstance(), troop: load('general/TroopCommand').default.getInstance(),
+        mail: load('mail/MailCommand').default.getInstance(),
     };
     const receive = (name, data = {}) => {
         const bytes = proto.encode(name, data); assert.ok(bytes, 'fixture 编码失败 ' + name);
@@ -84,11 +86,11 @@ const message = (msgId, channel = 1, senderId = big, targetId = 0) => ({ msgId, 
 test('同步后的全部新协议均使用当前 net_pb ID，协议资产与 game_common 一致', () => {
     const h = harness();
     const ids = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/protbuf/net_pb.json'), 'utf8')).define;
-    for (const pkg of ['Alliance', 'Chat', 'World', 'Battle', 'Report', 'Task', 'Activity', 'Rank', 'Build']) {
+    for (const pkg of ['Alliance', 'Chat', 'World', 'Battle', 'Report', 'Task', 'Activity', 'Rank', 'Build', 'Mail']) {
         for (const name of Object.keys(ids[pkg])) assert.equal(h.S[name], `${pkg}.${name}`);
     }
     const shared = path.join(root, 'external/game_common/proto');
-    if (fs.existsSync(shared)) for (const name of ['alliance', 'chat', 'world', 'battle', 'report', 'task', 'activity', 'rank', 'build']) {
+    if (fs.existsSync(shared)) for (const name of ['alliance', 'chat', 'world', 'battle', 'report', 'task', 'activity', 'rank', 'build', 'mail']) {
         assert.equal(fs.readFileSync(path.join(root, 'assets/resources/protbuf/pto', name + '.proto'), 'utf8').replace(/\r/g, ''),
             fs.readFileSync(path.join(shared, name + '.proto'), 'utf8').replace(/\r/g, ''));
     }
@@ -286,5 +288,83 @@ test('断线清理、重连重取只读快照，绝不自动重发领奖/行军/
     assert.ok(names.includes(h.S.c2s_req_task_list)); assert.ok(names.includes(h.S.c2s_req_activity_list));
     assert.ok(names.includes(h.S.c2s_req_report_list));
     assert.ok(!names.includes(h.S.c2s_create_build)); assert.ok(!names.includes(h.S.c2s_create_alliance)); assert.ok(!names.includes(h.S.c2s_march));
+});
+
+
+test('邮件实例ID、列表推送竞态和空快照', () => {
+    const h = harness(); h.authenticate(); h.loaded();
+    assert.deepEqual(h.sent.filter(p => p.name === h.S.c2s_req_mail_list).map(p => p.data.mailKind), [1, 2, 3]);
+    for (const uid of [big, other]) h.receive(h.S.s2c_sync_mail, { mailKind: 1, mailInfo: { mailId: 1, mailUid: uid } });
+    h.receive(h.S.s2c_req_mail_list, { mailKind: 1, mailInfoList: [] });
+    assert.equal(h.mail.getList(1).length, 2); assert.equal(h.mail.unreadCount(1), 2);
+    assert.equal(h.mail.requestDetail(1, big), true); assert.equal(h.sent.at(-1).data.mailUid, big);
+    assert.equal(h.mail.requestDetail(2, big), false); assert.equal(h.mail.requestDetail(1, 1), false);
+    h.receive(h.S.s2c_req_mail_detail, { mailUid: big, rewardList: [{ rewardType: 1, itemId: 1, itemCount: 20 }] });
+    assert.equal(h.mail.getMail(1, big).isRead, true); assert.equal(h.mail.unreadCount(1), 1);
+    assert.equal(h.mail.getDetail(big).rewardList[0].itemCount, 20);
+    h.mail.requestList(1); h.receive(h.S.s2c_req_mail_list, { mailKind: 1, mailInfoList: [] });
+    assert.equal(h.mail.getList(1).length, 0);
+});
+test('邮件锁定、批量领奖、删除防复活及断线清理', () => {
+    const h = harness(); h.authenticate();
+    const push = () => h.receive(h.S.s2c_sync_mail, { mailKind: 1, mailInfo: { mailId: 2, mailUid: big } });
+    push(); assert.equal(h.mail.setLock(1, big, true), true);
+    h.receive(h.S.s2c_set_mail_lock, { mailKind: 1, mailUid: big, isLock: true });
+    assert.equal(h.mail.deleteMails(1, [big]), false);
+    assert.equal(h.mail.claimRewards([{ mailKind: 1, mailUid: big }]), true);
+    assert.deepEqual(plain(h.sent.at(-1).data.mailKindUidList), [{ k: 1, v: big }]);
+    assert.equal(h.mail.claimRewards([{ mailKind: 1, mailUid: big }]), false);
+    h.receive(h.S.s2c_get_mail_reward, { mailKindUidList: [{ k: 1, v: big }] });
+    assert.equal(h.mail.getMail(1, big).isGotReward, true);
+    assert.equal(h.mail.claimRewards([{ mailKind: 1, mailUid: big }]), false);
+    h.mail.setLock(1, big, false); h.receive(h.S.s2c_set_mail_lock, { mailKind: 1, mailUid: big, isLock: false });
+    h.mail.requestList(1); h.mail.requestDetail(1, big);
+    assert.equal(h.mail.deleteMails(1, [big, big]), true); assert.deepEqual(plain(h.sent.at(-1).data.mailUidList), [big]);
+    h.receive(h.S.s2c_del_mail_list, { mailKind: 1, mailUidList: [big] });
+    h.receive(h.S.s2c_req_mail_list, { mailKind: 1, mailInfoList: [{ mailId: 2, mailUid: big }] });
+    h.receive(h.S.s2c_req_mail_detail, { mailUid: big, detailList: ['迟到'] }); push();
+    assert.equal(h.mail.getList(1).length, 0); assert.equal(h.mail.getDetail(big), undefined);
+    h.disconnect(); assert.equal(h.mail.requestList(1), false);
+    const start = h.sent.length; h.authenticate(); h.loaded();
+    assert.ok(h.sent.slice(start).every(p => ![h.S.c2s_get_mail_reward, h.S.c2s_set_mail_lock, h.S.c2s_del_mail_list].includes(p.name)));
+});
+test('邮件模板参数、服务器文本优先及详情超时重试', () => {
+    const h = harness(); h.authenticate();
+    h.receive(h.S.s2c_sync_mail, { mailKind: 3, mailInfo: { mailId: 10, mailUid: big } });
+    h.mail.requestDetail(3, big); h.tick(8000);
+    assert.equal(h.mail.requestDetail(3, big), true);
+    h.receive(h.S.s2c_req_mail_detail, { mailUid: big, detailList: ['开服公告', '欢迎出征'] });
+    assert.deepEqual(plain(h.mail.presentation(3, big)), { title: '开服公告', content: '欢迎出征', sender: '公告', icon: '' });
+    h.receive(h.S.s2c_sync_mail, { mailKind: 3, mailInfo: { mailId: 10, mailUid: big, title: '服务器标题', content: '服务器正文' } });
+    assert.equal(h.mail.presentation(3, big).title, '服务器标题'); assert.equal(h.mail.getMail(3, big).isRead, true);
+});
+test('资源占领使用AOI实体ID，浮点路径无截断，拒绝错图/自有/离场目标', () => {
+    const h = harness(); h.authenticate(); h.role.level = 20;
+    assert.equal(h.world.occupyResourceLand(1, 20010), false);
+    const entity = { entityId: other, entityType: 4, cfgId: 203, pos: { x: 10, y: 20 } };
+    h.receive(h.S.s2c_aoi_enter, { entities: [entity] });
+    assert.equal(h.world.resourceLandIssue(10, 20, 52, 3), ''); assert.ok(h.world.resourceLandIssue(10, 20, 53, 3));
+    assert.equal(h.world.occupyResourceLand(1, other), true);
+    assert.deepEqual(plain(h.sent.at(-1).data), { troopIdx: 1, targetType: 3, targetId: other, targetPos: { x: 10, y: 20 } });
+    h.receive(h.S.s2c_march, { marchInfo: { troopIdx: 1, targetType: 3, targetId: other, state: 1, path: [{ x: 1.25, y: 2.75 }, { x: 10, y: 20 }] } });
+    assert.equal(h.world.marches.get(1).path[0].x, 1.25); assert.equal(h.world.marches.get(1).path[0].y, 2.75);
+    assert.equal(h.world.occupyResourceLand(1, other), false);
+    h.receive(h.S.s2c_aoi_update, { entities: [{ ...entity, ownerId: big }] });
+    assert.equal(h.world.occupyResourceLand(2, other), false); assert.ok(h.world.resourceLandIssue(10, 20, 52, 3).includes('归你'));
+    h.receive(h.S.s2c_aoi_leave, { entityIds: [other] });
+    assert.equal(h.world.resourceLandAt(10, 20), undefined); assert.equal(h.world.occupyResourceLand(2, other), false);
+    assert.equal(h.world.march(2, 3, 0, { x: 10, y: 20 }), false);
+    assert.equal(h.world.march(2, 3, other, { x: 10.5, y: 20 }), false);
+});
+test('石料补配置即可占领，按STONE枚举查找，不假定类型/模板/道具ID', () => {
+    const h = harness(); h.authenticate(); h.role.level = 20;
+    assert.ok(h.world.resourceLandIssue(10, 20, 54, 3).includes('石料'));
+    const config = h.load('core/ConfigManager').default.getInstance();
+    config.loadConfigs([{ name: 'ResLandType', json: [{ Id: 17, Enum: 'STONE' }] },
+        { name: 'ResLand', json: [{ Id: 7303, Type: 17, Level: 3, Capacity: 300, GatherSpeed: 40, OutputItem: 9 }] }]);
+    const land = h.load('world/ResourceLand').resourceLandForCell(54, 3);
+    assert.equal(land.Id, 7303); assert.equal(land.OutputItem, 9);
+    h.receive(h.S.s2c_aoi_enter, { entities: [{ entityId: other, entityType: 4, cfgId: 7303, pos: { x: 10, y: 20 } }] });
+    assert.equal(h.world.resourceLandIssue(10, 20, 54, 3), ''); assert.equal(h.world.occupyResourceLand(1, other), true);
 });
 console.log(`通过 ${passed} 项 game_common 新协议回归`);

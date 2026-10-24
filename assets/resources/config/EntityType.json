@@ -16,5 +16,11 @@
     "Name": "怪物组",
     "Enum": "MONSTER_GROUP",
     "Desc": "地图怪物组（贼寇/山寨/首领）"
+  },
+  {
+    "Id": 4,
+    "Name": "资源地",
+    "Enum": "RES_LAND",
+    "Desc": "地图资源地（粮田/林场/铁矿）"
   }
 ]

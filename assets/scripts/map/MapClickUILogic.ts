@@ -13,6 +13,9 @@ import { AudioManager } from '../common/AudioManager';
 import { LogicEvent } from '../common/LogicEvent';
 import WorldMapArt from './WorldMapArt';
 import WorldCampaign from './WorldCampaign';
+import WorldCommand from '../world/WorldCommand';
+import { resourceLandForCell } from '../world/ResourceLand';
+import LoginCommand from '../login/LoginCommand';
 import { caption, hideSprite, inkSurface, ManagementColors, panelButton, place, textStyle } from './ui/ManagementStyle';
 
 @ccclass('MapClickUILogic')
@@ -118,6 +121,7 @@ export default class MapClickUILogic extends Component {
 
     protected onEnable(): void {
         EventMgr.on(LogicEvent.updateBuild, this.onUpdateBuild, this);
+        EventMgr.on(LogicEvent.updateWorldEntities, this.onWorldEntities, this);
 
         var uiOpacity = this.bgSelect.getComponent(UIOpacity) || this.bgSelect.addComponent(UIOpacity);
         uiOpacity.opacity = 255;
@@ -144,6 +148,9 @@ export default class MapClickUILogic extends Component {
             this.setCellData(data, this._pixelPos);
         }
     }
+    private onWorldEntities(): void {
+        if (this._data && this._pixelPos && this._data.type >= 52 && this._data.type <= 55) this.setCellData(this._data, this._pixelPos);
+    }
 
     protected onClickEnter(): void {
         AudioManager.instance.playClick();
@@ -168,12 +175,17 @@ export default class MapClickUILogic extends Component {
 
     protected onClickOccupy(): void {
         AudioManager.instance.playClick();
+        if (!this._data) return;
         const reason = MapCommand.getInstance().campaignBlockReason(this._data.x, this._data.y);
         if (reason) { EventMgr.emit(LogicEvent.showTip, reason, null); return; }
-        if (MapCommand.getInstance().isCanOccupyCell(this._data.x, this._data.y)) {
+        if (this._data.type >= 52 && this._data.type <= 55) {
+            const issue = WorldCommand.getInstance().resourceLandIssue(this._data.x, this._data.y, this._data.type, this._data.level);
+            if (issue) { EventMgr.emit(LogicEvent.showToast, issue); return; }
+            EventMgr.emit(LogicEvent.openArmySelectUi, ArmyCmd.Attack, this._data.x, this._data.y);
+        } else if (MapCommand.getInstance().isCanOccupyCell(this._data.x, this._data.y)) {
             EventMgr.emit(LogicEvent.openArmySelectUi, ArmyCmd.Attack, this._data.x, this._data.y);
         } else {
-            console.log("只能占领自己相邻的地");
+            EventMgr.emit(LogicEvent.showToast, '只能占领自己相邻的地');
         }
 
         this.node.parent = null;
@@ -240,7 +252,7 @@ export default class MapClickUILogic extends Component {
 
         const city = this._data instanceof MapCityData;
         const art = city ? 'capital' : this._data.type === MapResType.SYS_CITY
-            ? this._data.level >= 8 ? 'capital' : this._data.level >= 5 ? 'county' : 'town'
+            ? WorldMapArt.cityArt(this._data.level)
             : ({ 50: 'fort', 52: 'forest', 53: 'iron', 54: 'quarry', 55: 'grain' }[this._data.type] || 'fort');
         const frame = WorldMapArt.frame(art);
         const iconWidth = city ? WorldMapArt.playerCityWidth : this._data.type === MapResType.SYS_CITY
@@ -257,6 +269,11 @@ export default class MapClickUILogic extends Component {
             let soldiers = MapUICommand.getInstance().proxy.getDefenseSoldiers(resData.level);
             this.labelYield.string = MapCommand.getInstance().proxy.getResYieldDesList(resCfg).join("\n") || '暂无产量信息';
             this.labelSoldierCnt.string = soldiers > 0 ? "守备兵力  " + soldiers * 3 : '暂无守军情报';
+            const land = resourceLandForCell(resData.type, resData.level);
+            if (land) {
+                this.labelYield.string = `资源储量  ${land.Capacity}\n采集速度  ${land.GatherSpeed}`;
+                this.labelSoldierCnt.string = '击败守军后占领';
+            }
 
             if (this._data.nickName) {
                 this.labelName.string = this._data.nickName + ":" + this._data.name;
@@ -279,6 +296,12 @@ export default class MapClickUILogic extends Component {
             }
         }
 
+        const entity = WorldCommand.getInstance().resourceLandAt(data.x, data.y);
+        if (entity && data.type >= 52 && data.type <= 55) {
+            const mine = String(entity.ownerId) === String(LoginCommand.getInstance().proxy.getRoleData()?.userId);
+            this.labelUnion.string = mine ? '我方领地' : String(entity.ownerId || 0) !== '0' ? '已被占领' : '未占领';
+            this.btnOccupy.node.active = !mine;
+        }
         if (this._data.parentId > 0) {
             this.labelLunxian.string = "沦陷";
         } else {

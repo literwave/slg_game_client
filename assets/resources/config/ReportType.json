@@ -16,5 +16,11 @@
     "Name": "防守",
     "Enum": "DEFEND",
     "Desc": "防守战报（预留）"
+  },
+  {
+    "Id": 4,
+    "Name": "占领资源地",
+    "Enum": "OCCUPY_RES_LAND",
+    "Desc": "占领资源地战报"
   }
 ]
