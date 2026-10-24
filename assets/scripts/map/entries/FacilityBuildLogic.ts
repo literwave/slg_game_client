@@ -1,12 +1,12 @@
-import { _decorator, Component, Sprite, Label, Vec2, UITransform } from 'cc';
+import { _decorator, Component, Sprite, Label, UITransform } from 'cc';
 const { ccclass, property } = _decorator;
 import WorldMapArt from '../WorldMapArt';
 
 import DateUtil from "../../utils/DateUtil";
 import { MapBuildData } from "../MapBuildProxy";
 import MapCommand from "../MapCommand";
-import { MapAreaData, MapResConfig, MapResData, MapResType } from "../MapProxy";
-import MapUtil from "../MapUtil";
+import { MapResConfig, MapResData, MapResType } from "../MapProxy";
+import WorldCommand from '../../world/WorldCommand';
 
 @ccclass('FacilityBuildLogic')
 export default class FacilityBuildLogic extends Component {
@@ -17,10 +17,6 @@ export default class FacilityBuildLogic extends Component {
     @property(Label)
     tipsLab: Label | null = null;
     protected _data: MapBuildData = null;
-    protected _cmd: MapCommand = null;
-    protected onLoad(): void {
-        this._cmd =  MapCommand.getInstance();
-    }
     protected onEnable():void {
         this.nameLab.string = "";
         this.tipsLab.string = "";
@@ -32,6 +28,7 @@ export default class FacilityBuildLogic extends Component {
         this.unscheduleAllCallbacks();
     }
      public setBuildData(data: MapBuildData): void {
+        this.stopCountDownTime();
         this._data = data;
         this.updateUI();
      }
@@ -64,12 +61,15 @@ export default class FacilityBuildLogic extends Component {
         }
     }
     public startCountDownTime(){
-        console.log("startCountDownTime");
         this.stopCountDownTime();
         this.schedule(this.countDownTime, 1.0);
         this.countDownTime();
     }
     public countDownTime() {
+        if (!this._data) {
+            this.stopCountDownTime();
+            return;
+        }
         if (this._data.isBuilding()){
         this.tipsLab.string = "建设中..." + DateUtil.leftTimeStr(this._data.endTime);
         } else if(this._data.isUping()){
@@ -79,12 +79,7 @@ export default class FacilityBuildLogic extends Component {
         } else{
         this.tipsLab.string = "";
         this.stopCountDownTime();
-        console.log("qryNationMapScanBlock");
-
-        let areaPoint: Vec2 = MapUtil.getAreaPointByCellPoint(this._data.x, this._data.y);
-        let areaId: number = MapUtil.getIdByAreaPoint(areaPoint.x, areaPoint.y);
-        let areaData: MapAreaData = this._cmd.proxy.getMapAreaData(areaId);
-        this._cmd.qryNationMapScanBlock(areaData);
+        WorldCommand.getInstance().refreshView();
         }
 
     }

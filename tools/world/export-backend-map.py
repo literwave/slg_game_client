@@ -1,8 +1,6 @@
-"""导出当前已确认的地图快照，不在后端重新生成资源。"""
+"""导出当前已确认的地图快照为服务端 Lua，不在后端重新生成资源。"""
 import argparse
-import csv
 import hashlib
-import io
 import json
 import runpy
 import zipfile
@@ -20,8 +18,21 @@ runpy.run_path(str(ROOT / 'tools/tests/fixed-birth-resources-regression.py'), ru
 runpy.run_path(str(ROOT / 'tools/tests/mixed-resource-layout-regression.py'), run_name='__main__')
 world = json.loads((ROOT / 'assets/resources/world/campaign-map.json').read_text(encoding='utf8'))
 landscape = json.loads((ROOT / 'assets/resources/world/original-landscape.json').read_text(encoding='utf8'))
+map_res = json.loads((ROOT / 'assets/resources/config/mapRes_0.json').read_text(encoding='utf8'))
 fixed = json.loads((ROOT / 'tools/world/fixed-birth-resources.json').read_text(encoding='utf8'))
 inner = json.loads((ROOT / 'tools/world/fixed-inner-resources.json').read_text(encoding='utf8'))
+res_land = json.loads((ROOT / 'assets/resources/config/ResLand.json').read_text(encoding='utf8'))
+resource_types = {row['Enum']: row['Id'] for row in json.loads((ROOT / 'assets/resources/config/ResLandType.json').read_text(encoding='utf8'))}
+map_enums = {52: 'WOOD', 53: 'IRON', 54: 'STONE', 55: 'GRAIN'}
+pending = []
+for kind, name in map_enums.items():
+    protocol_type = resource_types.get(name)
+    levels = {row['Level'] for row in res_land if row['Type'] == protocol_type}
+    missing = [level for level in range(1, 11) if level not in levels]
+    if missing:
+        pending.append(dict(mapType=kind, enum=name, missingLevels=missing))
+if pending:
+    raise SystemExit('ResLand 等级未齐，服务端配置补齐后再导出: ' + json.dumps(pending, ensure_ascii=False))
 reserved = set()
 for city in world['cities']:
     radius = city['footprintRadius']
@@ -32,65 +43,119 @@ terrain = dict(width=1000, height=1000,
                blockedCells=sorted(set(landscape['riverCells']) | set(landscape['mountainCells'])),
                riverCells=landscape['riverCells'], mountainCells=landscape['mountainCells'],
                reservedCityCells=sorted(reserved))
-encode = lambda value: json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode('utf8')
+
+
+def lua_string(value):
+    return '"' + value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r') + '"'
+
+
+def lua_int_list(values):
+    if not values:
+        return '{}'
+    lines = []
+    row = []
+    for number in values:
+        row.append(str(int(number)))
+        if len(row) == 40:
+            lines.append(','.join(row))
+            row = []
+    if row:
+        lines.append(','.join(row))
+    return '{\n' + ',\n'.join(lines) + '\n}'
+
+
+def lua_value(value, indent=0):
+    pad = ' ' * indent
+    if value is None:
+        return 'nil'
+    if isinstance(value, bool):
+        return 'true' if value else 'false'
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return str(int(value)) if value.is_integer() else repr(value)
+    if isinstance(value, str):
+        return lua_string(value)
+    if isinstance(value, list):
+        if not value:
+            return '{}'
+        if all(isinstance(item, int) and not isinstance(item, bool) for item in value):
+            return lua_int_list(value)
+        inner = ',\n'.join(pad + '    ' + lua_value(item, indent + 4) for item in value)
+        return '{\n' + inner + '\n' + pad + '}'
+    if isinstance(value, dict):
+        if not value:
+            return '{}'
+        lines = [f'{pad}    [{lua_value(key)}] = {lua_value(item, indent + 4)}' for key, item in value.items()]
+        return '{\n' + ',\n'.join(lines) + '\n' + pad + '}'
+    raise TypeError(type(value))
+
+
+def lua_module(header, body):
+    return (header.rstrip() + '\n\nreturn ' + body + '\n').encode('utf8')
+
+
+cells = map_res['list']
+if map_res.get('w') != 1000 or map_res.get('h') != 1000 or len(cells) != 1000000:
+    raise SystemExit('mapRes_0 不是 1000×1000')
+pair_rows = []
+row = []
+for cell_id, pair in enumerate(cells):
+    row.append(f'[{cell_id}]={{{int(pair[0])},{int(pair[1])}}}')
+    if len(row) == 20:
+        pair_rows.append(','.join(row))
+        row = []
+if row:
+    pair_rows.append(','.join(row))
+list_literal = '{\n' + ',\n'.join(pair_rows) + '\n}'
+map_header = '''-- 百万格资源快照。服务端直接读取，不要按固定点重新生成。
+-- cellId = y * 1000 + x，从 0 起。list[cellId][1] 是类型，list[cellId][2] 是等级。
+-- 不要用 #list，下标含 0。类型 52木、53铁、54石、55粮、50关隘、51城市。
+-- 类型 0 不是一律阻挡：emptyCells 的值是可通行空地 cellId，山河与城市占地见 terrain.lua。'''
+map_body = '{\n["w"] = 1000,\n["h"] = 1000,\n["list"] = ' + list_literal + ',\n["emptyCells"] = ' + lua_int_list(map_res['emptyCells']) + '\n}'
+campaign_header = '''-- 州域、关口、城池和建议出生区。出生点按容量分配玩家并保持间距。
+-- footprintRadius 为方形占地半径：出生州 1 即 3×3，资源州 2 即 5×5，洛阳 4 即 9×9。'''
+terrain_header = '''-- blockedCells 是山河阻挡，reservedCityCells 是城市占地，元素都是 cellId。
+-- 类型 0 不能一律当作阻挡：可通行空地在 mapRes_0.lua 的 emptyCells。'''
 files = {
-    'mapRes_0.json': (ROOT / 'assets/resources/config/mapRes_0.json').read_bytes(),
-    'campaign-map.json': (ROOT / 'assets/resources/world/campaign-map.json').read_bytes(),
-    'terrain.json': encode(terrain),
-    'fixed-birth-resources.json': (ROOT / 'tools/world/fixed-birth-resources.json').read_bytes(),
-    'fixed-inner-resources.json': (ROOT / 'tools/world/fixed-inner-resources.json').read_bytes(),
-    'ResLand.json': (ROOT / 'assets/resources/config/ResLand.json').read_bytes(),
-    'ResLandType.json': (ROOT / 'assets/resources/config/ResLandType.json').read_bytes(),
+    'mapRes_0.lua': lua_module(map_header, map_body),
+    'campaign-map.lua': lua_module(campaign_header, lua_value(world)),
+    'terrain.lua': lua_module(terrain_header, lua_value(terrain)),
 }
-res_land = json.loads(files['ResLand.json'])
-resource_types = {row['Enum']: row['Id'] for row in json.loads(files['ResLandType.json'])}
-map_enums = {52: 'WOOD', 53: 'IRON', 54: 'STONE', 55: 'GRAIN'}
-bindings = {str(kind): {str(row['Level']): row['Id'] for row in res_land if row['Type'] == protocol_type}
-            for kind, protocol_type in ((kind, resource_types.get(name)) for kind, name in map_enums.items())}
-pending = [dict(mapType=kind, enum=name, missingLevels=[level for level in range(1, 10) if str(level) not in bindings[str(kind)]])
-           for kind, name in map_enums.items() if any(str(level) not in bindings[str(kind)] for level in range(1, 10))]
-files['resource-land-bindings.json'] = encode(dict(mapTypeLevelToCfgId=bindings, mapTypeToEnum=map_enums, pendingConfig=pending,
-    entityType=4, targetType=3, entityIdSource='server AOI; not cellId'))
-inner_table = io.StringIO(newline='')
-inner_writer = csv.writer(inner_table)
-inner_writer.writerow(['id', 'region', 'x', 'y', 'cellId', 'type', 'level'])
-for p in inner['points']:
-    inner_writer.writerow([p['id'], p['region'], p['x'], p['y'], p['y']*1000+p['x'], p['type'], p['level']])
-files['fixed-inner-resources.csv'] = inner_table.getvalue().encode('utf-8-sig')
-table = io.StringIO(newline='')
-writer = csv.writer(table)
-writer.writerow(['id', 'region', 'regionName', 'x', 'y', 'cellId', 'type', 'level', 'group'])
-for point in fixed['points']:
-    writer.writerow([point['id'], point['region'], world['regions'][point['region']]['name'],
-                     point['x'], point['y'], point['y'] * 1000 + point['x'], point['type'], point['level'], point['group']])
-files['fixed-birth-resources.csv'] = table.getvalue().encode('utf-8-sig')
-files['README.txt'] = '''地图快照接入说明
-1. 坐标从0到999，cellId = y * 1000 + x，资源表list按cellId索引。
-2. 出生州所有4/5/6级地已逐点固定，最终mapRes_0.json为权威快照，不可重新随机生成。
-3. 类型52木、53铁、54石、55粮、50关隘/要塞、51城市。
-4. 类型0不能一律当作阻挡：emptyCells是可通行空地，terrain.blockedCells是山河阻挡，reservedCityCells为城市占地。
-5. campaign-map包含州域、关口连接、城市和建议出生区。出生点需按容量分配玩家并保持间距。
-6. 旧200格存档要按(x,y)重新计算ID；服务端自行实施战斗、关隘通行、空地占领与奖励规则。
-7. manifest.json包含每份文件的SHA256与地图版本标识，前后端应记录并校验同一版本。
-8. 所有普通资源按类型和等级混排，四方向无连续三格同类型/同等级；出生州保留6069个4～6级固定点，内州保留658个高级固定点。
-9. 城池footprintRadius定义完整方形占地：出生州3×3、资源州5×5、洛阳9×9；art选择town/county/capital。占地内不生成资源或玩家出生点。
-10. 新资源地协议entityType=4、targetType=3；用resource-land-bindings.json将地图类型+等级映射到ResLand.Id。entityId必须由服务端分配并通过AOI下发，不等于cellId。四种资源逻辑均已支持，石料地图类型54对应ResLandType.Enum=STONE；pendingConfig列出待补等级，补齐类型、ResLand及OutputItem引用后重新导出即可，不固定石料类型/模板/道具ID。
-'''.encode('utf8')
+sample_ids = (0, 500500, 999999)
+for cell_id in sample_ids:
+    pair = cells[cell_id]
+    token = f'[{cell_id}]={{{int(pair[0])},{int(pair[1])}}}'
+    if token.encode('ascii') not in files['mapRes_0.lua']:
+        raise SystemExit('mapRes_0.lua 与客户端快照不一致: ' + token)
+if f'{int(map_res["emptyCells"][0])},'.encode('ascii') not in files['mapRes_0.lua']:
+    raise SystemExit('emptyCells 未写入 mapRes_0.lua')
+if '临淄关'.encode('utf8') not in files['campaign-map.lua']:
+    raise SystemExit('campaign-map.lua 缺少关口')
+if b'["blockedCells"]' not in files['terrain.lua'] or b'["reservedCityCells"]' not in files['terrain.lua']:
+    raise SystemExit('terrain.lua 缺少阻挡或城市占地')
 checksums = {name: hashlib.sha256(content).hexdigest() for name, content in sorted(files.items())}
-revision = hashlib.sha256(encode(checksums)).hexdigest()
+revision = hashlib.sha256(json.dumps(checksums, sort_keys=True).encode('utf8')).hexdigest()
 manifest = dict(schemaVersion=2, mapRevision=revision, width=1000, height=1000,
-                cellIdFormula='y * 1000 + x', fixedBirthResourceCount=len(fixed['points']),
-                fixedBirthLevels=[4, 5, 6], fixedInnerResourceCount=len(inner['points']),
-                resourceLayoutVersion=world['resourceLayoutVersion'], files=checksums)
-files['manifest.json'] = encode(manifest)
+                cellIdFormula='y * 1000 + x', listAccess='list[cellId][1]=type, list[cellId][2]=level',
+                fixedBirthResourceCount=len(fixed['points']), fixedBirthLevels=[4, 5, 6],
+                fixedInnerResourceCount=len(inner['points']), resourceLayoutVersion=world['resourceLayoutVersion'],
+                files=checksums)
+manifest_header = '''-- 本目录 Lua 的 SHA256 与地图版本。服务端记录 mapRevision，不要和旧版点位混用。
+-- 配置表 ResLand、ResLandType 由 game_common 的 server/res 提供，不在此包内。'''
+files['manifest.lua'] = lua_module(manifest_header, lua_value(manifest))
 output.mkdir(parents=True, exist_ok=True)
+for name, content in files.items():
+    (output / name).write_bytes(content)
 package = output / 'world-map-backend.zip'
 with zipfile.ZipFile(package, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
     for name, content in files.items():
         archive.writestr(name, content)
 with zipfile.ZipFile(package) as archive:
     assert archive.testzip() is None
-    for name, checksum in checksums.items():
-        assert hashlib.sha256(archive.read(name)).hexdigest() == checksum
-    assert archive.read('mapRes_0.json') == (ROOT / 'assets/resources/config/mapRes_0.json').read_bytes()
-print(json.dumps({'exported': str(package.relative_to(ROOT)), 'files': len(files), 'fixedPoints': len(fixed['points']), 'sha256Verified': True}))
+    for name, content in files.items():
+        assert archive.read(name) == content
+        assert hashlib.sha256(content).hexdigest() == (checksums[name] if name != 'manifest.lua' else hashlib.sha256(content).hexdigest())
+print(json.dumps({'exported': str(package.relative_to(ROOT)), 'lua': sorted(files),
+                  'fixedPoints': len(fixed['points']), 'sha256Verified': True, 'mapRevision': revision},
+                 ensure_ascii=False))

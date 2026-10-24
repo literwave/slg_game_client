@@ -12,6 +12,7 @@ import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
 import GeneralCommand from '../../general/GeneralCommand';
 import { ServerConfig } from '../../config/ServerConfig';
+import TroopCommand from '../../general/TroopCommand';
 
 @ccclass('CityAboutLogic')
 export default class CityAboutLogic extends Component {
@@ -25,8 +26,12 @@ export default class CityAboutLogic extends Component {
     protected _armyComps: CityArmyItemLogic[] = [];
 
     protected onEnable(): void {
+        this._armyCnt = this.usesWorldTroops() ? 3 : 5;
         this.initView();
         EventMgr.on(LogicEvent.updateCityAddition, this.onUpdateCityAdditon, this);
+        EventMgr.on(LogicEvent.updateTroopList, this.updateArmyList, this);
+        EventMgr.on(LogicEvent.updateMyGenerals, this.updateArmyList, this);
+        EventMgr.on(LogicEvent.updateGeneral, this.updateArmyList, this);
     }
 
     protected onDisable(): void {
@@ -53,6 +58,15 @@ export default class CityAboutLogic extends Component {
     }
 
     protected updateArmyList(): void {
+        if (!this._cityData) return;
+        if (this.usesWorldTroops()) {
+            const troops = TroopCommand.getInstance().proxy;
+            for (const comp of this._armyComps) {
+                comp.isOpenedArmy(true, false);
+                comp.setTroopData(this._cityData.cityId, troops.getTroop(comp.order));
+            }
+            return;
+        }
         let additon: CityAddition = MapUICommand.getInstance().proxy.getMyCityAddition(this._cityData.cityId);
         let armyList: ArmyData[] = ArmyCommand.getInstance().proxy.getArmyList(this._cityData.cityId);
         for (let i: number = 0; i < this._armyComps.length; i++) {
@@ -70,10 +84,15 @@ export default class CityAboutLogic extends Component {
     public setData(data: MapCityData): void {
         if (!data) return;
         this._cityData = data;
+        if (this.usesWorldTroops()) TroopCommand.getInstance().requestTroops();
         this.updateArmyList();
         if (GeneralCommand.getInstance().isProtocolAvailable(ServerConfig.c2s_create_build)) {
             MapUICommand.getInstance().qryCityFacilities(this._cityData.cityId);
         }
+    }
+
+    private usesWorldTroops(): boolean {
+        return GeneralCommand.getInstance().isProtocolAvailable(ServerConfig.c2s_req_troop);
     }
 
 

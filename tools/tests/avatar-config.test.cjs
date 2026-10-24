@@ -257,7 +257,91 @@ async function main() {
         h.command.resetClientState();
         assert.equal(h.command.headIcons.configs.length, 0);
     });
-    console.log(`通过 ${passed} 项头像、配置和协议回归检查。`);
+    await test('迁城使用当前 User 协议，回包之前不移动主城、不扣迁城令', () => {
+        const h = harness(), world = h.load('world/WorldCommand').default.getInstance();
+        h.authenticate(); h.command.notifyClientLoaded();
+        h.command.proxy.setCityPos({ x: 12, y: 20 }); h.command.proxy.updateItemData(1, 1001, 3);
+        const notices = [], moves = [];
+        h.events.on(h.logic.updateCityPosition, p => notices.push({ ...p }), notices);
+        h.events.on(h.logic.scrollToMap, (x, y) => moves.push([x, y]), moves);
+        assert.equal(h.server.c2s_move_city, 'User.c2s_move_city');
+        assert.equal(h.proto.getIdByMsgType(h.server.c2s_move_city), 108);
+        assert.equal(h.command.moveCity({ x: 290, y: 850 }), true);
+        const packet = h.sent.at(-1);
+        assert.equal(packet.name, 'User.c2s_move_city'); assert.ok(packet.msg instanceof Uint8Array);
+        assert.deepEqual(JSON.parse(JSON.stringify(packet.data)), { pos: { x: 290, y: 850 } });
+        assert.equal(h.command.moveCity({ x: 300, y: 800 }), false);
+        assert.equal(h.command.proxy.getRoleData().cityPos.x, 12);
+        assert.equal(h.command.proxy.getItemCount(1001), 3); assert.equal(notices.length, 0);
+        const receive = name => h.events.emit(name, h.proto.decode(name, h.proto.encode(name, { cityPos: { x: 290, y: 850 } })));
+        receive(h.server.s2c_move_city); receive(h.server.s2c_move_city); receive(h.server.s2c_sync_city_pos);
+        assert.equal(h.command.movingCity, false); assert.deepEqual(notices, [{ x: 290, y: 850 }]);
+        assert.deepEqual(moves, [[290, 850]]); assert.equal(h.command.proxy.getItemCount(1001), 3);
+        h.timers.get(world.focusTimer)();
+        assert.equal(h.sent.at(-1).name, h.server.c2s_aoi_focus);
+        assert.equal(h.sent.at(-1).data.pos.x, 290); assert.equal(h.sent.at(-1).data.pos.y, 850);
+        h.events.emit(h.server.s2c_sync_item_data, { itemUid: 1, itemId: 1001, itemCnt: 2 });
+        assert.equal(h.command.proxy.getItemCount(1001), 2);
+    });
+    await test('主城推送先到也能确认迁城，重复 ACK 不重复定位', () => {
+        const h = harness(); h.authenticate(); h.command.notifyClientLoaded();
+        h.command.proxy.setCityPos({ x: 12, y: 20 });
+        let moved = 0; h.events.on(h.logic.scrollToMap, () => moved++, h);
+        assert.ok(h.command.moveCity({ x: 0, y: 0 }));
+        h.events.emit(h.server.s2c_sync_city_pos, { cityPos: { x: 0, y: 0 } });
+        h.events.emit(h.server.s2c_move_city, { cityPos: { x: 0, y: 0 } });
+        assert.equal(h.command.movingCity, false); assert.equal(moved, 1);
+        assert.equal(h.command.proxy.getRoleData().cityPos.x, 0);
+        h.events.emit(h.server.s2c_sync_city_pos, { cityPos: { x: 41, y: 42 } });
+        assert.equal(h.command.proxy.getRoleData().cityPos.x, 41, '非本次迁城的主城推送也要同步');
+        assert.equal(moved, 1, '普通同步不强制打断正在查看的地图');
+    });
+    await test('迁城坐标、令牌、加载状态和发送失败校验', () => {
+        const h = harness(); assert.equal(h.command.moveCity({ x: 1, y: 2 }), false);
+        h.authenticate(); assert.equal(h.command.moveCity({ x: 1, y: 2 }), false);
+        h.command.notifyClientLoaded(); h.command.proxy.setCityPos({ x: 12, y: 20 });
+        for (const pos of [null, { x: -1, y: 2 }, { x: 1000, y: 2 }, { x: 2, y: 1000 },
+            { x: 1.5, y: 2 }, { x: NaN, y: 2 }, { x: '1', y: 2 }, { x: 12, y: 20 }]) {
+            assert.equal(h.command.moveCity(pos), false);
+        }
+        h.command.proxy.updateItemData(1, 1001, 0);
+        assert.equal(h.command.moveCity({ x: 30, y: 40 }), false);
+        h.command.proxy.updateItemData(1, 1001, 1); h.proto._isReady = false;
+        assert.equal(h.command.moveCity({ x: 30, y: 40 }), false); assert.equal(h.command.movingCity, false);
+        h.proto._isReady = true; assert.ok(h.command.moveCity({ x: 999, y: 999 }));
+        h.events.emit(h.server.s2c_move_city, {});
+        h.events.emit(h.server.s2c_sync_city_pos, { cityPos: { x: 1000, y: -1 } });
+        assert.equal(h.command.movingCity, true); assert.equal(h.command.proxy.getRoleData().cityPos.x, 12);
+    });
+    await test('迁城超时不重放，旧 ACK 不覆盖新目标，退出后忽略迟到确认', () => {
+        const h = harness(); h.authenticate(); h.command.notifyClientLoaded();
+        h.command.proxy.setCityPos({ x: 12, y: 20 });
+        assert.ok(h.command.moveCity({ x: 30, y: 40 }));
+        const count = h.sent.length; h.timers.get(h.command._moveCityTimer)();
+        assert.equal(h.command.movingCity, false); assert.equal(h.sent.length, count);
+        assert.ok(h.command.moveCity({ x: 60, y: 70 }));
+        h.events.emit(h.server.s2c_move_city, { cityPos: { x: 30, y: 40 } });
+        assert.equal(h.command.movingCity, true); assert.equal(h.command.proxy.getRoleData().cityPos.x, 12);
+        h.events.emit(h.server.s2c_move_city, { cityPos: { x: 60, y: 70 } });
+        assert.equal(h.command.movingCity, false); assert.equal(h.command.proxy.getRoleData().cityPos.x, 60);
+        assert.ok(h.command.moveCity({ x: 80, y: 90 }));
+        const timer = h.command._moveCityTimer;
+        h.events.emit(h.netEvents.ServerDisconnected);
+        assert.equal(h.command.movingCity, false); assert.equal(h.timers.has(timer), false);
+        h.events.emit(h.server.s2c_move_city, { cityPos: { x: 80, y: 90 } });
+        h.events.emit(h.server.s2c_sync_city_pos, { cityPos: { x: 80, y: 90 } });
+        assert.equal(h.command.proxy.getRoleData().cityPos.x, 60);
+    });
+    await test('迁城超时后的有效迟到回包仍同步主城，重复回包不重复成功提示', () => {
+        const h = harness(); h.authenticate(); h.command.notifyClientLoaded();
+        h.command.proxy.setCityPos({ x: 12, y: 20 }); let moved = 0;
+        h.events.on(h.logic.scrollToMap, () => moved++, h);
+        h.command.moveCity({ x: 30, y: 40 }); h.timers.get(h.command._moveCityTimer)();
+        h.events.emit(h.server.s2c_move_city, { cityPos: { x: 30, y: 40 } });
+        h.events.emit(h.server.s2c_move_city, { cityPos: { x: 30, y: 40 } });
+        assert.equal(h.command.proxy.getRoleData().cityPos.y, 40); assert.equal(moved, 1);
+    });
+    console.log(`通过 ${passed} 项头像、配置、迁城和协议回归检查。`);
 }
 
 main().then(() => process.exit(0), error => { console.error(error); process.exit(1); });

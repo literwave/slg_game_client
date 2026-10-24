@@ -11,6 +11,8 @@ import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
 import WorldLandscape from './WorldLandscape';
 import WorldMapArt from './WorldMapArt';
+import WorldCampaign from './WorldCampaign';
+import { gateHit, gateMirrored } from './GateGeometry';
 import { caption } from './ui/ManagementStyle';
 
 @ccclass('MapTouchLogic')
@@ -41,6 +43,24 @@ export default class MapTouchLogic extends Component {
         console.log("点击区域 (" + mapPoint.x + "," + mapPoint.y + ")");
         this.removeClickUINode();
         this.clearBlocked();
+        // 关城美术横跨山口，先按实体轮廓命中，再处理后方山体；透明角落仍然属于山脉。
+        const campaign = WorldCampaign.config;
+        if (pointerPixelPoint && campaign) {
+            for (const gate of campaign.gates) {
+                const center = MapUtil.mapCellToPixelPoint(new Vec2(gate.x, gate.y));
+                if (!gateHit(pointerPixelPoint.x - center.x, pointerPixelPoint.y - center.y, gate.level,
+                    gateMirrored(gate.x, gate.y, campaign.width, campaign.height))) continue;
+                const id = MapUtil.getIdByCellPoint(gate.x, gate.y);
+                const target = this._cmd.buildProxy.getBuild(id) || this._cmd.proxy.getResData(id);
+                if (target) { this.showClickUINode(target, center); return; }
+            }
+        }
+        const playerCity = MapUtil.isVaildCellPoint(mapPoint)
+            ? this._cmd.cityProxy.getCity(MapUtil.getIdByCellPoint(mapPoint.x, mapPoint.y)) : null;
+        if (playerCity) {
+            this.showClickUINode(playerCity, MapUtil.mapCellToPixelPoint(new Vec2(playerCity.x, playerCity.y)));
+            return;
+        }
         const mountain = pointerPixelPoint && this.node.getComponentInChildren(WorldLandscape)?.blockerAt(pointerPixelPoint);
         if (mountain && MapUtil.isVaildCellPoint(mountain)) { this.showBlocked(mountain, false); return; }
         if (MapUtil.isVaildCellPoint(mapPoint) == false) {
@@ -49,14 +69,6 @@ export default class MapTouchLogic extends Component {
         }
 
         let cellId: number = MapUtil.getIdByCellPoint(mapPoint.x, mapPoint.y);
-        let cityData: MapCityData = this._cmd.cityProxy.getCity(cellId);;
-        if (cityData != null) {
-            //代表点击的是城市
-            clickPixelPoint = MapUtil.mapCellToPixelPoint(new Vec2(cityData.x, cityData.y));
-            this.showClickUINode(cityData, clickPixelPoint);
-            return;
-        }
-
         let buildData: MapBuildData = this._cmd.buildProxy.getBuild(cellId);
         if (buildData != null) {
             if(buildData.isSysCity() == false){

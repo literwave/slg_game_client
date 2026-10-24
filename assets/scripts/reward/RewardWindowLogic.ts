@@ -34,6 +34,7 @@ const ITEM_NAME_FALLBACK: { [key: number]: string } = {
     1: "粮食",
     2: "木材",
     3: "铁矿",
+    5: "石料",
     4: "令牌",
 };
 

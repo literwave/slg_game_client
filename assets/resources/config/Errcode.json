@@ -1,0 +1,42 @@
+[
+  {
+    "Id": 1,
+    "Enum": "INVALID_PARAM",
+    "Msg": "参数错误"
+  },
+  {
+    "Id": 2,
+    "Enum": "SYSTEM_ERROR",
+    "Msg": "系统错误，请稍后重试"
+  },
+  {
+    "Id": 3,
+    "Enum": "CONFIG_ERROR",
+    "Msg": "配置错误"
+  },
+  {
+    "Id": 4,
+    "Enum": "OPERATE_FAIL",
+    "Msg": "操作失败"
+  },
+  {
+    "Id": 5,
+    "Enum": "ITEM_NOT_ENOUGH",
+    "Msg": "道具不足"
+  },
+  {
+    "Id": 6,
+    "Enum": "RES_NOT_ENOUGH",
+    "Msg": "资源不足"
+  },
+  {
+    "Id": 7,
+    "Enum": "LEVEL_NOT_ENOUGH",
+    "Msg": "等级不足"
+  },
+  {
+    "Id": 8,
+    "Enum": "FUNC_NOT_OPEN",
+    "Msg": "功能未开启"
+  }
+]

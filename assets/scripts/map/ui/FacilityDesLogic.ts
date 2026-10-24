@@ -3,6 +3,9 @@ import { AudioManager } from '../../common/AudioManager';
 const { ccclass, property } = _decorator;
 
 import LoginCommand from "../../login/LoginCommand";
+import BuildCommand from '../../build/BuildCommand';
+import { EventMgr } from '../../utils/EventMgr';
+import { LogicEvent } from '../../common/LogicEvent';
 import DateUtil from "../../utils/DateUtil";
 import FacilityAdditionItemLogic from "./FacilityAdditionItemLogic";
 import MapUICommand from "./MapUICommand";
@@ -41,12 +44,12 @@ export default class FacilityDesLogic extends Component {
     protected _additionPool: NodePool = new NodePool();
 
     protected onLoad(): void {
-        this.schedule(this.updateNeedTime);
-        
+        EventMgr.on(LogicEvent.protocolRequestChanged, this.updateUpBtn, this);
     }
 
     protected onDestroy(): void {
-
+        EventMgr.targetOff(this);
+        this._additionPool.clear();
     }
 
     protected removeAllAdditionItems(): void {
@@ -87,7 +90,7 @@ export default class FacilityDesLogic extends Component {
                 let cfg: FacilityConfig = MapUICommand.getInstance().proxy.getFacilityCfgByType(conditions[i].type);
                 if (data == null || data.level < conditions[i].level) {
                     //不满足条件
-                    contidionList.push("<color=#ff0000>" + cfg.name + conditions[i].level + "级</color>");
+                    contidionList.push("<color=#ff0000>" + (cfg?.name || '前置建筑') + conditions[i].level + "级</color>");
                     this._isUnLock = false;
                 } else {
                     //满足条件
@@ -112,7 +115,7 @@ export default class FacilityDesLogic extends Component {
             const proxy = LoginCommand.getInstance().proxy;
             const res = proxy.getRoleResData()?.resList || [];
             const amount = (id: number) => Number(res.find(r => Number(r.k) === id)?.v || 0);
-            let roleRes: any = { grain: amount(1), wood: amount(2), iron: amount(3), stone: 0, decree: 0 };
+            let roleRes: any = { grain: amount(1), wood: amount(2), iron: amount(3), stone: amount(5), decree: amount(4) };
             let upLevel: FacilityUpLevel = this._cfg.upLevels[curLevel];
             let needStrList: string[] = [];
             if (upLevel.grain > 0) {
@@ -181,19 +184,28 @@ export default class FacilityDesLogic extends Component {
 
     //更新升级按钮
     public updateUpBtn(): void {
+        if (!this._data || !this._cfg) { this.btnUp.interactable = false; return; }
+        const build = BuildCommand.getInstance();
+        const action = this._data.level > 0 ? '升级' : '建造';
         if (this._isLevelMax) {
             //升满级了
             this.btnUp.node.active = false;
         } else {
             this.btnUp.node.active = true;
-            if (this._isUnLock == false) {
+            if (!build.sessionReady) {
+                this.btnUp.interactable = false;
+                this.labelUp.string = '连接中';
+            } else if (build.requestInFlight(`build:${this._data.type}`)) {
+                this.btnUp.interactable = false;
+                this.labelUp.string = '等待确认';
+            } else if (this._isUnLock == false) {
                 //未解锁
                 this.btnUp.interactable = false;
                 this.labelUp.string = "未解锁";
             } else if (this._isNeedComplete == false) {
                 //资源不足
                 this.btnUp.interactable = false;
-                this.labelUp.string = "升级";
+                this.labelUp.string = action;
             } else if(this._data.isUping()){
                 //正在升级中
                 this.btnUp.interactable = false;
@@ -201,7 +213,7 @@ export default class FacilityDesLogic extends Component {
             }
             else {
                 this.btnUp.interactable = true;
-                this.labelUp.string = "升级";
+                this.labelUp.string = action;
             }
         }
     }
@@ -221,6 +233,7 @@ export default class FacilityDesLogic extends Component {
     }
 
     protected onClickUp(): void {
+        if (!this._data || !this.btnUp.interactable) return;
         AudioManager.instance.playClick();
         MapUICommand.getInstance().upFacility(this._cityId, this._data.type);
     }

@@ -24,6 +24,14 @@ message s2c_sync_soldier {
 	Common.p_soldier_info soldierInfo = 1;
 }
 
+// 迁主城（消耗道具 Item.Id=1001 迁城令；成功后也可推 s2c_sync_city_pos）
+message c2s_move_city {
+	Common.p_pos pos = 1;                  // 目标坐标
+}
+message s2c_move_city {
+	Common.p_pos cityPos = 1;              // 迁城后主城坐标
+}
+
 // 同步主城坐标（迁城等）
 message s2c_sync_city_pos {
 	Common.p_pos cityPos = 1;

@@ -15,17 +15,26 @@ export default class ProgressionCommand extends ProtocolCommand {
     readonly tasks = new SnapshotStore<TaskInfo>(t => String(t.taskId));
     readonly activities = new SnapshotStore<ActivityInfo>(a => String(a.activityId));
     private refreshActivitiesAgain = false;
+    private refreshTasksAgain = false;
+    public tasksLoaded = false;
     constructor() {
         super();
         this.listen(S.s2c_req_task_list, d => {
-            this.finish(S.c2s_req_task_list); this.tasks.replace(d.taskList || []); this.notifyTasks();
+            this.finish(S.c2s_req_task_list); this.tasks.replace(d.taskList || []); this.tasksLoaded = true; this.notifyTasks();
+            if (this.refreshTasksAgain) { this.refreshTasksAgain = false; this.requestTasks(); }
         });
         this.listen(S.s2c_sync_task, d => { if (d.taskInfo) { this.tasks.put(d.taskInfo); this.notifyTasks(); } });
         this.listen(S.s2c_get_task_reward, d => {
-            this.finish(`task:${d.taskId}`);
             const task = this.tasks.get(d.taskId);
+            const refresh = this.isPending(`task:${d.taskId}`) || !!task && task.state !== 2;
             if (task) this.tasks.put({ ...task, state: 2 });
+            this.finish(`task:${d.taskId}`);
             this.notifyTasks();
+            // 领取后补齐新解锁任务；若旧全量还在路上，等它结束后只追加一次查询。
+            if (refresh) {
+                if (this.isPending(S.c2s_req_task_list)) this.refreshTasksAgain = true;
+                else this.requestTasks();
+            }
         });
         this.listen(S.s2c_req_activity_list, d => {
             this.finish(S.c2s_req_activity_list); this.activities.replace(d.activityList || []); this.notifyActivities();
@@ -44,8 +53,12 @@ export default class ProgressionCommand extends ProtocolCommand {
             else this.requestActivities();
         }));
     }
-    protected reset(): void { this.tasks.clear(); this.activities.clear(); this.refreshActivitiesAgain = false; }
-    protected onSessionReady(): void { this.requestTasks(); this.requestActivities(); }
+    protected reset(): void {
+        this.tasks.clear(); this.activities.clear(); this.refreshActivitiesAgain = false;
+        this.tasksLoaded = false; this.refreshTasksAgain = false;
+    }
+    // 活动暂不开放：保留协议定义，登录不拉取活动，也没有活动操作入口。
+    protected onSessionReady(): void { this.requestTasks(); }
     private notifyTasks(): void { EventMgr.emit(E.updateTasks, this.tasks.values()); }
     private notifyActivities(): void { EventMgr.emit(E.updateActivities, this.activities.values()); }
     requestTasks(): boolean {

@@ -79,7 +79,8 @@ function harness() {
         tick(delay) { for (const [id, t] of [...timers]) if (t.delay === delay) { timers.delete(id); t.fn(); } },
     };
 }
-function test(name, run) { run(); passed++; console.log('PASS ' + name); }
+const filter = process.argv[3] ? new RegExp(process.argv[3]) : null;
+function test(name, run) { if (filter && !filter.test(name)) return; run(); passed++; console.log('PASS ' + name); }
 const info = (id = 17) => ({ brief: { allianceId: id, name: '长安', flag: 4, joinType: 2, notice: '一起出关', memberCount: 3, memberMax: 40, level: 1 }, leaderId: big, manifesto: '守望相助', createTime: 1 });
 const message = (msgId, channel = 1, senderId = big, targetId = 0) => ({ msgId, channel, senderId, targetId, senderName: '玩家', content: '消息', time: Number(msgId) || 1 });
 
@@ -194,6 +195,80 @@ test('行军召回、全量与推送竞态、AOI 进入/更新/离开及视野�
     assert.equal(h.sent.at(-1).data.targetId, other);
     h.disconnect(); assert.equal(h.world.entities.size, 0); assert.equal(h.world.march(1, 2, other, { x: 30, y: 40 }), false);
 });
+test('显式刷新重报相同 AOI 中心，多次请求合并且不清空现有实体', () => {
+    const h = harness(); h.authenticate();
+    h.events.emit(h.E.mapEenterChange, { x: 290, y: 850 }); h.tick(250);
+    h.receive(h.S.s2c_aoi_enter, { entities: [{ entityId: other, entityType: 4, pos: { x: 291, y: 851 } }] });
+    h.world.focus({ x: 290, y: 850 }); h.tick(250);
+    assert.equal(h.sent.length, 1, '普通拖动仍去重');
+    for (let i = 0; i < 8; i++) assert.equal(h.world.refreshView(), true);
+    assert.equal(h.sent.length, 1, '刷新通过同一节流定时器发送');
+    h.tick(250);
+    assert.equal(h.sent.length, 2);
+    assert.equal(h.sent.at(-1).name, h.S.c2s_aoi_focus);
+    assert.deepEqual(plain(h.sent.at(-1).data), { pos: { x: 290, y: 850 } });
+    assert.equal(h.world.entities.size, 1, '不能模拟离开视野来强制刷新');
+    h.receive(h.S.s2c_aoi_update, { entities: [{ entityId: other, entityType: 4, ownerId: big, pos: { x: 291, y: 851 } }] });
+    assert.equal(h.world.entities.get(other).ownerId, big);
+    h.world.focus({ x: 290, y: 850 }); h.tick(250); assert.equal(h.sent.length, 2);
+});
+test('刷新沿用最新拖动中心，断线取消待发请求且不跨会话重放', () => {
+    const h = harness(); h.authenticate();
+    h.world.focus({ x: 290, y: 850 }); h.tick(250);
+    h.world.refreshView(); h.world.focus({ x: 300, y: 840 }); h.tick(250);
+    assert.deepEqual(plain(h.sent.at(-1).data.pos), { x: 300, y: 840 });
+    h.world.refreshView(); h.disconnect(); h.tick(250);
+    assert.equal(h.sent.length, 2); assert.equal(h.world.refreshView(), false);
+    h.authenticate(); h.tick(250); assert.equal(h.sent.length, 2);
+    assert.equal(h.world.refreshView(), true); h.tick(250);
+    assert.deepEqual(plain(h.sent.at(-1).data.pos), h.role.cityPos, '新会话不用上个账号的视野');
+});
+test('尚无地图视野时使用登录城池坐标；缺失或非法坐标不发刷新', () => {
+    const h = harness();
+    assert.equal(h.world.refreshView(), false);
+    h.authenticate(); h.role.cityPos = null;
+    assert.equal(h.world.refreshView(), false);
+    h.role.cityPos = { x: -1, y: 850 }; assert.equal(h.world.refreshView(), false);
+    h.tick(250); assert.equal(h.sent.length, 0);
+    h.role.cityPos = { x: 0, y: 999 };
+    assert.equal(h.world.refreshView(), true); h.tick(250);
+    assert.deepEqual(plain(h.sent.at(-1).data.pos), h.role.cityPos);
+});
+test('任务领奖确认后补取后续任务，重复确认不重复查询且不自动领奖', () => {
+    const h = harness(); h.authenticate();
+    h.progress.requestTasks();
+    h.receive(h.S.s2c_req_task_list, { taskList: [{ taskId: 1001, taskType: 1, progress: 1, state: 1 }] });
+    assert.equal(h.progress.claimTask(1001), true);
+    assert.equal(h.progress.claimTask(1001), false);
+    assert.equal(h.progress.tasks.get(1001).state, 1, '请求发出后保留当前任务');
+    h.receive(h.S.s2c_get_task_reward, { taskId: 1001 });
+    assert.equal(h.progress.tasks.get(1001).state, 2);
+    assert.equal(h.sent.at(-1).name, h.S.c2s_req_task_list);
+    h.receive(h.S.s2c_sync_task, { taskInfo: { taskId: 1002, taskType: 1, progress: 2, state: 1 } });
+    h.receive(h.S.s2c_req_task_list, { taskList: [] });
+    assert.equal(h.progress.tasks.get(1002).state, 1, '保留查询途中的新任务推送');
+    const count = h.sent.length;
+    h.receive(h.S.s2c_get_task_reward, { taskId: 1001 });
+    assert.equal(h.sent.length, count, '重复 ACK 不重新拉列表');
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_get_task_reward).length, 1, '下一项仍由用户点击领取');
+});
+test('旧任务列表与领奖并发时追加一次同步，超时和断线不提前切换任务', () => {
+    const h = harness(); h.authenticate();
+    h.receive(h.S.s2c_sync_task, { taskInfo: { taskId: 1001, taskType: 1, progress: 1, state: 1 } });
+    h.progress.requestTasks(); h.progress.claimTask(1001);
+    h.receive(h.S.s2c_get_task_reward, { taskId: 1001 });
+    h.receive(h.S.s2c_get_task_reward, { taskId: 1001 });
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_task_list).length, 1);
+    h.receive(h.S.s2c_req_task_list, { taskList: [{ taskId: 1001, taskType: 1, progress: 1, state: 1 }] });
+    assert.equal(h.progress.tasks.get(1001).state, 2, '旧全量不能复活已领取任务');
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_task_list).length, 2);
+    h.receive(h.S.s2c_req_task_list, { taskList: [{ taskId: 1002, taskType: 1, progress: 2, state: 1 }] });
+    assert.equal(h.progress.claimTask(1002), true); h.tick(8000);
+    assert.equal(h.progress.tasks.get(1002).state, 1, '超时保留可领取状态');
+    assert.equal(h.progress.claimTask(1002), true, '超时后允许手动重试');
+    h.disconnect(); const count = h.sent.length; h.tick(8000);
+    assert.equal(h.progress.tasks.values().length, 0); assert.equal(h.sent.length, count);
+});
 test('任务领奖仅在可领取状态发送；活动 ACK 不重复累加兑换次数', () => {
     const h = harness(); h.authenticate();
     h.progress.requestTasks(); h.receive(h.S.s2c_sync_task, { taskInfo: { taskId: 1, taskType: 1, state: 1, progress: 10 } });
@@ -242,21 +317,21 @@ test('榜单按类型/页缓存，未上榜 rank=0 保留；建筑只在推送�
 });
 test('posMap 兵力完整保存，战后同步不误解锁尚未确认的编队编辑', () => {
     const h = harness(); h.authenticate(); h.troop.requestTroops();
-    h.receive(h.S.s2c_req_troop, { troopList: [{ troopIdx: 1, posMap: { 0: { heroIdx: 1001, soldier: { count: 900, hurtCount: 30 } } } }] });
+    h.receive(h.S.s2c_req_troop, { troopList: [{ troopIdx: 1, posMap: { 1: { heroIdx: 1001, soldier: { count: 900, hurtCount: 30 } } } }] });
     assert.equal(h.troop.editTroop(1, { 1001: 1, 1002: 2 }), true);
     const packet = h.sent.at(-1).data;
-    assert.deepEqual(plain(packet.troopInfo.posMap[1].soldier), { count: 900, hurtCount: 30 });
-    h.receive(h.S.s2c_sync_troop, { troopInfo: { troopIdx: 1, posMap: { 0: { heroIdx: 1001, soldier: { count: 700, hurtCount: 50 } } } } });
+    assert.deepEqual(plain(packet.troopInfo.posMap[2].soldier), { count: 900, hurtCount: 30 });
+    h.receive(h.S.s2c_sync_troop, { troopInfo: { troopIdx: 1, posMap: { 1: { heroIdx: 1001, soldier: { count: 700, hurtCount: 50 } } } } });
     assert.equal(h.troop.editingTroopIdx, 1); assert.equal(h.troop.proxy.getTroop(1).getSoldier(1001).count, 700);
 });
 test('编队列表不能覆盖查询途中的战后兵力，配兵请求保留伤兵', () => {
     const h = harness(); h.authenticate(); h.troop.requestTroops();
-    const troop = count => ({ troopIdx: 1, posMap: { 0: { heroIdx: 1001, soldier: { count, hurtCount: 50 } } } });
+    const troop = count => ({ troopIdx: 1, posMap: { 1: { heroIdx: 1001, soldier: { count, hurtCount: 50 } } } });
     h.receive(h.S.s2c_sync_troop, { troopInfo: troop(700) });
     h.receive(h.S.s2c_req_troop, { troopList: [troop(900)] });
     assert.equal(h.troop.proxy.getTroop(1).getSoldier(1001).count, 700);
     assert.equal(h.troop.editTroop(1, { 1001: 0 }, { 1001: 850 }), true);
-    assert.deepEqual(plain(h.sent.at(-1).data.troopInfo.posMap[0].soldier), { count: 850, hurtCount: 50 });
+    assert.deepEqual(plain(h.sent.at(-1).data.troopInfo.posMap[1].soldier), { count: 850, hurtCount: 50 });
     h.receive(h.S.s2c_edit_troop, h.sent.at(-1).data);
     assert.equal(h.troop.editTroop(1, { 1001: 0 }, { 1001: -1 }), false);
 });
@@ -285,7 +360,7 @@ test('断线清理、重连重取只读快照，绝不自动重发领奖/行军/
     const start = h.sent.length; h.authenticate(); h.loaded();
     const names = h.sent.slice(start).map(p => p.name);
     assert.ok(names.includes(h.S.c2s_req_my_alliance)); assert.ok(names.includes(h.S.c2s_req_march_list));
-    assert.ok(names.includes(h.S.c2s_req_task_list)); assert.ok(names.includes(h.S.c2s_req_activity_list));
+    assert.ok(names.includes(h.S.c2s_req_task_list)); assert.ok(!names.includes(h.S.c2s_req_activity_list), '活动暂不接入，不应自动拉取');
     assert.ok(names.includes(h.S.c2s_req_report_list));
     assert.ok(!names.includes(h.S.c2s_create_build)); assert.ok(!names.includes(h.S.c2s_create_alliance)); assert.ok(!names.includes(h.S.c2s_march));
 });
@@ -358,8 +433,11 @@ test('资源占领使用AOI实体ID，浮点路径无截断，拒绝错图/自�
 });
 test('石料补配置即可占领，按STONE枚举查找，不假定类型/模板/道具ID', () => {
     const h = harness(); h.authenticate(); h.role.level = 20;
-    assert.ok(h.world.resourceLandIssue(10, 20, 54, 3).includes('石料'));
+    const actual = h.load('world/ResourceLand').resourceLandForCell(54, 3);
+    assert.equal(actual.Id, 403); assert.equal(actual.OutputItem, 5);
     const config = h.load('core/ConfigManager').default.getInstance();
+    config.loadConfigs([{ name: 'ResLandType', json: [] }, { name: 'ResLand', json: [] }]);
+    assert.ok(h.world.resourceLandIssue(10, 20, 54, 3).includes('石料'));
     config.loadConfigs([{ name: 'ResLandType', json: [{ Id: 17, Enum: 'STONE' }] },
         { name: 'ResLand', json: [{ Id: 7303, Type: 17, Level: 3, Capacity: 300, GatherSpeed: 40, OutputItem: 9 }] }]);
     const land = h.load('world/ResourceLand').resourceLandForCell(54, 3);

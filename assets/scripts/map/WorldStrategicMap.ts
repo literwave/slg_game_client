@@ -88,7 +88,8 @@ export default class WorldStrategicMap extends Component {
         for (const gate of WorldCampaign.config.gates) {
             const p = MapUtil.mapCellToPixelPoint(new Vec2(gate.x, gate.y));
             const build = cmd.buildProxy.getBuild(gate.x + gate.y * 1000);
-            const own = !!build && (build.rid > 0 && build.rid === cmd.cityProxy.myId || cmd.cityProxy.myUnionId > 0 && build.unionId === cmd.cityProxy.myUnionId);
+            const own = !!build && (build.rid > 0 && String(build.rid) === String(cmd.cityProxy.myId)
+                || Number(cmd.cityProxy.myUnionId) > 0 && String(build.unionId) === String(cmd.cityProxy.myUnionId));
             g.fillColor = own ? new Color(235, 201, 112, 255) : new Color(61, 66, 55, 255);
             g.strokeColor = ManagementColors.gold; g.lineWidth = scale * 1.5;
             g.moveTo(p.x, p.y + radius); g.lineTo(p.x + radius, p.y); g.lineTo(p.x, p.y - radius); g.lineTo(p.x - radius, p.y); g.close(); g.fill(); g.stroke();

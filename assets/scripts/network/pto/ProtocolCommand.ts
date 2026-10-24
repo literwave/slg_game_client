@@ -40,6 +40,7 @@ export default abstract class ProtocolCommand {
         this.pending.forEach(timer => clearTimeout(timer));
         this.pending.clear();
         this.reset();
+        EventMgr.emit(LogicEvent.protocolRequestChanged);
     }
 
     public onDestory(): void { this.clearData(); EventMgr.targetOff(this); }
@@ -66,9 +67,13 @@ export default abstract class ProtocolCommand {
     }
 
     protected isPending(key: string): boolean { return this.pending.has(key); }
+    public requestInFlight(key: string): boolean { return this.pending.has(key); }
+    public get sessionReady(): boolean { return this.ready; }
     protected finish(key: string): void {
-        if (this.pending.has(key)) clearTimeout(this.pending.get(key));
+        const wasPending = this.pending.has(key);
+        if (wasPending) clearTimeout(this.pending.get(key));
         this.pending.delete(key);
+        if (wasPending) EventMgr.emit(LogicEvent.protocolRequestChanged);
     }
 
     /** 无请求序号的列表/写操作同一时刻只发一次；超时允许用户重试。 */
@@ -79,7 +84,7 @@ export default abstract class ProtocolCommand {
             if (onTimeout) onTimeout();
             EventMgr.emit(LogicEvent.showToast, '服务器响应超时，请重试');
         }, 8000));
-        if (this.send(name, data)) return true;
+        if (this.send(name, data)) { EventMgr.emit(LogicEvent.protocolRequestChanged); return true; }
         this.finish(key);
         return false;
     }

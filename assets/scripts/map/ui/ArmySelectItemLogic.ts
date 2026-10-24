@@ -14,6 +14,8 @@ import TroopCommand from '../../general/TroopCommand';
 import WorldCommand from '../../world/WorldCommand';
 import MapCommand from '../MapCommand';
 import MapUtil from '../MapUtil';
+import { isResourceLandCell } from '../../world/ResourceLand';
+import { hideSprite, inkSurface, ManagementColors as C, place, textStyle } from './ManagementStyle';
 
 @ccclass('ArmySelectItemLogic')
 export default class ArmySelectItemLogic extends Component {
@@ -70,19 +72,22 @@ export default class ArmySelectItemLogic extends Component {
             const map = MapCommand.getInstance();
             const cell = map.proxy.getResData(MapUtil.getIdByCellPoint(this._toX, this._toY));
             const troop = TroopCommand.getInstance().proxy.getTroop(this.troopIdx);
-            const reason = map.campaignBlockReason(this._toX, this._toY)
-                || (cell ? world.resourceLandIssue(this._toX, this._toY, cell.type, cell.level) : '目标已失效');
+            const reason = !isResourceLandCell(cell) || map.cityProxy.getCity(MapUtil.getIdByCellPoint(this._toX, this._toY))
+                ? '目标已失效，请重新选择资源地'
+                : map.campaignBlockReason(this._toX, this._toY) || world.resourceLandIssue(this._toX, this._toY, cell.type, cell.level);
             const entity = world.resourceLandAt(this._toX, this._toY);
             if (reason || !entity || String(entity.entityId) !== String(this.resourceEntityId)) {
                 EventMgr.emit(LogicEvent.showToast, reason || '目标已变更，请重新选择资源地'); return;
             }
+            const unavailable = this.troopIssue(troop);
+            if (unavailable) { EventMgr.emit(LogicEvent.showToast, unavailable); return; }
             const leader = troop?.getHeroIdxAt(0);
             if (!leader || troop.getSoldier(leader).count <= 0 || !world.occupyResourceLand(this.troopIdx, entity.entityId)) {
                 EventMgr.emit(LogicEvent.showToast, '部队暂无可用兵力、正在行军或请求尚未完成'); return;
             }
             EventMgr.emit(LogicEvent.closeArmyAelectUi); return;
         }
-        if (this.tipNode.active == false) {
+        if (this._data && this.tipNode.active == false) {
             ArmyCommand.getInstance().generalAssignArmy(this._data.id, this._cmd, this._toX, this._toY);
             EventMgr.emit(LogicEvent.closeArmyAelectUi);
         } else {
@@ -168,11 +173,10 @@ export default class ArmySelectItemLogic extends Component {
         for (const hero of troop.getSortedHeroes()) {
             const soldier = troop.getSoldier(hero.heroIdx); count += soldier.count; hurt += soldier.hurtCount;
         }
-        const busy = world.marches.get(troop.troopIdx)?.state === 1;
-        const noSoldiers = !leader || troop.getSoldier(leader).count <= 0;
-        this.tipNode.active = busy || noSoldiers;
-        this.labelTip.string = busy ? '行军中…' : '主将兵力不足';
-        this.labelState.string = busy ? '行军中' : '待命';
+        const reason = this.troopIssue(troop);
+        this.tipNode.active = !!reason;
+        this.labelTip.string = reason;
+        this.labelState.string = reason ? '' : '点击出征  ›';
         this.labelName.string = name(0) || `部队${troop.troopIdx}`;
         this.labelLv.string = heroes[0] ? String(heroes[0].level) : '';
         this.headIcon.node.active = !!heroes[0];
@@ -181,5 +185,47 @@ export default class ArmySelectItemLogic extends Component {
         this.labelMorale.string = `伤兵 ${hurt}`;
         this.labelSoldierCnt.string = `${count} 可用`;
         this.progressSoldier.progress = count + hurt > 0 ? count / (count + hurt) : 0;
+    }
+
+    private troopIssue(troop: TroopData | null | undefined): string {
+        const command = TroopCommand.getInstance();
+        if (!command.listReady) return '正在等待部队同步';
+        if (command.editingTroopIdx) return '编队正在保存，请稍候';
+        if (!troop) return '部队已变更，请重新选择';
+        if (WorldCommand.getInstance().marches.get(troop.troopIdx)?.state === 1) return '行军中';
+        const leader = troop.getHeroIdxAt(0);
+        if (!leader) return '主将未上阵，请先编队';
+        return troop.getSoldier(leader).count > 0 ? '' : '主将兵力不足，请先配兵';
+    }
+
+    /** 沿用预制体的头像、文字和点击回调，排成可滚动的完整队伍卡片。 */
+    public layoutRow(width: number, height: number): void {
+        place(this.node, 0, 0, width, height);
+        const bg = this.node.getChildByName('bg');
+        if (!bg) return;
+        place(bg, 0, 0, width, height); hideSprite(bg);
+        inkSurface(bg, 'RowSurface', width, height, C.panel, this.tipNode.active ? C.line : C.gold);
+        for (const name of ['bgHead', 'label1', 'label2', 'label3']) {
+            const old = bg.getChildByName(name); if (old) old.active = false;
+        }
+        const unavailable = this.tipNode.getChildByName('bgUnable');
+        if (unavailable) unavailable.active = false;
+        for (const label of this.node.getComponentsInChildren(Label)) {
+            label.font = null; label.useSystemFont = true; label.fontFamily = 'Microsoft YaHei';
+        }
+        this.headIcon.sizeMode = Sprite.SizeMode.CUSTOM;
+        place(this.headIcon.node, -width / 2 + 46, 18, 64, 64);
+        textStyle(this.labelLv, -width / 2 + 46, -28, 68, 13, C.muted, Label.HorizontalAlign.CENTER);
+        const textWidth = width - 112, center = 40;
+        textStyle(this.labelName, center, 46, textWidth, 19);
+        textStyle(this.labelSoldierCnt, center - textWidth / 4, 18, textWidth / 2, 15);
+        textStyle(this.labelMorale, center + textWidth / 4, 18, textWidth / 2, 14, C.muted);
+        textStyle(this.labelVice1, center - textWidth / 4, -10, textWidth / 2, 14, C.muted);
+        textStyle(this.labelVice2, center + textWidth / 4, -10, textWidth / 2, 14, C.muted);
+        this.progressSoldier.node.active = false;
+        place(this.tipNode, 0, -48, width - 32, 28);
+        textStyle(this.labelTip, 0, 0, width - 32, 14, C.muted, Label.HorizontalAlign.RIGHT);
+        this.labelState.node.active = !this.tipNode.active;
+        textStyle(this.labelState, width / 2 - 76, -48, 120, 15, C.gold, Label.HorizontalAlign.RIGHT);
     }
 }

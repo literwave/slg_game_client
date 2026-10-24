@@ -90,7 +90,10 @@ export default class CityArmySettingLogic extends Component {
         EventMgr.on(LogicEvent.updateArmy, this.onUpdateArmy, this);
         EventMgr.on(LogicEvent.chosedGeneral, this.onChooseGeneral, this);
         EventMgr.on(LogicEvent.updateCityAddition, this.onUpdateAddition, this);
-        EventMgr.on(LogicEvent.updateTroopList, this.updateView, this);
+        EventMgr.on(LogicEvent.updateTroopList, this.onTroopsChanged, this);
+        EventMgr.on(LogicEvent.updateSoldier, this.updateView, this);
+        EventMgr.on(LogicEvent.updateMyRole, this.updateView, this);
+        EventMgr.on(LogicEvent.updateMyGenerals, this.updateView, this);
         EventMgr.on(LogicEvent.troopEditState, this.updateEditState, this);
         view.on('canvas-resize', this.refreshVisualLayout, this);
         view.on('design-resolution-changed', this.refreshVisualLayout, this);
@@ -147,6 +150,18 @@ export default class CityArmySettingLogic extends Component {
         if (this._cityId == cityId) {
             this.setData(this._cityId, this._order);
         }
+    }
+
+    private onTroopsChanged(): void {
+        // 阵容/兵力以服务器快照为准；回包后清空本次增援，避免重复提交。
+        this._curConscripts = [0, 0, 0];
+        this.editBoxs.forEach(edit => edit.string = '0');
+        this.updateView();
+    }
+
+    private getReserveSoldiers(): number {
+        const count = Number(LoginCommand.getInstance().proxy.getRoleData()?.soldierInfo?.count);
+        return Number.isFinite(count) ? Math.max(0, Math.min(0xffffffff, Math.floor(count))) : 0;
     }
 
     protected onChooseGeneral(cfgData: any, curData: any, position: any): void {
@@ -209,13 +224,16 @@ export default class CityArmySettingLogic extends Component {
                     } else if (troop) {
                         const soldier = troop.getSoldier(heroIdx);
                         this._soldiers[i] = soldier.count;
-                        // 新协议不包含旧征兵队列及按等级推导的上限。
-                        this._totalSoldiers[i] = soldier.count;
+                        // 新协议从城中兵力补给，不能再等待旧 ArmyData 征兵队列。
+                        // 每将/每队上限尚无独立协议字段，最终由服务器校验。
+                        this._totalSoldiers[i] = Math.min(0xffffffff, soldier.count + this.getReserveSoldiers());
                     }
                     soldierCnt += this._soldiers[i];
                     totalSoldierCnt += this._totalSoldiers[i];
                 }
                 if (isUnlock == false || generalData == null) {
+                    this._curConscripts[i] = 0;
+                    this.editBoxs[i].string = '0';
                     this.tipNodes[i].active = true;
                     this.editBoxs[i].node.active = false;
                     this.sliders[i].node.active = false;
@@ -249,7 +267,7 @@ export default class CityArmySettingLogic extends Component {
                     }
 
                 }
-                comp.setData(this._cityId, this._order, generalData, this._soldiers[i], this._totalSoldiers[i], this._conCnts[i], this._conTimes[i], isUnlock);
+                comp.setData(this._cityId, this._order, generalData, this._soldiers[i], this._totalSoldiers[i], this._conCnts[i], this._conTimes[i], isUnlock, !!this._data);
         }
         this.labelId.string = "部队" + this._order;
         this.labelCost.string = "上阵 " + generalCount + "/" + this._generalCnt;
@@ -292,12 +310,26 @@ export default class CityArmySettingLogic extends Component {
         const count = command.proxy.getTroop(this._order)?.getHeroCount() || 0;
         this.labelCost.string = command.editingTroopIdx === this._order
             ? '编队保存中…' : `上阵 ${count}/${this._generalCnt}`;
+        if (!this._data) {
+            const troop = command.proxy.getTroop(this._order);
+            this.editBoxs.forEach((edit, i) => {
+                const enabled = !command.editingTroopIdx && this._isUnlock
+                    && !!troop?.getHeroIdxAt(i) && this.getReserveSoldiers() > 0;
+                edit.enabled = enabled;
+                this.sliders[i].enabled = enabled;
+            });
+        }
     }
 
     protected setCurConscriptForIndex(index: number, cnt: number = 0): void {
-        let maxCnt: number = this._totalSoldiers[index] - this._soldiers[index];
-        cnt = Math.min(cnt, maxCnt);
-        let percent: number = cnt / maxCnt;
+        let maxCnt = Math.max(0, this._totalSoldiers[index] - this._soldiers[index]);
+        if (!this._data) {
+            const allocated = this._curConscripts.reduce((sum, value, i) => sum + (i === index ? 0 : value), 0);
+            maxCnt = Math.min(maxCnt, Math.max(0, this.getReserveSoldiers() - allocated));
+        }
+        cnt = Number.isFinite(cnt) ? Math.max(0, Math.min(Math.floor(cnt), maxCnt)) : 0;
+        const range = Math.max(0, this._totalSoldiers[index] - this._soldiers[index]);
+        const percent = range > 0 ? cnt / range : 0;
         this.editBoxs[index].string = cnt + "";
         this.sliders[index].progress = percent;
         this._curConscripts[index] = cnt;
@@ -313,6 +345,11 @@ export default class CityArmySettingLogic extends Component {
 
     protected updateResCost(): void {
         let totalCnt: number = this.getTotalConscriptCnt();
+        if (!this._data) {
+            const reserve = this.getReserveSoldiers();
+            this.labelResCost.string = `城中可用兵力 ${reserve} · 本次增援 ${totalCnt}`;
+            return;
+        }
         if (totalCnt > 0) {
             var myRoleRes = LoginCommand.getInstance().proxy.getRoleResData();
             var baseCost: Conscript = MapUICommand.getInstance().proxy.getConscriptBaseCost();
@@ -345,6 +382,27 @@ export default class CityArmySettingLogic extends Component {
 
     protected onClickQuick(): void {
         AudioManager.instance.playClick();
+        if (!this._data) {
+            const command = TroopCommand.getInstance();
+            if (command.editingTroopIdx) {
+                EventMgr.emit(LogicEvent.showToast, '编队正在保存，请稍候');
+                return;
+            }
+            const troop = command.proxy.getTroop(this._order);
+            const positions = troop?.getSortedHeroes().map(hero => hero.position) || [];
+            const reserve = this.getReserveSoldiers();
+            if (!positions.length || !reserve) {
+                EventMgr.emit(LogicEvent.showToast, positions.length ? '城中暂无可用兵力' : '请先选择上阵武将');
+                return;
+            }
+            this._curConscripts = [0, 0, 0];
+            // 只分配城中可用兵力，伤兵不参与；余数按阵位分配，不丢兵。
+            const share = Math.floor(reserve / positions.length);
+            positions.forEach((position, i) => this.setCurConscriptForIndex(position,
+                share + (i < reserve % positions.length ? 1 : 0)));
+            this.updateResCost();
+            return;
+        }
         if (this._data && (this._data.cmd == ArmyCmd.Idle || this._data.cmd == ArmyCmd.Conscript)) {
             for (let i: number = 0; i < this._totalSoldiers.length; i++) {
                 if(this._conCnts[i] > 0){
@@ -364,6 +422,34 @@ export default class CityArmySettingLogic extends Component {
 
     protected onClickSure(): void {
         AudioManager.instance.playClick();
+        if (!this._data) {
+            const command = TroopCommand.getInstance();
+            if (command.editingTroopIdx) {
+                EventMgr.emit(LogicEvent.showToast, '编队正在保存，请稍候');
+                return;
+            }
+            const troop = command.proxy.getTroop(this._order);
+            if (!troop?.getHeroCount()) {
+                EventMgr.emit(LogicEvent.showToast, '请先选择上阵武将');
+                return;
+            }
+            const total = this.getTotalConscriptCnt();
+            if (total <= 0) {
+                EventMgr.emit(LogicEvent.showToast, '请先填写增援兵力，或使用快速分兵');
+                return;
+            }
+            if (total > this.getReserveSoldiers()) {
+                this.onTroopsChanged();
+                EventMgr.emit(LogicEvent.showToast, '城中兵力已变化，请重新分配');
+                return;
+            }
+            const counts: { [heroIdx: string]: number } = {};
+            troop.getSortedHeroes().forEach(hero => {
+                counts[hero.heroIdx] = troop.getSoldier(hero.heroIdx).count + this._curConscripts[hero.position];
+            });
+            command.editTroop(this._order, troop.getHeroMap(), counts);
+            return;
+        }
         if (this._data && (this._data.cmd == ArmyCmd.Idle || this._data.cmd == ArmyCmd.Conscript)) {
             let totalCnt: number = this.getTotalConscriptCnt();
             if (totalCnt > 0) {
@@ -411,6 +497,7 @@ export default class CityArmySettingLogic extends Component {
 
     public setData(cityId: number, order: number = 1): void {
         this._curConscripts = [0, 0, 0];
+        this.editBoxs.forEach(edit => edit.string = '0');
         this._cityId = cityId;
         this._order = order;
         this._cityData = MapCommand.getInstance().cityProxy.getMyCityById(this._cityId);

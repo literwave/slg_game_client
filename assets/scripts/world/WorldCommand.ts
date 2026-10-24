@@ -114,6 +114,15 @@ export default class WorldCommand extends ProtocolCommand {
             if (key !== this.lastFocus && this.send(S.c2s_aoi_focus, { pos: p })) this.lastFocus = key;
         }, 250);
     }
+    /** 重报当前视野；实体增删和属性仍以服务端推送为准，不按旧地图分块查询。 */
+    refreshView(): boolean {
+        const pos = this.focusPos || LoginCommand.getInstance().proxy.getRoleData()?.cityPos;
+        if (!this.ready || !this.validPos(pos)) return false;
+        // 显式刷新允许重报相同中心；复用 focus 的定时器合并同时完成的多个建筑。
+        this.lastFocus = '';
+        this.focus(pos);
+        return true;
+    }
     private validPos(pos: WorldPosition): boolean {
         return !!pos && Number.isInteger(pos.x) && Number.isInteger(pos.y) && pos.x >= 0 && pos.y >= 0 && pos.x < 1000 && pos.y < 1000;
     }

@@ -4,7 +4,7 @@ import { NetManager } from "../network/socket/NetManager";
 import { ProtoManager } from "../network/pto/ProtoManager";
 import { NetEvent } from "../network/socket/NetInterface";
 import { EventMgr } from "../utils/EventMgr";
-import TroopProxy, { HeroIndexMap, TroopPosition } from "./TroopProxy";
+import TroopProxy, { HeroIndexMap, TroopPosition, toTroopProtocolPosition } from "./TroopProxy";
 import GeneralCommand from "./GeneralCommand";
 
 const TROOP_REQUEST_TIMEOUT_MS = 8000;
@@ -68,6 +68,9 @@ export default class TroopCommand {
         return this._pendingTroopIdx;
     }
 
+    public get listReady(): boolean { return this._serverReady && this._hasSnapshot && this._listTimer === null; }
+    public get listLoading(): boolean { return this._listTimer !== null; }
+
     /** 只在进入地图/打开编队后请求；重复打开面板复用已确认的数据。 */
     public requestTroops(force = false): boolean {
         this._active = true;
@@ -80,6 +83,7 @@ export default class TroopCommand {
             this._hasSnapshot = false;
             EventMgr.emit(LogicEvent.showToast, '部队数据同步超时，请重新打开编队重试');
         }, TROOP_REQUEST_TIMEOUT_MS);
+        EventMgr.emit(LogicEvent.troopListState);
         if (!this.sendMessage(ServerConfig.c2s_req_troop, {})) {
             this.finishListRequest();
             return false;
@@ -87,7 +91,7 @@ export default class TroopCommand {
         return true;
     }
 
-    /** 界面使用英雄 ID -> 位置；协议要求 troopInfo.posMap（位置 -> 英雄和兵力）。 */
+    /** 界面槽位 0～2 在协议边界转为 1～3，兵力始终跟随武将。 */
     public editTroop(troopIdx: number, heroIdxMap: HeroIndexMap, soldierCounts?: { [heroIdx: string]: number }): boolean {
         if (!this._serverReady) return this.rejectEdit('正在连接服务器，请稍后再试');
         if (this._pendingTroopIdx) return this.rejectEdit('编队正在保存，请稍候');
@@ -108,8 +112,9 @@ export default class TroopCommand {
         for (const heroKey of Object.keys(heroIdxMap)) {
             const heroIdx = Number(heroKey);
             const position = Number(heroIdxMap[heroKey]);
-            if (!this.isValidId(heroIdx) || !Number.isInteger(position) || position < 0 || position >= 3
-                || posMap[String(position)] !== undefined || heroIds.has(heroIdx)) {
+            const protocolPosition = toTroopProtocolPosition(position);
+            if (!this.isValidId(heroIdx) || !protocolPosition
+                || posMap[String(protocolPosition)] !== undefined || heroIds.has(heroIdx)) {
                 return this.rejectEdit('武将或上阵位置无效');
             }
             if (!GeneralCommand.getInstance().proxy.getMyGeneral(heroIdx)) {
@@ -120,12 +125,13 @@ export default class TroopCommand {
                 return this.rejectEdit('该武将已在其他部队中，请先下阵');
             }
             heroIds.add(heroIdx);
-            posMap[String(position)] = { heroIdx, soldier: this._proxy.getTroop(index)?.getSoldier(heroIdx) || { count: 0, hurtCount: 0 } };
+            const slot: TroopPosition = { heroIdx, soldier: this._proxy.getTroop(index)?.getSoldier(heroIdx) || { count: 0, hurtCount: 0 } };
+            posMap[String(protocolPosition)] = slot;
             if (soldierCounts && soldierCounts[heroKey] !== undefined) {
                 const count = soldierCounts[heroKey];
                 if (!Number.isInteger(count) || count < 0 || count > 0xffffffff) return this.rejectEdit('配兵数量无效');
                 // 伤兵只能由服务器结算，不能被配兵操作转换成可用兵。
-                posMap[String(position)].soldier.count = count;
+                slot.soldier.count = count;
             }
         }
         this._pendingTroopIdx = index;
@@ -209,6 +215,7 @@ export default class TroopCommand {
     private finishListRequest(): void {
         if (this._listTimer !== null) clearTimeout(this._listTimer);
         this._listTimer = null;
+        EventMgr.emit(LogicEvent.troopListState);
     }
 
     private finishEdit(): void {

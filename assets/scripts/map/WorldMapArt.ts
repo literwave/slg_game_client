@@ -1,5 +1,7 @@
 import { Color, EffectAsset, Graphics, JsonAsset, Node, resources, Sprite, SpriteFrame, UITransform } from 'cc';
 import { cityFootprintRadius } from './CityFootprint';
+import { GATE_ART } from './GateGeometry';
+import { PLAYER_CITY_MAX_LEVEL } from './PlayerCityAppearance';
 
 /** 地图专用原创素材；入图时一次准备，地块复用时不再发起异步加载。 */
 export default class WorldMapArt {
@@ -8,7 +10,6 @@ export default class WorldMapArt {
     static effect: EffectAsset = null;
     static landscape: any = null;
     static campaign: any = null;
-    static readonly playerCityWidth = 310;
 
     static cityWidth(level: number): number {
         return (cityFootprintRadius(level) * 2 + 1) * 200 * .74;
@@ -40,8 +41,12 @@ export default class WorldMapArt {
             })),
         ]).then(() => {
             for (const name of ['plains', 'water', 'ridge', 'foothills', 'peaks', 'valley',
-                'town', 'county', 'capital', 'fort', 'forest', 'iron', 'quarry', 'grain',
+                'town', 'county', 'capital', 'fort', GATE_ART, 'forest', 'iron', 'quarry', 'grain',
                 'wild_forest', 'wild_iron', 'wild_quarry', 'wild_grain']) this.frame(name);
+            for (const resource of ['forest', 'iron', 'quarry', 'grain']) {
+                for (let level = 1; level <= 10; level++) this.frame(`${resource}_lv${level}`);
+            }
+            for (let level = 1; level <= PLAYER_CITY_MAX_LEVEL; level++) this.frame(`player_city_lv${level}`);
         }).catch(error => { this.pending = null; throw error; });
         return this.pending;
     }

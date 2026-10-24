@@ -106,7 +106,7 @@ const imports = {
 for (const name of ['../../login/LoginCommand', './ArmySelectNodeLogic', './CityArmySettingLogic',
     './FacilityListLogic', './Dialog', '../../union/UnionCommand', './CityAboutLogic', './GeneralListLogic',
     './TransformLogic', './GeneralInfoLogic', './WarReportLogic', './DrawRLogic', './SkillLogic',
-    './SkillInfoLogic', './HeadIconPanel', '../../systemopen/SystemOpenCommand']) {
+    './SkillInfoLogic', './HeadIconPanel', './Setting', './MapTaskTracker', './PlayerServicesPanel', '../../systemopen/SystemOpenCommand']) {
     imports[name] = { default: class {} };
 }
 const file = 'assets/scripts/map/ui/MapUILogic.ts';
@@ -124,7 +124,7 @@ function create(Type = MapUI) {
     ui.gmEditBoxY = new EditBox();
     ui.gmCoordLabel = { string: '' };
     ui.gmTipLabel = { string: '' };
-    for (const method of ['initInnerCityEntry', 'initMoreMenu', 'initHeadIconEntry', 'layoutHud', 'updateRoleRes', 'updateRole']) ui[method] = () => {};
+    for (const method of ['initHudNavigation', 'initTaskTracker', 'initMoreMenu', 'initHeadIconEntry', 'layoutHud', 'updateRoleRes', 'updateRole']) ui[method] = () => {};
     ui.onLoad();
     ui.onEnable();
     return ui;
@@ -154,7 +154,7 @@ try {
     test('内城入口等待游戏和主城信息就绪，不打开空城市', () => {
         const ui = new MapUI();
         let opened = 0;
-        ui.openCityAbout = () => opened++;
+        ui.openFacility = () => opened++;
         ui.closeMoreMenu = () => {};
         mainCity = { cityId: 1, x: 12, y: 34 };
         ui.openInnerCity();
@@ -164,13 +164,13 @@ try {
         assert.equal(opened, 0);
         assert.match(toasts.at(-1), /主城信息正在同步/);
     });
-    test('内城入口收起更多并传入当前主城，沿用原管理页', () => {
+    test('内城入口收起更多并传入当前主城，直达 Build 建筑页', () => {
         const ui = new MapUI();
         const order = [];
         ui._uiListenersReady = true;
         mainCity = { cityId: 7, x: 12, y: 34 };
         ui.closeMoreMenu = () => order.push('close');
-        ui.openCityAbout = city => { assert.equal(city, mainCity); order.push('open'); };
+        ui.openFacility = city => { assert.equal(city, mainCity); order.push('open'); };
         ui.openInnerCity();
         assert.deepEqual(order, ['close', 'open']);
         mainCity = null;

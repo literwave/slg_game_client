@@ -9,6 +9,8 @@ export interface HeadIconFeedback {
 export class LogicEvent {
     public static updateSoldier = "updateSoldier";
     public static updateCityPosition = "updateCityPosition";
+    public static updatePlayerCityTiles = "updatePlayerCityTiles";
+    public static selectPlayerCity = "selectPlayerCity";
     public static updateMarches = "updateMarches";
     public static updateWorldEntities = "updateWorldEntities";
     public static battleStarted = "battleStarted";
@@ -23,7 +25,9 @@ export class LogicEvent {
     public static updateMailList = "updateMailList";
     public static updateMailDetail = "updateMailDetail";
     public static allianceInvite = "allianceInvite";
-
+    public static protocolRequestChanged = "protocolRequestChanged";
+    public static confirmMoveCity = "confirmMoveCity";
+    public static cityMoveState = "cityMoveState";
 
     public static robLoginUI:string = "robLoginUI";
     public static enterMap:string = "enter_map";
@@ -51,6 +55,7 @@ export class LogicEvent {
     public static updateTroopList:string = "update_troop_list";
     public static updateTroop:string = "update_troop";
     public static troopEditState:string = "troop_edit_state";
+    public static troopListState:string = "troop_list_state";
     public static troopEditSubmitted:string = "troop_edit_submitted";
     public static updateTag:string = "update_tag";
     public static updateBuilds:string = "update_builds";

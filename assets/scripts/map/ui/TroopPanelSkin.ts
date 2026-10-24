@@ -270,7 +270,7 @@ export function styleTroopPanel(parts: TroopPanelParts): void {
             const label = title.getComponentInChildren(Label);
             textStyle(label, 0, 0, 44, allocationLabelSize, C.gold,
                 Label.HorizontalAlign.LEFT, allocationLabelHeight);
-            if (label) label.string = '兵力';
+            if (label) label.string = '增援';
         }
         const edit = parts.editBoxs[index];
         if (edit) {

@@ -19,7 +19,6 @@ import { LogicEvent } from '../common/LogicEvent';
 import { CoreEvent } from '../core/CoreEvent';
 import WorldMapArt from '../map/WorldMapArt';
 import WorldLandscape from '../map/WorldLandscape';
-import WorldCampaign from '../map/WorldCampaign';
 
 interface PendingMapArea {
     id: number;
@@ -36,10 +35,6 @@ export default class MapScene extends Component {
     mapLayer: Node = null;
 
     protected _cmd: MapCommand = null;
-    protected _centerX: number = 0;
-    protected _centerY: number = 0;
-    protected _lastUpPosTime: number = 0;
-    private _lastCampaignScanTime = 0;
     private _pendingAreas: PendingMapArea[] = [];
     private _initialCellTotal = 0;
     private _initialCellDone = 0;
@@ -75,6 +70,7 @@ export default class MapScene extends Component {
         this._cmd.initData();
         EventMgr.on(LogicEvent.mapShowAreaChange, this.onMapShowAreaChange, this);
         EventMgr.on(LogicEvent.scrollToMap, this.onScrollToMap, this);
+        EventMgr.on(LogicEvent.updatePlayerCityTiles, this.onPlayerCityTiles, this);
 
         this.scheduleOnce(() => {
             try {
@@ -83,14 +79,14 @@ export default class MapScene extends Component {
                 if (!mapLogic) throw new Error('地图控制器缺失');
                 mapLogic.setTiledMap(tiledMap);
                 mapLogic.scrollToMapPoint(myCity ? new Vec2(myCity.x, myCity.y) : new Vec2(16, 24));
-                this.onTimer();
                 this._positionReady = true;
             } catch (error) {
                 this.failInitialization(error);
             }
         }, 0.1);
 
-        this.schedule(this.onTimer, 0.2);
+        // 地图中心变化由 MapProxy -> mapEenterChange -> WorldCommand 上报 AOI，
+        // 可见区域只负责本地渲染，不再轮询旧 scanBlock 或扫描远处关隘。
     }
 
     protected update(): void {
@@ -184,34 +180,6 @@ export default class MapScene extends Component {
         this._cmd = null;
     }
 
-    protected onTimer(): void {
-        // 关隘可能在远处；通过已有区域协议定期获取归属，不能只依赖当前视口。
-        const now = Date.now();
-        if (WorldCampaign.config && now - this._lastCampaignScanTime > 30000) {
-            this._lastCampaignScanTime = now;
-            const gateAreas = WorldCampaign.config.gates.map(gate => MapUtil.getAreaIdByCellPoint(gate.x, gate.y));
-            this._cmd.proxy.qryAreaIds = [...new Set(this._cmd.proxy.qryAreaIds.concat(gateAreas))];
-        }
-        if (this._cmd.proxy.qryAreaIds && this._cmd.proxy.qryAreaIds.length > 0) {
-            let qryIndex: number = this._cmd.proxy.qryAreaIds.shift();
-            let qryData: MapAreaData = this._cmd.proxy.getMapAreaData(qryIndex);
-            if (qryData.checkAndUpdateQryTime()) {
-                this._cmd.qryNationMapScanBlock(qryData);
-            }
-        }
-        let nowTime: number = Date.now();
-        if (nowTime - this._lastUpPosTime > 1000) {
-            this._lastUpPosTime = nowTime;
-            //间隔一秒检测中心点是否改变
-            let point: Vec2 = MapCommand.getInstance().proxy.getCurCenterPoint();
-            if (point != null && (this._centerX != point.x || this._centerY != point.y)) {
-                this._centerX = point.x;
-                this._centerY = point.y;
-                MapCommand.getInstance().upPosition(point.x, point.y);
-            }
-        }
-    }
-
     protected onMapShowAreaChange(centerPoint: Vec2, centerAreaId: number, addIds: number[], removeIds: number[], detailChanged = false): void {
 
 
@@ -287,7 +255,18 @@ export default class MapScene extends Component {
             layers.facility.addItem(areaId, build);
             layers.tips.addItem(areaId, build);
         }
-        if (city) layers.city.addItem(areaId, city);
+        if (city && city.id === cellId) layers.city.addItem(areaId, city);
+    }
+
+    private onPlayerCityTiles(ids: number[]): void {
+        if (!this._itemLayers) return;
+        for (const id of ids) {
+            const pos = MapUtil.getCellPointById(id);
+            const area = MapUtil.getAreaIdByCellPoint(pos.x, pos.y);
+            if (this._cmd.cityProxy.getCity(id)) {
+                this._itemLayers.res.removeItem(area, id);
+            } else this.addMapCell(area, pos.x, pos.y);
+        }
     }
 
     protected onScrollToMap(x: number, y: number): void {

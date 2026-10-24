@@ -55,6 +55,7 @@ export default class CityGeneralItemLogic extends Component {
     protected _data: GeneralData = null;
     protected _soldierCnt: number = 0;
     protected _totalSoldierCnt: number = 0;
+    private _showSoldierCapacity = true;
     protected _conCnt: number = 0;
     protected _conTime: number = 0;
     protected _isUnlock: boolean = false;
@@ -151,8 +152,11 @@ export default class CityGeneralItemLogic extends Component {
             }
             this.labelLv.string = this._data.level + "";
             this.labelName.string = cfg.name;
-            this.labelSoldierCnt.string = this._totalSoldierCnt > 0 ? (this._soldierCnt + "/" + this._totalSoldierCnt) : "兵力待同步";
+            this.labelSoldierCnt.string = this._showSoldierCapacity
+                ? (this._totalSoldierCnt > 0 ? (this._soldierCnt + "/" + this._totalSoldierCnt) : "兵力待同步")
+                : `兵力 ${this._soldierCnt}`;
             if (this.progressBar) {
+                this.progressBar.node.active = this._showSoldierCapacity;
                 this.progressBar.progress = this._totalSoldierCnt > 0 ? this._soldierCnt / this._totalSoldierCnt : 0;
             }
             this.labelCost.string = cfg.heroClass || "";
@@ -176,12 +180,13 @@ export default class CityGeneralItemLogic extends Component {
  
     public setData(cityId: number, order: number, data: GeneralData, 
         soldierCnt: number, totalSoldierCnt: number, conCnt:number, 
-        conTime:number, isUnlock: boolean): void {
+        conTime:number, isUnlock: boolean, showSoldierCapacity = true): void {
         this._cityId = cityId;
         this._order = order;
         this._data = data;
         this._soldierCnt = soldierCnt;
         this._totalSoldierCnt = totalSoldierCnt;
+        this._showSoldierCapacity = showSoldierCapacity;
         this._conCnt = conCnt;
         this._conTime = conTime;
         this._isUnlock = isUnlock;

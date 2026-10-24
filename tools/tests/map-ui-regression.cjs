@@ -225,8 +225,7 @@ test('area visibility stays within map boundaries and old areas leave on far jum
         assert.ok(visible.has(MapUtil.getAreaIdByCellPoint(x, y)));
         assert.ok([...visible].every(id => id >= 0 && id < 400));
         assert.ok(visible.size < 60, '远跳后必须清掉旧视野，不能不断累积区域');
-        assert.equal(new Set(proxy.qryAreaIds).size, proxy.qryAreaIds.length);
-        assert.ok(proxy.qryAreaIds.every(id => visible.has(id)));
+        assert.equal(proxy.qryAreaIds, undefined, '渲染区域不再产生旧协议请求队列');
     }
     EventMgr.targetOff(owner);
 });

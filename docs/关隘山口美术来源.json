@@ -1,0 +1,57 @@
+{
+  "asset": "assets/resources/ui/world/mountain_pass_saddle.png",
+  "generator": "image_gen",
+  "references": [
+    "assets/resources/ui/world/mountain_pass.png",
+    "assets/resources/ui/world/ridge.png",
+    "assets/resources/ui/world/peaks.png"
+  ],
+  "firstDraftPrompt": "Create a replacement production game sprite for a Chinese historical strategy world map: ONE imposing mountain-pass gate embedded in a narrow rocky saddle. Transparent RGBA background. This is a compact fortified GATEHOUSE, not a long city wall.\n\nReferences: first image is the OLD oversized straight wall, use ONLY its aged masonry/Chinese roof material style, deliberately REDESIGN its silhouette. Second and third images are the existing game's grey limestone mountains, match their muted grey stone, olive scrub and warm diffuse light. Keep the same painterly realistic pre-rendered 2D RTS sprite finish and 2:1 isometric ground perspective, camera elevated about 30 degrees, no perspective horizon.\n\nComposition: a single deep, unmistakable dark arched road tunnel at center, a substantial squat battered stone gatehouse above it, handsome dark charcoal tiled Chinese timber roof, two restrained crimson pennants. The gatehouse dominates the design and has real thickness visible on the right. Only VERY SHORT staggered stone ramparts on each side (each under one-quarter of the central gatehouse width), descending and disappearing naturally INTO rugged limestone outcrops; NO long straight wall wings, NO rectangular foundation plinth, NO equal square tower at each far end. The irregular grey rock outcrops are connected to the masonry, flanking the pass, layered lower scree and sparse olive shrubs with naturally broken edges; their base blends into the same terrain style as the reference mountains. Rocks must not seal the opening.\n\nGround: one clear narrow worn ochre stone-and-earth road comes out of the arch and travels towards the foreground lower-right, gravel road margins feather to transparency; also a short hint of the road continuing behind the gate towards upper-left. No huge flat paved apron. The arch mouth is centered horizontally and approximately 65 percent down the image. Wall/rock shoulder axis runs from upper-left to lower-right at 2:1 isometric slope, while road crosses that axis. Compact roughly 1.5:1 overall silhouette including rocks and road, not the reference's long strip. Keep gatehouse fully visible, strong readable silhouette when scaled to 300px, tactile but not noisy. Stone is cool grey with subdued brown weathering, roof charcoal, desaturated olive foliage, no bright saturated colors, no snow, no golden trim, no glow, no text or UI, no labels, no border, no cast shadow outside the irregular ground. Fully transparent outside the object. Entire object inside the image with margin, no cropping. This should look like a formidable mountain chokepoint naturally built into rock, not a standalone city facade pasted on grass.",
+  "correctionPrompt": "Edit this transparent game sprite into a physically coherent ISOMETRIC mountain pass, preserving its beautiful aged Chinese stone gatehouse, restrained dark tiled roof, two pennants, limestone material and olive vegetation. Keep RGBA transparency, no backdrop or halo.\n\nCRITICAL GEOMETRY CORRECTION: the current foreground road goes toward lower-RIGHT, parallel to the wall. That is WRONG. The wall and its flanking rock ridge must run from upper-LEFT to lower-RIGHT (2:1 slope). The ROAD must cross it on the OTHER isometric ground axis: it goes from UPPER-RIGHT behind the gate, THROUGH the central dark arched tunnel, and out towards LOWER-LEFT in front. These two world axes form a projected isometric cross. Redraw the front ground and rearrange the rocks as needed to show this clearly. The gate facade faces lower-left; its visible right-hand side faces lower-right.\n\nCOMPOSITION: roof and substantial compact stone gatehouse centered, gateway mouth near image horizontal center and 68 percent image height. Very short stone shoulder walls end inside irregular limestone on both flanks. Keep the single central arch completely unobstructed. Center of the front road starts around image x=.50,y=.70 at the arch floor, extends to x=.27,y=.88; it MUST NOT curve back to the lower-right edge. A subtle short continuation of road behind the building may be visible at x=.65,y=.35. Keep front rocks beside the road, not across it. Keep flanking rock outcrops modest, no towering separate mountain peak behind the gate. No enormous foreground base, no rectangular or oval plinth, soft broken scree/grass ground margins fade to full transparency; the road should end naturally with a softly broken edge rather than a sharp geometric cut. Central gatehouse itself should occupy about 45-50% of total sprite width and remain the visual focus. Compact strong silhouette roughly 1.5:1, very short ramparts, no long straight city wall. Match existing muted painterly realistic 2D historical RTS map sprites, 30 degree elevated camera, 2:1 orthographic isometric ground, diffuse warm daylight, cool grey rocks, desaturated natural earthy color. Keep the entire asset within transparent margins. No text, no UI, no numbers, no labels, no artificial outline.",
+  "selected": "修正通路朝向后的第二稿",
+  "processing": [
+    {
+      "type": "trimTransparent",
+      "alphaThreshold": 8
+    },
+    {
+      "type": "resize",
+      "width": 1024,
+      "height": 1024,
+      "fit": "inside",
+      "interpolation": "bicubic"
+    }
+  ],
+  "result": {
+    "width": 1024,
+    "height": 608,
+    "sha256": "95b33d3d9ac2625f4f1fa3c568f2146c515f212e556c2103951aea22242f9633",
+    "filter": "linear",
+    "mipmap": true,
+    "wrap": "clamp",
+    "pivot": {
+      "x": 0.5,
+      "y": 0.38
+    }
+  },
+  "presentation": {
+    "widthByGateLevel": {
+      "4-5": 460,
+      "6-7": 540,
+      "8+": 640
+    },
+    "anchor": [
+      0.5,
+      0.38
+    ],
+    "trim": false,
+    "selectionWidthRatio": 0.7,
+    "roadDirection": "未镜像时从门洞向左下延伸；函谷关镜像后向右下出关，沿既有 x 方向通路。"
+  },
+  "validation": {
+    "assetDBImport": true,
+    "assetDBSettingsReadback": true,
+    "offlineComposition": "按函谷关周边 56 个真实山体 patch 的位置、尺寸、锚点与镜像排序拼合；底色近似，不含运行时地表着色。",
+    "runtimePreview": false
+  }
+}

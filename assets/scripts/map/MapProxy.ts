@@ -49,7 +49,6 @@ export class MapTagPos {
 
 /**地图区域数据*/
 export class MapAreaData {
-    static MAX_TIME: number = 10000;
     id: number = 0;
     x: number = 0;
     y: number = 0;
@@ -58,17 +57,6 @@ export class MapAreaData {
     endCellX: number = 0;
     endCellY: number = 0;
     len: number = 0;
-    qryStartTime: number = 0;
-
-    public checkAndUpdateQryTime(): boolean {
-        let nowTime: number = Date.now();
-        if (nowTime - this.qryStartTime >= MapAreaData.MAX_TIME) {
-            this.qryStartTime = nowTime;
-            return true
-        }
-        return false;
-    }
-
     public equals(other: MapAreaData): boolean {
         if (other == null) {
             return false;
@@ -107,8 +95,6 @@ export default class MapProxy {
     protected _mapSysCityResDatas: MapResData[] = [];
     protected _mapPosTags: MapTagPos[] = [];
 
-    //地图请求列表
-    public qryAreaIds: number[] = [];
     //地图基础配置数据
     protected _mapResConfigs: Map<string, MapResConfig> = new Map<string, MapResConfig>();
 
@@ -124,7 +110,6 @@ export default class MapProxy {
         this.overview = false;
         this.strategic = false;
         this._mapAreaDatas.length = 0;
-        this.qryAreaIds.length = 0;
     }
 
     /**地图建筑基础配置信息*/
@@ -235,7 +220,6 @@ export default class MapProxy {
         this.visibleAreaIds = newIds;
         this._curCenterAreaId = MapUtil.getAreaIdByCellPoint(point.x, point.y);
         if (addIds.length || removeIds.length || detailChanged) {
-            this.qryAreaIds = [...new Set(addIds.concat(this.qryAreaIds))].filter(id => next.has(id));
             EventMgr.emit(LogicEvent.mapShowAreaChange, point, this._curCenterAreaId, addIds, removeIds, detailChanged);
         }
         return centerChanged || addIds.length > 0 || removeIds.length > 0 || detailChanged;

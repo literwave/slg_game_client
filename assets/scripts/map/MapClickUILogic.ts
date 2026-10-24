@@ -13,9 +13,10 @@ import { AudioManager } from '../common/AudioManager';
 import { LogicEvent } from '../common/LogicEvent';
 import WorldMapArt from './WorldMapArt';
 import WorldCampaign from './WorldCampaign';
-import WorldCommand from '../world/WorldCommand';
-import { resourceLandForCell } from '../world/ResourceLand';
 import LoginCommand from '../login/LoginCommand';
+import { playerCityAppearance, playerCityFootprint, PLAYER_CITY_ANCHOR_Y } from './PlayerCityAppearance';
+import MapUtil from './MapUtil';
+import { isResourceLandCell } from '../world/ResourceLand';
 import { caption, hideSprite, inkSurface, ManagementColors, panelButton, place, textStyle } from './ui/ManagementStyle';
 
 @ccclass('MapClickUILogic')
@@ -77,11 +78,17 @@ export default class MapClickUILogic extends Component {
     private _iconTop = 100;
     private _iconHalfWidth = 100;
     private _campaignText = '';
+    private _btnRelocate: Button = null;
 
     protected onLoad(): void {
         this._panel = new Node('TileInformation'); this._panel.layer = this.node.layer;
         this.node.addChild(this._panel); this._panel.addComponent(UITransform);
         this._panel.addComponent(BlockInputEvents);
+        const relocate = new Node('RelocateCity'); relocate.layer = this.node.layer;
+        this._panel.addChild(relocate); relocate.addComponent(UITransform);
+        this._btnRelocate = relocate.addComponent(Button);
+        caption(relocate, 'Caption', '迁城', 0, 0, 90, 16);
+        relocate.on(Button.EventType.CLICK, this.onClickRelocate, this);
         for (const name of ['bg', 'bgUnion', 'bgPos']) {
             const node = this.node.getChildByName(name); if (node) node.active = false;
         }
@@ -111,7 +118,7 @@ export default class MapClickUILogic extends Component {
 
     private buttons(): Button[] {
         return [this.btnEnter, this.btnOccupy, this.btnMove, this.btnGiveUp, this.btnReclaim,
-            this.btnBuild, this.btnTransfer, this.btnTagAdd, this.btnTagRemove].filter(Boolean);
+            this.btnBuild, this.btnTransfer, this._btnRelocate, this.btnTagAdd, this.btnTagRemove].filter(Boolean);
     }
 
     protected onDestroy(): void {
@@ -121,7 +128,7 @@ export default class MapClickUILogic extends Component {
 
     protected onEnable(): void {
         EventMgr.on(LogicEvent.updateBuild, this.onUpdateBuild, this);
-        EventMgr.on(LogicEvent.updateWorldEntities, this.onWorldEntities, this);
+        EventMgr.on(LogicEvent.cityMoveState, this.updateRelocateButton, this);
 
         var uiOpacity = this.bgSelect.getComponent(UIOpacity) || this.bgSelect.addComponent(UIOpacity);
         uiOpacity.opacity = 255;
@@ -135,6 +142,7 @@ export default class MapClickUILogic extends Component {
     }
 
     protected onDisable(): void {
+        EventMgr.emit(LogicEvent.selectPlayerCity, null);
         EventMgr.targetOff(this);
         this._t?.stop();
         this.stopCountDown();
@@ -147,9 +155,6 @@ export default class MapClickUILogic extends Component {
             && this._data.y == data.y) {
             this.setCellData(data, this._pixelPos);
         }
-    }
-    private onWorldEntities(): void {
-        if (this._data && this._pixelPos && this._data.type >= 52 && this._data.type <= 55) this.setCellData(this._data, this._pixelPos);
     }
 
     protected onClickEnter(): void {
@@ -175,20 +180,33 @@ export default class MapClickUILogic extends Component {
 
     protected onClickOccupy(): void {
         AudioManager.instance.playClick();
-        if (!this._data) return;
+        if (this._data instanceof MapCityData || !isResourceLandCell(this._data)) {
+            EventMgr.emit(LogicEvent.showToast, '当前目标暂不支持出征，请选择资源地');
+            return;
+        }
         const reason = MapCommand.getInstance().campaignBlockReason(this._data.x, this._data.y);
         if (reason) { EventMgr.emit(LogicEvent.showTip, reason, null); return; }
-        if (this._data.type >= 52 && this._data.type <= 55) {
-            const issue = WorldCommand.getInstance().resourceLandIssue(this._data.x, this._data.y, this._data.type, this._data.level);
-            if (issue) { EventMgr.emit(LogicEvent.showToast, issue); return; }
-            EventMgr.emit(LogicEvent.openArmySelectUi, ArmyCmd.Attack, this._data.x, this._data.y);
-        } else if (MapCommand.getInstance().isCanOccupyCell(this._data.x, this._data.y)) {
+        if (MapCommand.getInstance().isCanOccupyCell(this._data.x, this._data.y)) {
             EventMgr.emit(LogicEvent.openArmySelectUi, ArmyCmd.Attack, this._data.x, this._data.y);
         } else {
-            EventMgr.emit(LogicEvent.showToast, '只能占领自己相邻的地');
+            console.log("只能占领自己相邻的地");
         }
 
         this.node.parent = null;
+    }
+
+    private onClickRelocate(): void {
+        if (!this._data?.isEmpty || LoginCommand.getInstance().movingCity) return;
+        AudioManager.instance.playClick();
+        EventMgr.emit(LogicEvent.confirmMoveCity, { x: this._data.x, y: this._data.y });
+        this.node.parent = null;
+    }
+
+    private updateRelocateButton(): void {
+        if (!this._btnRelocate || !this._data) return;
+        this._btnRelocate.node.active = this._data instanceof MapResData && !!this._data.isEmpty;
+        this._btnRelocate.interactable = !LoginCommand.getInstance().movingCity;
+        this.layoutPanel();
     }
 
     public setCellData(data: any, pixelPos: Vec2): void {
@@ -205,6 +223,8 @@ export default class MapClickUILogic extends Component {
         this.btnTransfer.node.active = false;
         this.btnEnter.node.active = false;
         this.btnOccupy.node.active = false;
+        this.bgSelect.active = !(data instanceof MapCityData);
+        EventMgr.emit(LogicEvent.selectPlayerCity, data instanceof MapCityData ? data.id : null);
         this.bgSelect.getComponent(UITransform).width = 200;
         this.bgSelect.getComponent(UITransform).height = 100;
 
@@ -213,33 +233,30 @@ export default class MapClickUILogic extends Component {
         this.btnTagRemove.node.active = isTag;
 
         if (this._data instanceof MapResData) {
-            this.btnOccupy.node.active = true;
+            this.btnOccupy.node.active = isResourceLandCell(data);
             this.durableNode.active = false;
         } else if (this._data instanceof MapBuildData) {
             const build = this._data as MapBuildData;
             const mine = build.rid == MapCommand.getInstance().buildProxy.myId;
             const ally = build.unionId > 0 && build.unionId == MapCommand.getInstance().buildProxy.myUnionId;
             const captive = build.parentId > 0 && build.parentId == MapCommand.getInstance().buildProxy.myUnionId;
-            this.btnOccupy.node.active = !mine && !ally && !captive;
-            this.durableNode.active = true;
+            this.btnOccupy.node.active = isResourceLandCell(data) && !mine && !ally && !captive;
+            this.durableNode.active = this._data.maxDurable > 0;
             this.labelDurable.string = Math.ceil(this._data.curDurable / 100) + "/" + Math.ceil(this._data.maxDurable / 100);
-            this.progressBarDurable.progress = this._data.curDurable / this._data.maxDurable;
+            this.progressBarDurable.progress = this._data.maxDurable > 0 ? this._data.curDurable / this._data.maxDurable : 0;
         } else if (this._data instanceof MapCityData) {
             const city = this._data as MapCityData;
             if (city.rid == MapCommand.getInstance().cityProxy.myId) {
                 this.btnEnter.node.active = true;
                 this.btnTagAdd.node.active = false;
                 this.btnTagRemove.node.active = false;
-            } else {
-                const ally = city.unionId > 0 && city.unionId == MapCommand.getInstance().cityProxy.myUnionId;
-                const captive = city.parentId > 0 && city.parentId == MapCommand.getInstance().cityProxy.myUnionId;
-                this.btnOccupy.node.active = !ally && !captive;
             }
-            this.bgSelect.getComponent(UITransform).setContentSize(WorldMapArt.playerCityWidth * 1.2, WorldMapArt.playerCityWidth * .6);
+            const footprint = playerCityFootprint(MapUtil.tileSize.width, MapUtil.tileSize.height);
+            this.bgSelect.getComponent(UITransform).setContentSize(footprint.width, footprint.height);
             this.leftInfoNode.active = false;
-            this.durableNode.active = true;
+            this.durableNode.active = city.maxDurable > 0;
             this.labelDurable.string = Math.ceil(this._data.curDurable / 100) + "/" + Math.ceil(this._data.maxDurable / 100);
-            this.progressBarDurable.progress = this._data.curDurable / this._data.maxDurable;
+            this.progressBarDurable.progress = city.maxDurable > 0 ? city.curDurable / city.maxDurable : 0;
 
         }
 
@@ -251,13 +268,14 @@ export default class MapClickUILogic extends Component {
         }
 
         const city = this._data instanceof MapCityData;
-        const art = city ? 'capital' : this._data.type === MapResType.SYS_CITY
-            ? WorldMapArt.cityArt(this._data.level)
+        const appearance = city ? playerCityAppearance(this._data.level) : null;
+        const art = city ? appearance.art : this._data.type === MapResType.SYS_CITY
+            ? this._data.level >= 8 ? 'capital' : this._data.level >= 5 ? 'county' : 'town'
             : ({ 50: 'fort', 52: 'forest', 53: 'iron', 54: 'quarry', 55: 'grain' }[this._data.type] || 'fort');
         const frame = WorldMapArt.frame(art);
-        const iconWidth = city ? WorldMapArt.playerCityWidth : this._data.type === MapResType.SYS_CITY
+        const iconWidth = city ? appearance.width : this._data.type === MapResType.SYS_CITY
             ? WorldMapArt.cityWidth(this._data.level) : this._data.type === MapResType.SYS_FORTRESS ? 138 : 80 + this._data.level * 5;
-        this._iconTop = iconWidth * frame.originalSize.height / frame.originalSize.width * .8 + 12;
+        this._iconTop = iconWidth * frame.originalSize.height / frame.originalSize.width * (city ? 1 - PLAYER_CITY_ANCHOR_Y : .8) + 12;
         this._iconHalfWidth = iconWidth / 2 + 12;
 
 
@@ -269,11 +287,6 @@ export default class MapClickUILogic extends Component {
             let soldiers = MapUICommand.getInstance().proxy.getDefenseSoldiers(resData.level);
             this.labelYield.string = MapCommand.getInstance().proxy.getResYieldDesList(resCfg).join("\n") || '暂无产量信息';
             this.labelSoldierCnt.string = soldiers > 0 ? "守备兵力  " + soldiers * 3 : '暂无守军情报';
-            const land = resourceLandForCell(resData.type, resData.level);
-            if (land) {
-                this.labelYield.string = `资源储量  ${land.Capacity}\n采集速度  ${land.GatherSpeed}`;
-                this.labelSoldierCnt.string = '击败守军后占领';
-            }
 
             if (this._data.nickName) {
                 this.labelName.string = this._data.nickName + ":" + this._data.name;
@@ -296,12 +309,6 @@ export default class MapClickUILogic extends Component {
             }
         }
 
-        const entity = WorldCommand.getInstance().resourceLandAt(data.x, data.y);
-        if (entity && data.type >= 52 && data.type <= 55) {
-            const mine = String(entity.ownerId) === String(LoginCommand.getInstance().proxy.getRoleData()?.userId);
-            this.labelUnion.string = mine ? '我方领地' : String(entity.ownerId || 0) !== '0' ? '已被占领' : '未占领';
-            this.btnOccupy.node.active = !mine;
-        }
         if (this._data.parentId > 0) {
             this.labelLunxian.string = "沦陷";
         } else {
@@ -342,11 +349,11 @@ export default class MapClickUILogic extends Component {
         if (data.isEmpty) {
             this.labelName.string = '空地';
             this.labelYield.string = '无资源产出';
-            this.labelSoldierCnt.string = '可通行 · 可作为连地目标';
+            this.labelSoldierCnt.string = '可通行 · 可选为迁城位置';
         } else if (data instanceof MapResData && data.type >= 52 && data.type <= 55) {
             this.labelName.string = `${data.level}级${{ 52: '林地', 53: '铁矿', 54: '石料', 55: '粮田' }[data.type]}`;
         }
-        this.layoutPanel();
+        this.updateRelocateButton();
     }
 
     private layoutPanel(): void {
@@ -393,6 +400,7 @@ export default class MapClickUILogic extends Component {
             const label = buttons[i].getComponentInChildren(Label);
             const texts = new Map<Button, string>([[this.btnEnter, '进入'], [this.btnOccupy, WorldCampaign.gateAt(this._data.x, this._data.y) ? '攻打关隘' : '占领'],
                 [this.btnMove, '驻守'], [this.btnGiveUp, '放弃'], [this.btnReclaim, '屯田'], [this.btnBuild, '建造'],
+                [this._btnRelocate, LoginCommand.getInstance().movingCity ? '迁城中…' : '迁城'],
                 [this.btnTransfer, '调动'], [this.btnTagAdd, '标记'], [this.btnTagRemove, '取消标记']]);
             const text = texts.get(buttons[i]) || label?.string || '进入';
             panelButton(buttons[i].node, text, -contentWidth / 2 + width / 2 + (i % 3) * (width + 8),

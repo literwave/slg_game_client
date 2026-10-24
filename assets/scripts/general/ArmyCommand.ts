@@ -41,7 +41,6 @@ export default class ArmyCommand {
         EventMgr.on(ServerConfig.army_conscript, this.onGeneralConscript, this);
         EventMgr.on(ServerConfig.army_assign, this.onGeneralAssignArmy, this);
         EventMgr.on(ServerConfig.army_push, this.onGeneralArmyStatePush, this);
-        EventMgr.on(ServerConfig.nationMap_scanBlock, this.onNationMapScanBlock, this);
 
         //定时检测自己的军队是否有武将已经征兵完，如果是请求刷新
         setInterval(() => {
@@ -135,15 +134,6 @@ export default class ArmyCommand {
         if (data.code == 0) {
             let armyData: ArmyData = this._proxy.updateArmy(data.msg.cityId, data.msg);
             EventMgr.emit(LogicEvent.updateArmy, armyData);
-        }
-    }
-
-    protected onNationMapScanBlock(data: any): void {
-        if (data.code == 0) {
-            for (let i: number = 0; i < data.msg.armys.length; i++) {
-                let armyData: ArmyData = this._proxy.updateArmy(data.msg.armys[i].cityId, data.msg.armys[i]);
-                EventMgr.emit(LogicEvent.updateArmy, armyData);
-            }
         }
     }
 

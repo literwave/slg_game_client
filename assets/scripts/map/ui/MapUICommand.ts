@@ -171,7 +171,9 @@ export default class MapUICommand {
         const configs = this._proxy.getFacilityConfigs();
         const facilities = configs.map(cfg => ({ type: cfg.type, level: levels.get(cfg.type) || 0, up_time: 0 }));
         this._proxy.updateMyFacilityList(cityId, facilities);
+        const addition = this._proxy.updateMyCityAdditions(cityId);
         EventMgr.emit(LogicEvent.updateMyFacilities);
+        EventMgr.emit(LogicEvent.updateCityAddition, cityId, addition);
     }
 
 
@@ -182,7 +184,7 @@ export default class MapUICommand {
      */
     public upFacility(cityId: number = 0, ftype: number = 0): void {
         const main = MapCommand.getInstance().cityProxy.getMyMainCity();
-        if (cityId && main && cityId !== main.cityId) return;
+        if (!main || cityId && cityId !== main.cityId || !this._proxy.getFacilityCfgByType(ftype)) return;
         const build = BuildCommand.getInstance();
         const sent = (build.levels.get(ftype) || 0) > 0 ? build.upgrade(ftype) : build.create(ftype);
         if (!sent) EventMgr.emit(LogicEvent.showToast, '建造请求未发送，请检查连接或稍后重试');

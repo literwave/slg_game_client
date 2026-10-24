@@ -6,13 +6,15 @@ import { NetManager } from "../network/socket/NetManager";
 import DateUtil from "../utils/DateUtil";
 import MapBuildProxy, { MapBuildData } from "./MapBuildProxy";
 import MapCityProxy, { MapCityData } from "./MapCityProxy";
-import MapProxy, { MapAreaData } from "./MapProxy";
+import MapProxy from "./MapProxy";
 import MapUtil from "./MapUtil";
 import MapUICommand from "./ui/MapUICommand";
 import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
 import WorldCampaign from './WorldCampaign';
 import LoginCommand from '../login/LoginCommand';
+import WorldCommand from '../world/WorldCommand';
+import BuildCommand from '../build/BuildCommand';
 
 export default class MapCommand {
     //单例
@@ -45,13 +47,16 @@ export default class MapCommand {
         EventMgr.on(ServerConfig.role_myProperty, this.onRoleMyProperty, this);
         EventMgr.on(ServerConfig.roleBuild_push, this.onRoleBuildStatePush, this);
         EventMgr.on(ServerConfig.nationMap_config, this.onNationMapConfig, this);
-        EventMgr.on(ServerConfig.nationMap_scanBlock, this.onNationMapScanBlock, this);
         EventMgr.on(ServerConfig.nationMap_giveUp, this.onNationMapGiveUp, this);
         EventMgr.on(ServerConfig.nationMap_build, this.onNationMapBuild, this);
         EventMgr.on(ServerConfig.nationMap_upBuild, this.onNationMapUpBuild, this);
         EventMgr.on(ServerConfig.roleCity_push, this.onRoleCityPush, this);
         EventMgr.on(ServerConfig.role_posTagList, this.onPosTagList, this);
         EventMgr.on(ServerConfig.role_opPosTag, this.onOpPosTag, this);
+        EventMgr.on(LogicEvent.updateWorldEntities, this.syncWorldCities, this);
+        EventMgr.on(LogicEvent.updateCityPosition, this.syncWorldCities, this);
+        EventMgr.on(LogicEvent.updateMyRole, this.syncWorldCities, this);
+        EventMgr.on(LogicEvent.updateCityBuilds, this.syncWorldCities, this);
     }
 
     public onDestory(): void {
@@ -62,6 +67,12 @@ export default class MapCommand {
         this._proxy.initData();
         this._cityProxy.initData();
         this._buildProxy.initData();
+        this.syncWorldCities();
+    }
+
+    private syncWorldCities(): void {
+        this._cityProxy.syncWorldCities(Array.from(WorldCommand.getInstance().entities.values()),
+            LoginCommand.getInstance().proxy.getRoleData(), BuildCommand.getInstance().levels.get(1) || 0);
     }
 
     public clearData(): void {
@@ -114,14 +125,6 @@ export default class MapCommand {
         if (data.code == 0) {
             this._proxy.setNationMapConfig(data.msg.Confs);
             this.enterMap();
-        }
-    }
-
-    protected onNationMapScanBlock(data: any, otherData: any): void {
-        console.log("onNationMapScan", data, otherData);
-        if (data.code == 0) {
-            this._cityProxy.setMapScanBlock(data.msg, otherData.id);
-            this._buildProxy.setMapScanBlock(data.msg, otherData.id);
         }
     }
 
@@ -201,7 +204,7 @@ export default class MapCommand {
                 return true
             }
 
-            if (cityData.unionId > 0 && cityData.unionId == this.cityProxy.myUnionId) {
+            if (Number(cityData.unionId) > 0 && cityData.unionId == this.cityProxy.myUnionId) {
                 return true
             }
 
@@ -357,18 +360,6 @@ export default class MapCommand {
             msg: {}
         };
         NetManager.getInstance().send(sendData);
-    }
-
-    public qryNationMapScanBlock(qryData: MapAreaData): void {
-        let sendData: any = {
-            name: ServerConfig.nationMap_scanBlock,
-            msg: {
-                x: qryData.startCellX,
-                y: qryData.startCellY,
-                length: qryData.len
-            }
-        };
-        NetManager.getInstance().send(sendData, qryData);
     }
 
     public giveUpBuild(x: number, y: number): void {

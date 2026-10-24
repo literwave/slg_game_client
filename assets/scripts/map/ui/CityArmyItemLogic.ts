@@ -10,6 +10,7 @@ import GeneralHeadLogic from "./GeneralHeadLogic";
 import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
+import { TroopData } from '../../general/TroopProxy';
 
 @ccclass('CityArmyItemLogic')
 export default class CityArmyItemLogic extends Component {
@@ -43,6 +44,8 @@ export default class CityArmyItemLogic extends Component {
     public order: number = 0;
     protected _cityId: number = 0;
     protected _data: ArmyData = null;
+    private _troop: TroopData = null;
+    private _usesWorldTroop = false;
     protected _isOpened: boolean = true;
     protected _isOut: boolean = true;
 
@@ -54,6 +57,7 @@ export default class CityArmyItemLogic extends Component {
     protected onDestroy(): void {
         EventMgr.targetOff(this);
         this._data = null;
+        this._troop = null;
     }
 
     protected onUpdateArmy(armyData: ArmyData): void {
@@ -81,6 +85,11 @@ export default class CityArmyItemLogic extends Component {
         
         if(this._isOpened == false){
             return
+        }
+
+        if (this._usesWorldTroop) {
+            this.updateTroopItem();
+            return;
         }
 
         if (this._data && this._data.generals[0] != 0) {
@@ -153,6 +162,50 @@ export default class CityArmyItemLogic extends Component {
     public setArmyData(cityId: number, data: ArmyData): void {
         this._cityId = cityId;
         this._data = data;
+        this._troop = null;
+        this._usesWorldTroop = false;
         this.updateItem();
+    }
+
+    public setTroopData(cityId: number, troop: TroopData): void {
+        this._cityId = cityId;
+        this._data = null;
+        this._troop = troop;
+        this._usesWorldTroop = true;
+        this.updateItem();
+    }
+
+    private updateTroopItem(): void {
+        const troop = this._troop;
+        const hasHeroes = !!troop && troop.getHeroCount() > 0;
+        this.tipNode.active = !hasHeroes;
+        this.infoNode.active = hasHeroes;
+        this.labelId.string = String(this.order);
+        if (!hasHeroes) {
+            this.labelTip.string = '点击编制队伍';
+            return;
+        }
+        const generals = GeneralCommand.getInstance().proxy;
+        const leaderIdx = troop.getHeroIdxAt(0);
+        const leader = generals.getMyGeneral(leaderIdx);
+        const nameAt = (position: number) => {
+            const heroIdx = troop.getHeroIdxAt(position);
+            return heroIdx ? (generals.getGeneralCfg(heroIdx)?.name || `武将${heroIdx}`) : '无';
+        };
+        this.headIcon.node.active = !!leader;
+        if (leader) this.headIcon.getComponent(GeneralHeadLogic)?.setHeadId(leader.cfgId);
+        this.labelName.string = leaderIdx ? nameAt(0) : '主将未上阵';
+        this.labelLv.string = leader ? String(leader.level) : '—';
+        this.labelVice1.string = nameAt(1);
+        this.labelVice2.string = nameAt(2);
+        this.labelState.string = '已编队';
+        this.labelArms.string = '';
+        let healthy = 0, hurt = 0;
+        for (const hero of troop.getSortedHeroes()) {
+            const soldier = troop.getSoldier(hero.heroIdx);
+            healthy += soldier.count;
+            hurt += soldier.hurtCount;
+        }
+        this.labelSoldierCnt.string = `${healthy}（伤兵 ${hurt}）`;
     }
 }

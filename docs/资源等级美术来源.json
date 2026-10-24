@@ -1,0 +1,478 @@
+{
+  "description": "四类资源的1—10级独立外观；生成后通过 Image Core 按透明间隙分割并导入 AssetDB。",
+  "transparent_background": true,
+  "crops": {
+    "iron": [
+      "1,0,0,512,280",
+      "3,0,280,512,279",
+      "5,0,559,512,302",
+      "7,0,861,512,287",
+      "9,0,1148,512,388",
+      "2,512,0,512,285",
+      "4,512,285,512,281",
+      "6,512,566,512,290",
+      "8,512,856,512,290",
+      "10,512,1146,512,390"
+    ],
+    "grain": [
+      "1,0,0,512,282",
+      "3,0,282,512,268",
+      "5,0,550,512,291",
+      "7,0,841,512,298",
+      "9,0,1139,512,397",
+      "2,512,0,512,275",
+      "4,512,275,512,283",
+      "6,512,558,512,289",
+      "8,512,847,512,294",
+      "10,512,1141,512,395"
+    ],
+    "forest": [
+      "1,0,0,512,266",
+      "3,0,266,512,302",
+      "5,0,568,512,294",
+      "7,0,862,512,303",
+      "9,0,1165,512,371",
+      "2,512,0,512,274",
+      "4,512,274,512,285",
+      "6,512,559,512,300",
+      "8,512,859,512,299",
+      "10,512,1158,512,378"
+    ],
+    "quarry": [
+      "1,0,0,512,276",
+      "3,0,276,512,269",
+      "5,0,545,512,295",
+      "7,0,840,512,310",
+      "9,0,1150,512,386",
+      "2,512,0,512,279",
+      "4,512,279,512,276",
+      "6,512,555,512,288",
+      "8,512,843,512,309",
+      "10,512,1152,512,384"
+    ]
+  },
+  "prompts": [
+    {
+      "resource": "grain",
+      "reference": "assets/resources/ui/world/grain.png",
+      "prompt": "Create a production game sprite sheet derived from the attached grain resource illustration. Exactly TEN distinct grain resource-land upgrade sprites, levels 1 through 10 in reading order. TRANSPARENT background. Portrait sheet, exactly TWO equal columns and FIVE equal rows (2 x 5); every sprite centered inside its own equal cell with 18% clear margin on all four sides. No content may cross cell boundaries. No grid lines, labels, text, numbers, UI, badges, borders or opaque backgrounds. Each sprite is a complete compact isometric Chinese Three Kingdoms strategy map resource plot with organic earth edges, same 30-degree elevated view and upper-left light, painterly realistic hand-painted textures matching the reference, muted natural earth palette. Build wide, low silhouettes suitable for an isometric map; do not use towering rocks that obscure adjacent cells. Each upgrade must have a clearly different silhouette and facilities, NOT just resizing or recoloring the same plot. The ten designs are: 1: a few wild wheat tufts and bare dirt, no building. 2: one tiny cultivated wheat patch, no building. 3: two separated neat wheat strips with a low wicker fence. 4: three golden plots and a tiny straw lean-to. 5: four fields surrounding a thatched farm shed. 6: a broad farm, one granary and hay bundles. 7: two granaries, a small water wheel and irrigated fields. 8: large terraced grain estate with tiled barn and cart. 9: rich estate with two barns, stacked hay and watermill. 10: monumental prosperous grain depot with courtyard, three granaries and richly cultivated wheat terraces. Keep each group as one contiguous coherent resource site, subtle small ground contact shadows only. The first three levels have visibly fewer structures and very distinct object counts. Later levels progress in wealth, density and architecture. No flags or symbols over the sprites. Target 1024 by 1536 portrait layout, ten isolated sprites."
+    },
+    {
+      "resource": "forest",
+      "reference": "assets/resources/ui/world/forest.png",
+      "prompt": "Create a production game sprite sheet derived from the attached forest resource illustration. Exactly TEN distinct forest resource-land upgrade sprites, levels 1 through 10 in reading order. TRANSPARENT background. Portrait sheet, exactly TWO equal columns and FIVE equal rows (2 x 5); every sprite centered inside its own equal cell with 18% clear margin on all four sides. No content may cross cell boundaries. No grid lines, labels, text, numbers, UI, badges, borders or opaque backgrounds. Each sprite is a complete compact isometric Chinese Three Kingdoms strategy map resource plot with organic earth edges, same 30-degree elevated view and upper-left light, painterly realistic hand-painted textures matching the reference, muted natural earth palette. Build wide, low silhouettes suitable for an isometric map; do not use towering rocks that obscure adjacent cells. Each upgrade must have a clearly different silhouette and facilities, NOT just resizing or recoloring the same plot. The ten designs are: 1: one small young green tree and low shrub, no building. 2: two distinct small trees, no building. 3: a grove of three mature trees and tree stump. 4: grove plus woodcutters lean-to and a few logs. 5: timber camp with thatched shed, trees and log stacks. 6: dense grove with two sheds and an open sawing platform. 7: substantial timber yard, wooden crane and mature trees. 8: tiled lumber workshop, covered log warehouse and large trees. 9: two roofed timber halls, crane and organized large log piles. 10: grand lumber complex with three workshops, high timber hoist, abundant old growth trees. Keep each group as one contiguous coherent resource site, subtle small ground contact shadows only. The first three levels have visibly fewer structures and very distinct object counts. Later levels progress in wealth, density and architecture. No flags or symbols over the sprites. Target 1024 by 1536 portrait layout, ten isolated sprites."
+    },
+    {
+      "resource": "iron",
+      "reference": "assets/resources/ui/world/iron.png",
+      "prompt": "Create a production game sprite sheet derived from the attached iron resource illustration. Exactly TEN distinct iron resource-land upgrade sprites, levels 1 through 10 in reading order. TRANSPARENT background. Portrait sheet, exactly TWO equal columns and FIVE equal rows (2 x 5); every sprite centered inside its own equal cell with 18% clear margin on all four sides. No content may cross cell boundaries. No grid lines, labels, text, numbers, UI, badges, borders or opaque backgrounds. Each sprite is a complete compact isometric Chinese Three Kingdoms strategy map resource plot with organic earth edges, same 30-degree elevated view and upper-left light, painterly realistic hand-painted textures matching the reference, muted natural earth palette. Build wide, low silhouettes suitable for an isometric map; do not use towering rocks that obscure adjacent cells. Each upgrade must have a clearly different silhouette and facilities, NOT just resizing or recoloring the same plot. The ten designs are: 1: two small dark iron-bearing rocks, no building. 2: a larger jagged dark ore outcrop and loose reddish ore, no building. 3: two ore mounds with a shallow hand-dug excavation and tool rack. 4: single timber-framed mine entrance and ore heap. 5: mine entrance with short rails and one cart, compact rocky hill. 6: two mine shafts, hoist and ore sorting shed. 7: stone-faced mine portal with tall wooden hoist and furnace. 8: larger terraced mine, two furnaces and roofed ore storage. 9: industrial ancient Chinese ironworks with two mine portals, cranes and three furnaces. 10: grand rich iron mining complex with deep terraces, tall hoists, multiple furnaces and tiled foundry. Keep each group as one contiguous coherent resource site, subtle small ground contact shadows only. The first three levels have visibly fewer structures and very distinct object counts. Later levels progress in wealth, density and architecture. No flags or symbols over the sprites. Target 1024 by 1536 portrait layout, ten isolated sprites."
+    },
+    {
+      "resource": "quarry",
+      "reference": "assets/resources/ui/world/quarry.png",
+      "prompt": "Create a production game sprite sheet derived from the attached quarry resource illustration. Exactly TEN distinct quarry resource-land upgrade sprites, levels 1 through 10 in reading order. TRANSPARENT background. Portrait sheet, exactly TWO equal columns and FIVE equal rows (2 x 5); every sprite centered inside its own equal cell with 18% clear margin on all four sides. No content may cross cell boundaries. No grid lines, labels, text, numbers, UI, badges, borders or opaque backgrounds. Each sprite is a complete compact isometric Chinese Three Kingdoms strategy map resource plot with organic earth edges, same 30-degree elevated view and upper-left light, painterly realistic hand-painted textures matching the reference, muted natural earth palette. Build wide, low silhouettes suitable for an isometric map; do not use towering rocks that obscure adjacent cells. Each upgrade must have a clearly different silhouette and facilities, NOT just resizing or recoloring the same plot. The ten designs are: 1: two low pale limestone stones on earth, no building. 2: small broad limestone outcrop and a few loose stones, no building. 3: a shallow cut white quarry with stone blocks and tools. 4: single stepped quarry cut with timber tripod crane. 5: two stepped quarry terraces, small shed and cut blocks. 6: three tiers of quarried limestone, crane and stone storage. 7: deep stepped quarry with tall wooden crane and workshop. 8: two cranes, roofed masonry yard and multiple pale limestone terraces. 9: large stoneworks with two masonry halls, tall hoist and deep cut benches. 10: grand imperial quarry with monumental stepped cliffs, three cranes, roofed stonecutting yards and many squared stone stacks. Keep each group as one contiguous coherent resource site, subtle small ground contact shadows only. The first three levels have visibly fewer structures and very distinct object counts. Later levels progress in wealth, density and architecture. No flags or symbols over the sprites. Target 1024 by 1536 portrait layout, ten isolated sprites."
+    }
+  ],
+  "assets": [
+    {
+      "file": "assets/resources/ui/world/forest_lv1.png",
+      "resource": "forest",
+      "level": 1,
+      "width": 390,
+      "height": 271,
+      "sha256": "8de83910a110d2872a26369aad76b0a436140eab056235b99953b7e3f68ed2ee",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/forest_lv3.png",
+      "resource": "forest",
+      "level": 3,
+      "width": 390,
+      "height": 289,
+      "sha256": "9ccfc96da51420ec0bf664450dc0f260607fafa7419edb1a2b7d7538bf5c7196",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/forest_lv5.png",
+      "resource": "forest",
+      "level": 5,
+      "width": 390,
+      "height": 247,
+      "sha256": "943a5d44053ce63050c67ec815c2d77338f2c587459bb01f2931571460080ce5",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/forest_lv7.png",
+      "resource": "forest",
+      "level": 7,
+      "width": 390,
+      "height": 249,
+      "sha256": "736aa3b7dbfc88dc1133d0e2d06bb032e2a9c160a21d963de0eab5b6753d6609",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/forest_lv9.png",
+      "resource": "forest",
+      "level": 9,
+      "width": 390,
+      "height": 247,
+      "sha256": "d090759837ac4877178acec89fa464256ef2e52915862c4ee03ce56a9a1164b7",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/forest_lv2.png",
+      "resource": "forest",
+      "level": 2,
+      "width": 390,
+      "height": 284,
+      "sha256": "b73a4abb26ce9ee385020b18bbe5217a4e4b866db34fe9034512c6fd26637a7c",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/forest_lv4.png",
+      "resource": "forest",
+      "level": 4,
+      "width": 390,
+      "height": 255,
+      "sha256": "ddefa79e9f5caf7f3ae8280adb7c78457bf81cdc7e373f93c85471b6774ad9f3",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/forest_lv6.png",
+      "resource": "forest",
+      "level": 6,
+      "width": 390,
+      "height": 246,
+      "sha256": "4fdc30be26e9d8ac76d923d78f935281b4b8da6f6fd2a54ef75859a6c70a83b0",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/forest_lv8.png",
+      "resource": "forest",
+      "level": 8,
+      "width": 390,
+      "height": 241,
+      "sha256": "73f92ae6f7ac7238070608bda2bf9f3b9a452f6368010eca4f1a6487d14265d6",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/forest_lv10.png",
+      "resource": "forest",
+      "level": 10,
+      "width": 390,
+      "height": 258,
+      "sha256": "fe533f300a300b10be8fbb26bdf247e5e9a44ffb4827d139d515d8b7101f99de",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/grain_lv1.png",
+      "resource": "grain",
+      "level": 1,
+      "width": 390,
+      "height": 213,
+      "sha256": "9be34cc12f0aafbb507e231359327766fe98ab65620256815b4e773ecb81c845",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/grain_lv3.png",
+      "resource": "grain",
+      "level": 3,
+      "width": 390,
+      "height": 199,
+      "sha256": "497d74183a345c0ae2de41184dcf02748668c10ad733f0d9261163c78ee89a71",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/grain_lv5.png",
+      "resource": "grain",
+      "level": 5,
+      "width": 390,
+      "height": 221,
+      "sha256": "772cb829b699025b2533ea54b17862b6fc619595b9a7db656ce7c66557b21cda",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/grain_lv7.png",
+      "resource": "grain",
+      "level": 7,
+      "width": 390,
+      "height": 237,
+      "sha256": "25cf3881208587855f17289ff3fd55f89fb36f15d8e2fbc078882573cee4b308",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/grain_lv9.png",
+      "resource": "grain",
+      "level": 9,
+      "width": 390,
+      "height": 274,
+      "sha256": "574eeb6cf204882febc356ce061e34ba7df015b3d7fc0379a1580eddb4c5169b",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/grain_lv2.png",
+      "resource": "grain",
+      "level": 2,
+      "width": 390,
+      "height": 207,
+      "sha256": "1417d4dc7470db8c5a817c5ce156c533a65acd64d9e460d0284b73bedef51332",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/grain_lv4.png",
+      "resource": "grain",
+      "level": 4,
+      "width": 390,
+      "height": 221,
+      "sha256": "393676ee64d099123d1919b6cca8063328150e5a70a69053ca76f381275e7e93",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/grain_lv6.png",
+      "resource": "grain",
+      "level": 6,
+      "width": 390,
+      "height": 231,
+      "sha256": "bd729d6cfda6ced2b2b2d130a12c0c46da0c56b29d4fbe9204523370092c9a77",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/grain_lv8.png",
+      "resource": "grain",
+      "level": 8,
+      "width": 390,
+      "height": 232,
+      "sha256": "48273781a9f0992013af348bf6ffd6fa33c324529248e9e4da12ad3a9594a73b",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/grain_lv10.png",
+      "resource": "grain",
+      "level": 10,
+      "width": 390,
+      "height": 278,
+      "sha256": "6cec1588ec2d83a1c67f2428252f5d621eae3227f14cb7559c6f5291c9ebe34c",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/iron_lv1.png",
+      "resource": "iron",
+      "level": 1,
+      "width": 390,
+      "height": 197,
+      "sha256": "eec8122751d04db0c88e8f4325f3d2ca85124e43b059272d9199f5005653d39d",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/iron_lv3.png",
+      "resource": "iron",
+      "level": 3,
+      "width": 390,
+      "height": 200,
+      "sha256": "bf3340935c95f9e131af5b6ba5d28d87042db11ad36863488c27d37b273fa11a",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/iron_lv5.png",
+      "resource": "iron",
+      "level": 5,
+      "width": 390,
+      "height": 236,
+      "sha256": "32d6300eba7c736c5ff9e40822017b5f0bf032714aa5ddfc9c178a3335034aa4",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/iron_lv7.png",
+      "resource": "iron",
+      "level": 7,
+      "width": 390,
+      "height": 237,
+      "sha256": "7b5672bea540d65ca46cb855a82aa82f2f5cfc5c2b0092847e3068c85ccf9ba9",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/iron_lv9.png",
+      "resource": "iron",
+      "level": 9,
+      "width": 390,
+      "height": 268,
+      "sha256": "695d6ebfbb550fee7d758691bf202618a9b04c37a3448a6d30e26e2f01dd7254",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/iron_lv2.png",
+      "resource": "iron",
+      "level": 2,
+      "width": 390,
+      "height": 242,
+      "sha256": "1e804d1eb998b903ec0f5c7093ab4a5834a2ed31badfc7eb364e6291471b27cc",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/iron_lv4.png",
+      "resource": "iron",
+      "level": 4,
+      "width": 390,
+      "height": 223,
+      "sha256": "f424645b85c898208eb77c87050b44bc8189ba6f08148dbfc768ba2d07401166",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/iron_lv6.png",
+      "resource": "iron",
+      "level": 6,
+      "width": 390,
+      "height": 223,
+      "sha256": "e0e96688a808665e98d1878ad3c0da367ae5332bece60e245da83a45cb47ac9a",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/iron_lv8.png",
+      "resource": "iron",
+      "level": 8,
+      "width": 390,
+      "height": 231,
+      "sha256": "25b485263220881847530e731afa0f5cf7320754853a0c37c71c8d540d3c30d4",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/iron_lv10.png",
+      "resource": "iron",
+      "level": 10,
+      "width": 390,
+      "height": 272,
+      "sha256": "d382ec3ece92a588f8159cb41e1465681f14ced018733e4243e82e45d3f8f534",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/quarry_lv1.png",
+      "resource": "quarry",
+      "level": 1,
+      "width": 390,
+      "height": 209,
+      "sha256": "2c208ec4c515fa5a6a7e7e5f7823be869fc58adbb388fbe98f8c5bcc9e6449aa",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/quarry_lv3.png",
+      "resource": "quarry",
+      "level": 3,
+      "width": 390,
+      "height": 196,
+      "sha256": "0bd37944e538da52c5c3cb239226f679e64bc4e61efdeaa1e9d6e6b3609a11b4",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/quarry_lv5.png",
+      "resource": "quarry",
+      "level": 5,
+      "width": 390,
+      "height": 219,
+      "sha256": "9e823702ea6c655d1dfa723ed4dd102798e279d88d807ac4bb71a36ccdc9cb0f",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/quarry_lv7.png",
+      "resource": "quarry",
+      "level": 7,
+      "width": 390,
+      "height": 221,
+      "sha256": "dddd110b776427784595d3e51783f7b7fa57d02cb02fec434a57537feb6952c7",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/quarry_lv9.png",
+      "resource": "quarry",
+      "level": 9,
+      "width": 390,
+      "height": 259,
+      "sha256": "b92ed0a8c63d77490dce83d28afc165dfc6a1f8a048175460f082604b41236b2",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/quarry_lv2.png",
+      "resource": "quarry",
+      "level": 2,
+      "width": 390,
+      "height": 199,
+      "sha256": "279585539c70f055599c84c8e98ecc1846095d42281718ad17bb44283cfe9f07",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/quarry_lv4.png",
+      "resource": "quarry",
+      "level": 4,
+      "width": 390,
+      "height": 208,
+      "sha256": "1731fb5c1acdc8f5f669c885c30597895c80983e935156a93cf715925d955e83",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/quarry_lv6.png",
+      "resource": "quarry",
+      "level": 6,
+      "width": 390,
+      "height": 212,
+      "sha256": "8b1516bd2f0464bddbddebaa12b9aa9a84709b80991472c9765a87777b109d38",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/quarry_lv8.png",
+      "resource": "quarry",
+      "level": 8,
+      "width": 390,
+      "height": 230,
+      "sha256": "2f45c041ded1a78aed540f3df69c6aeb4b76202b4feda5ec4d817287be9a9951",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    },
+    {
+      "file": "assets/resources/ui/world/quarry_lv10.png",
+      "resource": "quarry",
+      "level": 10,
+      "width": 390,
+      "height": 263,
+      "sha256": "a35ed0fa99d124e57b098e80b04e6f16948562c45108f0dad816a9bc7231a2e4",
+      "assetDbVerified": true,
+      "settingsVerified": true
+    }
+  ]
+}

@@ -409,7 +409,7 @@ export default class MapUIProxy {
                 cfg.conditions = (row.CreateLimit || []).map(pair => ({ type: pair.bid, level: pair.lev }));
                 for (const level of additionJson.filter(r => r.BuildingType === row.Id)) {
                     const up = new FacilityUpLevel();
-                    Object.assign(up, { level: level.Lv, grain: level.CostGrain, wood: level.CostWood, iron: level.CostIron,
+                    Object.assign(up, { level: level.Lv, grain: level.CostGrain, wood: level.CostWood, iron: level.CostIron, stone: level.CostStone || 0,
                         conditions: (level.UpgradeLimit || []).map(pair => ({ type: pair.bid, level: pair.lev })) });
                     cfg.upLevels[level.Lv - 1] = up;
                 }

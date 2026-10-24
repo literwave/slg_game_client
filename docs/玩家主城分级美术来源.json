@@ -1,0 +1,352 @@
+{
+  "version": 1,
+  "description": "玩家主城 1—30 级独立外观。主城等级来自 Build.s2c_sync_build（bid=1）；未知玩家等级使用中性 county 外观。",
+  "generator": "image_gen.imagegen",
+  "reference": "assets/resources/ui/world/county.png",
+  "sharedPrompt": "Create ONE production-ready transparent PNG sprite of a PLAYER MAIN CITY for a Chinese Three Kingdoms isometric strategy world map. 2:1 isometric ground axes, view from the south-east at about 30 degrees above ground, front entrance facing lower-right. Match the reference's muted olive-earth, warm weathered limestone, dark grey-blue roof tiles and restrained dark-red timber, hand-painted detailed game map art. Attractive coherent architectural design, elegant clear silhouette readable at 350 screen pixels. Architecture must change genuinely with the specified level. Full complete settlement visible, centered, ample transparent margin, no cropping, minimal ground only immediately under wall outline with soft natural grass fringes, no square terrain tile, no rocky floating pedestal, no mountains, no river, no black shadow slab, no luminous outline. Upper-left soft daylight, subtle baked shadows, crisp roofs and walls. No text, symbols, numbers, level labels or UI. One isolated whole city only, not a sheet. The reference is style only; change the structure to the specified design. Specification: ",
+  "processing": [
+    "trimTransparent(alphaThreshold=8)",
+    "resize inside 640×640 bicubic"
+  ],
+  "texture": {
+    "filter": "linear",
+    "wrap": "clamp",
+    "mipmap": true,
+    "pivot": {
+      "x": 0.5,
+      "y": 0.3
+    }
+  },
+  "variants": [
+    {
+      "level": 1,
+      "asset": "assets/resources/ui/world/player_city_lv1.png",
+      "sourceImage": "exec-ee531b92-2979-4572-ad0b-403a5ec5103b.png",
+      "prompt": "1: Tiny frontier settlement: short irregular rammed-earth enclosure, simple timber gate without a roof, one low thatched lord's hall, two small thatched cottages, open dirt courtyard. No corner towers.",
+      "width": 640,
+      "height": 362,
+      "sourceSha256": "1ea80b010d78f673b267cc59bea8f6916bef8c11c1633e180cc2b3c6ed03c18e",
+      "outputSha256": "4257d79105c5937e203389a74dd084291fe20baa81eb882ba6f8650cff781dbd",
+      "transparent": true
+    },
+    {
+      "level": 2,
+      "asset": "assets/resources/ui/world/player_city_lv2.png",
+      "sourceImage": "exec-345830be-b4db-4574-bf53-343188c19013.png",
+      "prompt": "2: Timber-fenced settlement: retain the low earth enclosure, add two square wooden lookout towers beside the front gate, four thatched cottages and a small timber hall.",
+      "width": 640,
+      "height": 385,
+      "sourceSha256": "bfb9ca91ffe2f20cc45ddd316ba0841a7f1ef1766f41552eb7554dc0630cd470",
+      "outputSha256": "761f434e96c6bd17c623f2bb67a3f296e5434208dcb2463379c8c4aec9c152ea",
+      "transparent": true
+    },
+    {
+      "level": 3,
+      "asset": "assets/resources/ui/world/player_city_lv3.png",
+      "sourceImage": "exec-93dcf2e8-6edf-4c1e-abb1-e36c9934a369.png",
+      "prompt": "3: Palisade village: continuous tall timber palisade, roofed single-storey gate, four corner watchtowers, six cottages around a larger central wood hall.",
+      "width": 640,
+      "height": 422,
+      "sourceSha256": "afbbd88dd6c3032026ad8dea39699e391be5d9a34081e5e963b2c4af59bf8786",
+      "outputSha256": "e7bf6221b127b493c989b2b538f16f8307a03bcdb2b053d8268c0a98a2c58d82",
+      "transparent": true
+    },
+    {
+      "level": 4,
+      "asset": "assets/resources/ui/world/player_city_lv4.png",
+      "sourceImage": "exec-214a91ef-85e1-4d26-8713-132ad2c76ba5.png",
+      "prompt": "4: Walled hamlet: thicker earth walls with wooden parapets, larger tiled timber gatehouse, granary yard on the left and a market courtyard on the right.",
+      "width": 640,
+      "height": 403,
+      "sourceSha256": "73b1884824eac43ddff26d902c0190e4627f4949f177f9be7dae83adc074da25",
+      "outputSha256": "395b3dddd2af6df6ae21c63311991326df7232e9677e2d592b3926ef06530766",
+      "transparent": true
+    },
+    {
+      "level": 5,
+      "asset": "assets/resources/ui/world/player_city_lv5.png",
+      "sourceImage": "exec-667662b5-85d3-427d-ba10-1b988c7ea470.png",
+      "prompt": "5: Fortified town: pale compacted-earth walls with dark stone footing, four timber roofed corner towers, an inner courtyard around a tiled magistrate hall, eight small tiled houses.",
+      "width": 640,
+      "height": 423,
+      "sourceSha256": "deddc08da024e6512238dddf807b34323f406305b10c6e77fa645d6946066b47",
+      "outputSha256": "9f810e5ae010ca2082a4ca8de5a1ecab656c8d593a18018d0d528ba6399ec091",
+      "transparent": true
+    },
+    {
+      "level": 6,
+      "asset": "assets/resources/ui/world/player_city_lv6.png",
+      "sourceImage": "exec-e4ea5c7f-c010-4a11-a5ce-f0ec5cccd045.png",
+      "prompt": "6: Early stone town: replace front wall with grey stone crenellations, wide arched gate under a two-tier wooden gatehouse, rear earth walls, compact single-storey palace.",
+      "width": 640,
+      "height": 404,
+      "sourceSha256": "861ec9da37d9b17e8dd1d5b8dbf77bdcc45291ee3098911e3770e12690e7b064",
+      "outputSha256": "8465113d7461f7295d6980ffc1975597a93166e615f87147e04870f966ca3ed6",
+      "transparent": true
+    },
+    {
+      "level": 7,
+      "asset": "assets/resources/ui/world/player_city_lv7.png",
+      "sourceImage": "exec-18c1974f-fd49-4804-b96b-5273659d1f4a.png",
+      "prompt": "7: Stone town: full low grey stone walls, four square corner turrets, double-courtyard lord's residence and two distinct street blocks.",
+      "width": 640,
+      "height": 412,
+      "sourceSha256": "a4226ca093b8abf8d3656f30d0fe7c92fce373e327e7acf16438699e98b3232c",
+      "outputSha256": "04c8824c015c338435a08601d61a12b81a7ea199edd1a59d51bbf77275e81e55",
+      "transparent": true
+    },
+    {
+      "level": 8,
+      "asset": "assets/resources/ui/world/player_city_lv8.png",
+      "sourceImage": "exec-c12d116b-c23f-404e-aea6-097572e748a6.png",
+      "prompt": "8: Market town: high stone front wall with a protruding fortified gate, full roofed corner towers, small town market and expanded stepped tiled central hall.",
+      "width": 640,
+      "height": 412,
+      "sourceSha256": "d71ff2958ce58f883d45da80d1898aacff0d66a8eb8f4309dc46421cec9b4e35",
+      "outputSha256": "f10136bdfe49339b8a0c3a666142401110b0c39d29fe19332f852361848d5630",
+      "transparent": true
+    },
+    {
+      "level": 9,
+      "asset": "assets/resources/ui/world/player_city_lv9.png",
+      "sourceImage": "exec-ad69bf0c-7fa3-4cec-a5ac-10626fb6d24f.png",
+      "prompt": "9: Garrison town: broad rectangular stone enclosure, twin front defensive towers, separate barracks courtyard and civil housing block, pronounced three-roof central residence.",
+      "width": 640,
+      "height": 409,
+      "sourceSha256": "64492d5edc0e571ca0591e1a301cf86a77c1efae888281f46bbf376a1ee00833",
+      "outputSha256": "33a1b1de4b4d6fd2d1c4ca40767d544ea9a7393fece3d19d58e0c922e10fafec",
+      "transparent": true
+    },
+    {
+      "level": 10,
+      "asset": "assets/resources/ui/world/player_city_lv10.png",
+      "sourceImage": "exec-f7d24dfc-9d81-4f81-9352-af37b4062e53.png",
+      "prompt": "10: County stronghold: thick grey battlements with six towers, monumental double-storey gate, orderly inner streets, elegant elevated three-bay central court hall, two dense housing districts.",
+      "width": 640,
+      "height": 421,
+      "sourceSha256": "95d474539ceeb5a653bf248792c806deb4176e2e241a8f439f603ad4ba2addd9",
+      "outputSha256": "ffd872d59e24e1f5f729fd41c1be5680895a32e8f8fbc1b5bf51f383f8de15f4",
+      "transparent": true
+    },
+    {
+      "level": 11,
+      "asset": "assets/resources/ui/world/player_city_lv11.png",
+      "sourceImage": "exec-12fdb4e9-5098-4ab9-a68a-83dca88ebf0b.png",
+      "prompt": "11: Mature county city: add forward semicourtyard barbican before main gate, six corner and flank turrets, central residence with two wings and tiled courtyards.",
+      "width": 640,
+      "height": 420,
+      "sourceSha256": "e14baebda73679f4a673fc89e3aa3f7a1e9e389f54e358b32f3446fb4544328a",
+      "outputSha256": "f4851ccc87a3bdadae69c6538276b9558479b048fda43075195d430301d614d1",
+      "transparent": true
+    },
+    {
+      "level": 12,
+      "asset": "assets/resources/ui/world/player_city_lv12.png",
+      "sourceImage": "exec-8cfb78af-1c29-4b4d-a98a-a5ed0ffab73a.png",
+      "prompt": "12: Double-court city: fortified front barbican, eight wall towers, two nested central government courtyards, ordered side residential blocks, wider stone bridge at gate.",
+      "width": 640,
+      "height": 400,
+      "sourceSha256": "380f68e96bf75add60424d9e0b92d6fbcb01b916d8966d858de7f5c1c40e0919",
+      "outputSha256": "1ff58d00c949c4bc28b0fa9ba0110f0980abe6b054a0ee6afccb479c7c70a25a",
+      "transparent": true
+    },
+    {
+      "level": 13,
+      "asset": "assets/resources/ui/world/player_city_lv13.png",
+      "sourceImage": "exec-df3952e1-fd57-45cc-ae08-8fb6a615e219.png",
+      "prompt": "13: Administrative city: higher enclosing walls, roofed front barbican, larger rear palace terrace, left academy courtyard and right barracks courtyard, eight defensive towers.",
+      "width": 640,
+      "height": 418,
+      "sourceSha256": "f802acd5ea38d1730259673c435199a435a9abec9a322f18e93520e645157284",
+      "outputSha256": "d8f7aa94169a03279f2deb16bba326faf7115ae612cf170ac99dd709c25a66b5",
+      "transparent": true
+    },
+    {
+      "level": 14,
+      "asset": "assets/resources/ui/world/player_city_lv14.png",
+      "sourceImage": "exec-eec62ef0-88d3-4eb9-9b59-2f850028ba8b.png",
+      "prompt": "14: Prefectural town: square eight-tower wall, large three-storey central gate complex, elegant long tiled residential rows and a prominent tiled main hall on a raised stone terrace.",
+      "width": 640,
+      "height": 411,
+      "sourceSha256": "67e42449aaa915e4c96bbbe628e27b05e68fef9a6cbbbee00eda539728d4cac8",
+      "outputSha256": "8768b71396a86bcd9689482361583ff0d9a6b8eb8191d40f6b585214e2a09666",
+      "transparent": true
+    },
+    {
+      "level": 15,
+      "asset": "assets/resources/ui/world/player_city_lv15.png",
+      "sourceImage": "exec-1bb38b1e-4ebd-4afb-908a-1789a3ab0443.png",
+      "prompt": "15: Prefectural stronghold: inner citadel around lord's palace in addition to outer walls, wide fortified barbican, eight towers, palace has two wing halls and rear ceremonial courtyard.",
+      "width": 640,
+      "height": 319,
+      "sourceSha256": "24f2682fda005e487548a4e2f367723fd393443ee55bd9c3a619b50f61d6f016",
+      "outputSha256": "5e02797ab419cfca28da64641dd67facc13186f7dacbd669bec992c78d3ee1f5",
+      "transparent": true
+    },
+    {
+      "level": 16,
+      "asset": "assets/resources/ui/world/player_city_lv16.png",
+      "sourceImage": "exec-2b2f0609-d2b9-4bca-9f52-dce59333f34a.png",
+      "prompt": "16: Great walled city: distinct outer city and inner palace wall, ten wall towers, wide main avenue from ornate gate to tiered central palace, two busy but legible city districts.",
+      "width": 640,
+      "height": 418,
+      "sourceSha256": "5e7de4332f7523d202cd531d83ab328d2d0b5455698f9d7a98d13bc7b3d56d99",
+      "outputSha256": "229db23f16934ec54d93350e864e3b3744eb49a9e334761c0c220474a1a6db07",
+      "transparent": true
+    },
+    {
+      "level": 17,
+      "asset": "assets/resources/ui/world/player_city_lv17.png",
+      "sourceImage": "exec-8a6dbf87-cb1e-4572-bd08-dd804c7f5612.png",
+      "prompt": "17: Double-enclosure city: stronger outer wall, extended left artisan district and right barracks, taller forward gatehouse, central palace with three ordered courts.",
+      "width": 640,
+      "height": 418,
+      "sourceSha256": "d1d9ac0c01106117ac22da3bd88bf6fd5e5e6ff55959298d651ebf165b5acf05",
+      "outputSha256": "c5866d772a5b7175e84df00748ea5cb2cbfbf7461e1cc426dffc5b52704000f3",
+      "transparent": true
+    },
+    {
+      "level": 18,
+      "asset": "assets/resources/ui/world/player_city_lv18.png",
+      "sourceImage": "exec-879cafc7-1e9a-4ebb-810e-a862927eee27.png",
+      "prompt": "18: Provincial city: twelve roofed wall towers, a secondary fortified gate on the right, massive front gate courtyard, broad three-tier tiled central palace with balanced side halls.",
+      "width": 640,
+      "height": 402,
+      "sourceSha256": "8cb650148074ae7fc58cdbf7aa3927573985466e38e6d50aeada32f54b721206",
+      "outputSha256": "17dba09f89bb20b37285fbae62701da28c6d7a309ea0f0858a74cb72fbd5c3be",
+      "transparent": true
+    },
+    {
+      "level": 19,
+      "asset": "assets/resources/ui/world/player_city_lv19.png",
+      "sourceImage": "exec-c5fbd829-e88b-4c60-abb9-b80f0ebe01f1.png",
+      "prompt": "19: Provincial capital: taller inner citadel, a forward twin-gate barbican, small ceremonial tower behind palace, compact market and residential courts within a broad outer wall.",
+      "width": 640,
+      "height": 414,
+      "sourceSha256": "760d89f3b41d34153a5ee44a2c7bb223db1186260e334fda2a1fc2ad66d545cf",
+      "outputSha256": "99323d7eef290dc05786e71fb80d7417df14b5a275b915a750879b0f630e460a",
+      "transparent": true
+    },
+    {
+      "level": 20,
+      "asset": "assets/resources/ui/world/player_city_lv20.png",
+      "sourceImage": "exec-276a4506-49fc-4e1f-8cf4-78f70228cbff.png",
+      "prompt": "20: Grand provincial capital: two complete nested grey-stone wall rings, twelve roofed towers, prominent axial palace and broad grand staircase, elegant distinct civic courtyards.",
+      "width": 640,
+      "height": 415,
+      "sourceSha256": "c26648c8f226299490472bef6659b779ce994cea21a933efa54c9e6c9b14728b",
+      "outputSha256": "3445be8da470908592bae330b7b28ee75583bea5851d975dec18b0d0430cc9be",
+      "transparent": true
+    },
+    {
+      "level": 21,
+      "asset": "assets/resources/ui/world/player_city_lv21.png",
+      "sourceImage": "exec-9b4503d1-d349-4610-aa6c-fb16fd684810.png",
+      "prompt": "21: Ducal capital: broaden the nested city silhouette with two lateral civic wings, two-storey towers, double-layer fortified front gate, imposing central ducal hall with five roof masses.",
+      "width": 640,
+      "height": 406,
+      "sourceSha256": "5f910176c82c5d55b13db764ac86af55521cf9ebea5367730596f7a2a03a7628",
+      "outputSha256": "af9c0c638f32084f84cd56c33bc631ab523343833c62d880101469229de46952",
+      "transparent": true
+    },
+    {
+      "level": 22,
+      "asset": "assets/resources/ui/world/player_city_lv22.png",
+      "sourceImage": "exec-bb75acf6-12aa-4753-b302-9ca179250108.png",
+      "prompt": "22: Ducal fortress city: additional defensive corner bastions, grand front barbican and wide stone entry apron, raised palace complex with several interconnected tiled courts.",
+      "width": 640,
+      "height": 406,
+      "sourceSha256": "294a1863a7d6b26baf8e23b86ab8d7f3727852cff269a06002be347254774775",
+      "outputSha256": "4854d91a530a84342dc6341c4adc229c7ff5df4e7cc0c14b916ad83940c4ec57",
+      "transparent": true
+    },
+    {
+      "level": 23,
+      "asset": "assets/resources/ui/world/player_city_lv23.png",
+      "sourceImage": "exec-22567092-b978-466a-94b7-e44c8143309e.png",
+      "prompt": "23: Grand ducal city: fortified outer enclosure with fourteen roofed towers, walled ceremonial palace district, two prominent side pavilions, long legible main avenue.",
+      "width": 640,
+      "height": 405,
+      "sourceSha256": "af1b8083f60fd7b12e37a665efbdd885286bd43bbaa082f171d2eaa371869135",
+      "outputSha256": "b47e9563ffd70846e6e668e71e468f52aa654f9d0239cfad4c5b2602015c4d7e",
+      "transparent": true
+    },
+    {
+      "level": 24,
+      "asset": "assets/resources/ui/world/player_city_lv24.png",
+      "sourceImage": "exec-f1f8e485-b3dc-4dcf-82e1-65a747f97806.png",
+      "prompt": "24: Royal seat: double perimeter walls, monumental double-front-gate approach, high central three-tier palace on stepped terraces, roofed galleries enclosing multiple courtyards.",
+      "width": 640,
+      "height": 408,
+      "sourceSha256": "47835b3a18a8eaa8e8b24cee83d44c5ee69ddbea50bc598a77ac18909907ea77",
+      "outputSha256": "0e4c33164b394299888e960b879bfe24d00b19ae148645a9a142cca0a9b66dd3",
+      "transparent": true
+    },
+    {
+      "level": 25,
+      "asset": "assets/resources/ui/world/player_city_lv25.png",
+      "sourceImage": "exec-6ca5f721-61dd-467f-8d03-8050c64f431e.png",
+      "prompt": "25: Royal capital: wide bastioned outer walls, sixteen towers, separate raised inner royal city, balanced large civic districts flanking the main palace axis, refined muted golden ridge details.",
+      "width": 640,
+      "height": 429,
+      "sourceSha256": "b8593bdae5c2dfb912623f48a15b73d55bcc80f75b49d19ebe65a1c14b391074",
+      "outputSha256": "866a30f67c4e021d8280de10b1b4cbdb5b13abefbd5b550b6b82310419798174",
+      "transparent": true
+    },
+    {
+      "level": 26,
+      "asset": "assets/resources/ui/world/player_city_lv26.png",
+      "sourceImage": "exec-88e8e976-0a4c-4780-aa42-dd427d6eec43.png",
+      "prompt": "26: Mature royal capital: expanded outer city with front wing walls, grand three-storey gate and two flanking gate towers, three ascending palace platforms and several secondary grand halls.",
+      "width": 640,
+      "height": 413,
+      "sourceSha256": "111438b0f0cbfe8eb5f1d91b37eaee50c13be4cc230b53238bf57ee6d9b80d9d",
+      "outputSha256": "7f2409a36e9f7d6d4ae934993a44e536dc17b04139c63c16f4c0fab1d8e2bb49",
+      "transparent": true
+    },
+    {
+      "level": 27,
+      "asset": "assets/resources/ui/world/player_city_lv27.png",
+      "sourceImage": "exec-ed42f18a-1da6-4b98-a663-f3f59b9037a4.png",
+      "prompt": "27: Imperial seat: two great perimeter rings with staggered stone towers, large front barbican courtyard, imposing tiered palace with transverse gallery wings, dense carefully ordered civic blocks.",
+      "width": 640,
+      "height": 411,
+      "sourceSha256": "072a3f78e0651e84e4510e629a237be1b2f774a7f6c35ca1181cc54badd45eb7",
+      "outputSha256": "66dd57412ce7eab2cdc94862a3c810602d460a20461ff8182d8e788b3346fefb",
+      "transparent": true
+    },
+    {
+      "level": 28,
+      "asset": "assets/resources/ui/world/player_city_lv28.png",
+      "sourceImage": "exec-43d87523-8743-4bbc-83a2-c6d4f2fe9804.png",
+      "prompt": "28: Imperial capital: polygonal outer enclosure with projecting corner bastions, secondary side gates, double ceremonial gate axis, enormous but grounded palace court with several halls.",
+      "width": 640,
+      "height": 420,
+      "sourceSha256": "a850aa56734301db3bf6ed117d2865610e3347d7fa9e1d2066153126f3b5b382",
+      "outputSha256": "ab98f5b24bb3cea9b8c567912e8f1bc708e676bb14be9a90a401b605a0a9b89b",
+      "transparent": true
+    },
+    {
+      "level": 29,
+      "asset": "assets/resources/ui/world/player_city_lv29.png",
+      "sourceImage": "exec-03e1a2fc-7291-488f-a960-ee47fe5c4b63.png",
+      "prompt": "29: Grand imperial capital: a third inner palace enclosure, sixteen tall tiled wall towers, broad double-gate front forecourt, seven prominent palace roof masses on stepped terraces.",
+      "width": 640,
+      "height": 405,
+      "sourceSha256": "006ce688c9e62b67506ec41705edee8d725a6f453b986134821e635ebc46a230",
+      "outputSha256": "a2674f0f9cb7c4b2658649d19c95e1c129f8edf3c60fbf7efb058599e3e3b3f5",
+      "transparent": true
+    },
+    {
+      "level": 30,
+      "asset": "assets/resources/ui/world/player_city_lv30.png",
+      "sourceImage": "exec-9234893e-f977-44ee-8dd7-12c7dd665974.png",
+      "prompt": "30: Fully developed imperial metropolis: magnificent three nested wall and courtyard layers, fortified double barbican entrance, broad high central palace with three ascending halls and balanced wings, many carefully ordered city blocks and staggered defensive towers, dignified grand silhouette.",
+      "width": 640,
+      "height": 419,
+      "sourceSha256": "9f8a4bbd472724abb9498f647a891092f901b16267b0c9f3aa5dd6d0758bdade",
+      "outputSha256": "91cabd79fe135998bbeae7646d8b301a0f8cc48661a1b00371de8981ac85cea9",
+      "transparent": true
+    }
+  ]
+}

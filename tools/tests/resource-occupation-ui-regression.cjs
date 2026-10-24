@@ -8,21 +8,23 @@ let Item;
 const events = [], sent = [], rendered = [];
 const entity = { entityId: '9007199254740993', pos: { x: 10, y: 20 } };
 let currentEntity = entity, issue = '', blocked = '', busy = false;
+let cell = { type: 54, level: 3 }, city = null, roster;
 const world = { resourceLandAt: () => currentEntity, resourceLandIssue: () => issue,
     marches: { get: () => busy ? { state: 1 } : undefined },
     occupyResourceLand: (idx, id) => { if (busy) return false; sent.push([idx, id]); return true; } };
-const map = { proxy: { getResData: () => ({ type: 54, level: 3 }) },
-    cityProxy: { getMyMainCity: () => null }, campaignBlockReason: () => blocked };
+const map = { proxy: { getResData: () => cell },
+    cityProxy: { getCity: () => city, getMyMainCity: () => ({ cityId: 1 }) }, campaignBlockReason: () => blocked };
 const generals = { getMyGeneral: id => id ? { cfgId: id + 100, level: 6 } : null,
     getGeneralCfg: id => ({ name: `将${id}` }) };
-const troops = { proxy: { getTroop: () => troop, getTroops: () => [troop] }, requestTroops: () => { troops.requests++; }, requests: 0 };
+const troops = { proxy: { getTroop: () => troop, getTroops: () => roster }, requestTroops: () => { troops.requests++; }, requests: 0,
+    listReady: true, listLoading: false, editingTroopIdx: 0 };
 const cc = { Component: class {}, Node: class {},
     _decorator: { ccclass: () => v => v, property: () => () => {} },
-    instantiate: () => ({ set parent(value) { value.children.push(this); }, destroy() {},
-        getComponent: () => ({ setTroopData: (data, x, y) => rendered.push([data.troopIdx, x, y]) }) }) };
+    instantiate: () => ({ set parent(value) { value.children.push(this); }, destroy() {}, setPosition() {},
+        getComponent: () => ({ setTroopData: (data, x, y) => rendered.push([data.troopIdx, x, y]), layoutRow() {} }) }) };
 const shared = {
     '../../general/ArmyProxy': { ArmyCmd: { Attack: 1 } },
-    '../../general/ArmyCommand': { default: { getInstance: () => ({ generalAssignArmy() { throw new Error('不可走旧出征协议'); } }) } },
+    '../../general/ArmyCommand': { default: { getInstance() { throw new Error('不可读取旧 Army 列表或发送旧出征协议'); } } },
     '../../general/GeneralCommand': { default: { getInstance: () => ({ proxy: generals }) } },
     '../../general/TroopCommand': { default: { getInstance: () => troops } },
     '../../world/WorldCommand': { default: { getInstance: () => world } },
@@ -32,6 +34,8 @@ const shared = {
     '../../common/LogicEvent': { LogicEvent: { showToast: 'toast', closeArmyAelectUi: 'close' } },
     '../../common/AudioManager': { AudioManager: { instance: { playClick() {} } } },
     './GeneralHeadLogic': { default: class {} },
+    './ManagementStyle': {},
+    '../core/ConfigManager': { default: {} },
 };
 function load(file) {
     const source = fs.readFileSync(path.join(root, 'assets/scripts', file + '.ts'), 'utf8');
@@ -41,14 +45,16 @@ function load(file) {
     new Function('require', 'module', 'exports', code)(id => {
         if (id === 'cc') return cc;
         if (id === './ArmySelectItemLogic') return { default: Item };
+        if (id === '../../world/ResourceLand') return load('world/ResourceLand');
         assert.ok(shared[id], `Unexpected import ${id}`); return shared[id];
     }, module, module.exports);
     return module.exports;
 }
 const { TroopData } = load('general/TroopProxy');
 const troop = TroopData.createFromServer({ troopIdx: 2, posMap: {
-    0: { heroIdx: 1, soldier: { count: 400, hurtCount: 40 } }, 1: { heroIdx: 2, soldier: { count: 300, hurtCount: 20 } },
+    1: { heroIdx: 1, soldier: { count: 400, hurtCount: 40 } }, 2: { heroIdx: 2, soldier: { count: 300, hurtCount: 20 } },
 } });
+roster = [troop];
 Item = load('map/ui/ArmySelectItemLogic').default;
 const item = new Item(); item.tipNode = { active: false };
 for (const field of ['labelTip', 'labelLv', 'labelName', 'labelState', 'labelMorale', 'labelSoldierCnt', 'labelVice1', 'labelVice2']) item[field] = { string: '' };
@@ -63,10 +69,35 @@ currentEntity = entity; busy = true; item.setTroopData(troop, 10, 20);
 assert.equal(item.tipNode.active, true); item.onClickItem(); assert.equal(sent.length, 1); busy = false;
 const Selector = load('map/ui/ArmySelectNodeLogic').default, selector = new Selector();
 selector.node = { activeInHierarchy: true }; selector.itemPrefab = {};
+selector.status = { string: '', node: {} };
 selector.armyContainer = { children: [], removeAllChildren() { this.children = []; } };
 selector.setData(1, 10, 20);
 assert.equal(troops.requests, 1); assert.deepEqual(rendered, [[2, 10, 20]]);
 selector.refreshTroops(); assert.equal(selector.armyContainer.children.length, 1);
+// 有主城、旧列表为空的原始报错路径：空地、城池、关隘均不能回退旧协议。
+for (const target of [{ type: 54, level: 3, isEmpty: true }, { type: 51, level: 8 }, { type: 50, level: 8 }, null]) {
+    cell = target; selector.setData(1, 10, 20);
+    assert.equal(troops.requests, 1); assert.equal(selector.armyContainer.children.length, 0);
+    assert.match(selector.status.string, /暂不支持出征/);
+}
+cell = { type: 54, level: 3 }; city = { id: 20010 }; selector.setData(1, 10, 20);
+assert.equal(troops.requests, 1); assert.equal(selector.armyContainer.children.length, 0);
+city = null; selector.setData(2, 10, 20); assert.equal(troops.requests, 1);
+selector.setData(1, 10, 20); assert.equal(selector.armyContainer.children.length, 1);
+troops.listReady = false; troops.listLoading = true; selector.refreshTroops();
+assert.match(selector.status.string, /正在同步/); assert.equal(selector.armyContainer.children.length, 0);
+troops.listLoading = false; selector.refreshTroops(); assert.match(selector.status.string, /尚未同步/);
+item.onClickItem(); assert.equal(sent.length, 1, '断线后旧卡片也不能发包');
+troops.listReady = true; roster = []; selector.refreshTroops(); assert.match(selector.status.string, /暂无已编成/);
+roster = [TroopData.createFromServer({ troopIdx: 3, posMap: {} })]; selector.refreshTroops();
+assert.equal(selector.armyContainer.children.length, 1, '没有主将的部队显示不可用原因，不隐藏成黑屏');
+item.setTroopData(roster[0], 10, 20); assert.match(item.labelTip.string, /主将未上阵/);
+roster = [troop]; item.setTroopData(troop, 10, 20);
+troops.editingTroopIdx = 2; item.onClickItem(); assert.equal(sent.length, 1); troops.editingTroopIdx = 0;
+cell = { type: 54, level: 3, isEmpty: true }; item.onClickItem(); assert.equal(sent.length, 1);
+selector.refreshTroops(); assert.match(selector.status.string, /目标已变更/);
+cell = { type: 54, level: 3 }; issue = '等待视野实体'; selector.refreshTroops(); assert.equal(selector.status.string, issue); issue = '';
+selector.refreshTroops(); assert.equal(selector.status.node.active, false); assert.equal(selector.armyContainer.children.length, 1);
 troop.getSoldier = () => ({ count: 0, hurtCount: 40 }); item.setTroopData(troop, 10, 20);
 item.onClickItem(); assert.equal(sent.length, 1); assert.equal(item.tipNode.active, true);
-console.log('PASS 资源地出征界面：新部队、真实兵力、实体ID、无旧城池、占领拦截和列表刷新');
+console.log('PASS 资源地出征：新版队伍、空/错目标、加载/超时/空阵容、兵力、保存互斥、实体变更和列表恢复');

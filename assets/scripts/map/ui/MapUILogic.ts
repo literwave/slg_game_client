@@ -34,6 +34,9 @@ import HeadIconPanel from './HeadIconPanel';
 import SystemOpenCommand from '../../systemopen/SystemOpenCommand';
 import { arrangeHudEntries, styleBottomNavigation, styleMoreMenu, styleWarReportShortcut } from './HudMenuSkin';
 import { Setting } from './Setting';
+import MapTaskTracker from './MapTaskTracker';
+import PlayerServicesPanel, { ServiceSection } from './PlayerServicesPanel';
+import { CityPosition } from '../../login/LoginCommand';
 
 @ccclass('MapUILogic')
 export default class MapUILogic extends Component {
@@ -191,6 +194,8 @@ export default class MapUILogic extends Component {
     private _headPanel: HeadIconPanel | null = null;
     private _headRequest = 0;
     private _playerAvatar: Sprite | null = null;
+    private _taskTracker: MapTaskTracker | null = null;
+    private _servicesPanel: PlayerServicesPanel | null = null;
 
     protected onLoad(): void {
 
@@ -209,6 +214,7 @@ export default class MapUILogic extends Component {
         this.initHudNavigation();
         this.initMoreMenu();
         this.initHeadIconEntry();
+        this.initTaskTracker();
         this.node.on(Node.EventType.SIZE_CHANGED, this.layoutHud, this);
         this.layoutHud();
         this.scheduleOnce(this.layoutHud, 0);
@@ -238,6 +244,7 @@ export default class MapUILogic extends Component {
         EventMgr.on(LogicEvent.openSkillInfo, this.onOpenSkillInfo, this);
         EventMgr.on(LogicEvent.beforeScrollToMap, this.beforeScrollToMap, this);
         EventMgr.on(LogicEvent.showTip, this.showTip, this);
+        EventMgr.on(LogicEvent.confirmMoveCity, this.showMoveCityConfirm, this);
         EventMgr.on(LogicEvent.mapEenterChange, this.onMapCenterChange, this);
         EventMgr.on(ServerConfig.s2c_gm_command_help, this.onGMCommandHelp, this);
         EventMgr.on(ServerConfig.s2c_tell_me, this.onTellMe, this);
@@ -250,7 +257,7 @@ export default class MapUILogic extends Component {
         this.updateRoleRes();
         this.updateRole();
         let unionId = MapCommand.getInstance().cityProxy.myUnionId;
-        if (unionId > 0) {
+        if (Number(unionId) > 0) {
             UnionCommand.getInstance().unionApplyList(unionId);
         }
     }
@@ -270,7 +277,56 @@ export default class MapUILogic extends Component {
         }
         this._dialogNode.setSiblingIndex(this.topLayer());
         this._dialogNode.getComponent(Dialog).show(text, DialogType.OnlyConfirm);
-        this._dialogNode.getComponent(Dialog).setClose(close)
+        this._dialogNode.getComponent(Dialog).setConfirmCB(null);
+        this._dialogNode.getComponent(Dialog).setCancelCB(null);
+        this._dialogNode.getComponent(Dialog).setClose(close);
+    }
+
+    private cityMoveTargetIssue(pos: CityPosition): string {
+        const issue = LoginCommand.getInstance().cityMoveIssue(pos);
+        if (issue) return issue;
+        const map = MapCommand.getInstance(), id = MapUtil.getIdByCellPoint(pos.x, pos.y);
+        if (!map.proxy.getResData(id)?.isEmpty || map.cityProxy.getCity(id) || map.buildProxy.getBuild(id)) {
+            return '请选择没有城池或建筑的空地';
+        }
+        return map.campaignBlockReason(pos.x, pos.y, false);
+    }
+
+    private showMoveCityConfirm(pos: CityPosition): void {
+        if (!this._uiListenersReady) return;
+        const issue = this.cityMoveTargetIssue(pos);
+        if (issue) { EventMgr.emit(LogicEvent.showToast, issue); return; }
+        const target = { x: pos.x, y: pos.y };
+        this.showTip(`将主城迁至（${target.x}，${target.y}）？\n需使用迁城令，请确认目标位置。`, null);
+        const dialog = this._dialogNode.getComponent(Dialog);
+        dialog.show(dialog.text.string, DialogType.Default);
+        dialog.setConfirmCB(() => {
+            if (!this.isValid || !this._uiListenersReady) return;
+            const reason = this.cityMoveTargetIssue(target);
+            if (reason) { EventMgr.emit(LogicEvent.showToast, reason); return; }
+            LoginCommand.getInstance().moveCity(target);
+        });
+    }
+
+    private initTaskTracker(): void {
+        const hud = this.node.getChildByName('HudRoot');
+        if (!hud || this._taskTracker) return;
+        const node = new Node('TaskTracker'); node.layer = hud.layer;
+        hud.addChild(node); node.setSiblingIndex(0);
+        this._taskTracker = node.addComponent(MapTaskTracker);
+        this._taskTracker.initialize(() => this.openServices('tasks'));
+    }
+
+    private openServices(section: ServiceSection): void {
+        if (!this._uiListenersReady || !this.contentNode) return;
+        AudioManager.instance.playClick(); this.closeMoreMenu();
+        if (!this._servicesPanel?.isValid) {
+            const node = new Node('PlayerServicesPanel'); node.layer = this.node.layer;
+            this.contentNode.addChild(node);
+            this._servicesPanel = node.addComponent(PlayerServicesPanel);
+        }
+        this._servicesPanel.node.setSiblingIndex(this.topLayer());
+        this._servicesPanel.show(section);
     }
 
 
@@ -308,6 +364,7 @@ export default class MapUILogic extends Component {
         const width = rootUi.width;
         const height = rootUi.height;
         this.drawHudTopShade(width, height);
+        this._taskTracker?.layout(width, height);
         const margin = 12;
         const top = height * 0.5;
         const bottom = -height * 0.5 + margin;
@@ -488,7 +545,7 @@ export default class MapUILogic extends Component {
             return;
         }
         this.closeMoreMenu();
-        this.openCityAbout(city);
+        this.openFacility(city);
     }
 
     public toggleMoreMenu(): void {

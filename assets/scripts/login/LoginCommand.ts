@@ -18,6 +18,15 @@ const HEARTBEAT_INTERVAL_MS = 5000;
 /** 连续大约 3 次没收到回包就当掉线 */
 const HEARTBEAT_TIMEOUT_MS = 15000;
 
+export interface CityPosition { x: number; y: number; }
+function validCityPosition(pos: any): pos is CityPosition {
+    return !!pos && Number.isInteger(pos.x) && Number.isInteger(pos.y)
+        && pos.x >= 0 && pos.y >= 0 && pos.x < 1000 && pos.y < 1000;
+}
+function sameCityPosition(a: CityPosition | null, b: CityPosition | null): boolean {
+    return !!a && !!b && a.x === b.x && a.y === b.y;
+}
+
 export default class LoginCommand {
     //单例
     protected static _instance: LoginCommand;
@@ -48,6 +57,10 @@ export default class LoginCommand {
     private _loadOkAcknowledged = false;
     private _pendingHeadIcon = 0;
     private _headChangeTimer: ReturnType<typeof setTimeout> | null = null;
+    private _moveCityTimer: ReturnType<typeof setTimeout> | null = null;
+    private _pendingMoveCity: CityPosition | null = null;
+    // 超时后保留目标以接收迟到的确认；新请求或断线会替换/清除它。
+    private _lastMoveCityTarget: CityPosition | null = null;
     private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     /** 最近一次收到 s2c_heart_beat 的单调钟 */
     private _lastHeartbeatMono: number = 0;
@@ -71,6 +84,7 @@ export default class LoginCommand {
         EventMgr.on(ServerConfig.s2c_client_load_ok, this.onClientLoadOk, this);
         EventMgr.on(ServerConfig.s2c_sync_soldier, this.onSyncSoldier, this);
         EventMgr.on(ServerConfig.s2c_sync_city_pos, this.onSyncCityPos, this);
+        EventMgr.on(ServerConfig.s2c_move_city, this.onMoveCity, this);
         EventMgr.on(ServerConfig.s2c_sync_item_data, this.onSyncItemData, this);
         EventMgr.on(ServerConfig.s2c_sync_user_res_list, this.onSyncUserResList, this);
 
@@ -94,12 +108,82 @@ export default class LoginCommand {
         this._loadOkSent = false;
         this._loadOkAcknowledged = false;
         this.finishHeadChange();
+        this.clearMoveCity();
         this.headIcons.clear();
         SystemOpenCommand.getInstance().clearData();
     }
 
     public get changingHeadIcon(): boolean { return this._pendingHeadIcon > 0; }
     public get clientLoadAcknowledged(): boolean { return this._loadOkAcknowledged; }
+
+    public get movingCity(): boolean { return this._pendingMoveCity !== null; }
+
+    public cityMoveIssue(pos: CityPosition): string {
+        if (!this._serverReady || !this._baseInfoReady || !this._clientLoaded) return '主城信息尚未同步，请稍后重试';
+        if (!validCityPosition(pos)) return '迁城坐标无效';
+        if (this.movingCity) return '正在迁城，请等待服务器确认';
+        if (sameCityPosition(this._proxy.getRoleData()?.cityPos, pos)) return '主城已在此处';
+        // 尚未收到物品快照时不把未知数量当作零，最终消耗由服务端判断。
+        if (this._proxy.hasItemCount(1001) && this._proxy.getItemCount(1001) < 1) return '迁城令不足';
+        return '';
+    }
+
+    public moveCity(pos: CityPosition): boolean {
+        const issue = this.cityMoveIssue(pos);
+        if (issue) { EventMgr.emit(LogicEvent.showToast, issue); return false; }
+        const target = { x: pos.x, y: pos.y };
+        this._pendingMoveCity = target;
+        this._lastMoveCityTarget = target;
+        this._moveCityTimer = setTimeout(() => {
+            this.finishMoveCity();
+            EventMgr.emit(LogicEvent.showToast, '迁城响应超时，请确认主城位置后重试');
+        }, 8000);
+        EventMgr.emit(LogicEvent.cityMoveState);
+        if (!this.sendUserMessage(ServerConfig.c2s_move_city, { pos: target })) {
+            this.clearMoveCity();
+            EventMgr.emit(LogicEvent.showToast, '迁城请求发送失败，请重试');
+            return false;
+        }
+        return true;
+    }
+
+    private finishMoveCity(): void {
+        if (this._moveCityTimer !== null) clearTimeout(this._moveCityTimer);
+        this._moveCityTimer = null;
+        const pending = this.movingCity;
+        this._pendingMoveCity = null;
+        if (pending) EventMgr.emit(LogicEvent.cityMoveState);
+    }
+
+    private clearMoveCity(): void {
+        this._lastMoveCityTarget = null;
+        this.finishMoveCity();
+    }
+
+    private applyCityPosition(pos: CityPosition): boolean {
+        if (!this._serverReady || !this._baseInfoReady || !validCityPosition(pos)) return false;
+        const role = this._proxy.getRoleData();
+        if (!role) return false;
+        if (!sameCityPosition(role.cityPos, pos)) {
+            this._proxy.setCityPos(pos);
+            // 既有地图城池缓存移除旧占地，WorldCommand 同步更新 AOI 焦点。
+            EventMgr.emit(LogicEvent.updateCityPosition, role.cityPos);
+        }
+        return true;
+    }
+
+    private confirmCityPosition(pos: CityPosition): void {
+        if (!sameCityPosition(this._lastMoveCityTarget, pos)) return;
+        this.clearMoveCity();
+        EventMgr.emit(LogicEvent.scrollToMap, pos.x, pos.y);
+        EventMgr.emit(LogicEvent.showToast, `主城已迁至（${pos.x}，${pos.y}）`);
+    }
+
+    private onMoveCity(data: any): void {
+        // ACK 不带请求序号，不能让上次请求的迟到确认解锁或覆盖新的目标。
+        if (!validCityPosition(data?.cityPos) || !sameCityPosition(this._lastMoveCityTarget, data.cityPos)) return;
+        if (this.applyCityPosition(data.cityPos)) this.confirmCityPosition(data.cityPos);
+    }
 
     public isHeadIconOpen(): boolean {
         const systems = SystemOpenCommand.getInstance();
@@ -180,7 +264,7 @@ export default class LoginCommand {
         this._loadOkAcknowledged = true;
     }
 
-    private sendUserMessage(name: string, data: { headIcon?: number }): boolean {
+    private sendUserMessage(name: string, data: object): boolean {
         const proto = ProtoManager.getInstance();
         if (!proto.isReady() || !proto.getIdByMsgType(name)) return false;
         const bytes = proto.encode(name, data);
@@ -202,9 +286,7 @@ export default class LoginCommand {
     }
 
     private onSyncCityPos(data: any): void {
-        if (!this._serverReady || !data?.cityPos) return;
-        this._proxy.setCityPos(data.cityPos);
-        EventMgr.emit(LogicEvent.updateCityPosition, this._proxy.getRoleData()?.cityPos);
+        if (this.applyCityPosition(data?.cityPos)) this.confirmCityPosition(data.cityPos);
     }
 
     private onDisconnected(): void {
@@ -215,6 +297,7 @@ export default class LoginCommand {
         this._loadOkSent = false;
         this._loadOkAcknowledged = false;
         this.finishHeadChange();
+        this.clearMoveCity();
     }
 
     //抢登录

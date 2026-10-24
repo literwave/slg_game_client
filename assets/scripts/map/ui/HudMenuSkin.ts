@@ -74,7 +74,7 @@ export function arrangeHudEntries(hud: Node, icons: HudMenuIcons): void {
     replaceIcon(skill, icons.skill);
     settings.active = true;
     replaceIcon(settings, icons.settings);
-    // 退出入口由设置页接管，更多菜单只保留一排功能。
+    // 退出入口由设置页接管。
     const exit = more.getChildByName('ExitButton');
     if (exit) exit.active = false;
 
@@ -129,7 +129,12 @@ export function styleBottomNavigation(navigation: Node, width: number): void {
 export function styleMoreMenu(panel: Node | null, width: number): void {
     if (!panel) return;
     manualLayout(panel);
-    const height = 76;
+    const entries = ['MailButton', 'RankButton', 'btnCollection',
+        'ChatButton', 'SkillButton', 'MarketButton', 'SettingButton']
+        .map(name => panel.getChildByName(name)).filter(node => node?.active);
+    const columns = Math.max(1, Math.min(5, Math.floor((width - 16) / 56)));
+    const rows = Math.max(1, Math.ceil(entries.length / columns));
+    const height = rows * 76;
     place(panel, panel.position.x, panel.position.y, width, height);
     hideSprite(panel);
     if (!panel.getComponent(BlockInputEvents)) panel.addComponent(BlockInputEvents);
@@ -140,11 +145,11 @@ export function styleMoreMenu(panel: Node | null, width: number): void {
     if (oldTitle) { oldTitle.removeFromParent(); oldTitle.destroy(); }
     const oldRule = panel.getChildByName('ManagementHeaderRule');
     if (oldRule) { oldRule.removeFromParent(); oldRule.destroy(); }
-    const entries = ['btnCollection', 'ChatButton', 'SkillButton', 'MarketButton', 'SettingButton']
-        .map(name => panel.getChildByName(name)).filter(node => node?.active);
-    const step = (width - 16) / Math.max(1, entries.length);
+    const step = (width - 16) / Math.min(columns, Math.max(1, entries.length));
     entries.forEach((button, index) => {
-        place(button, (index - (entries.length - 1) / 2) * step, 0, step - 4, 68);
+        const col = index % columns, row = Math.floor(index / columns);
+        place(button, (col - (Math.min(columns, entries.length) - 1) / 2) * step,
+            (rows - 1) * 38 - row * 76, step - 4, 68);
         const background = button.getChildByName('Background');
         if (background) {
             place(background, 0, 0, step - 4, 68);

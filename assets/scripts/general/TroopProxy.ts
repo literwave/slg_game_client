@@ -1,5 +1,15 @@
-/** 部队协议中的英雄位置映射：英雄 ID -> 位置 */
+/** 界面的英雄位置映射：英雄 ID -> 0～2 号槽位；World 协议站位为 1～3。 */
 export type HeroIndexMap = { [heroIdx: string]: number };
+
+export const TROOP_SLOT_COUNT = 3;
+
+export function toTroopProtocolPosition(slot: number): number {
+    return Number.isInteger(slot) && slot >= 0 && slot < TROOP_SLOT_COUNT ? slot + 1 : 0;
+}
+
+export function fromTroopProtocolPosition(position: number): number {
+    return Number.isInteger(position) && position >= 1 && position <= TROOP_SLOT_COUNT ? position - 1 : -1;
+}
 
 export interface SoldierInfo { count: number; hurtCount: number; }
 export interface TroopPosition { heroIdx: number; soldier: SoldierInfo; }
@@ -30,10 +40,10 @@ export class TroopData {
         data.soldiers.clear();
         const posMap = troop.posMap || {};
         Object.keys(posMap).forEach(key => {
-            const position = Number(key);
+            const position = fromTroopProtocolPosition(Number(key));
             const slot = posMap[key];
             const heroIdx = Number(slot?.heroIdx);
-            if (!Number.isInteger(heroIdx) || heroIdx <= 0 || !Number.isInteger(position) || position < 0 || position >= 3) return;
+            if (!Number.isInteger(heroIdx) || heroIdx <= 0 || position < 0) return;
             data.removePosition(position);
             data.heroPositions.set(heroIdx, position);
             data.soldiers.set(heroIdx, {
@@ -48,10 +58,12 @@ export class TroopData {
         return { ...(this.soldiers.get(heroIdx) || { count: 0, hurtCount: 0 }) };
     }
 
+    /** 导出 World 协议用的 1～3 号站位。 */
     public getPosMap(): { [position: string]: TroopPosition } {
         const result: { [position: string]: TroopPosition } = {};
         this.heroPositions.forEach((position, heroIdx) => {
-            result[position] = { heroIdx, soldier: this.getSoldier(heroIdx) };
+            const protocolPosition = toTroopProtocolPosition(position);
+            if (protocolPosition) result[protocolPosition] = { heroIdx, soldier: this.getSoldier(heroIdx) };
         });
         return result;
     }
@@ -83,7 +95,7 @@ export class TroopData {
     }
 
     public setHero(heroIdx: number, position: number): void {
-        if (!Number.isFinite(heroIdx) || !Number.isFinite(position) || heroIdx <= 0 || position < 0) {
+        if (!Number.isInteger(heroIdx) || heroIdx <= 0 || !toTroopProtocolPosition(position)) {
             return;
         }
         this.removeHero(heroIdx);

@@ -36,13 +36,17 @@ const cc = { _decorator: { ccclass: () => Type => Type, property: () => () => {}
     Component: class {}, Sprite: class {}, UITransform, Node: TestNode, Graphics: TestGraphics,
     Color: class { constructor(r, g, b, a) { Object.assign(this, { r, g, b, a }); } }, Label: { HorizontalAlign: { CENTER: 1 } } };
 const footprint = load('assets/scripts/map/ResourceFootprint.ts');
+const artNames = [], artHashes = new Set();
 const logicType = load('assets/scripts/map/entries/ResLogic.ts', {
     cc, '../MapProxy': { MapResType: { WOOD: 52, IRON: 53, STONE: 54, GRAIN: 55, SYS_FORTRESS: 50 } },
     '../WorldMapArt': { default: { apply(sprite, name) {
         const png = fs.readFileSync(path.join(root, 'assets/resources/ui/world', name + '.png'));
+        artNames.push(name);
+        if (name.includes('_lv')) artHashes.add(require('node:crypto').createHash('sha256').update(png).digest('hex'));
         sprite.spriteFrame = { originalSize: { width: png.readUInt32BE(16), height: png.readUInt32BE(20) } };
     } } },
     '../WorldCampaign': { default: { gateAt: () => null } },
+    '../GateGeometry': load('assets/scripts/map/GateGeometry.ts'),
     '../MapUtil': { default: { tileSize: { width: 200, height: 100 } } },
     '../ResourceFootprint': footprint, '../ui/ManagementStyle': { caption(parent, name, text, x, y) {
         let node = parent.getChildByName(name);
@@ -52,8 +56,9 @@ const logicType = load('assets/scripts/map/entries/ResLogic.ts', {
 }).default;
 const logic = new logicType(); logic.node = new TestNode('Resource'); logic.spr = { node: spriteNode };
 let checked = 0;
-for (const type of [52, 53, 54, 55]) for (let level = 1; level <= 9; level++) {
+for (const type of [52, 53, 54, 55]) for (let level = 1; level <= 10; level++) {
     logic.setResourceData({ type, level, x: 19, y: 27 });
+    assert.equal(artNames.at(-1), `${{52:'forest',53:'iron',54:'quarry',55:'grain'}[type]}_lv${level}`);
     assert.equal(transform.anchorX, .5); assert.equal(transform.anchorY, .5);
     assert.equal(spriteNode.x, 0); assert.equal(spriteNode.y, 0);
     assert.equal(spriteNode.sx, 1); assert.equal(spriteNode.sy, 1); assert.equal(logic.spr.trim, false);
@@ -68,6 +73,7 @@ for (const type of [52, 53, 54, 55]) for (let level = 1; level <= 9; level++) {
     }
     checked++;
 }
+assert.equal(artHashes.size, 40, '各资源各等级必须使用独立图像');
 logic.setResourceData({ type: 50, level: 5, x: 1, y: 1 });
 assert.equal(logic.spr.trim, true); assert.equal(transform.anchorY, .25);
 assert.equal(logic.node.getChildByName('ResourceGrade'), undefined);

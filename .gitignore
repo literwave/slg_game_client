@@ -6,9 +6,6 @@ library/
 temp/
 local/
 build/
-# 建筑业务脚本不是构建产物
-!assets/scripts/build/
-!assets/scripts/build/**
 profiles/
 native
 debug.log

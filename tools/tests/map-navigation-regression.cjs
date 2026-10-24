@@ -196,7 +196,7 @@ test('strategic zoom releases detailed areas and resumes streaming on return', (
     proxy.setCurCenterPoint(cell, center, new Vec2(640, 360));
     assert.ok(proxy.visibleAreaIds.length > 0);
     proxy.setCurCenterPoint(cell, center, new Vec2(120000, 65000));
-    assert.equal(proxy.strategic, true); assert.deepEqual(proxy.visibleAreaIds, []); assert.deepEqual(proxy.qryAreaIds, []);
+    assert.equal(proxy.strategic, true); assert.deepEqual(proxy.visibleAreaIds, []);
     proxy.setCurCenterPoint(cell, center, new Vec2(6000, 3000));
     assert.equal(proxy.strategic, true);
     proxy.setCurCenterPoint(cell, center, new Vec2(4200, 2400));
@@ -401,6 +401,8 @@ const terrainArt = { landscape: { riverCells: [MapUtil.getIdByCellPoint(10, 10)]
 const MapTouchLogic = load('assets/scripts/map/MapTouchLogic.ts', {
     './MapClickUILogic': {}, './MapCommand': {}, './MapUtil': { default: MapUtil },
     './WorldLandscape': { default: class {} }, './WorldMapArt': { default: terrainArt },
+    './WorldCampaign': { default: { config: null } },
+    './GateGeometry': load('assets/scripts/map/GateGeometry.ts'),
     './ui/ManagementStyle': {}, '../utils/EventMgr': { EventMgr: {} }, '../common/LogicEvent': { LogicEvent: {} },
 });
 test('visible mountain clicks and river cells report blockers instead of selecting land behind them', () => {

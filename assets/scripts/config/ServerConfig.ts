@@ -94,6 +94,8 @@ const ServerConfig = {
     c2s_get_task_reward: "Task.c2s_get_task_reward",
     s2c_get_task_reward: "Task.s2c_get_task_reward",
     s2c_sync_soldier: "User.s2c_sync_soldier",
+    c2s_move_city: "User.c2s_move_city",
+    s2c_move_city: "User.s2c_move_city",
     s2c_sync_city_pos: "User.s2c_sync_city_pos",
     s2c_sys_notify_by_lanid: "User.s2c_sys_notify_by_lanid",
     s2c_sync_troop: "World.s2c_sync_troop",
@@ -165,7 +167,6 @@ const ServerConfig = {
     role_opPosTag: "role.opPosTag",
 
     nationMap_config: "nationMap.config",
-    nationMap_scanBlock: "nationMap.scanBlock",
     nationMap_giveUp: "nationMap.giveUp",
     nationMap_build: "nationMap.build",
     nationMap_upBuild: "nationMap.upBuild",

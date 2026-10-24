@@ -23,6 +23,8 @@ export default class MailCommand extends ProtocolCommand {
     private details = new Map<string, MailDetail>();
     private detailKinds = new Map<string, number>();
     private removed = new Set<string>();
+    private loadedKinds = new Set<number>();
+    public listLoaded(kind: number): boolean { return this.loadedKinds.has(kind); }
     constructor() {
         super();
         this.listen(S.s2c_req_mail_list, d => {
@@ -30,6 +32,7 @@ export default class MailCommand extends ProtocolCommand {
             this.finish(`mail-list:${d.mailKind}`);
             const store = this.store(d.mailKind);
             store.replace((d.mailInfoList || []).filter(m => hasId(m.mailUid) && !this.removed.has(idKey(m.mailUid))));
+            this.loadedKinds.add(d.mailKind);
             this.notify(d.mailKind);
         });
         this.listen(S.s2c_sync_mail, d => {
@@ -71,6 +74,7 @@ export default class MailCommand extends ProtocolCommand {
     }
     protected reset(): void {
         this.lists.clear(); this.details.clear(); this.detailKinds.clear(); this.removed.clear();
+        this.loadedKinds.clear();
     }
     protected onSessionReady(): void { [1, 2, 3].forEach(kind => this.requestList(kind)); }
     private validKind(kind: number): boolean { return [1, 2, 3].indexOf(kind) >= 0; }

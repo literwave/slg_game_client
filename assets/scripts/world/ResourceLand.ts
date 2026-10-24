@@ -7,6 +7,10 @@ export interface ResourceLandConfig {
 }
 const MAP_RESOURCE_ENUM: { [type: number]: string } = { 52: 'WOOD', 53: 'IRON', 54: 'STONE', 55: 'GRAIN' };
 
+export function isResourceLandCell(cell: { type: number; level: number; isEmpty?: boolean } | null | undefined): boolean {
+    return !!cell && !cell.isEmpty && !!MAP_RESOURCE_ENUM[cell.type] && Number.isInteger(cell.level) && cell.level > 0;
+}
+
 /** 石料也走配置：补齐ResLandType.STONE与对应ResLand行即可，不猜资源/道具ID。 */
 export function resourceTypeForMap(mapType: number): number | undefined {
     const name = MAP_RESOURCE_ENUM[mapType];
