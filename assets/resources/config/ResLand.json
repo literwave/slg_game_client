@@ -858,5 +858,291 @@
     "OpenCond": {
       "level": 10
     }
+  },
+  {
+    "Id": 401,
+    "Type": 4,
+    "Level": 1,
+    "Name": "1级石场",
+    "Desc": "浅层石料，守卫较弱",
+    "Icon": "",
+    "OutputItem": 5,
+    "Capacity": 1500,
+    "GatherSpeed": 150,
+    "MonsterGroups": [
+      1,
+      2,
+      3
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 5,
+        "item_count": 400
+      }
+    ],
+    "OpenCond": {
+      "level": 1
+    }
+  },
+  {
+    "Id": 402,
+    "Type": 4,
+    "Level": 2,
+    "Name": "2级石场",
+    "Desc": "初开的采石场",
+    "Icon": "",
+    "OutputItem": 5,
+    "Capacity": 3000,
+    "GatherSpeed": 220,
+    "MonsterGroups": [
+      2,
+      3
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 5,
+        "item_count": 600
+      }
+    ],
+    "OpenCond": {
+      "level": 2
+    }
+  },
+  {
+    "Id": 403,
+    "Type": 4,
+    "Level": 3,
+    "Name": "3级石场",
+    "Desc": "可采的石场",
+    "Icon": "",
+    "OutputItem": 5,
+    "Capacity": 5500,
+    "GatherSpeed": 350,
+    "MonsterGroups": [
+      3,
+      4,
+      5
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 5,
+        "item_count": 900
+      }
+    ],
+    "OpenCond": {
+      "level": 3
+    }
+  },
+  {
+    "Id": 404,
+    "Type": 4,
+    "Level": 4,
+    "Name": "4级石场",
+    "Desc": "富饶石场",
+    "Icon": "",
+    "OutputItem": 5,
+    "Capacity": 9000,
+    "GatherSpeed": 480,
+    "MonsterGroups": [
+      4,
+      5
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 5,
+        "item_count": 1400
+      }
+    ],
+    "OpenCond": {
+      "level": 4
+    }
+  },
+  {
+    "Id": 405,
+    "Type": 4,
+    "Level": 5,
+    "Name": "5级石场",
+    "Desc": "深掘石场",
+    "Icon": "",
+    "OutputItem": 5,
+    "Capacity": 13000,
+    "GatherSpeed": 650,
+    "MonsterGroups": [
+      5,
+      6,
+      7
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 5,
+        "item_count": 2000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 10
+      }
+    ],
+    "OpenCond": {
+      "level": 5
+    }
+  },
+  {
+    "Id": 406,
+    "Type": 4,
+    "Level": 6,
+    "Name": "6级石场",
+    "Desc": "精石石场",
+    "Icon": "",
+    "OutputItem": 5,
+    "Capacity": 18000,
+    "GatherSpeed": 850,
+    "MonsterGroups": [
+      6,
+      7
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 5,
+        "item_count": 2800
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 20
+      }
+    ],
+    "OpenCond": {
+      "level": 6
+    }
+  },
+  {
+    "Id": 407,
+    "Type": 4,
+    "Level": 7,
+    "Name": "7级石场",
+    "Desc": "玄石石场",
+    "Icon": "",
+    "OutputItem": 5,
+    "Capacity": 25000,
+    "GatherSpeed": 1100,
+    "MonsterGroups": [
+      7,
+      8,
+      9
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 5,
+        "item_count": 4000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 30
+      }
+    ],
+    "OpenCond": {
+      "level": 7
+    }
+  },
+  {
+    "Id": 408,
+    "Type": 4,
+    "Level": 8,
+    "Name": "8级石场",
+    "Desc": "寒石石场",
+    "Icon": "",
+    "OutputItem": 5,
+    "Capacity": 33000,
+    "GatherSpeed": 1400,
+    "MonsterGroups": [
+      8,
+      9
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 5,
+        "item_count": 5500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 50
+      }
+    ],
+    "OpenCond": {
+      "level": 8
+    }
+  },
+  {
+    "Id": 409,
+    "Type": 4,
+    "Level": 9,
+    "Name": "9级石场",
+    "Desc": "龙石石场",
+    "Icon": "",
+    "OutputItem": 5,
+    "Capacity": 43000,
+    "GatherSpeed": 1800,
+    "MonsterGroups": [
+      9,
+      10,
+      103
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 5,
+        "item_count": 8000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 80
+      }
+    ],
+    "OpenCond": {
+      "level": 9
+    }
+  },
+  {
+    "Id": 410,
+    "Type": 4,
+    "Level": 10,
+    "Name": "10级石场",
+    "Desc": "神石石场",
+    "Icon": "",
+    "OutputItem": 5,
+    "Capacity": 56000,
+    "GatherSpeed": 2200,
+    "MonsterGroups": [
+      10,
+      103,
+      201
+    ],
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 5,
+        "item_count": 12000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 100
+      }
+    ],
+    "OpenCond": {
+      "level": 10
+    }
   }
 ]

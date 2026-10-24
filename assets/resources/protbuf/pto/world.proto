@@ -44,14 +44,15 @@ message s2c_sync_troop {
 // ---------- 行军 ----------
 // targetType → TargetType.Id（1回城 2打怪 3占领资源地）
 // state: 1行军中 2已到达
+// 耗时按路径格数 / Global.Id=17（每秒移动格数）计算 endTime，避免一秒跨多格
 message p_march_info {
 	uint32 troopIdx = 1;
 	uint32 targetType = 2;
 	int64 targetId = 3;            // 目标实体 id（怪物组实例等），回城可 0
 	Common.p_pos startPos = 4;
 	Common.p_pos endPos = 5;
-	int32 startTime = 6;
-	int32 endTime = 7;
+	double startTime = 6;
+	double endTime = 7;
 	uint32 state = 8;
 	repeated Common.p_pos_f path = 9;   // 拐点，含起点和终点
 }
@@ -100,8 +101,8 @@ message p_aoi_entity {
 	int64 ownerId = 4;             // 主城/部队所属玩家，怪物为 0
 	uint32 cfgId = 5;              // 配置 id（如 MonsterGroup.Id）
 	repeated Common.p_pos_f path = 6;  // 仅行军中的部队填，含起点终点
-	int32 startTime = 7;
-	int32 endTime = 8;
+	double startTime = 7;
+	double endTime = 8;
 }
 
 // 客户端上报视野中心（拖地图等）

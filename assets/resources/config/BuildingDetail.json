@@ -263,5 +263,23 @@
     ],
     "OutputItem": 0,
     "EffectType": 1
+  },
+  {
+    "Id": 16,
+    "Name": "采石场",
+    "Desc": "开山取石，持续产出石料",
+    "Icon": "",
+    "Type": 3,
+    "MaxLevel": 30,
+    "LimitNum": 1,
+    "InitLev": 0,
+    "CreateLimit": [
+      {
+        "bid": 1,
+        "lev": 2
+      }
+    ],
+    "OutputItem": 5,
+    "EffectType": 7
   }
 ]

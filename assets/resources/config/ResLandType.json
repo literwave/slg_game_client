@@ -16,5 +16,11 @@
     "Name": "铁矿",
     "Enum": "IRON",
     "Desc": "产出铁矿（对齐 Item.Id=3）"
+  },
+  {
+    "Id": 4,
+    "Name": "石场",
+    "Enum": "STONE",
+    "Desc": "产出石料（对齐 Item.Id=5）"
   }
 ]

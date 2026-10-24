@@ -32,8 +32,18 @@
   {
     "Id": 4,
     "Name": "令牌",
-    "Desc": "招募武将消耗的信物",
+    "Desc": "招募武将与创建联盟等消耗的信物（非资源）",
     "Icon": "ui/resource_icons/icon_token",
+    "BuyDiamond": 10,
+    "useParams": [],
+    "Kind": 7,
+    "Overlap": 100000
+  },
+  {
+    "Id": 5,
+    "Name": "石料",
+    "Desc": "建造升级与城防消耗的基础资源",
+    "Icon": "ui/resource_icons/icon_stone",
     "BuyDiamond": 10,
     "useParams": [],
     "Kind": 4,

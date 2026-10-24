@@ -222,7 +222,7 @@
   {
     "Id": 4,
     "Name": "丰收时节",
-    "Desc": "农场/伐木场/铁矿产量翻倍",
+    "Desc": "农场/伐木场/铁矿/采石场产量翻倍",
     "Icon": "",
     "Type": 4,
     "Order": 4,
@@ -236,7 +236,12 @@
     },
     "Params": {
       "rate": 2,
-      "item_ids": [1, 2, 3]
+      "item_ids": [
+        1,
+        2,
+        3,
+        5
+      ]
     },
     "Rewards": []
   },
@@ -379,6 +384,14 @@
           "cost_count": 10,
           "reward_type": 1,
           "item_id": 2,
+          "item_count": 1000,
+          "limit": 10
+        },
+        {
+          "cost_item": 4,
+          "cost_count": 10,
+          "reward_type": 1,
+          "item_id": 5,
           "item_count": 1000,
           "limit": 10
         },
