@@ -212,6 +212,11 @@ console.log('PASS 左侧任务卡横竖屏边界、独立点击区与地图输�
 progression.sessionReady = false; EventMgr.emit(E.protocolRequestChanged); flush();
 assert.equal(tracker.current, null); assert.equal(tracker.expectedNextId, 0);
 assert.equal(body.getComponent(Button).interactable, false);
+assert.equal(body.getChildByName('ActionText').getComponent(Label).string, '等待连接');
+progression.sessionReady = true; EventMgr.emit(E.protocolRequestChanged); flush();
+assert.equal(tracker.current.taskId, 1003, '会话恢复后任务卡重新显示服务端任务');
+assert.equal(body.getChildByName('ProgressText').getComponent(Label).string, '1 / 2');
+assert.notEqual(body.getChildByName('ActionText').getComponent(Label).string, '等待连接');
 tracker.onDestroy(); assert.equal(EventMgr.targetInName.has(tracker), false);
 assert.equal(presentation.trackedTask([{ taskId: 1001, taskType: 1, state: 0 }, { taskId: 1002, taskType: 1, state: 1 }]).taskId, 1001);
 assert.equal(presentation.trackedTask([{ taskId: 1001, taskType: 1, state: 2 }, { taskId: 2001, taskType: 2, state: 0 }]).taskId, 2001);

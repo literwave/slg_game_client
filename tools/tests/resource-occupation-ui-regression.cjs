@@ -7,13 +7,15 @@ const root = path.resolve(__dirname, '../..');
 let Item;
 const events = [], sent = [], rendered = [];
 const entity = { entityId: '9007199254740993', pos: { x: 10, y: 20 } };
-let currentEntity = entity, issue = '', blocked = '', busy = false;
+let currentEntity = entity, issue = '', blocked = '', busy = false, moveIssue = '', moveAccepted = true;
 let cell = { type: 54, level: 3 }, city = null, roster;
 const world = { resourceLandAt: () => currentEntity, resourceLandIssue: () => issue,
     marches: { get: () => busy ? { state: 1 } : undefined },
-    occupyResourceLand: (idx, id) => { if (busy) return false; sent.push([idx, id]); return true; } };
+    occupyResourceLand: (idx, id) => { if (busy) return false; sent.push([idx, id]); return true; },
+    moveTroop: (idx, pos) => { if (!moveAccepted) return false; sent.push(['move', idx, pos]); return true; } };
 const map = { proxy: { getResData: () => cell },
-    cityProxy: { getCity: () => city, getMyMainCity: () => ({ cityId: 1 }) }, campaignBlockReason: () => blocked };
+    cityProxy: { getCity: () => city, getMyMainCity: () => ({ cityId: 1 }) }, campaignBlockReason: () => blocked,
+    moveTargetIssue: () => moveIssue };
 const generals = { getMyGeneral: id => id ? { cfgId: id + 100, level: 6 } : null,
     getGeneralCfg: id => ({ name: `将${id}` }) };
 const troops = { proxy: { getTroop: () => troop, getTroops: () => roster }, requestTroops: () => { troops.requests++; }, requests: 0,
@@ -98,6 +100,19 @@ cell = { type: 54, level: 3, isEmpty: true }; item.onClickItem(); assert.equal(s
 selector.refreshTroops(); assert.match(selector.status.string, /目标已变更/);
 cell = { type: 54, level: 3 }; issue = '等待视野实体'; selector.refreshTroops(); assert.equal(selector.status.string, issue); issue = '';
 selector.refreshTroops(); assert.equal(selector.status.node.active, false); assert.equal(selector.armyContainer.children.length, 1);
+
+cell = { type: 0, level: 0, isEmpty: true }; currentEntity = null; issue = '占领没有实体';
+selector.targetLabel = { string: '' }; selector.setData('move', 10, 20);
+assert.equal(selector.armyContainer.children.length, 1); assert.match(selector.targetLabel.string, /移动至/);
+item.setTroopData(troop, 10, 20, 'move'); assert.match(item.labelState.string, /点击移动/);
+item.onClickItem(); assert.deepEqual(sent.at(-1), ['move', 2, { x: 10, y: 20 }]);
+const moves = sent.length; moveIssue = '山脉不可通行'; item.onClickItem(); assert.equal(sent.length, moves);
+selector.refreshTroops(); assert.equal(selector.status.string, moveIssue); moveIssue = '';
+troops.editingTroopIdx = 2; item.onClickItem(); assert.equal(sent.length, moves); troops.editingTroopIdx = 0;
+moveAccepted = false; const beforeFailed = events.length; item.onClickItem(); assert.equal(sent.length, moves);
+assert.ok(events.slice(beforeFailed).every(e => e[0] !== 'close'), '移动发送失败保留选队面板');
+moveAccepted = true; busy = true; item.onClickItem(); assert.equal(sent.length, moves); busy = false;
+sent.length = 1; cell = { type: 54, level: 3 }; currentEntity = entity; issue = '';
 troop.getSoldier = () => ({ count: 0, hurtCount: 40 }); item.setTroopData(troop, 10, 20);
 item.onClickItem(); assert.equal(sent.length, 1); assert.equal(item.tipNode.active, true);
-console.log('PASS 资源地出征：新版队伍、空/错目标、加载/超时/空阵容、兵力、保存互斥、实体变更和列表恢复');
+console.log('PASS 资源地出征及坐标移动：目标分流、无实体空地、加载状态、兵力、保存互斥、发送失败保留界面');

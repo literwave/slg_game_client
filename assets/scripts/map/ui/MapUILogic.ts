@@ -647,7 +647,7 @@ export default class MapUILogic extends Component {
     }
 
     /**打开军队选择界面*/
-    protected onOpenArmySelectUI(cmd: number, x: number, y: number): void {
+    protected onOpenArmySelectUI(cmd: number | 'move', x: number, y: number): void {
         if (this._armySelectNode == null) {
             this._armySelectNode = instantiate(this.armySelectPrefab);
             this._armySelectNode.parent = this.contentNode;

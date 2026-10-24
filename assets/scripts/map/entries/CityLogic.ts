@@ -1,7 +1,7 @@
 import { _decorator, Color, Component, Graphics, Label, Sprite, Node, UITransform } from 'cc';
 const { ccclass, property } = _decorator;
 import WorldMapArt from '../WorldMapArt';
-import { playerCityAppearance, playerCityFootprint, PLAYER_CITY_ANCHOR_Y } from '../PlayerCityAppearance';
+import { playerCityAppearance, playerCityFootprint, playerCityGroundFront, PLAYER_CITY_ANCHOR_Y } from '../PlayerCityAppearance';
 import MapUtil from '../MapUtil';
 
 import DateUtil from "../../utils/DateUtil";
@@ -57,28 +57,32 @@ export default class CityLogic extends Component {
         if (this._data) {
         this.labelName.string = this._data.name;
         const footprint = playerCityFootprint(MapUtil.tileSize.width, MapUtil.tileSize.height);
-        // 城名放在地基前沿外，不压在屋顶和城墙上。
-        this.labelName.node.setPosition(0, -footprint.height / 2 - 18, 0);
-        this.labelName.node.getComponent(UITransform).setContentSize(footprint.width - 32, 32);
+        const groundFront = playerCityGroundFront(MapUtil.tileSize.height);
+        // 城名和立绘共用地基前沿，避免城图较小时文字悬在占地框外。
+        const nameWidth = Math.min(footprint.width * .7, Math.max(132, Array.from(this._data.name).length * 18 + 28));
+        this.labelName.node.setPosition(0, groundFront, 0);
+        this.labelName.node.getComponent(UITransform).setContentSize(nameWidth - 16, 28);
         this.labelName.font = null; this.labelName.useSystemFont = true;
-        this.labelName.fontSize = 20; this.labelName.lineHeight = 26;
-        this.labelName.overflow = Label.Overflow.CLAMP;
+        this.labelName.fontSize = 18; this.labelName.lineHeight = 24;
+        this.labelName.overflow = Label.Overflow.SHRINK;
         this.labelName.enableWrapText = false;
         this.labelName.horizontalAlign = Label.HorizontalAlign.CENTER;
+        this.labelName.verticalAlign = Label.VerticalAlign.CENTER;
         this.labelName.color = new Color(245, 231, 194, 255);
         this.labelName.outlineColor = new Color(35, 39, 27, 230); this.labelName.outlineWidth = 2;
 
         const icon = this.node.getChildByName('sprite')?.getComponent(Sprite);
-        const appearance = playerCityAppearance(this._data.level);
+        const appearance = playerCityAppearance(this._data.level, MapUtil.tileSize.width);
         if (icon) {
             icon.trim = false;
-            icon.node.setScale(1, 1, 1); icon.node.setPosition(0, 0, 0);
+            icon.node.setScale(1, 1, 1); icon.node.setPosition(0, groundFront, 0);
             icon.node.getComponent(UITransform).setAnchorPoint(.5, PLAYER_CITY_ANCHOR_Y);
             WorldMapArt.apply(icon, appearance.art, appearance.width);
         }
         WorldMapArt.ownership(this.node, this.upSpr, this.downSpr,
             WorldMapArt.factionColor(this._data, MapCommand.getInstance().cityProxy), footprint.width);
         this.drawSelection();
+        this.drawNameplate(nameWidth, groundFront);
         this.mianNode?.setPosition(120, 30, 0);
 
         var diff = DateUtil.getServerTime() - this._data.occupyTime;
@@ -90,6 +94,21 @@ export default class CityLogic extends Component {
         this.mianNode.active = false;
         }
         }
+    }
+    private drawNameplate(width: number, y: number): void {
+        let plate = this.node.getChildByName('CityNameplate');
+        if (!plate) {
+            plate = new Node('CityNameplate'); plate.layer = this.node.layer;
+            this.node.addChild(plate); plate.addComponent(UITransform); plate.addComponent(Graphics);
+        }
+        plate.setPosition(0, y, 0);
+        plate.getComponent(UITransform).setContentSize(width, 30);
+        plate.setSiblingIndex(this.node.children.length - 1);
+        this.labelName.node.setSiblingIndex(this.node.children.length - 1);
+        const g = plate.getComponent(Graphics); g.clear();
+        g.fillColor = new Color(34, 37, 27, 218);
+        g.strokeColor = new Color(183, 161, 110, 190); g.lineWidth = 1;
+        g.roundRect(-width / 2, -15, width, 30, 5); g.fill(); g.stroke();
     }
     private onSelectCity(cellId: number | null): void {
         this.selected = !!this._data && cellId === this._data.id;

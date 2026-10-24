@@ -1,7 +1,9 @@
 import { ArmyData } from "../../general/ArmyProxy";
 import DateUtil from "../../utils/DateUtil";
 import MapUtil from "../MapUtil";
-import { Vec2, Node, Animation, Vec3, UITransform } from "cc";
+import { Vec2, Node, Animation, Vec3, UITransform, Color, Graphics, Sprite } from "cc";
+import type { MarchInfo, WorldEntity } from '../../world/WorldCommand';
+import { aoiTroopMotion, buildMarchPath, MarchMotion, MarchPath, sampleMarchPath } from '../../world/MarchPath';
 
 export default class ArmyLogic {
     public data: ArmyData = null;
@@ -15,12 +17,16 @@ export default class ArmyLogic {
     protected _endPixelPos: Vec3 = new Vec3(0, 0, 0);
     protected _lenX: number = 0;
     protected _lenY: number = 0;
+    private march: MarchMotion = null;
+    private marchPath: MarchPath = null;
+    private marching = false;
 
     public clear() {
         this.data = null;
         this.aniNode = null;
         this.arrowNode = null;
         this._parentLayer = null;
+        this.march = null; this.marchPath = null; this._aniName = ''; this.marching = false;
     }
 
     public destroy(): void {
@@ -30,6 +36,7 @@ export default class ArmyLogic {
     }
 
     public update(): Vec2 {
+        if (this.march) return this.updateMarch();
         if (this.data && this.data.state > 0) {
             let nowTime: number = DateUtil.getServerTime();
             if (nowTime < this.data.endTime) {
@@ -70,6 +77,10 @@ export default class ArmyLogic {
     }
 
     public setArmyData(data: ArmyData, aniNode: Node, arrowNode: Node): void {
+        this.march = null; this.marchPath = null;
+        const marker = aniNode.getChildByName('WorldTroopMarker'); if (marker) marker.active = false;
+        const route = arrowNode.getChildByName('WorldMarchRoute'); if (route) route.active = false;
+        const sprite = arrowNode.getComponent(Sprite); if (sprite) sprite.enabled = true;
         this.data = data;
         this.aniNode = aniNode;
         this.arrowNode = arrowNode;
@@ -119,5 +130,71 @@ export default class ArmyLogic {
         this.aniNode.getComponent(Animation).play(this._aniName);
 
         this.updateArrow();
+    }
+
+    public setMarchData(march: MarchInfo, aniNode: Node, arrowNode: Node): void {
+        const marker = aniNode.getChildByName('WorldTroopMarker'); if (marker) marker.active = false;
+        this.setMotion(march, aniNode, arrowNode, new Color(230, 202, 126, 185));
+    }
+
+    public setWorldEntity(entity: WorldEntity, own: boolean, aniNode: Node, arrowNode: Node): void {
+        const motion = aoiTroopMotion(entity);
+        if (!motion) { aniNode.active = arrowNode.active = false; return; }
+        // 其他玩家不一定是敌方，只用不同颜色区别于本人，不推断同盟/敌对关系。
+        const color = own ? new Color(111, 190, 233, 230) : new Color(237, 188, 98, 230);
+        this.setMotion(motion, aniNode, arrowNode, color);
+        let marker = aniNode.getChildByName('WorldTroopMarker');
+        if (!marker) {
+            marker = new Node('WorldTroopMarker'); marker.layer = aniNode.layer;
+            aniNode.addChild(marker); marker.addComponent(UITransform); marker.addComponent(Graphics);
+        }
+        marker.active = true; marker.setSiblingIndex(0);
+        const g = marker.getComponent(Graphics); g.clear();
+        g.strokeColor = color; g.lineWidth = 2;
+        g.fillColor = new Color(color.r, color.g, color.b, 45);
+        g.ellipse(0, -8, 25, 11); g.fill(); g.stroke();
+    }
+
+    private setMotion(march: MarchMotion, aniNode: Node, arrowNode: Node, routeColor: Color): void {
+        this.data = null; this.march = march; this.marchPath = buildMarchPath(march);
+        this.aniNode = aniNode; this.arrowNode = arrowNode;
+        arrowNode.angle = 0; arrowNode.setPosition(0, 0, 0); arrowNode.setScale(1, 1, 1);
+        arrowNode.setSiblingIndex(0);
+        const sprite = arrowNode.getComponent(Sprite); if (sprite) sprite.enabled = false;
+        let route = arrowNode.getChildByName('WorldMarchRoute');
+        if (!route) {
+            route = new Node('WorldMarchRoute'); route.layer = arrowNode.layer;
+            arrowNode.addChild(route); route.addComponent(UITransform); route.addComponent(Graphics);
+        }
+        route.active = true;
+        const g = route.getComponent(Graphics); g.clear(); g.lineWidth = 3;
+        g.strokeColor = routeColor;
+        this.marchPath.points.forEach((point, index) => {
+            const pixel = MapUtil.mapCellToPixelPoint(new Vec2(point.x, point.y));
+            if (!index) g.moveTo(pixel.x, pixel.y); else g.lineTo(pixel.x, pixel.y);
+        });
+        if (this.marchPath.points.length > 1) g.stroke();
+        this.updateMarch();
+    }
+
+    private updateMarch(): Vec2 {
+        const sample = sampleMarchPath(this.march, this.marchPath, DateUtil.getServerTime());
+        if (!sample) { this.aniNode.active = this.arrowNode.active = false; return null; }
+        const point = new Vec2(sample.position.x, sample.position.y), pixel = MapUtil.mapCellToPixelPoint(point);
+        this.aniNode.active = true; this.aniNode.setPosition(pixel.x, pixel.y, 0);
+        this.arrowNode.active = sample.moving;
+        const animation = this.aniNode.getComponent(Animation);
+        if (animation && sample.moving) {
+            const next = MapUtil.mapCellToPixelPoint(new Vec2(sample.towards.x, sample.towards.y));
+            const direction = (Math.round(Math.atan2(next.y - pixel.y, next.x - pixel.x) / (Math.PI / 4)) + 8) % 8;
+            const name = ['qb_run_r', 'qb_run_ru', 'qb_run_u', 'qb_run_lu', 'qb_run_l', 'qb_run_ld', 'qb_run_d', 'qb_run_rd'][direction];
+            if (name !== this._aniName || !this.marching) { animation.play(name); this._aniName = name; }
+        } else if (animation) {
+            if (!this._aniName) { animation.play('qb_run_rd'); this._aniName = 'qb_run_rd'; }
+            animation.pause();
+        }
+        this.marching = sample.moving;
+        // 只改变显示位置，业务上的到达/战斗/占领仍由服务端推送确定。
+        return point;
     }
 }

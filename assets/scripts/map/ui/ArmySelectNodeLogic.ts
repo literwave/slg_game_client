@@ -22,7 +22,7 @@ export default class ArmySelectNodeLogic extends Component {
     armyContainer: Node = null;
     @property(Prefab)
     itemPrefab: Prefab = null;
-    private resourceTarget: { x: number; y: number } | null = null;
+    private resourceTarget: { x: number; y: number; action: 'occupy' | 'move' } | null = null;
     private panel: Node = null;
     private scroll: ScrollView = null;
     private viewport: Node = null;
@@ -52,11 +52,12 @@ export default class ArmySelectNodeLogic extends Component {
         this.node.active = false;
     }
 
-    public setData(cmd: number, x: number, y: number): void {
+    public setData(cmd: number | 'move', x: number, y: number): void {
         const map = MapCommand.getInstance();
         const id = MapUtil.getIdByCellPoint(x, y), cell = map.proxy.getResData(id);
-        // World 只接受真实资源地实体；空地、城池和关隘不能回退到旧 Army 协议。
-        this.resourceTarget = cmd === ArmyCmd.Attack && isResourceLandCell(cell) && !map.cityProxy.getCity(id) ? { x, y } : null;
+        // 移动按坐标，资源占领按实体；两种操作都只使用新版 World 部队。
+        this.resourceTarget = cmd === 'move' ? { x, y, action: 'move' }
+            : cmd === ArmyCmd.Attack && isResourceLandCell(cell) && !map.cityProxy.getCity(id) ? { x, y, action: 'occupy' } : null;
         this.layoutPanel();
         if (this.resourceTarget) TroopCommand.getInstance().requestTroops();
         this.refreshTroops(true);
@@ -80,11 +81,13 @@ export default class ArmySelectNodeLogic extends Component {
             this.showStatus('当前目标暂不支持出征\n请返回地图选择资源地');
             return;
         }
-        const { x, y } = this.resourceTarget, map = MapCommand.getInstance(), command = TroopCommand.getInstance();
+        const { x, y, action } = this.resourceTarget, map = MapCommand.getInstance(), command = TroopCommand.getInstance();
         const id = MapUtil.getIdByCellPoint(x, y), cell = map.proxy.getResData(id);
-        const issue = !isResourceLandCell(cell) || map.cityProxy.getCity(id) ? '目标已变更，请重新选择资源地'
+        const issue = action === 'move' ? map.moveTargetIssue(x, y)
+            : !isResourceLandCell(cell) || map.cityProxy.getCity(id) ? '目标已变更，请重新选择资源地'
             : map.campaignBlockReason(x, y) || WorldCommand.getInstance().resourceLandIssue(x, y, cell.type, cell.level);
-        if (this.targetLabel) this.targetLabel.string = `${cell?.level || ''}级资源地  (${x}, ${y}) · 点击部队出征`;
+        if (this.targetLabel) this.targetLabel.string = action === 'move' ? `移动至 (${x}, ${y}) · 点击部队移动`
+            : `${cell?.level || ''}级资源地  (${x}, ${y}) · 点击部队出征`;
         if (issue) { this.showStatus(issue); return; }
         if (!command.listReady) {
             this.showStatus(command.listLoading ? '正在同步部队…' : '部队数据尚未同步\n请稍后重新打开选择队伍');
@@ -97,7 +100,7 @@ export default class ArmySelectNodeLogic extends Component {
             const item = instantiate(this.itemPrefab);
             item.parent = this.armyContainer;
             const logic = item.getComponent(ArmySelectItemLogic);
-            logic.setTroopData(troop, x, y);
+            logic.setTroopData(troop, x, y, action);
             logic.layoutRow(this.rowWidth, ROW_HEIGHT);
             item.setPosition(0, -ROW_HEIGHT / 2 - (this.armyContainer.children.length - 1) * (ROW_HEIGHT + ROW_GAP), 0);
         }

@@ -26,6 +26,9 @@ import ReconnectLogic, { ReconnectState } from './common/ReconnectLogic';
 import RewardCommand from './reward/RewardCommand';
 import RewardWindowLogic from './reward/RewardWindowLogic';
 import SystemOpenCommand from './systemopen/SystemOpenCommand';
+import WorldCommand from './world/WorldCommand';
+import ProgressionCommand from './progression/ProgressionCommand';
+import BuildCommand from './build/BuildCommand';
 
 @ccclass('Main')
 export default class Main extends Component {
@@ -101,6 +104,11 @@ export default class Main extends Component {
 
         RewardCommand.getInstance();
         TroopCommand.getInstance();
+        // 登录前注册协议监听，避免地图/UI 懒创建模块时漏掉登录确认。
+        // 这里只初始化；任务/行军列表仍等 client_load_ok 回包后才拉取。
+        WorldCommand.getInstance();
+        ProgressionCommand.getInstance();
+        BuildCommand.getInstance();
 
 
         //初始化连接

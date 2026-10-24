@@ -15,6 +15,7 @@ import WorldCampaign from './WorldCampaign';
 import LoginCommand from '../login/LoginCommand';
 import WorldCommand from '../world/WorldCommand';
 import BuildCommand from '../build/BuildCommand';
+import { isResourceLandCell } from '../world/ResourceLand';
 
 export default class MapCommand {
     //单例
@@ -226,6 +227,16 @@ export default class MapCommand {
         return false
     }
 
+
+    /** MOVE 的终点是地图坐标，不能沿用旧协议“只能在自有领地驻军”的限制。 */
+    public moveTargetIssue(x: number, y: number): string {
+        if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0
+            || x >= MapUtil.mapSize.width || y >= MapUtil.mapSize.height) return '移动坐标无效';
+        const id = MapUtil.getIdByCellPoint(x, y), cell = this.proxy.getResData(id);
+        if (this.cityProxy.getCity(id) || this.proxy.getSysCityResData(x, y)) return '城池占地不能作为移动终点';
+        if (!cell || !cell.isEmpty && !isResourceLandCell(cell)) return '请选择空地或可通行的资源地';
+        return this.campaignBlockReason(x, y, false);
+    }
 
     /**是否是可行军的位置*/
     public isCanMoveCell(x: number, y: number): boolean {

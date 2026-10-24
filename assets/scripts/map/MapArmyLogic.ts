@@ -8,6 +8,11 @@ import MapCommand from "./MapCommand";
 import MapUtil from "./MapUtil";
 import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
+import { CoreEvent } from '../core/CoreEvent';
+import WorldCommand from '../world/WorldCommand';
+import LoginCommand from '../login/LoginCommand';
+import { hasId, idKey } from '../network/pto/ProtocolCommand';
+import { aoiTroopMotion } from '../world/MarchPath';
 
 @ccclass('MapArmyLogic')
 export default class MapArmyLogic extends Component {
@@ -21,11 +26,16 @@ export default class MapArmyLogic extends Component {
     protected _armyLogics: Map<number, ArmyLogic> = new Map<number, ArmyLogic>();
     protected _armyPool: NodePool = new NodePool();
     protected _arrowPool: NodePool = new NodePool();
+    private aoiArmies = new Map<string, ArmyLogic>();
 
     protected onLoad(): void {
         EventMgr.on(LogicEvent.updateArmyList, this.onUpdateArmyList, this);
         EventMgr.on(LogicEvent.updateArmy, this.onUpdateArmy, this);
+        EventMgr.on(LogicEvent.updateWorldEntities, this.syncWorldEntities, this);
+        EventMgr.on(LogicEvent.updateMyRole, this.syncWorldEntities, this);
+        EventMgr.on(CoreEvent.gameReady, this.syncWorldEntities, this);
         this.initArmys();
+        this.syncWorldEntities();
 
         this.schedule(this.checkVisible, 0.5);
     }
@@ -37,12 +47,41 @@ export default class MapArmyLogic extends Component {
         this._armyLogics.forEach((logic:ArmyLogic) => {
             logic.destroy();
         })
+        this.aoiArmies.forEach(logic => logic.destroy());
+        this.aoiArmies.clear();
     }
 
     protected update():void {
         this._armyLogics.forEach((logic:ArmyLogic) => {
             logic.update();
         });
+        if (MapUtil.areaCellSize) this.aoiArmies.forEach(logic => logic.update());
+    }
+
+    private syncWorldEntities(): void {
+        // 地图加载完成前可能已经收到列表，gameReady 会再次使用缓存进行同步。
+        if (!MapUtil.areaCellSize || !this.parentLayer) return;
+        // 地图实体全部以 AOI 为准，march_list 仅用于本人部队面板与操作状态。
+        // AOI 没有 troopIdx，不能从 entityId 拆编号或把自己的两种数据各画一遍。
+        const entities = Array.from(WorldCommand.getInstance().entities.values())
+            .filter(e => hasId(e.entityId) && !!aoiTroopMotion(e));
+        const ownerId = LoginCommand.getInstance().proxy.getRoleData()?.userId;
+        const current = new Set(entities.map(e => idKey(e.entityId)));
+        for (const [id, logic] of this.aoiArmies) {
+            if (current.has(id)) continue;
+            this._armyPool.put(logic.aniNode); this._arrowPool.put(logic.arrowNode); logic.clear();
+            this.aoiArmies.delete(id);
+        }
+        for (const entity of entities) {
+            const id = idKey(entity.entityId);
+            let logic = this.aoiArmies.get(id);
+            if (!logic) {
+                logic = new ArmyLogic(); logic.aniNode = this.createArmy(); logic.arrowNode = this.createArrow();
+                logic.aniNode.parent = this.parentLayer; logic.arrowNode.parent = this.parentLayer;
+                this.aoiArmies.set(id, logic);
+            }
+            logic.setWorldEntity(entity, hasId(ownerId) && idKey(ownerId) === idKey(entity.ownerId), logic.aniNode, logic.arrowNode);
+        }
     }
 
     protected initArmys(): void {

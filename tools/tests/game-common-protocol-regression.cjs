@@ -12,7 +12,7 @@ const big = '9007199254740993';
 const other = '9007199254740995';
 let passed = 0;
 
-function harness() {
+function harness(lazyMapModules = false) {
     const modules = new Map(), timers = new Map(), sent = [], notices = [];
     let timerId = 0;
     const role = { userId: big, allianceId: 0, cityPos: { x: 12, y: 20 } };
@@ -62,9 +62,10 @@ function harness() {
     config.loadConfigs(['Mail', 'MailKind', 'ResLand', 'ResLandType'].map(name => ({ name, json: JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config', name + '.json'), 'utf8')) })));
     const commands = {
         union: load('union/UnionCommand').default.getInstance(), chat: load('chat/ChatCommand').default.getInstance(),
-        world: load('world/WorldCommand').default.getInstance(), progress: load('progression/ProgressionCommand').default.getInstance(),
+        world: lazyMapModules ? null : load('world/WorldCommand').default.getInstance(),
+        progress: lazyMapModules ? null : load('progression/ProgressionCommand').default.getInstance(),
         battle: load('battle/BattleCommand').default.getInstance(), rank: load('rank/RankCommand').default.getInstance(),
-        build: load('build/BuildCommand').default.getInstance(), troop: load('general/TroopCommand').default.getInstance(),
+        build: lazyMapModules ? null : load('build/BuildCommand').default.getInstance(), troop: load('general/TroopCommand').default.getInstance(),
         mail: load('mail/MailCommand').default.getInstance(),
     };
     const receive = (name, data = {}) => {
@@ -83,6 +84,82 @@ const filter = process.argv[3] ? new RegExp(process.argv[3]) : null;
 function test(name, run) { if (filter && !filter.test(name)) return; run(); passed++; console.log('PASS ' + name); }
 const info = (id = 17) => ({ brief: { allianceId: id, name: '长安', flag: 4, joinType: 2, notice: '一起出关', memberCount: 3, memberMax: 40, level: 1 }, leaderId: big, manifesto: '守望相助', createTime: 1 });
 const message = (msgId, channel = 1, senderId = big, targetId = 0) => ({ msgId, channel, senderId, targetId, senderName: '玩家', content: '消息', time: Number(msgId) || 1 });
+
+test('Main 登录前初始化任务与地图，加载确认后请求，任务卡不再漏接会话', () => {
+    const h = harness(true);
+    assert.equal(h.events.events.has(h.S.s2c_req_task_list), false, '复现首次打开地图才创建任务模块');
+    const engine = { Component: class {}, Node: class { static EventType = { SIZE_CHANGED: 'size' }; },
+        assert: value => assert.ok(value), view: { on() {} },
+        _decorator: { ccclass: () => v => v, property: () => () => {} } };
+    const imports = {
+        './utils/EventMgr': { EventMgr: h.events }, './common/LogicEvent': { LogicEvent: h.E },
+        './core/CoreEvent': h.load('core/CoreEvent'), './network/socket/NetInterface': { NetEvent: h.net },
+        './config/GameConfig': { GameConfig: {} },
+        './common/AudioManager': { AudioManager: { instance: { init() {} } } },
+        './network/http/HttpManager': { HttpManager: { getInstance: () => ({ setWebUrl() {} }) } },
+        './network/pto/ProtoManager': { ProtoManager: { getInstance: () => ({ init: () => ({ then() {} }) }) } },
+        './world/WorldCommand': h.load('world/WorldCommand'),
+        './progression/ProgressionCommand': h.load('progression/ProgressionCommand'),
+        './build/BuildCommand': h.load('build/BuildCommand'),
+    };
+    const mod = { exports: {} }, code = ts.transpileModule(fs.readFileSync(path.join(scripts, 'Main.ts'), 'utf8'), {
+        compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, experimentalDecorators: true } }).outputText;
+    new Function('require', 'module', 'exports', code)(id => id === 'cc' ? engine : imports[id]
+        || { default: { getInstance: () => ({}) } }, mod, mod.exports);
+    const main = new mod.exports.default(); main.node = { on() {} }; main.getComponent = () => ({}); main.alignUiCamera = () => {};
+    main.onLoad();
+    const progress = h.load('progression/ProgressionCommand').default.getInstance();
+    const world = h.load('world/WorldCommand').default.getInstance();
+    assert.equal(progress.sessionReady, false);
+    h.authenticate(); assert.equal(progress.sessionReady, true); assert.equal(world.sessionReady, true);
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_task_list).length, 0, '加载阶段不抢跑任务请求');
+    h.loaded();
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_task_list).length, 1);
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_march_list).length, 1);
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_activity_list).length, 0);
+    h.receive(h.S.s2c_req_task_list, { taskList: [{ taskId: 1001, taskType: 1, state: 1, progress: 1 }] });
+    assert.equal(progress.tasksLoaded, true); assert.equal(progress.getTasks()[0].taskId, 1001);
+    assert.equal(progress.claimTask(1001), true);
+    h.disconnect(); assert.equal(progress.sessionReady, false); assert.equal(progress.tasksLoaded, false);
+    assert.equal(progress.getTasks().length, 0); assert.equal(world.marches.values().length, 0);
+    h.authenticate(); h.loaded();
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_task_list).length, 2);
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_get_task_reward).length, 1, '重连不重发领奖');
+    h.receive(h.S.s2c_req_task_list, { taskList: [{ taskId: 1002, taskType: 1, state: 0, progress: 0 }] });
+    assert.equal(progress.getTasks()[0].taskId, 1002);
+});
+
+test('MOVE 按坐标无实体移动，确认后同步位置；忙碌、重复、越界及断线不发包', () => {
+    const h = harness();
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/TargetType.json'), 'utf8'));
+    const type = h.load('world/WorldCommand').MarchTargetType.Move;
+    assert.equal(type, config.find(c => c.Enum === 'MOVE').Id);
+    assert.equal(h.world.moveTroop(1, { x: 0, y: 999 }), false);
+    h.authenticate();
+    assert.equal(h.world.moveTroop(1, { x: 0, y: 999 }), true);
+    assert.deepEqual(plain(h.sent.at(-1).data), { troopIdx: 1, targetType: 4, targetId: 0, targetPos: { x: 0, y: 999 } });
+    assert.equal(h.world.entities.size, 0, 'MOVE 不需要 AOI 资源实体');
+    assert.equal(h.world.marches.values().length, 0, '请求发送时不伪造行军');
+    assert.equal(h.world.moveTroop(1, { x: 1, y: 998 }), false);
+    const march = { troopIdx: 1, targetType: 4, startPos: { x: 12, y: 20 }, endPos: { x: 0, y: 999 },
+        startTime: 1.5, endTime: 1000.25, state: 1, path: [{ x: 12, y: 20 }, { x: 1.5, y: 30 }, { x: 0, y: 999 }] };
+    h.receive(h.S.s2c_march, { marchInfo: march });
+    assert.equal(h.world.moveTroop(1, { x: 10, y: 20 }), false);
+    h.receive(h.S.s2c_sync_march, { marchInfo: { ...march, state: 2 } });
+    assert.equal(h.world.marches.get(1).state, 2);
+    assert.equal(h.world.moveTroop(1, { x: 0, y: 999 }), false, '已驻留在目的地不重发');
+    assert.equal(h.world.moveTroop(1, { x: 10, y: 20 }), true);
+    for (const pos of [{ x: -1, y: 0 }, { x: 1000, y: 0 }, { x: 1.5, y: 2 }, { x: 0, y: NaN }]) assert.equal(h.world.moveTroop(2, pos), false);
+    assert.equal(h.world.march(2, 5, 0, { x: 1, y: 2 }), false);
+    assert.equal(h.world.march(2, 3, 0, { x: 1, y: 2 }), false, '占领仍必须给实体 ID');
+    assert.equal(h.world.march(2, 4, other, { x: 1, y: 2 }), true);
+    assert.equal(String(h.sent.at(-1).data.targetId), '0', 'MOVE 不能携带旧占领实体 ID');
+    const count = h.sent.length; h.disconnect();
+    assert.equal(h.world.moveTroop(3, { x: 1, y: 2 }), false); assert.equal(h.sent.length, count);
+    assert.equal(h.world.marches.values().length, 0);
+    h.authenticate(); h.loaded();
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_march).length, 3, '重连不重发移动写操作');
+});
 
 test('同步后的全部新协议均使用当前 net_pb ID，协议资产与 game_common 一致', () => {
     const h = harness();

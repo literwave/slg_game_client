@@ -42,7 +42,7 @@ message s2c_sync_troop {
 }
 
 // ---------- 行军 ----------
-// targetType → TargetType.Id（1回城 2打怪 3占领资源地）
+// targetType → TargetType.Id（1回城 2打怪 3占领资源地 4移动）
 // state: 1行军中 2已到达
 // 耗时按路径格数 / Global.Id=17（每秒移动格数）计算 endTime，避免一秒跨多格
 message p_march_info {

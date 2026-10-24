@@ -131,6 +131,23 @@ test('登录坐标直接显示主城，int64 身份保真，3×3 点击区和城
     for (let y = 19; y <= 21; y++) for (let x = 11; x <= 13; x++) scene.addMapCell(0, x, y);
     assert.equal(rendered.length, 1, '跨占地格只实例化一次城市');
 });
+test('MOVE 空地与资源地可选，城池占地、山水、越界和未开关路线不可移动', () => {
+    const h = harness(), map = h.map;
+    let cell = { type: 0, level: 0, isEmpty: true }, systemCity = null, route = '';
+    map.proxy.getResData = () => cell; map.proxy.getSysCityResData = () => systemCity;
+    map.campaignBlockReason = (x, y, attackGate) => { assert.equal(attackGate, false); return route; };
+    assert.equal(map.moveTargetIssue(100, 200), '');
+    cell = { type: 54, level: 3 }; assert.equal(map.moveTargetIssue(100, 200), '');
+    assert.match(map.moveTargetIssue(12, 20), /城池/);
+    systemCity = {}; assert.match(map.moveTargetIssue(100, 200), /城池/); systemCity = null;
+    for (const value of [null, { type: 0 }, { type: 50, level: 8 }, { type: 51, level: 8 }]) {
+        cell = value; assert.ok(map.moveTargetIssue(100, 200));
+    }
+    cell = { type: 0, level: 0, isEmpty: true }; route = '须先夺关';
+    assert.equal(map.moveTargetIssue(100, 200), route);
+    for (const [x, y] of [[-1, 0], [1000, 0], [1.5, 2], [0, NaN]]) assert.match(map.moveTargetIssue(x, y), /坐标无效/);
+});
+
 test('World 城池进入/更新/离开、自己的 AOI 离开不丢主城，迁城清理旧格', () => {
     const h = harness(), p = h.map.cityProxy;
     h.receive(h.S.s2c_aoi_enter, { entities: [h.entity(), h.entity('9007199254740999', uid, 12, 20)] });

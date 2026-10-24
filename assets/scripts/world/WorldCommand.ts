@@ -8,6 +8,8 @@ import { resourceLandConfig, resourceLandForCell } from './ResourceLand';
 
 /** 路径中的p_pos_f保留小数；只有目的格和视野中心使用整数坐标。 */
 export interface WorldPosition { x: number; y: number; }
+/** 与 game_common 的 TargetType 配置一致；坐标移动不需要实体 ID。 */
+export enum MarchTargetType { ReturnCity = 1, AttackMonster = 2, OccupyResource = 3, Move = 4 }
 export interface MarchInfo {
     troopIdx: number; targetType: number; targetId: number | string;
     startPos: WorldPosition; endPos: WorldPosition; startTime: number; endTime: number;
@@ -44,11 +46,11 @@ export default class WorldCommand extends ProtocolCommand {
         });
         [S.s2c_aoi_enter, S.s2c_aoi_update].forEach(name => this.listen(name, d => {
             for (const entity of d.entities || []) if (hasId(entity.entityId)) this.entities.set(idKey(entity.entityId), entity);
-            EventMgr.emit(E.updateWorldEntities, Array.from(this.entities.values()));
+            this.notifyEntities();
         }));
         this.listen(S.s2c_aoi_leave, d => {
             for (const id of d.entityIds || []) this.entities.delete(idKey(id));
-            EventMgr.emit(E.updateWorldEntities, Array.from(this.entities.values()));
+            this.notifyEntities();
         });
         EventMgr.on(E.updateCityPosition, this.focus, this);
         EventMgr.on(E.mapEenterChange, this.focus, this);
@@ -57,12 +59,15 @@ export default class WorldCommand extends ProtocolCommand {
         this.marches.clear(); this.entities.clear(); this.focusPos = null; this.lastFocus = '';
         if (this.focusTimer !== null) clearTimeout(this.focusTimer);
         this.focusTimer = null;
+        this.notifyMarches();
+        this.notifyEntities();
     }
     protected onSessionReady(): void {
         this.requestMarches();
         this.focus(this.focusPos || LoginCommand.getInstance().proxy.getRoleData()?.cityPos);
     }
     private notifyMarches(): void { EventMgr.emit(E.updateMarches, this.marches.values()); }
+    private notifyEntities(): void { EventMgr.emit(E.updateWorldEntities, Array.from(this.entities.values())); }
     requestMarches(): boolean {
         if (this.isPending(S.c2s_req_march_list)) return false;
         this.marches.begin();
@@ -71,8 +76,16 @@ export default class WorldCommand extends ProtocolCommand {
         return sent;
     }
     march(troopIdx: number, targetType: number, targetId: number | string, targetPos: WorldPosition): boolean {
-        if (!uint(troopIdx) || [1, 2, 3].indexOf(targetType) < 0 || !this.validPos(targetPos) || (targetType !== 1 && !hasId(targetId))) return false;
+        const coordinateTarget = targetType === MarchTargetType.ReturnCity || targetType === MarchTargetType.Move;
+        if (!uint(troopIdx) || [1, 2, 3, 4].indexOf(targetType) < 0 || !this.validPos(targetPos) || (!coordinateTarget && !hasId(targetId))) return false;
+        if (coordinateTarget) targetId = 0;
         return this.request(S.c2s_march, { troopIdx, targetType, targetId, targetPos }, `march:${troopIdx}`, () => this.requestMarches());
+    }
+    moveTroop(troopIdx: number, targetPos: WorldPosition): boolean {
+        const current = this.marches.get(troopIdx);
+        if (!this.validPos(targetPos) || current?.state === 1
+            || current?.state === 2 && current.endPos?.x === targetPos.x && current.endPos?.y === targetPos.y) return false;
+        return this.march(troopIdx, MarchTargetType.Move, 0, targetPos);
     }
     cancelMarch(troopIdx: number): boolean {
         return uint(troopIdx) && this.request(S.c2s_cancel_march, { troopIdx }, `march:${troopIdx}`, () => this.requestMarches());
@@ -99,7 +112,7 @@ export default class WorldCommand extends ProtocolCommand {
         if (!entity || entity.entityType !== 4 || !cfg || this.marches.get(troopIdx)?.state === 1
             || hasId(role?.userId) && idKey(entity.ownerId) === idKey(role.userId)
             || role && cfg.OpenCond?.level && role.level < cfg.OpenCond.level) return false;
-        return this.march(troopIdx, 3, entity.entityId, entity.pos);
+        return this.march(troopIdx, MarchTargetType.OccupyResource, entity.entityId, entity.pos);
     }
     /** 地图格子坐标，250ms 合并拖动上报；不用像素坐标代替格坐标。 */
     focus(pos: WorldPosition): void {

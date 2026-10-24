@@ -14,7 +14,7 @@ import { LogicEvent } from '../common/LogicEvent';
 import WorldMapArt from './WorldMapArt';
 import WorldCampaign from './WorldCampaign';
 import LoginCommand from '../login/LoginCommand';
-import { playerCityAppearance, playerCityFootprint, PLAYER_CITY_ANCHOR_Y } from './PlayerCityAppearance';
+import { playerCityAppearance, playerCityFootprint, playerCityGroundFront, PLAYER_CITY_ANCHOR_Y } from './PlayerCityAppearance';
 import MapUtil from './MapUtil';
 import { isResourceLandCell } from '../world/ResourceLand';
 import { caption, hideSprite, inkSurface, ManagementColors, panelButton, place, textStyle } from './ui/ManagementStyle';
@@ -195,6 +195,16 @@ export default class MapClickUILogic extends Component {
         this.node.parent = null;
     }
 
+    protected onClickMove(): void {
+        if (!this._data) return;
+        AudioManager.instance.playClick();
+        const { x, y } = this._data;
+        const reason = MapCommand.getInstance().moveTargetIssue(x, y);
+        if (reason) { EventMgr.emit(LogicEvent.showToast, reason); return; }
+        EventMgr.emit(LogicEvent.openArmySelectUi, 'move', x, y);
+        this.node.parent = null;
+    }
+
     private onClickRelocate(): void {
         if (!this._data?.isEmpty || LoginCommand.getInstance().movingCity) return;
         AudioManager.instance.playClick();
@@ -216,7 +226,7 @@ export default class MapClickUILogic extends Component {
         this._panelWidth = Math.min(340, Math.max(240, view.getVisibleSize().width - 32));
         this.labelPos.string = "(" + data.x + ", " + data.y + ")";
         this.leftInfoNode.active = true;
-        this.btnMove.node.active = false;
+        this.btnMove.node.active = !(data instanceof MapCityData) && (!!data.isEmpty || isResourceLandCell(data));
         this.btnGiveUp.node.active = false;
         this.btnReclaim.node.active = false;
         this.btnBuild.node.active = false;
@@ -268,14 +278,15 @@ export default class MapClickUILogic extends Component {
         }
 
         const city = this._data instanceof MapCityData;
-        const appearance = city ? playerCityAppearance(this._data.level) : null;
+        const appearance = city ? playerCityAppearance(this._data.level, MapUtil.tileSize.width) : null;
         const art = city ? appearance.art : this._data.type === MapResType.SYS_CITY
             ? this._data.level >= 8 ? 'capital' : this._data.level >= 5 ? 'county' : 'town'
             : ({ 50: 'fort', 52: 'forest', 53: 'iron', 54: 'quarry', 55: 'grain' }[this._data.type] || 'fort');
         const frame = WorldMapArt.frame(art);
         const iconWidth = city ? appearance.width : this._data.type === MapResType.SYS_CITY
             ? WorldMapArt.cityWidth(this._data.level) : this._data.type === MapResType.SYS_FORTRESS ? 138 : 80 + this._data.level * 5;
-        this._iconTop = iconWidth * frame.originalSize.height / frame.originalSize.width * (city ? 1 - PLAYER_CITY_ANCHOR_Y : .8) + 12;
+        this._iconTop = iconWidth * frame.originalSize.height / frame.originalSize.width * (city ? 1 - PLAYER_CITY_ANCHOR_Y : .8)
+            + (city ? playerCityGroundFront(MapUtil.tileSize.height) : 0) + 12;
         this._iconHalfWidth = iconWidth / 2 + 12;
 
 
@@ -399,7 +410,7 @@ export default class MapClickUILogic extends Component {
             const width = (contentWidth - (columns - 1) * 8) / columns;
             const label = buttons[i].getComponentInChildren(Label);
             const texts = new Map<Button, string>([[this.btnEnter, '进入'], [this.btnOccupy, WorldCampaign.gateAt(this._data.x, this._data.y) ? '攻打关隘' : '占领'],
-                [this.btnMove, '驻守'], [this.btnGiveUp, '放弃'], [this.btnReclaim, '屯田'], [this.btnBuild, '建造'],
+                [this.btnMove, '移动'], [this.btnGiveUp, '放弃'], [this.btnReclaim, '屯田'], [this.btnBuild, '建造'],
                 [this._btnRelocate, LoginCommand.getInstance().movingCity ? '迁城中…' : '迁城'],
                 [this.btnTransfer, '调动'], [this.btnTagAdd, '标记'], [this.btnTagRemove, '取消标记']]);
             const text = texts.get(buttons[i]) || label?.string || '进入';

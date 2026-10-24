@@ -47,7 +47,9 @@ const cc = { Component, Node, UITransform, Label, Sprite, Button, Color, Graphic
     Vec2: class { constructor(x, y) { this.x = x; this.y = y; } },
     view: { getVisibleSize: () => visible, on() {}, off() {} },
     _decorator: { ccclass: () => v => v, property: () => () => {} } };
-const map = { proxy: { getWarFree: () => 0, isPosTag: () => false }, cityProxy: { myId: 1 } };
+let moveIssue = '';
+const map = { proxy: { getWarFree: () => 0, isPosTag: () => false, getResData: () => null,
+    getResConfig: () => null, getResYieldDesList: () => [] }, cityProxy: { myId: 1 }, moveTargetIssue: () => moveIssue };
 const util = { tileSize: { width: 200, height: 100 } };
 const art = { apply(sprite, name, width) { sprite.art = name; sprite.node.getComponent(UITransform).setContentSize(width, width * .6); },
     ownership(node, a, b, c, width) { node.ownershipWidth = width; }, factionColor: () => null,
@@ -61,7 +63,8 @@ const stubs = {
     'login/LoginCommand': { default: { getInstance: () => ({ movingCity: false }) } },
     'core/ConfigManager': { default: {} }, 'general/ArmyCommand': {}, 'general/GeneralCommand': {},
     'general/TroopCommand': {}, 'world/WorldCommand': {}, 'map/ui/GeneralHeadLogic': { default: class {} },
-    'map/ui/MapUICommand': {}, 'common/AudioManager': { AudioManager: { instance: { playClick() {} } } },
+    'map/ui/MapUICommand': { default: { getInstance: () => ({ proxy: { getDefenseSoldiers: () => 0 } }) } },
+    'common/AudioManager': { AudioManager: { instance: { playClick() {} } } },
 };
 const cache = new Map();
 function load(key) {
@@ -116,6 +119,36 @@ assert.equal(city.node.getChildByName('CitySelection').active, false, '关闭信
 events.emit(E.selectPlayerCity, data.id); city.onDisable(); city.onEnable(); city.setCityData({ ...data, id: 30020 });
 assert.equal(city.node.getChildByName('CitySelection').active, false, '对象池复用不能带旧选框');
 console.log('PASS 主城真实预制体：0～30 级统一占地、地表选框、城名、未知耐久、关闭与复用');
+
+const moveButton = JSON.parse(fs.readFileSync(path.join(root, 'assets/prefab/map/MapClickUI.prefab'), 'utf8'))
+    .find(o => o._clickEvents?.some(e => e.handler === 'onClickMove'));
+// Creator 的点击事件可能用对象引用序列化，读取实际绑定而不手工重绑。
+const popupRecords = JSON.parse(fs.readFileSync(path.join(root, 'assets/prefab/map/MapClickUI.prefab'), 'utf8'));
+assert.ok(moveButton || popupRecords.some(o => o.handler === 'onClickMove'));
+const selectionEvents = [], moveToasts = [], movementOwner = {};
+events.on(E.openArmySelectUi, (...args) => selectionEvents.push(args), movementOwner);
+events.on(E.showToast, message => moveToasts.push(message), movementOwner);
+const popupParent = new Node('MapPopupLayer');
+for (const target of [
+    { type: 0, level: 0, isEmpty: true, x: 10, y: 20 },
+    { type: 52, level: 2, isEmpty: false, x: 11, y: 21 },
+]) {
+    popup.node.parent = popupParent;
+    popup.setCellData(Object.assign(new stubs['map/MapProxy'].MapResData(), target), { x: 0, y: 0 });
+    assert.equal(popup.btnMove.node.active, true);
+    assert.equal(popup.btnMove.getComponentInChildren(Label).string, '移动');
+    assert.equal(popup.btnOccupy.node.active, !target.isEmpty);
+    popup.onClickMove();
+    assert.deepEqual(selectionEvents.at(-1), ['move', target.x, target.y]);
+    assert.equal(popup.node.parent, null);
+}
+popup.node.parent = popupParent; moveIssue = '请选择空地或可通行的资源地';
+const openCount = selectionEvents.length; popup.onClickMove();
+assert.equal(selectionEvents.length, openCount); assert.equal(popup.node.parent, popupParent);
+assert.equal(moveToasts.at(-1), moveIssue);
+popup.setCellData(data, { x: 0, y: 0 }); assert.equal(popup.btnMove.node.active, false);
+events.targetOff(movementOwner);
+console.log('PASS 移动真实入口：空地/资源地可选队，城池隐藏，无效目标保留弹窗并提示');
 
 const Selector = load('map/ui/ArmySelectNodeLogic').default, Item = load('map/ui/ArmySelectItemLogic').default;
 const selector = prefab('ArmySelectNode.prefab', Selector, 'armyContainer'); selector.onLoad();

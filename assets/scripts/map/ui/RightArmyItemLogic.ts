@@ -6,7 +6,7 @@ import GeneralCommand from "../../general/GeneralCommand";
 import ArmyCommand from "../../general/ArmyCommand";
 import { GeneralConfig, GeneralData } from "../../general/GeneralProxy";
 import { TroopData } from "../../general/TroopProxy";
-import WorldCommand from '../../world/WorldCommand';
+import WorldCommand, { MarchTargetType } from '../../world/WorldCommand';
 import { MapCityData } from "../MapCityProxy";
 import MapCommand from "../MapCommand";
 import DateUtil from "../../utils/DateUtil";
@@ -62,8 +62,8 @@ export default class RightArmyItemLogic extends Component {
             const march = WorldCommand.getInstance().marches.get(this._troop.troopIdx);
             if (march && this.labelPos) {
                 this.labelPos.string = march.state === 1
-                    ? `${march.targetType === 1 ? '回城' : '行军'} ${DateUtil.converSecondStr(Math.max(0, march.endTime * 1000 - DateUtil.getServerTime()))}`
-                    : '已到达';
+                    ? `${march.targetType === MarchTargetType.ReturnCity ? '回城' : march.targetType === MarchTargetType.Move ? '移动' : '行军'} ${DateUtil.converSecondStr(Math.max(0, march.endTime * 1000 - DateUtil.getServerTime()))}`
+                    : march.targetType === MarchTargetType.Move ? `驻留 (${march.endPos.x}, ${march.endPos.y})` : '已到达';
             }
         }
         if (this._data && (this._data.state > 0 || this._data.cmd == ArmyCmd.Reclaim)) {
