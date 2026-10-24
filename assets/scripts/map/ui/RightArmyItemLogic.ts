@@ -1,4 +1,4 @@
-import { _decorator, Color, Component, Label, Node, Sprite, UITransform, Layout } from 'cc';
+import { _decorator, Button, Color, Component, Label, Node, Sprite, UITransform, Layout } from 'cc';
 const { ccclass, property } = _decorator;
 
 import { ArmyCmd, ArmyData } from "../../general/ArmyProxy";
@@ -47,6 +47,8 @@ export default class RightArmyItemLogic extends Component {
         EventMgr.on(LogicEvent.updateGeneral, this.onUpdateGeneral, this);
         EventMgr.on(LogicEvent.updateTroop, this.onUpdateTroop, this);
         EventMgr.on(LogicEvent.updateMarches, this.onUpdateGeneral, this);
+        EventMgr.on(LogicEvent.protocolRequestChanged, this.onUpdateGeneral, this);
+        EventMgr.on(LogicEvent.updateMyRole, this.onUpdateGeneral, this);
         this.bottomNode.active = false;
         this.layoutItem();
     }
@@ -59,11 +61,13 @@ export default class RightArmyItemLogic extends Component {
 
     protected update(): void {
         if (this._troop) {
-            const march = WorldCommand.getInstance().marches.get(this._troop.troopIdx);
-            if (march && this.labelPos) {
+            const world = WorldCommand.getInstance(), march = world.marches.get(this._troop.troopIdx);
+            if (this.labelPos && world.isTroopAtHome(this._troop.troopIdx)) {
+                this.labelPos.string = this._troop.getHeroCount() ? '主城待命' : '尚未编队';
+            } else if (march && this.labelPos) {
                 this.labelPos.string = march.state === 1
                     ? `${march.targetType === MarchTargetType.ReturnCity ? '回城' : march.targetType === MarchTargetType.Move ? '移动' : '行军'} ${DateUtil.converSecondStr(Math.max(0, march.endTime * 1000 - DateUtil.getServerTime()))}`
-                    : march.targetType === MarchTargetType.Move ? `驻留 (${march.endPos.x}, ${march.endPos.y})` : '已到达';
+                    : `驻留 (${march.endPos.x}, ${march.endPos.y})`;
             }
         }
         if (this._data && (this._data.state > 0 || this._data.cmd == ArmyCmd.Reclaim)) {
@@ -149,7 +153,10 @@ export default class RightArmyItemLogic extends Component {
         const width = twoActions ? (ui.width - 32) / 2 : ui.width - 24;
         const offset = twoActions ? (width + 8) / 2 : 0;
         if (showSetting) styleCommandAction(this.btnSetting, hasHeroes ? '调整编队' : '配置武将', -offset, width, true);
-        if (showBack) styleCommandAction(this.btnBack, '返回主城', offset, width, !showSetting);
+        if (showBack) {
+            const pending = this._troop && WorldCommand.getInstance().requestInFlight(`march:${this._troop.troopIdx}`);
+            styleCommandAction(this.btnBack, pending ? '请求中…' : '返回主城', offset, width, !showSetting);
+        }
     }
 
     private styleDetailLabel(label: Label, x: number, y: number, width: number, fontSize: number, muted: boolean): void {
@@ -173,7 +180,10 @@ export default class RightArmyItemLogic extends Component {
         if (!top) return;
         const order = this.order || this._data?.order || 0;
         const hasHeroes = this._troop ? this._troop.getSortedHeroes().length > 0 : !!this._firstGeneral;
-        const state = this._data ? ArmyCommand.getInstance().getArmyStateDes(this._data).replace(/[\[\]【】]/g, '') : (hasHeroes ? '已编队' : '待配置');
+        const world = WorldCommand.getInstance(), march = this._troop && world.marches.get(this._troop.troopIdx);
+        const troopState = !hasHeroes ? '待配置' : !march || world.isTroopAtHome(this._troop.troopIdx) ? '待命'
+            : march.state === 1 ? (march.targetType === MarchTargetType.ReturnCity ? '回城中' : '行军中') : '驻留';
+        const state = this._data ? ArmyCommand.getInstance().getArmyStateDes(this._data).replace(/[\[\]【】]/g, '') : troopState;
         drawCommandRow(top, !!this.bottomNode?.active, true);
         setCommandLabel(top, 'OrderBadge', order > 0 ? String(order).padStart(2, '0') : '军', -102, 1, 28, 13);
         setCommandLabel(top, 'StateBadge', state, 93, 12, 44, 10, !hasHeroes);
@@ -182,7 +192,9 @@ export default class RightArmyItemLogic extends Component {
     protected onClickBack(): void {
         AudioManager.instance.playClick();
         if (this._troop) {
-            WorldCommand.getInstance().cancelMarch(this._troop.troopIdx);
+            const world = WorldCommand.getInstance(), issue = world.returnToCityIssue(this._troop.troopIdx);
+            if (issue) EventMgr.emit(LogicEvent.showToast, issue);
+            else if (!world.returnTroopToCity(this._troop.troopIdx)) EventMgr.emit(LogicEvent.showToast, '回城请求未发送，请稍后重试');
             return;
         }
         if (this._data) {
@@ -293,9 +305,15 @@ export default class RightArmyItemLogic extends Component {
             });
             this.labelMorale.string = "攻击 " + attack;
         }
-        const march = WorldCommand.getInstance().marches.get(this._troop.troopIdx);
-        if (this.btnBack) this.btnBack.active = !!march && march.targetType !== 1;
-        if (this.btnSetting) this.btnSetting.active = !march;
+        const world = WorldCommand.getInstance(), march = world.marches.get(this._troop.troopIdx);
+        const atHome = world.isTroopAtHome(this._troop.troopIdx);
+        const returning = march?.state === 1 && march.targetType === MarchTargetType.ReturnCity;
+        if (this.btnBack) {
+            this.btnBack.active = !!march && !atHome && !returning;
+            const button = this.btnBack.getComponent(Button);
+            if (button) button.interactable = world.sessionReady && !world.requestInFlight(`march:${this._troop.troopIdx}`);
+        }
+        if (this.btnSetting) this.btnSetting.active = atHome;
         this.layoutItem();
     }
 

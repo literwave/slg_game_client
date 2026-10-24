@@ -104,8 +104,11 @@ export default class GeneralListLogic extends Component {
             }
         });
 
+        const troops = TroopCommand.getInstance().proxy;
         const list = proxy.getUseGenerals()
             .filter((general) => !excluded.has(general.hero_type))
+            // 只改变武将列表的分组优先级；组内保留品质、等级等原有顺序。
+            .sort((a, b) => Number(troops.isHeroInTroop(b.hero_type)) - Number(troops.isHeroInTroop(a.hero_type)))
             .map((general) => Object.assign({}, general, {
                 listType: this._type, listPosition: this._position, listAppearance: 'roster',
             }));

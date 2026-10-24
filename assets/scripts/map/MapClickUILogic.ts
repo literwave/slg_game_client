@@ -17,6 +17,8 @@ import LoginCommand from '../login/LoginCommand';
 import { playerCityAppearance, playerCityFootprint, playerCityGroundFront, PLAYER_CITY_ANCHOR_Y } from './PlayerCityAppearance';
 import MapUtil from './MapUtil';
 import { isResourceLandCell } from '../world/ResourceLand';
+import WorldCommand, { MarchTargetType } from '../world/WorldCommand';
+import { hasId, idKey } from '../network/pto/ProtocolCommand';
 import { caption, hideSprite, inkSurface, ManagementColors, panelButton, place, textStyle } from './ui/ManagementStyle';
 
 @ccclass('MapClickUILogic')
@@ -129,6 +131,9 @@ export default class MapClickUILogic extends Component {
     protected onEnable(): void {
         EventMgr.on(LogicEvent.updateBuild, this.onUpdateBuild, this);
         EventMgr.on(LogicEvent.cityMoveState, this.updateRelocateButton, this);
+        EventMgr.on(LogicEvent.updateWorldEntities, this.onWorldResourceChanged, this);
+        EventMgr.on(LogicEvent.updateMarches, this.onWorldResourceChanged, this);
+        EventMgr.on(LogicEvent.updateMyRole, this.onWorldResourceChanged, this);
 
         var uiOpacity = this.bgSelect.getComponent(UIOpacity) || this.bgSelect.addComponent(UIOpacity);
         uiOpacity.opacity = 255;
@@ -184,13 +189,13 @@ export default class MapClickUILogic extends Component {
             EventMgr.emit(LogicEvent.showToast, '当前目标暂不支持出征，请选择资源地');
             return;
         }
-        const reason = MapCommand.getInstance().campaignBlockReason(this._data.x, this._data.y);
+        const { x, y, type, level } = this._data;
+        const reason = MapCommand.getInstance().campaignBlockReason(x, y)
+            || WorldCommand.getInstance().resourceLandIssue(x, y, type, level);
         if (reason) { EventMgr.emit(LogicEvent.showTip, reason, null); return; }
-        if (MapCommand.getInstance().isCanOccupyCell(this._data.x, this._data.y)) {
-            EventMgr.emit(LogicEvent.openArmySelectUi, ArmyCmd.Attack, this._data.x, this._data.y);
-        } else {
-            console.log("只能占领自己相邻的地");
-        }
+        // World 协议以真实资源实体为目标，交由服务端判定可达性及战斗占领。
+        // 旧 nationMap 的相邻领地数据已不再同步，不能继续用它拦截新版出征。
+        EventMgr.emit(LogicEvent.openArmySelectUi, ArmyCmd.Attack, x, y);
 
         this.node.parent = null;
     }
@@ -364,7 +369,33 @@ export default class MapClickUILogic extends Component {
         } else if (data instanceof MapResData && data.type >= 52 && data.type <= 55) {
             this.labelName.string = `${data.level}级${{ 52: '林地', 53: '铁矿', 54: '石料', 55: '粮田' }[data.type]}`;
         }
+        this.updateWorldResourceInfo();
         this.updateRelocateButton();
+    }
+
+    private onWorldResourceChanged(): void {
+        if (!this._data || !isResourceLandCell(this._data)) return;
+        this.updateWorldResourceInfo();
+        this.layoutPanel();
+    }
+
+    /** 归属只读取 AOI ownerId，不把行军到达或本地倒计时当作占领成功。 */
+    private updateWorldResourceInfo(): void {
+        if (!isResourceLandCell(this._data) || this._data instanceof MapCityData) return;
+        const world = WorldCommand.getInstance();
+        const entity = world.resourceLandAt(this._data.x, this._data.y);
+        const userId = LoginCommand.getInstance().proxy.getRoleData()?.userId;
+        const mine = entity && hasId(userId) && idKey(entity.ownerId) === idKey(userId);
+        this.labelUnion.string = !entity ? '归属同步中' : mine ? '己方领地 · 已占领'
+            : hasId(entity.ownerId) ? '其他玩家领地' : '未占领';
+        this.labelLunxian.string = '';
+        this.btnOccupy.node.active = !mine;
+        const march = entity && world.marches.values().find(m => m.targetType === MarchTargetType.OccupyResource
+            && idKey(m.targetId) === idKey(entity.entityId));
+        if (mine) this.labelSoldierCnt.string = '资源产出以服务端同步为准';
+        else if (march) this.labelSoldierCnt.string = march.state === 1 ? `部队${march.troopIdx} · 出征占领中`
+            : `部队${march.troopIdx}已到达 · 等待服务端结算`;
+        else this.labelSoldierCnt.string = '选择部队出征，战斗胜利后占领';
     }
 
     private layoutPanel(): void {

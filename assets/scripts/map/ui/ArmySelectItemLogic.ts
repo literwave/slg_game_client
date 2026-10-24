@@ -187,7 +187,7 @@ export default class ArmySelectItemLogic extends Component {
         this.tipNode.active = !!reason;
         this.labelTip.string = reason;
         this.labelState.string = reason ? '' : action === 'move' ? '点击移动  ›' : '点击出征  ›';
-        this.labelName.string = name(0) || `部队${troop.troopIdx}`;
+        this.labelName.string = `部队${troop.troopIdx}${name(0) ? ' · ' + name(0) : ''}`;
         this.labelLv.string = heroes[0] ? String(heroes[0].level) : '';
         this.headIcon.node.active = !!heroes[0];
         if (heroes[0]) this.headIcon.getComponent(GeneralHeadLogic).setHeadId(heroes[0].cfgId);
@@ -202,7 +202,10 @@ export default class ArmySelectItemLogic extends Component {
         if (!command.listReady) return '正在等待部队同步';
         if (command.editingTroopIdx) return '编队正在保存，请稍候';
         if (!troop) return '部队已变更，请重新选择';
-        const march = WorldCommand.getInstance().marches.get(troop.troopIdx);
+        const world = WorldCommand.getInstance();
+        if (!world.sessionReady) return '连接尚未恢复，请稍后重试';
+        if (world.requestInFlight(`march:${troop.troopIdx}`)) return '指令处理中，请稍候';
+        const march = world.marches.get(troop.troopIdx);
         if (march?.state === 1) return '行军中';
         if (this.action === 'move' && march?.state === 2 && march.endPos?.x === this._toX && march.endPos?.y === this._toY) return '已在目标位置';
         const leader = troop.getHeroIdxAt(0);

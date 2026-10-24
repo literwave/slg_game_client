@@ -1,25 +1,26 @@
 import { Animation, Color, Graphics, Node, Sprite, UITransform, Vec2, isValid } from 'cc';
-import GeneralCommand from '../../general/GeneralCommand';
 import type { TroopData } from '../../general/TroopProxy';
 import MarchPlayback from '../../world/MarchPlayback';
 import type { MarchSample } from '../../world/MarchPath';
 import MapUtil from '../MapUtil';
 import DateUtil from '../../utils/DateUtil';
+import { loadMarchAnimations, MarchAnimationSet, MarchUnitKind } from './MarchAnimationLibrary';
 
 interface Member {
     node: Node; animation: Animation; lag: number; side: number;
+    sprite: Sprite; animations?: MarchAnimationSet;
     clip: string; moving: boolean; phase: number;
     foot?: Vec2;
 }
-const DIRECTIONS = ['r', 'ru', 'u', 'lu', 'l', 'ld', 'd', 'rd'];
 
-/** 主将军旗使用真实画像，副将按实际槽位显示；步兵只表示队列，不冒充兵力数字。 */
+/** 通用骑将带领步兵，不显示画像；队列只表达阵形，不冒充实际兵力数字。 */
 export default class MarchFormation {
     readonly root: Node;
     private members: Member[] = [];
     private signature = '';
     private revision = 0;
     private heading = new Vec2(1, -.5).normalize();
+    private groundHeading = new Vec2(1, 0);
     private lastMono = 0;
 
     constructor(private host: Node) {
@@ -39,58 +40,41 @@ export default class MarchFormation {
         this.signature = key; this.revision++;
         for (const member of this.members) { member.node.removeFromParent(); member.node.destroy(); }
         this.members = [];
-        const color = own ? new Color(111, 190, 233, 240) : new Color(237, 188, 98, 240);
-        // 未知阵容只画通用领队，不把别人的武将套到当前实体上。
-        this.addMember('Commander', 0, 0, 1.03, heroes[0]?.heroIdx || 0, color, true);
-        heroes.slice(1, 3).forEach((hero, i) => this.addMember(`Deputy${i + 1}`, .36, i ? 24 : -24, .83, hero.heroIdx, color));
+        // lag 是路径上的逻辑格距离；队尾限制在领队后 0.44 格，避免队列拖出两格。
+        // 收紧间距时同步缩小角色，保留主将、副将和步兵的大小层次。
+        this.addMember('Commander', 'cavalry', 0, 0, 68);
+        const deputies = troop ? Math.min(2, Math.max(0, heroes.length - 1)) : 2;
+        for (let i = 0; i < deputies; i++) this.addMember(`Deputy${i + 1}`, 'cavalry', .22, i ? 26 : -26, 56);
         for (let i = 0; i < escortCount; i++) {
             const row = Math.floor(i / 2);
-            this.addMember(`Soldier${i + 1}`, .70 + row * .26, i % 2 ? 20 : -20, .62, 0, color);
+            this.addMember(`Soldier${i + 1}`, 'infantry', .30 + row * .07, i % 2 ? 14 : -14, 40);
         }
     }
 
-    private addMember(name: string, lag: number, side: number, scale: number, heroId: number, color: Color, leader = false): void {
+    private addMember(name: string, kind: MarchUnitKind, lag: number, side: number, size: number): void {
         const node = new Node(name); node.layer = this.host.layer; this.root.addChild(node);
         const shadow = new Node('GroundShadow'); shadow.layer = node.layer; node.addChild(shadow);
         shadow.addComponent(UITransform);
         const shadowG = shadow.addComponent(Graphics); shadowG.fillColor = new Color(20, 24, 17, 75);
-        shadowG.ellipse(0, 0, 12 * scale, 5 * scale); shadowG.fill();
+        const shadowWidth = kind === 'cavalry' ? size * .20 : size * .14;
+        shadowG.ellipse(0, 0, shadowWidth, shadowWidth * .34); shadowG.fill();
         const body = new Node('Body'); body.layer = node.layer; node.addChild(body);
         const transform = body.addComponent(UITransform);
-        const template = this.host.getComponent(UITransform);
-        transform.setContentSize(template?.contentSize.width || 36, template?.contentSize.height || 94);
-        transform.setAnchorPoint(.5, 0);
-        body.setScale(scale, scale, 1);
+        transform.setContentSize(size, size);
+        transform.setAnchorPoint(.5, .04);
         const sprite = body.addComponent(Sprite); sprite.sizeMode = Sprite.SizeMode.CUSTOM;
-        sprite.spriteFrame = this.host.getComponent(Sprite)?.spriteFrame || null;
         const animation = body.addComponent(Animation);
-        const clips = this.host.getComponent(Animation)?.clips || [];
-        for (const clip of clips) if (clip) animation.addClip(clip);
-        const member: Member = { node, animation, lag, side, clip: '', moving: false, phase: this.members.length * .071 };
+        body.active = false;
+        const member: Member = { node, animation, sprite, lag, side, clip: '', moving: false, phase: this.members.length * .071 };
         this.members.push(member);
-        if (heroId) this.addBanner(node, heroId, leader, color);
-    }
-
-    private addBanner(parent: Node, heroId: number, leader: boolean, color: Color): void {
-        const banner = new Node(`HeroBanner_${heroId}`); banner.layer = parent.layer; parent.addChild(banner);
-        const width = leader ? 34 : 24, height = leader ? 45 : 32;
-        banner.setPosition(leader ? -24 : -18, leader ? 53 : 43, 0);
-        banner.addComponent(UITransform).setContentSize(width + 4, height + 8);
-        const g = banner.addComponent(Graphics);
-        g.strokeColor = new Color(79, 61, 33, 255); g.lineWidth = 2;
-        g.moveTo(-width / 2 - 3, -28); g.lineTo(-width / 2 - 3, height / 2 + 4); g.stroke();
-        g.fillColor = new Color(35, 37, 28, 255); g.strokeColor = color; g.lineWidth = leader ? 2 : 1;
-        g.rect(-width / 2 - 2, -height / 2 - 2, width + 4, height + 4); g.fill(); g.stroke();
-        g.fillColor = color; g.moveTo(-width / 2 - 2, -height / 2 - 2);
-        g.lineTo(0, -height / 2 - 9); g.lineTo(width / 2 + 2, -height / 2 - 2); g.close(); g.fill();
-        const picture = new Node('Portrait'); picture.layer = parent.layer; banner.addChild(picture);
-        picture.addComponent(UITransform).setContentSize(width, height);
-        const sprite = picture.addComponent(Sprite); sprite.sizeMode = Sprite.SizeMode.CUSTOM;
         const revision = this.revision;
-        void GeneralCommand.getInstance().proxy.loadGeneralTex(heroId).then(frame => {
-            if (revision !== this.revision || !isValid(picture) || !frame) return;
-            sprite.spriteFrame = frame;
-        }).catch(() => { /* 画像失败保留军旗与行走动画，不阻断队列。 */ });
+        void loadMarchAnimations(kind).then(animations => {
+            if (revision !== this.revision || !isValid(body)) return;
+            member.animations = animations;
+            animations.clips.forEach(clip => animation.addClip(clip));
+            sprite.spriteFrame = animations.idleFrames[7];
+            body.active = true;
+        }).catch(() => { /* 共享加载器已经报告具体资源错误。 */ });
     }
 
     update(playback: MarchPlayback, sample: MarchSample): void {
@@ -99,11 +83,16 @@ export default class MarchFormation {
         this.lastMono = now;
         const center = MapUtil.mapCellToPixelPoint(new Vec2(sample.position.x, sample.position.y));
         const next = MapUtil.mapCellToPixelPoint(new Vec2(sample.towards.x, sample.towards.y));
-        if (sample.moving && Vec2.distance(center, next) > .01) this.heading.set(next.x - center.x, next.y - center.y).normalize();
+        if (Vec2.distance(center, next) > .01) {
+            this.heading.set(next.x - center.x, next.y - center.y).normalize();
+            this.groundHeading.set(sample.towards.x - sample.position.x, sample.towards.y - sample.position.y).normalize();
+        }
         for (const member of this.members) {
-            const tail = playback.path.length > 0 ? playback.behind(member.lag) : null;
+            // 行军沿路径跟随；到达后按最后一段朝向收队，不能永远停在拐点两侧。
+            const tail = sample.moving && playback.path.length > 0 ? playback.behind(member.lag) : null;
             const foot = tail ? MapUtil.mapCellToPixelPoint(new Vec2(tail.position.x, tail.position.y))
-                : new Vec2(center.x - this.heading.x * member.lag * 115, center.y - this.heading.y * member.lag * 115);
+                : MapUtil.mapCellToPixelPoint(new Vec2(sample.position.x - this.groundHeading.x * member.lag,
+                    sample.position.y - this.groundHeading.y * member.lag));
             // 领队跟随同一平滑后的坐标；队员沿拐点逐个转弯。
             if (!member.lag) foot.set(center);
             const direction = tail && playback.path.length > 0
@@ -111,24 +100,34 @@ export default class MarchFormation {
             if (direction.lengthSqr() < .0001) direction.set(this.heading);
             direction.normalize();
             foot.x -= direction.y * member.side; foot.y += direction.x * member.side * .6;
-            const settling = !!member.foot && Vec2.distance(member.foot, foot) > .5;
             if (!member.foot || !member.lag) member.foot = foot.clone();
             else {
                 // 改道/折返不把队员瞬间镜像到队头另一侧，短暂跟随后重新排齐。
-                const blend = 1 - Math.exp(-dt / .09);
+                const blend = 1 - Math.exp(-dt / (sample.moving ? .09 : .12));
                 const dx = (foot.x - member.foot.x) * blend, dy = (foot.y - member.foot.y) * blend;
                 member.foot.x += dx; member.foot.y += dy;
-                if (Math.hypot(dx, dy) > .01) direction.set(dx, dy).normalize();
+                // 收队时保持最终朝向，避免接近落点时被微小修正反复带着转身。
+                if (sample.moving && Math.hypot(dx, dy) > .01) direction.set(dx, dy).normalize();
             }
+            const settling = !sample.moving && Vec2.distance(member.foot, foot) > .15;
+            // 结束渐近跟随，停驻后位置和朝向保持稳定；每个队员走完再切换站立。
+            if (!sample.moving && !settling) member.foot.set(foot);
             member.node.setPosition(member.foot.x - center.x, member.foot.y - center.y, 0);
             const facing = (Math.round(Math.atan2(direction.y, direction.x) / (Math.PI / 4)) + 8) % 8;
-            const clip = `qb_run_${DIRECTIONS[facing]}`;
+            const clip = member.animations?.clips[facing]?.name;
             const moving = sample.moving || settling;
-            if (member.clip !== clip || member.moving !== moving) {
-                member.animation.play(clip);
-                const state = member.animation.getState(clip);
-                if (state) state.time = member.phase;
-                if (!moving) member.animation.pause();
+            if (clip && (member.clip !== clip || member.moving !== moving)) {
+                if (moving) {
+                    member.animation.play(clip);
+                    const state = member.animation.getState(clip);
+                    if (state) {
+                        state.time = (now / 1000 + member.phase) % state.duration;
+                        state.sample();
+                    }
+                } else {
+                    member.animation.stop();
+                    member.sprite.spriteFrame = member.animations.idleFrames[facing];
+                }
                 member.clip = clip; member.moving = moving;
             }
         }

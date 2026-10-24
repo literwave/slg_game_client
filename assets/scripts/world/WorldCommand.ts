@@ -90,6 +90,29 @@ export default class WorldCommand extends ProtocolCommand {
     cancelMarch(troopIdx: number): boolean {
         return uint(troopIdx) && this.request(S.c2s_cancel_march, { troopIdx }, `march:${troopIdx}`, () => this.requestMarches());
     }
+    isTroopAtHome(troopIdx: number): boolean {
+        const current = this.marches.get(troopIdx);
+        if (!current) return true;
+        const city = LoginCommand.getInstance().proxy.getRoleData()?.cityPos;
+        return current.state !== 1 && this.validPos(city) && current.endPos?.x === city.x && current.endPos?.y === city.y;
+    }
+    returnToCityIssue(troopIdx: number): string {
+        if (!uint(troopIdx)) return '部队信息无效，请重新选择';
+        if (!this.ready) return '连接尚未恢复，请稍后重试';
+        if (this.isPending(`march:${troopIdx}`)) return '部队指令正在处理，请稍候';
+        if (!this.validPos(LoginCommand.getInstance().proxy.getRoleData()?.cityPos)) return '主城坐标尚未同步';
+        const current = this.marches.get(troopIdx);
+        if (current?.state === 1 && current.targetType === MarchTargetType.ReturnCity) return '部队正在回城';
+        if (this.isTroopAtHome(troopIdx)) return '部队已在主城';
+        return '';
+    }
+    /** 取消只适用于进行中的行军；已驻留的部队必须新建 RETURN_CITY 行军。 */
+    returnTroopToCity(troopIdx: number): boolean {
+        if (this.returnToCityIssue(troopIdx)) return false;
+        if (this.marches.get(troopIdx)?.state === 1) return this.cancelMarch(troopIdx);
+        const city = LoginCommand.getInstance().proxy.getRoleData().cityPos;
+        return this.march(troopIdx, MarchTargetType.ReturnCity, 0, { x: city.x, y: city.y });
+    }
     resourceLandAt(x: number, y: number): WorldEntity | undefined {
         const matches = Array.from(this.entities.values()).filter(e => e.entityType === 4 && e.pos?.x === x && e.pos?.y === y);
         return matches.length === 1 ? matches[0] : undefined;

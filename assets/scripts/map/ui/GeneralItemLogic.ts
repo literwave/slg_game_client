@@ -10,6 +10,7 @@ import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
 import { applyGeneralCardSkin, clearGeneralCardSkin } from './GeneralCardSkin';
+import { caption, hideSprite, inkSurface, ManagementColors, place } from './ManagementStyle';
 
 // /**军队命令*/
 export class GeneralItemType {
@@ -137,7 +138,29 @@ export default class GeneralItemLogic extends Component {
         }
 
         if (this.delNode) this.delNode.active = false;
-        if (this.useNode) this.useNode.active = TroopCommand.getInstance().proxy.isHeroInTroop(hero_type);
+        if (this.useNode) {
+            const troopIdx = TroopCommand.getInstance().proxy.getTroopIdxByHero(hero_type);
+            this.useNode.active = troopIdx > 0;
+            if (troopIdx > 0) {
+                hideSprite(this.useNode);
+                // 网格卡片会缩放到一半：横幅和字号按最终显示尺寸设计，居中覆盖人物躯干。
+                place(this.useNode, 0, 0, 298, 76);
+                const banner = inkSurface(this.useNode, 'TroopBadge', 298, 76, color(24, 29, 26, 250), null);
+                banner.strokeColor = color(232, 195, 119, 255);
+                banner.lineWidth = 3;
+                banner.roundRect(-147.5, -36.5, 295, 73, 4);
+                banner.stroke();
+                banner.lineWidth = 1;
+                banner.strokeColor = ManagementColors.gold;
+                banner.moveTo(-135, 29); banner.lineTo(135, 29);
+                banner.moveTo(-135, -29); banner.lineTo(135, -29);
+                banner.stroke();
+                const number = caption(this.useNode, 'TroopNumber', `部队${troopIdx}`, 0, 0, 272, 40,
+                    color(255, 233, 181, 255), Label.HorizontalAlign.CENTER);
+                number.fontFamily = 'Microsoft YaHei';
+                number.isBold = true;
+            }
+        }
         this.select(false);
         if (curData.listAppearance === 'roster') {
             applyGeneralCardSkin(this.node, {

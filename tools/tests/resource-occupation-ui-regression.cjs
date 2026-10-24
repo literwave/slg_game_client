@@ -9,7 +9,8 @@ const events = [], sent = [], rendered = [];
 const entity = { entityId: '9007199254740993', pos: { x: 10, y: 20 } };
 let currentEntity = entity, issue = '', blocked = '', busy = false, moveIssue = '', moveAccepted = true;
 let cell = { type: 54, level: 3 }, city = null, roster;
-const world = { resourceLandAt: () => currentEntity, resourceLandIssue: () => issue,
+let requestPending = false;
+const world = { sessionReady: true, requestInFlight: () => requestPending, resourceLandAt: () => currentEntity, resourceLandIssue: () => issue,
     marches: { get: () => busy ? { state: 1 } : undefined },
     occupyResourceLand: (idx, id) => { if (busy) return false; sent.push([idx, id]); return true; },
     moveTroop: (idx, pos) => { if (!moveAccepted) return false; sent.push(['move', idx, pos]); return true; } };
@@ -35,6 +36,7 @@ const shared = {
     '../../utils/EventMgr': { EventMgr: { on() {}, targetOff() {}, emit: (...args) => events.push(args) } },
     '../../common/LogicEvent': { LogicEvent: { showToast: 'toast', closeArmyAelectUi: 'close' } },
     '../../common/AudioManager': { AudioManager: { instance: { playClick() {} } } },
+    '../../utils/Modal': { default: class {} },
     './GeneralHeadLogic': { default: class {} },
     './ManagementStyle': {},
     '../core/ConfigManager': { default: {} },
@@ -112,6 +114,16 @@ troops.editingTroopIdx = 2; item.onClickItem(); assert.equal(sent.length, moves)
 moveAccepted = false; const beforeFailed = events.length; item.onClickItem(); assert.equal(sent.length, moves);
 assert.ok(events.slice(beforeFailed).every(e => e[0] !== 'close'), '移动发送失败保留选队面板');
 moveAccepted = true; busy = true; item.onClickItem(); assert.equal(sent.length, moves); busy = false;
+requestPending = true; item.onClickItem(); assert.equal(sent.length, moves, '同一部队待回包时不能重复出征'); requestPending = false;
+world.sessionReady = false; item.onClickItem(); assert.equal(sent.length, moves, '断线不能发起行军'); world.sessionReady = true;
+// 无关 AOI 移动推送不重建正在交互的选队卡片，目标归属变化才触发刷新。
+cell = { type: 54, level: 3 }; currentEntity = entity; issue = '';
+selector.setData(1, 10, 20);
+let refreshCount = 0; selector.queueRefresh = () => refreshCount++;
+selector.onTargetEntitiesChanged(); assert.equal(refreshCount, 0);
+currentEntity = { ...entity, ownerId: '9007199254740999' };
+selector.onTargetEntitiesChanged(); assert.equal(refreshCount, 1);
+currentEntity = entity;
 sent.length = 1; cell = { type: 54, level: 3 }; currentEntity = entity; issue = '';
 troop.getSoldier = () => ({ count: 0, hurtCount: 40 }); item.setTroopData(troop, 10, 20);
 item.onClickItem(); assert.equal(sent.length, 1); assert.equal(item.tipNode.active, true);

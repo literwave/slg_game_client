@@ -14,6 +14,7 @@ export default class ResLogic extends Component {
     @property(Sprite)
     spr: Sprite = null;
     protected _data: MapResData = null;
+    private ownership = '';
 
     public setResourceData(data: MapResData): void {
         this._data = data;
@@ -58,6 +59,29 @@ export default class ResLogic extends Component {
         for (const name of ['ResourceRank', 'ResourceGrade', 'ResourceCluster0', 'ResourceCluster1', 'ResourceCluster2']) {
             const node = this.node.getChildByName(name); if (node) node.active = false;
         }
+    }
+
+    public setOwnership(owner: 'mine' | 'other' | 'none'): void {
+        const resource = this._data && this._data.type >= MapResType.WOOD && this._data.type <= MapResType.GRAIN;
+        if (!resource) owner = 'none';
+        const key = `${owner}:${MapUtil.tileSize.width}:${MapUtil.tileSize.height}`;
+        if (key === this.ownership) return;
+        this.ownership = key;
+        let node = this.node.getChildByName('LandOwnership');
+        if (owner === 'none') { if (node) node.active = false; return; }
+        if (!node) {
+            node = new Node('LandOwnership'); node.layer = this.node.layer;
+            this.node.addChild(node); node.addComponent(UITransform); node.addComponent(Graphics);
+        }
+        node.active = true; node.setSiblingIndex(0);
+        node.getComponent(UITransform).setContentSize(MapUtil.tileSize.width, MapUtil.tileSize.height);
+        const g = node.getComponent(Graphics); g.clear();
+        const color = owner === 'mine' ? new Color(105, 169, 183, 140) : new Color(194, 161, 101, 130);
+        g.strokeColor = color; g.lineWidth = 1.5;
+        g.fillColor = new Color(color.r, color.g, color.b, 28);
+        const x = MapUtil.tileSize.width / 2 - 2, y = MapUtil.tileSize.height / 2 - 1;
+        g.moveTo(0, y); g.lineTo(x, 0); g.lineTo(0, -y); g.lineTo(-x, 0); g.close();
+        g.fill(); g.stroke();
     }
 
 }

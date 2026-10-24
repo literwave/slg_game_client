@@ -6,6 +6,11 @@ import MapUtil from "./MapUtil";
 import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
 
+// 进场展示主城与周边地块；最近缩放和内城视角独立配置。
+const DEFAULT_MAP_HEIGHT = 600;
+const CLOSE_UP_HEIGHT = 192;
+const CITY_VIEW_HEIGHT = 230.4;
+
 @ccclass('MapLogic')
 export default class MapLogic extends Component {
     protected _cmd: MapCommand;
@@ -13,8 +18,8 @@ export default class MapLogic extends Component {
     protected _mapCamera: Camera = null;
     protected _isTouch: boolean = false;
     protected _isMove: boolean = false;
-    protected _orthoHeight:number = 360;
-    private _targetHeight = 360;
+    protected _orthoHeight:number = DEFAULT_MAP_HEIGHT;
+    private _targetHeight = DEFAULT_MAP_HEIGHT;
     private _zooming = false;
     private _zoomAnchor = new Vec2();
     private _cityReturnHeight: number = null;
@@ -41,7 +46,8 @@ export default class MapLogic extends Component {
         this._cmd = MapCommand.getInstance();
         this._mapCamera = this.node.parent.getChildByName("Map Camera").getComponent(Camera);
    
-        this._orthoHeight = this._mapCamera.orthoHeight;
+        // 每次进场恢复默认视野，不把上次的近景比例继续叠加。
+        this._mapCamera.orthoHeight = this._orthoHeight;
         this._targetHeight = this._orthoHeight;
 
         EventMgr.on(LogicEvent.openCityAbout, this.openCityAbout, this);
@@ -82,7 +88,7 @@ export default class MapLogic extends Component {
     protected openCityAbout(data: any): void {
         this._cityReturnHeight = this._mapCamera.orthoHeight;
         this._zooming = false;
-        this._mapCamera.orthoHeight = this._orthoHeight * .8;
+        this._mapCamera.orthoHeight = CITY_VIEW_HEIGHT;
         this._targetHeight = this._mapCamera.orthoHeight;
         this.updateCulling();
     }
@@ -102,7 +108,7 @@ export default class MapLogic extends Component {
         if (!this._zooming) this._targetHeight = this._mapCamera.orthoHeight;
         // Creator Web 的滚轮量是 DOM deltaY 的 -5 倍；向上放大，触控板小增量也保留。
         const step = Math.max(-.38, Math.min(.38, -scroll * .00055));
-        this._targetHeight = Math.max(this._orthoHeight * 2 / 3,
+        this._targetHeight = Math.max(CLOSE_UP_HEIGHT,
             Math.min(this.maximumZoomHeight(), this._targetHeight * Math.exp(step)));
         const anchor = event.getUILocation();
         this._zoomAnchor.set(anchor.x, anchor.y);

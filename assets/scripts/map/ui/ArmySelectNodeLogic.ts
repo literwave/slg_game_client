@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Prefab, instantiate, Label, Mask, ScrollView, UITransform, Vec2, view } from 'cc';
+import { _decorator, BlockInputEvents, Component, Node, Prefab, instantiate, Label, Mask, ScrollView, UITransform, Vec2, sys, view } from 'cc';
 const { ccclass, property } = _decorator;
 
 import { ArmyCmd } from "../../general/ArmyProxy";
@@ -11,7 +11,8 @@ import TroopCommand from '../../general/TroopCommand';
 import MapUtil from '../MapUtil';
 import WorldCommand from '../../world/WorldCommand';
 import { isResourceLandCell } from '../../world/ResourceLand';
-import { caption, hideSprite, inkSurface, ManagementColors as C, manualLayout, modalBackdrop, panelButton, place, textStyle } from './ManagementStyle';
+import Modal from '../../utils/Modal';
+import { caption, hideSprite, inkSurface, ManagementColors as C, manualLayout, panelButton, place, textStyle } from './ManagementStyle';
 
 const ROW_HEIGHT = 140;
 const ROW_GAP = 10;
@@ -29,16 +30,19 @@ export default class ArmySelectNodeLogic extends Component {
     private status: Label = null;
     private targetLabel: Label = null;
     private rowWidth = 560;
+    private viewWidth = 560;
     private viewHeight = 340;
     private refreshQueued = false;
+    private targetEntityKey = '';
     
     protected onLoad(): void {
         this.buildPanel();
         EventMgr.on(LogicEvent.closeArmyAelectUi, this.onClickBack, this);
         for (const event of [LogicEvent.updateTroopList, LogicEvent.troopListState, LogicEvent.troopEditState,
-            LogicEvent.updateMarches, LogicEvent.updateWorldEntities, LogicEvent.updateMyGenerals]) {
+            LogicEvent.updateMarches, LogicEvent.updateMyGenerals, LogicEvent.protocolRequestChanged]) {
             EventMgr.on(event, this.queueRefresh, this);
         }
+        EventMgr.on(LogicEvent.updateWorldEntities, this.onTargetEntitiesChanged, this);
         view.on('canvas-resize', this.onResize, this);
     }
 
@@ -72,9 +76,20 @@ export default class ArmySelectNodeLogic extends Component {
         this.refreshQueued = true;
         this.scheduleOnce(() => { this.refreshQueued = false; this.refreshTroops(); }, 0);
     }
+    private resourceEntityKey(): string {
+        if (this.resourceTarget?.action !== 'occupy') return '';
+        const { x, y } = this.resourceTarget;
+        const entity = WorldCommand.getInstance().resourceLandAt(x, y);
+        return entity ? `${entity.entityId}:${entity.cfgId}:${entity.ownerId}` : 'missing';
+    }
+    private onTargetEntitiesChanged(): void {
+        // 其他部队位置推送不能反复重建卡片，否则正在滑动/点击的队伍会被销毁。
+        if (this.resourceEntityKey() !== this.targetEntityKey) this.queueRefresh();
+    }
     private refreshTroops(resetScroll = false): void {
         if (!this.node.activeInHierarchy) return;
-        const offset = resetScroll ? 0 : this.scroll?.getScrollOffset().y || 0;
+        this.targetEntityKey = this.resourceEntityKey();
+        const offset = resetScroll ? 0 : this.scroll?.getScrollOffset().x || 0;
         this.clearItems();
         if (!this.resourceTarget) {
             if (this.targetLabel) this.targetLabel.string = '';
@@ -102,7 +117,7 @@ export default class ArmySelectNodeLogic extends Component {
             const logic = item.getComponent(ArmySelectItemLogic);
             logic.setTroopData(troop, x, y, action);
             logic.layoutRow(this.rowWidth, ROW_HEIGHT);
-            item.setPosition(0, -ROW_HEIGHT / 2 - (this.armyContainer.children.length - 1) * (ROW_HEIGHT + ROW_GAP), 0);
+            item.setPosition(this.rowWidth / 2 + (this.armyContainer.children.length - 1) * (this.rowWidth + ROW_GAP), 0, 0);
         }
         this.sizeContent(troops.length, offset);
     }
@@ -115,15 +130,20 @@ export default class ArmySelectNodeLogic extends Component {
     private sizeContent(count: number, offset: number): void {
         if (!this.scroll) return;
         this.scroll.stopAutoScroll();
-        const height = Math.max(this.viewHeight, count * (ROW_HEIGHT + ROW_GAP) - ROW_GAP);
-        this.armyContainer.getComponent(UITransform).setContentSize(this.rowWidth, height);
-        this.armyContainer.setPosition(0, this.viewHeight / 2, 0);
-        this.scroll.scrollToOffset(new Vec2(0, Math.max(0, Math.min(offset, height - this.viewHeight))), 0);
+        const width = Math.max(this.viewWidth, count * (this.rowWidth + ROW_GAP) - ROW_GAP);
+        this.armyContainer.getComponent(UITransform).setContentSize(width, this.viewHeight);
+        this.armyContainer.setPosition(-this.viewWidth / 2, 0, 0);
+        this.scroll.scrollToOffset(new Vec2(Math.max(0, Math.min(offset, width - this.viewWidth)), 0), 0);
     }
 
     private buildPanel(): void {
         this.panel = this.node.getChildByName('bottomNode');
         if (!this.panel || !this.armyContainer) return;
+        // 只拦截底部面板内的操作，上方地图继续可见、可拖动、可重新选点。
+        const modal = this.node.getComponent(Modal); if (modal) modal.enabled = false;
+        const blocker = this.node.getComponent(BlockInputEvents); if (blocker) blocker.enabled = false;
+        const mask = this.node.getChildByName('mask'); if (mask) mask.active = false;
+        if (!this.panel.getComponent(BlockInputEvents)) this.panel.addComponent(BlockInputEvents);
         for (const name of ['btnBack', 'leftNode']) {
             const old = this.node.getChildByName(name); if (old) old.active = false;
         }
@@ -133,12 +153,12 @@ export default class ArmySelectNodeLogic extends Component {
         const scrollNode = new Node('TroopScroll'); scrollNode.layer = this.node.layer;
         this.panel.addChild(scrollNode); scrollNode.addComponent(UITransform);
         this.scroll = scrollNode.addComponent(ScrollView);
-        this.scroll.horizontal = false; this.scroll.vertical = true; this.scroll.cancelInnerEvents = true;
+        this.scroll.horizontal = true; this.scroll.vertical = false; this.scroll.cancelInnerEvents = true;
         this.viewport = new Node('Viewport'); this.viewport.layer = this.node.layer;
         scrollNode.addChild(this.viewport); this.viewport.addComponent(UITransform);
         this.viewport.addComponent(Mask).type = Mask.Type.GRAPHICS_RECT;
         this.armyContainer.parent = this.viewport;
-        this.armyContainer.getComponent(UITransform).setAnchorPoint(.5, 1);
+        this.armyContainer.getComponent(UITransform).setAnchorPoint(0, .5);
         this.scroll.content = this.armyContainer;
         this.status = caption(this.panel, 'Status', '', 0, -28, 400, 17, C.muted, Label.HorizontalAlign.CENTER);
         this.targetLabel = caption(this.panel, 'Target', '', 0, 0, 400, 15, C.muted);
@@ -152,19 +172,23 @@ export default class ArmySelectNodeLogic extends Component {
 
     private layoutPanel(): void {
         if (!this.panel) return;
-        const size = modalBackdrop(this.node, this.node.getChildByName('mask'));
-        const width = Math.min(660, size.width - 24), height = Math.min(580, size.height - 24);
-        place(this.panel, 0, 0, width, height);
+        const size = view.getVisibleSize();
+        place(this.node, 0, 0, size.width, size.height);
+        // 当前 UI 根没有 SafeArea，直接使用 Creator 返回的设计坐标安全矩形一次。
+        const safe = sys.getSafeAreaRect();
+        const width = Math.min(1000, safe.width - 24), height = ROW_HEIGHT + 92;
+        place(this.panel, safe.x + safe.width / 2 - size.width / 2,
+            -size.height / 2 + safe.y + height / 2 + 12, width, height);
         inkSurface(this.panel, 'Surface', width, height, C.ink, C.gold);
         const title = this.panel.getChildByName('Label')?.getComponent(Label);
-        textStyle(title, 0, height / 2 - 34, width - 140, 24, C.text, Label.HorizontalAlign.CENTER);
-        if (title) title.string = '选择队伍';
-        panelButton(this.panel.getChildByName('btnClose'), '', width / 2 - 32, height / 2 - 32, 40, 40, false, true);
-        textStyle(this.targetLabel, 0, height / 2 - 76, width - 40, 15, C.muted);
-        this.rowWidth = width - 32; this.viewHeight = Math.max(60, height - 112);
-        place(this.scroll.node, 0, -44, this.rowWidth, this.viewHeight);
-        place(this.viewport, 0, 0, this.rowWidth, this.viewHeight);
-        textStyle(this.status, 0, -34, width - 48, 17, C.muted, Label.HorizontalAlign.CENTER, 110);
+        textStyle(title, -width / 2 + 126, height / 2 - 26, 220, 20, C.text);
+        if (title) title.string = this.resourceTarget?.action === 'move' ? '选择部队 · 移动' : '选择部队 · 占领';
+        panelButton(this.panel.getChildByName('btnClose'), '', width / 2 - 30, height / 2 - 26, 44, 44, false, true);
+        textStyle(this.targetLabel, 0, height / 2 - 56, width - 32, 14, C.muted);
+        this.viewWidth = width - 32; this.rowWidth = Math.min(304, this.viewWidth); this.viewHeight = ROW_HEIGHT;
+        place(this.scroll.node, 0, -30, this.viewWidth, this.viewHeight);
+        place(this.viewport, 0, 0, this.viewWidth, this.viewHeight);
+        textStyle(this.status, 0, -30, width - 48, 17, C.muted, Label.HorizontalAlign.CENTER, 100);
         this.status.enableWrapText = true; this.status.lineHeight = 28;
     }
 }
