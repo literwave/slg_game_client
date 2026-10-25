@@ -49,8 +49,8 @@ function harness(loadFacilities = true) {
     const login = { proxy: { getRoleData: () => role, getRoleResData: () => balances, hasItemCount: () => false } };
     class EmptyProxy { initData() {} clearData() {} }
     const actual = new Set(['utils/EventMgr', 'common/LogicEvent', 'config/ServerConfig', 'config/Basci',
-        'network/pto/ProtoManager', 'network/pto/ProtocolCommand', 'network/pto/KeyedSnapshot', 'network/socket/NetInterface',
-        'core/ConfigManager', 'world/WorldCommand', 'world/ResourceLand', 'build/BuildCommand',
+        'network/pto/ProtoManager', 'network/pto/ProtocolCommand', 'network/pto/SnapshotStore', 'network/socket/NetInterface',
+        'core/ConfigManager', 'world/WorldCommand', 'world/ResourceLand', 'build/BuildCommand', 'map/ui/BuildingPresentation',
         'map/MapCityProxy', 'map/MapCommand', 'map/MapCityLogic', 'map/MapBaseLayerLogic', 'map/PlayerCityAppearance', 'map/entries/FacilityBuildLogic',
         'map/ui/MapUIProxy', 'map/ui/MapUICommand', 'map/ui/FacilityDesLogic', 'map/ui/FacilityListLogic',
         'map/ui/FacilityItemLogic', 'map/ui/MapUILogic', 'scene/MapScene']);
@@ -241,7 +241,7 @@ function detail(h, bid) {
     h.events.on(h.E.updateMyFacilities, refresh, view); h.ui.qryCityFacilities(1); return view;
 }
 test('Build 按实际 bid 建造/升级，回包前不涨级；内城列表、主城和按钮同步', () => {
-    const h = harness(); h.receive(h.S.s2c_sync_build, { bid: 1, level: 1 });
+    const h = harness(); h.build.requestBuildings(); h.receive(h.S.s2c_req_build, { buildList: [{ bid: 1, level: 1 }] });
     const view = detail(h, 10); assert.equal(view.labelUp.string, '建造'); assert.equal(view.btnUp.interactable, true);
     view.onClickUp(); assert.equal(h.sent.at(-1).name, h.S.c2s_create_build); assert.deepEqual(plain(h.sent.at(-1).data), { bid: 10 });
     assert.equal(h.ui.proxy.getMyFacilityByType(1, 10).level, 0); assert.equal(view.labelUp.string, '等待确认');
@@ -257,6 +257,7 @@ test('Build 按实际 bid 建造/升级，回包前不涨级；内城列表、�
 });
 test('所有建筑等级保留石料成本，余额不足阻止升级，满足条件后可发送', () => {
     const h = harness();
+    h.build.requestBuildings(); h.receive(h.S.s2c_req_build, { buildList: [] });
     for (const row of table('BuildingLv')) assert.equal(h.ui.proxy.getFacilityCfgByType(row.BuildingType).upLevels[row.Lv - 1].stone, row.CostStone);
     for (const [bid, level] of [[1, 2], [13, 1], [16, 1]]) h.receive(h.S.s2c_sync_build, { bid, level });
     h.balances.resList.find(r => r.k === 5).v = 149;
@@ -264,6 +265,86 @@ test('所有建筑等级保留石料成本，余额不足阻止升级，满足�
     const n = h.sent.length; view.onClickUp(); assert.equal(h.sent.length, n);
     h.balances.resList.find(r => r.k === 5).v = 150; h.ui.qryCityFacilities(1);
     assert.equal(view.btnUp.interactable, true); view.onClickUp(); assert.equal(h.sent.at(-1).name, h.S.c2s_up_build);
+});
+
+test('登录前建筑推送不作为空地，加载完成主动查询并恢复真实等级', () => {
+    const h = harness(); h.build.clearData();
+    h.receive(h.S.s2c_sync_build, { bid: 1, level: 10 });
+    h.receive(h.S.s2c_user_login_ok);
+    const view = detail(h, 1);
+    assert.equal(h.ui.proxy.getMyFacilityByType(1, 1).synced, false);
+    assert.equal(view.btnUp.interactable, false);
+    assert.equal(h.build.create(1), false);
+    h.receive(h.S.s2c_client_load_ok);
+    assert.equal(h.sent.at(-1).name, h.S.c2s_req_build);
+    const count = h.sent.length; h.ui.qryCityFacilities(1, true);
+    assert.equal(h.sent.length, count, '打开内城时不重复并发查询');
+    h.receive(h.S.s2c_req_build, { buildList: [{ bid: 1, level: 10 }, { bid: 10, level: 10 }] });
+    assert.equal(h.build.loaded, true);
+    assert.equal(h.ui.proxy.getMyFacilityByType(1, 1).level, 10);
+    assert.equal(h.map.cityProxy.getMyMainCity().level, 10);
+    assert.equal(h.ui.proxy.getMyFacilityByType(1, 11).synced, true);
+    assert.equal(h.build.create(1), false, '已有建筑不能再发建造');
+    assert.equal(h.build.upgrade(11), false, '未建建筑不能发升级');
+});
+
+test('建筑全量覆盖旧缓存但保留查询途中的新推送，空列表仍是有效快照', () => {
+    const h = harness(); h.build.requestBuildings();
+    h.receive(h.S.s2c_req_build, { buildList: [{ bid: 1, level: 2 }, { bid: 2, level: 1 }] });
+    h.build.requestBuildings();
+    h.receive(h.S.s2c_sync_build, { bid: 1, level: 3 });
+    h.receive(h.S.s2c_req_build, { buildList: [{ bid: 1, level: 2 }] });
+    assert.equal(h.build.levels.get(1), 3);
+    assert.equal(h.build.levels.has(2), false);
+    h.build.requestBuildings(); h.receive(h.S.s2c_req_build, { buildList: [] });
+    assert.equal(h.build.loaded, true); assert.equal(h.build.levels.size, 0);
+    assert.equal(h.build.create(1), true);
+});
+
+test('建筑查询超时可手动重试，断线清空快照且迟到回包不能恢复旧账号数据', () => {
+    const h = harness(); h.build.requestBuildings();
+    const timer = [...h.timers.values()].find(t => t.delay === 8000); timer.fn();
+    assert.match(h.build.loadError, /超时/); assert.equal(h.build.create(1), false);
+    assert.equal(h.build.requestBuildings(), true);
+    h.receive(h.S.s2c_req_build, { buildList: [{ bid: 1, level: 4 }] });
+    assert.equal(h.build.loadError, '');
+    h.build.clearData();
+    h.receive(h.S.s2c_req_build, { buildList: [{ bid: 1, level: 10 }] });
+    assert.equal(h.build.loaded, false); assert.equal(h.build.levels.size, 0);
+});
+
+test('新版城建详情按配置展示前置条件、四类资源和当前上限', () => {
+    const h = harness(), { buildingPresentation } = h.load('map/ui/BuildingPresentation');
+    const configs = h.ui.proxy.getFacilityConfigs(), main = configs.find(c => c.type === 1);
+    let state = buildingPresentation(main, new Map([[1, 1]]), configs, h.balances.resList);
+    assert.equal(state.canAct, false); assert.equal(state.conditions.length, 2);
+    state = buildingPresentation(main, new Map([[1, 1], [10, 1], [11, 1]]), configs, h.balances.resList);
+    assert.equal(state.canAct, true); assert.deepEqual(plain(state.costs.map(c => c.id)), [1, 2, 3, 5]);
+    state = buildingPresentation(main, new Map([[1, main.upLevels.length]]), configs, []);
+    assert.equal(state.maxed, true); assert.equal(state.canAct, false);
+});
+test('城建路线按真实主城前置分阶段，筛选不改变解锁顺序', () => {
+    const h = harness(), { buildingStages } = h.load('map/ui/BuildingPresentation');
+    const configs = h.ui.proxy.getFacilityConfigs(), stages = buildingStages(configs);
+    assert.deepEqual(plain(stages.map(s => [s.level, s.buildings.map(c => c.type)])), [
+        [1, [1, 2, 10, 11]], [2, [3, 12, 13, 16]], [3, [4, 9, 14]],
+        [4, [7]], [5, [5, 6]], [6, [8]], [8, [15]],
+    ]);
+    assert.equal(new Set(stages.flatMap(s => s.buildings.map(c => c.type))).size, configs.length);
+    const military = stages.map(s => ({ level: s.level, buildings: s.buildings.filter(c => c.category === 2) })).filter(s => s.buildings.length);
+    assert.deepEqual(plain(military.map(s => s.level)), [1, 3, 5]);
+});
+test('城建前置显示真实进度与目标，后续引导不提前解锁建筑', () => {
+    const h = harness(), { buildingPresentation, buildingNextUnlocks } = h.load('map/ui/BuildingPresentation');
+    const configs = h.ui.proxy.getFacilityConfigs(), main = configs.find(c => c.type === 1);
+    const levels = new Map([[1, 2], [13, 1]]);
+    const state = buildingPresentation(main, levels, configs, h.balances.resList);
+    assert.deepEqual(plain(state.conditions.map(c => [c.type, c.currentLevel, c.level, c.met])), [[13, 1, 1, true], [16, 0, 1, false]]);
+    assert.equal(state.canAct, false, '缺少采石场时不能跳过前置升级主城');
+    const next = buildingNextUnlocks(1, new Map([[1, 1], [10, 1], [11, 1]]), configs);
+    assert.deepEqual(plain(next.filter(n => n.targetLevel === 1 && n.requiredLevel === 2).map(n => n.type)), [3, 12, 13, 16]);
+    assert.ok(!buildingNextUnlocks(1, new Map([[1, 10]]), configs).some(n => n.targetLevel === 1));
+    assert.equal(levels.get(16), undefined, '展示路线不能修改服务器建筑状态');
 });
 test('内城入口直达新建筑面板', () => {
     const h = harness(), hud = new (h.load('map/ui/MapUILogic').default)();
@@ -273,18 +354,29 @@ test('内城入口直达新建筑面板', () => {
 
 test('资源栏粮木铁石四项图标/数量对应且不显示令牌', () => {
     const h = harness(), hud = new (h.load('map/ui/MapUILogic').default)();
+    const prefab = JSON.parse(fs.readFileSync(path.join(root, 'assets/scenes/MapUIScene.prefab'), 'utf8'));
+    const slots = prefab.find(o => o.__type__ === 'cc.Node' && o._name === 'ResourceBar')._children.map(r => prefab[r.__id__]);
+    assert.equal(slots.length, 4);
     const bar = new Node();
-    for (let i = 0; i < 4; i++) {
+    for (const entry of slots) {
         const slot = new Node(), dot = new Node('Dot'), text = new Node('New Label');
-        dot.addComponent(Sprite); text.addComponent(Label); slot.addChild(dot); slot.addChild(text); bar.addChild(slot);
+        const children = entry._children.map(r => prefab[r.__id__]);
+        const sprite = children.find(n => n._name === 'Dot')._components.map(r => prefab[r.__id__]).find(c => c.__type__ === 'cc.Sprite');
+        dot.addComponent(Sprite).spriteFrame = { uuid: sprite._spriteFrame.__uuid__ };
+        text.addComponent(Label); slot.addChild(dot); slot.addChild(text); bar.addChild(slot);
     }
-    hud.srollLayout = { node: bar }; hud._resArray = [{ key: 1, name: '谷' }, { key: 2, name: '木' }, { key: 3, name: '铁' }, { key: 5, name: '石' }];
-    hud.initResourceEntries(); hud.updateRoleRes(); assert.equal(bar.children.length, 4);
+    h.balances.resList = [1, 2, 3, 4, 5].map(k => ({ k, v: k * 100 }));
+    hud.srollLayout = { node: bar }; hud.updateRoleRes();
     [1, 2, 3, 5].forEach((id, index) => {
-        assert.equal(bar.children[index].getChildByName('Dot').getComponent(Sprite).spriteFrame.name, table('Item').find(r => r.Id === id).Icon + '/spriteFrame');
+        const icon = table('Item').find(r => r.Id === id).Icon;
+        const meta = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources', icon + '.png.meta'), 'utf8'));
+        const frame = Object.values(meta.subMetas).find(s => s.importer === 'sprite-frame');
+        assert.equal(bar.children[index].getChildByName('Dot').getComponent(Sprite).spriteFrame.uuid, frame.uuid);
         assert.ok(!bar.children[index].getChildByName('New Label').getComponent(Label).string.includes('令牌'));
-        assert.ok(bar.children[index].getChildByName('New Label').getComponent(Label).string.endsWith('1000000'));
+        assert.equal(bar.children[index].getChildByName('New Label').getComponent(Label).string, ['粮', '木', '铁', '石'][index] + ' ' + id * 100);
     });
+    h.balances.resList = h.balances.resList.filter(r => r.k !== 5); hud.updateRoleRes();
+    assert.equal(bar.children[3].getChildByName('New Label').getComponent(Label).string, '石 0');
 });
 test('主城 1—30 级随 Build 回包逐级换独立外观，AOI 未知等级不推断', () => {
     const h = harness();
@@ -296,7 +388,8 @@ test('主城 1—30 级随 Build 回包逐级换独立外观，AOI 未知等级�
         const city = h.map.cityProxy.getMyMainCity();
         const art = playerCityAppearance(city.level);
         assert.equal(art.level, level);
-        assert.ok(art.width >= 300 && art.width * 1.2 <= 600, '建筑和选框保持在 3×3 占地内');
+        assert.equal(art.width, 600, '主城原图地脚与 3×3 占地同宽');
+        assert.equal(art.y, -150, '主城地脚前角与占地前角一致');
         arts.add(art.art);
         assert.equal(h.map.cityProxy.getCity(util.getIdByCellPoint(11, 19)), city);
     }

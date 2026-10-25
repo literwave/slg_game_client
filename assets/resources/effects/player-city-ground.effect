@@ -1,0 +1,108 @@
+CCEffect %{
+  techniques:
+  - passes:
+    - vert: city-vs:vert
+      frag: city-fs:frag
+      depthStencilState:
+        depthTest: false
+        depthWrite: false
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendDstAlpha: one_minus_src_alpha
+      rasterizerState:
+        cullMode: none
+      properties:
+        sourceMetrics: { value: [640, 421, 0, 639] }
+        cityMetrics: { value: [600, 360, 300, 0.85] }
+        alignment: { value: [0, 0, 0, 2] }
+        groundPlane: { value: [0, 0, 0, 0] }
+        groundMode: { value: [0, 0, 0, 0] }
+        groundProfile: { value: black }
+        cityTexture: { value: white }
+}%
+CCProgram city-vs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #if USE_LOCAL
+    #include <builtin/uniforms/cc-local>
+  #endif
+  in vec3 a_position;
+  in vec2 a_texCoord;
+  in vec4 a_color;
+  out vec2 uv0;
+  out vec4 color;
+  vec4 vert () {
+    vec4 pos = vec4(a_position, 1.0);
+    #if USE_LOCAL
+      pos = cc_matWorld * pos;
+    #endif
+    uv0 = a_texCoord; color = a_color;
+    return cc_matViewProj * pos;
+  }
+}%
+CCProgram city-fs %{
+  precision highp float;
+  in vec2 uv0;
+  in vec4 color;
+  uniform CityGround {
+    vec4 sourceMetrics;
+    vec4 cityMetrics;
+    vec4 alignment;
+    vec4 groundPlane;
+    vec4 groundMode;
+  };
+  uniform sampler2D groundProfile;
+  uniform sampler2D cityTexture;
+  vec4 frag () {
+    float y = (1.0 - uv0.y) * cityMetrics.y;
+    float edge = abs(uv0.x - 0.5) * cityMetrics.z;
+    if (y < edge) discard;
+    // 已修订的城图使用直线地脚：只调整投影，不随像素透明度拉长树木、墙脚。
+    if (groundPlane.x > 0.0) {
+      bool left = uv0.x <= 0.5;
+      float t = left ? uv0.x * 2.0 : (uv0.x - 0.5) * 2.0;
+      float x = left ? mix(sourceMetrics.z, groundPlane.x, t) : mix(groundPlane.x, sourceMetrics.w, t);
+      float floorY = left ? mix(groundPlane.y, groundPlane.z, t) : mix(groundPlane.z, groundPlane.w, t);
+      float projectedY = y;
+      if (groundMode.x > 1.5) {
+        // 建筑按外墙转角校准；草皮前尖单独收边，不再决定整个右立面的坡度。
+        vec4 boundary = texture(groundProfile, vec2((x + 0.5) / sourceMetrics.x, 0.5));
+        float rawFloor = (boundary.r * 65280.0 + boundary.g * 255.0) / 65535.0 * sourceMetrics.y;
+        float delta = (rawFloor - floorY) * cityMetrics.w;
+        float band = max(cityMetrics.z * 0.03, abs(delta) * (delta < 0.0 ? 0.25 : 2.0) + 1.0);
+        if (y < edge + band) projectedY += delta * (1.0 - (y - edge) / band);
+      }
+      float sourceY = floorY + (projectedY - edge) / cityMetrics.w;
+      vec2 sampleUV = vec2((x + 0.5) / sourceMetrics.x, 1.0 - sourceY / sourceMetrics.y);
+      if (sampleUV.y < 0.0 || sampleUV.y > 1.0) discard;
+      return texture(cityTexture, sampleUV) * color;
+    }
+    // 前城角落在占地中轴；连续映射保留两侧端点和直立的城墙。
+    float alignedU = uv0.x + alignment.x * 4.0 * uv0.x * (1.0 - uv0.x);
+    float x = mix(sourceMetrics.z, sourceMetrics.w, alignedU);
+    float sourceU = (x + 0.5) / sourceMetrics.x;
+    vec4 groundBytes = texture(groundProfile, vec2(sourceU, 0.5));
+    float floorY = (groundBytes.r * 65280.0 + groundBytes.g * 255.0) / 65535.0 * sourceMetrics.y;
+    float smoothY = (groundBytes.b * 65280.0 + groundBytes.a * 255.0) / 65535.0 * sourceMetrics.y;
+    // 主体统一线性校平；满级城外伸阶道只在地脚窄带内收边。
+    float columnOffset = x * alignment.y + alignment.z;
+    // 满级使用一次轮廓收边，避免主带与细带叠加把侧边草皮拉成竖条。
+    float groundY = groundMode.x > 0.5 ? floorY : smoothY;
+    float floorWorld = groundY * cityMetrics.w + columnOffset;
+    float delta = floorWorld - edge;
+    // delta >= 0 是向外补齐地脚，仍保留安全过渡宽度，避免映射翻折。
+    float bandFactor = groundMode.x > 0.5 && delta < 0.0 ? 0.25 : alignment.w;
+    float band = max(cityMetrics.z * 0.04, abs(delta) * bandFactor + 1.0);
+    float fine = groundMode.x > 0.5 ? 0.0 : (floorY - smoothY) * cityMetrics.w / (1.0 - delta / band);
+    float fineBand = max(cityMetrics.z * 0.035, abs(fine) * 2.0 + 1.0);
+    float baseY = y < edge + fineBand ? y + fine * (1.0 - (y - edge) / fineBand) : y;
+    float projectedY = baseY < edge + band ? baseY + delta * (1.0 - (baseY - edge) / band) : baseY;
+    float sourceY = (projectedY - columnOffset) / cityMetrics.w;
+    vec2 sampleUV = vec2(sourceU, 1.0 - sourceY / sourceMetrics.y);
+    if (sampleUV.y < 0.0 || sampleUV.y > 1.0) discard;
+    return texture(cityTexture, sampleUV) * color;
+  }
+}%

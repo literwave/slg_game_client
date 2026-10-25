@@ -389,7 +389,8 @@ test('榜单按类型/页缓存，未上榜 rank=0 保留；建筑只在推送�
     assert.equal(h.rank.requestRank(1, 1, 20), true); assert.equal(h.rank.requestRank(1, 21, 20), false);
     h.receive(h.S.s2c_req_rank_list, { rankType: 1, rankList: [], selfRank: { uid: big, rank: 0, score: other } });
     assert.equal(h.rank.pages.get('1:1:20').selfRank.score, other); assert.equal(h.rank.requestRank(1, 21, 20), true);
-    assert.equal(h.build.upgrade(2), true); assert.equal(h.build.upgrade(2), false); assert.equal(h.build.levels.has(2), false);
+    h.build.requestBuildings(); h.receive(h.S.s2c_req_build, { buildList: [{ bid: 2, level: 7 }] });
+    assert.equal(h.build.upgrade(2), true); assert.equal(h.build.upgrade(2), false); assert.equal(h.build.levels.get(2), 7);
     h.receive(h.S.s2c_sync_build, { bid: 2, level: 8 }); assert.equal(h.build.levels.get(2), 8);
 });
 test('posMap 兵力完整保存，战后同步不误解锁尚未确认的编队编辑', () => {

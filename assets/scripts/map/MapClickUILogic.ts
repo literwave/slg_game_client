@@ -14,7 +14,8 @@ import { LogicEvent } from '../common/LogicEvent';
 import WorldMapArt from './WorldMapArt';
 import WorldCampaign from './WorldCampaign';
 import LoginCommand from '../login/LoginCommand';
-import { playerCityAppearance, playerCityFootprint, playerCityGroundFront, PLAYER_CITY_ANCHOR_Y } from './PlayerCityAppearance';
+import { playerCityAppearance, playerCityFootprint } from './PlayerCityAppearance';
+import PlayerCityGround from './PlayerCityGround';
 import MapUtil from './MapUtil';
 import { isResourceLandCell } from '../world/ResourceLand';
 import WorldCommand, { MarchTargetType } from '../world/WorldCommand';
@@ -240,8 +241,7 @@ export default class MapClickUILogic extends Component {
         this.btnOccupy.node.active = false;
         this.bgSelect.active = !(data instanceof MapCityData);
         EventMgr.emit(LogicEvent.selectPlayerCity, data instanceof MapCityData ? data.id : null);
-        this.bgSelect.getComponent(UITransform).width = 200;
-        this.bgSelect.getComponent(UITransform).height = 100;
+        this.bgSelect.getComponent(UITransform).setContentSize(MapUtil.tileSize.width, MapUtil.tileSize.height);
 
         var isTag = MapCommand.getInstance().proxy.isPosTag(this._data.x, this._data.y);
         this.btnTagAdd.node.active = !isTag;
@@ -283,16 +283,16 @@ export default class MapClickUILogic extends Component {
         }
 
         const city = this._data instanceof MapCityData;
-        const appearance = city ? playerCityAppearance(this._data.level, MapUtil.tileSize.width) : null;
+        const appearance = city ? PlayerCityGround.layout(playerCityAppearance(this._data.level,
+            MapUtil.tileSize.width, MapUtil.tileSize.height), MapUtil.tileSize.height * 3) : null;
         const art = city ? appearance.art : this._data.type === MapResType.SYS_CITY
             ? this._data.level >= 8 ? 'capital' : this._data.level >= 5 ? 'county' : 'town'
             : ({ 50: 'fort', 52: 'forest', 53: 'iron', 54: 'quarry', 55: 'grain' }[this._data.type] || 'fort');
         const frame = WorldMapArt.frame(art);
         const iconWidth = city ? appearance.width : this._data.type === MapResType.SYS_CITY
             ? WorldMapArt.cityWidth(this._data.level) : this._data.type === MapResType.SYS_FORTRESS ? 138 : 80 + this._data.level * 5;
-        this._iconTop = iconWidth * frame.originalSize.height / frame.originalSize.width * (city ? 1 - PLAYER_CITY_ANCHOR_Y : .8)
-            + (city ? playerCityGroundFront(MapUtil.tileSize.height) : 0) + 12;
-        this._iconHalfWidth = iconWidth / 2 + 12;
+        this._iconTop = (city ? appearance.top : iconWidth * frame.originalSize.height / frame.originalSize.width * .8) + 12;
+        this._iconHalfWidth = (city ? appearance.halfWidth : iconWidth / 2) + 12;
 
 
         if (this.leftInfoNode.active) {

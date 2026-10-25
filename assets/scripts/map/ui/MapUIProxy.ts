@@ -65,6 +65,7 @@ export class CityAdditionType {
 /**设施*/
 export class Facility {
     level: number = 0;
+    synced: boolean = true;
     type: number = 0;
     upTime: number = 0;  //升级的时间，0为该等级已经升级成功
 
@@ -92,6 +93,7 @@ export class FacilityConfig {
     name: string = "";
     icon: string = "";
     type: number = 0;
+    category: number = 0;
     des: string = "";
     additions: number[] = [];
     conditions: FacilityOpenCondition[] = [];
@@ -208,6 +210,7 @@ export default class MapUIProxy {
         for (var i = 0; i < datas.length; i++) {
             var obj = new Facility();
             obj.level = datas[i].level;
+            obj.synced = datas[i].synced !== false;
             obj.type = datas[i].type;
             obj.upTime = datas[i].up_time;
             list.set(obj.type, obj);
@@ -406,7 +409,7 @@ export default class MapUIProxy {
             this._facilityAdditionCfg.clear();
             for (const row of mainJson) {
                 const cfg = new FacilityConfig();
-                cfg.type = row.Id; cfg.name = row.Name; cfg.des = row.Desc; cfg.icon = row.Icon || '';
+                cfg.type = row.Id; cfg.category = row.Type; cfg.name = row.Name; cfg.des = row.Desc; cfg.icon = row.Icon || '';
                 cfg.conditions = (row.CreateLimit || []).map(pair => ({ type: pair.bid, level: pair.lev }));
                 for (const level of additionJson.filter(r => r.BuildingType === row.Id)) {
                     const up = new FacilityUpLevel();

@@ -67,7 +67,7 @@ export default class FacilityItemLogic extends Component {
     }
 
     protected updateItem(): void {
-        this.labelRate.string = this.data.level + "/" + this.cfg.upLevels.length;
+        this.labelRate.string = this.data.synced ? this.data.level + "/" + this.cfg.upLevels.length : '待同步';
         this.labelName.string = this.cfg.name;
         this.lockNode.active = !this.isUnlock;
     }

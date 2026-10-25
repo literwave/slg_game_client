@@ -195,6 +195,9 @@ export default class FacilityDesLogic extends Component {
             if (!build.sessionReady) {
                 this.btnUp.interactable = false;
                 this.labelUp.string = '连接中';
+            } else if (!build.loaded || build.loading || build.loadError) {
+                this.btnUp.interactable = false;
+                this.labelUp.string = build.loadError ? '请刷新建筑' : '同步中';
             } else if (build.requestInFlight(`build:${this._data.type}`)) {
                 this.btnUp.interactable = false;
                 this.labelUp.string = '等待确认';

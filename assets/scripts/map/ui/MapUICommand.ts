@@ -48,11 +48,11 @@ export default class MapUICommand {
         EventMgr.on(LogicEvent.updateCityBuilds, this.onBuildChanged, this);
     }
 
-    private onBuildChanged(data: { bid: number; level: number }): void {
+    private onBuildChanged(data?: { bid: number; level: number }): void {
         const city = MapCommand.getInstance().cityProxy.getMyMainCity();
         const cityId = city?.cityId || 0;
         this.qryCityFacilities(cityId);
-        const facility = this._proxy.getMyFacilityByType(cityId, data.bid);
+        const facility = data && this._proxy.getMyFacilityByType(cityId, data.bid);
         if (facility) EventMgr.emit(LogicEvent.updateMyFacility, cityId, facility);
     }
 
@@ -164,12 +164,15 @@ export default class MapUICommand {
      * 设施
      * @param cityId 
      */
-    public qryCityFacilities(cityId: number = 0): void {
+    public qryCityFacilities(cityId: number = 0, refresh = false): void {
         const main = MapCommand.getInstance().cityProxy.getMyMainCity();
         if (cityId && main && cityId !== main.cityId) return;
-        const levels = BuildCommand.getInstance().levels;
+        const build = BuildCommand.getInstance();
+        if (refresh) build.requestBuildings();
+        const levels = build.levels;
         const configs = this._proxy.getFacilityConfigs();
-        const facilities = configs.map(cfg => ({ type: cfg.type, level: levels.get(cfg.type) || 0, up_time: 0 }));
+        const facilities = configs.map(cfg => ({ type: cfg.type, level: levels.get(cfg.type) || 0,
+            synced: build.loaded || levels.has(cfg.type), up_time: 0 }));
         this._proxy.updateMyFacilityList(cityId, facilities);
         const addition = this._proxy.updateMyCityAdditions(cityId);
         EventMgr.emit(LogicEvent.updateMyFacilities);
@@ -186,6 +189,10 @@ export default class MapUICommand {
         const main = MapCommand.getInstance().cityProxy.getMyMainCity();
         if (!main || cityId && cityId !== main.cityId || !this._proxy.getFacilityCfgByType(ftype)) return;
         const build = BuildCommand.getInstance();
+        if (!build.loaded || build.loading || build.loadError) {
+            EventMgr.emit(LogicEvent.showToast, '请先等待建筑信息同步完成');
+            return;
+        }
         const sent = (build.levels.get(ftype) || 0) > 0 ? build.upgrade(ftype) : build.create(ftype);
         if (!sent) EventMgr.emit(LogicEvent.showToast, '建造请求未发送，请检查连接或稍后重试');
     }

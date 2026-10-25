@@ -149,7 +149,7 @@ export default class FacilityListLogic extends Component {
         this._curCityId = data.cityId;
         // 面板复用或配置晚到时重新启用槽位；不能沿用首次空配置时的隐藏状态。
         this.initView();
-        MapUICommand.getInstance().qryCityFacilities(this._curCityId);
+        MapUICommand.getInstance().qryCityFacilities(this._curCityId, true);
         this.updateView();
         this.scrollView.scrollToTop(0);
     }

@@ -4,7 +4,7 @@ const { ccclass, property } = _decorator;
 import LoginCommand from "../../login/LoginCommand";
 import ArmySelectNodeLogic from "./ArmySelectNodeLogic";
 import CityArmySettingLogic from "./CityArmySettingLogic";
-import FacilityListLogic from "./FacilityListLogic";
+import CityBuildingPanel from './CityBuildingPanel';
 import MapUICommand from "./MapUICommand";
 import Dialog, { DialogType } from "./Dialog";
 import UnionCommand from "../../union/UnionCommand";
@@ -188,7 +188,12 @@ export default class MapUILogic extends Component {
     protected _moreMask: Node = null;
     protected _moreIndicator: Node = null;
 
-    protected _resArray: any = [];
+    protected readonly _resArray = [
+        { key: 1, name: "粮" },
+        { key: 2, name: "木" },
+        { key: 3, name: "铁" },
+        { key: 5, name: "石" },
+    ];
     private _uiListenersReady = false;
     private _hudTopShade: Graphics | null = null;
     private _headPanel: HeadIconPanel | null = null;
@@ -198,11 +203,6 @@ export default class MapUILogic extends Component {
     private _servicesPanel: PlayerServicesPanel | null = null;
 
     protected onLoad(): void {
-
-        this._resArray.push({ key: 1, name: "谷" });
-        this._resArray.push({ key: 2, name: "木" });
-        this._resArray.push({ key: 3, name: "铁" });
-
 
         EventMgr.on(CoreEvent.gameReady, this.onGameReady, this);
         // 被顶号需要立即处理，普通界面事件等加载结束再接入。
@@ -597,13 +597,15 @@ export default class MapUILogic extends Component {
      */
     protected openFacility(data: any): void {
         if (this._facilityNode == null) {
-            this._facilityNode = instantiate(this.facilityPrefab);
+            this._facilityNode = new Node('CityBuildingPanel');
+            this._facilityNode.layer = this.node.layer;
             this._facilityNode.parent = this.contentNode;
+            this._facilityNode.addComponent(CityBuildingPanel);
         } else {
             this._facilityNode.active = true;
         }
         this._facilityNode.setSiblingIndex(this.topLayer());
-        this._facilityNode.getComponent(FacilityListLogic).setData(data);
+        this._facilityNode.getComponent(CityBuildingPanel).show(data.cityId);
     }
 
     protected openArmySetting(cityId: number, order: number): void {
@@ -727,14 +729,9 @@ export default class MapUILogic extends Component {
         }
         var roleRes = LoginCommand.getInstance().proxy.getRoleResData();
         var resMap = this.toResMap(roleRes);
-        var i = 0;
-        this.setResLabel(children, i, "令牌", 4, resMap);
-        i += 1;
-
         for (let index = 0; index < this._resArray.length; index++) {
             const obj = this._resArray[index];
-            this.setResLabel(children, i, obj.name, obj.key, resMap);
-            i += 1;
+            this.setResLabel(children, index, obj.name, obj.key, resMap);
         }
     }
 

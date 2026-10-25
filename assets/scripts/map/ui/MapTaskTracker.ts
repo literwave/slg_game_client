@@ -18,7 +18,6 @@ export default class MapTaskTracker extends Component {
     private category: Label;
     private title: Label;
     private detail: Label;
-    private progress: Label;
     private action: Label;
     private track: Graphics;
     private current: TaskInfo | null = null;
@@ -53,19 +52,21 @@ export default class MapTaskTracker extends Component {
         this.body.on(Button.EventType.CLICK, () => this.activate());
         this.title = caption(this.body, 'TaskTitle', '', 0, 32, 224, 17);
         this.detail = caption(this.body, 'TaskDetail', '', 0, 0, 224, 13, C.muted);
-        this.progress = caption(this.body, 'ProgressText', '', 0, -34, 90, 12, C.muted);
         this.action = caption(this.body, 'ActionText', '', 0, -34, 100, 13, C.gold, Label.HorizontalAlign.RIGHT);
         this.track = this.make('ProgressTrack', this.body).addComponent(Graphics);
         EventMgr.on(E.updateTasks, this.queueRefresh, this);
         EventMgr.on(E.protocolRequestChanged, this.queueRefresh, this);
     }
 
-    /** 与 HUD 共用坐标；窄屏资源栏占第二行时，卡片相应下移。 */
+    /** 任务卡靠左，中心位于屏幕高度约 62% 处，同时避让顶部信息与底部操作栏。 */
     layout(viewWidth: number, viewHeight: number): void {
         if (!this.body) return;
         this.width = Math.min(252, Math.max(1, viewWidth - 24));
         const topInset = viewWidth < 860 ? 128 : 88;
-        place(this.node, -viewWidth / 2 + 12 + this.width / 2, viewHeight / 2 - topInset - HEIGHT / 2, this.width, HEIGHT);
+        const lowest = -viewHeight / 2 + 104 + HEIGHT / 2;
+        const highest = viewHeight / 2 - topInset - HEIGHT / 2;
+        const centerY = Math.min(highest, Math.max(lowest, -viewHeight * .12));
+        place(this.node, -viewWidth / 2 + 12 + this.width / 2, centerY, this.width, HEIGHT);
         place(this.body, 0, -22, this.width, 88);
         // 全部按钮与领奖区域分开，避免点开列表时同时触发领奖。
         place(this.all, this.width / 2 - 28, 44, 44, 44);
@@ -74,8 +75,6 @@ export default class MapTaskTracker extends Component {
         this.title.overflow = Label.Overflow.SHRINK;
         textStyle(this.detail, 0, 0, this.width - 28, 13, C.muted, Label.HorizontalAlign.LEFT, 36);
         this.detail.enableWrapText = true; this.detail.lineHeight = 18; this.detail.overflow = Label.Overflow.SHRINK;
-        textStyle(this.progress, -this.width / 2 + 60, -34, 92, 12, C.muted, Label.HorizontalAlign.LEFT, 20);
-        this.progress.overflow = Label.Overflow.SHRINK;
         textStyle(this.action, this.width / 2 - 68, -34, 108, 13, C.gold, Label.HorizontalAlign.RIGHT, 20);
         place(this.track.node, 0, -21, this.width - 28, 3);
         this.render();
@@ -111,15 +110,15 @@ export default class MapTaskTracker extends Component {
         this.all.getComponent(Button).interactable = cmd.sessionReady;
         const button = this.body.getComponent(Button);
         let claimable = false, ratio = 0;
-        this.progress.string = '';
         if (this.current) {
             const task = this.current, info = taskPresentation(task), busy = cmd.requestInFlight(`task:${task.taskId}`);
             claimable = task.state === 1;
             this.category.string = { 1: '主线任务', 2: '日常任务', 3: '周常任务' }[task.taskType];
-            this.title.string = info.name; this.detail.string = info.detail;
+            this.title.string = info.name;
             const value = Math.min(info.target, Math.max(0, task.progress));
             ratio = claimable ? 1 : value / info.target;
-            this.progress.string = claimable ? '已完成' : `${value} / ${info.target}`;
+            // 目标和进度使用同一行排版，避免短目标与进度之间留下大片空白。
+            this.detail.string = `${info.detail}  ${claimable ? '已完成' : `${value}/${info.target}`}`;
             this.action.string = busy ? '领取中…' : claimable ? '点击领取' : '进行中';
             button.interactable = cmd.sessionReady && claimable && !busy;
         } else {

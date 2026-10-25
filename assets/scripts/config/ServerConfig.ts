@@ -51,6 +51,8 @@ const ServerConfig = {
     s2c_battle_result: "Battle.s2c_battle_result",
     c2s_battle_skip: "Battle.c2s_battle_skip",
     s2c_battle_skip: "Battle.s2c_battle_skip",
+    c2s_req_build: "Build.c2s_req_build",
+    s2c_req_build: "Build.s2c_req_build",
     s2c_sync_build: "Build.s2c_sync_build",
     c2s_create_build: "Build.c2s_create_build",
     c2s_up_build: "Build.c2s_up_build",
