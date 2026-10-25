@@ -90,6 +90,7 @@ export class Facility {
 /**设施(配置)*/
 export class FacilityConfig {
     name: string = "";
+    icon: string = "";
     type: number = 0;
     des: string = "";
     additions: number[] = [];
@@ -405,7 +406,7 @@ export default class MapUIProxy {
             this._facilityAdditionCfg.clear();
             for (const row of mainJson) {
                 const cfg = new FacilityConfig();
-                cfg.type = row.Id; cfg.name = row.Name; cfg.des = row.Desc;
+                cfg.type = row.Id; cfg.name = row.Name; cfg.des = row.Desc; cfg.icon = row.Icon || '';
                 cfg.conditions = (row.CreateLimit || []).map(pair => ({ type: pair.bid, level: pair.lev }));
                 for (const level of additionJson.filter(r => r.BuildingType === row.Id)) {
                     const up = new FacilityUpLevel();

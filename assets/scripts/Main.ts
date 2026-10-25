@@ -292,6 +292,9 @@ export default class Main extends Component {
         if (!tiledMap || !Array.isArray(configAssets)) throw new Error('战场启动资源不完整');
         const configs = ConfigManager.getInstance();
         configs.loadConfigs(configAssets);
+        // 建筑面板使用设施适配层，必须在创建地图/UI 前装入两张建筑表。
+        // 等级仍从 Build 推送读取，不能用配置中的初始等级覆盖服务端存档。
+        MapUICommand.getInstance().proxy.setAllFacilityCfg(configAssets);
         SkillCommand.getInstance().proxy.initSkillConfig(configs.getConfig('Skill') || []);
         this.prepareSkillAssets();
         const heroJson = configs.getConfig('Hero');

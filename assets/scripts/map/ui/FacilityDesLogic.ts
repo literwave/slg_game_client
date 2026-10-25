@@ -222,7 +222,17 @@ export default class FacilityDesLogic extends Component {
         this._cityId = cityId;
         this._data = data;
         this._cfg = cfg;
-        if (!data || !cfg) { this.btnUp.interactable = false; return; }
+        if (!data || !cfg) {
+            this.labelTitle.string = '建筑信息同步中';
+            this.labelDes.string = '正在载入城内建筑';
+            this.labelNeedTime.string = '';
+            this.labelConditions.node.parent.active = false;
+            this.labelNeed.node.parent.active = false;
+            this.removeAllAdditionItems();
+            this.btnUp.node.active = false;
+            this.btnUp.interactable = false;
+            return;
+        }
         this.labelTitle.string = cfg.name;
         this.labelDes.string = cfg.des;
         this.updateAdditionView();

@@ -49252,7 +49252,11 @@
     "scrollView": {
       "__id__": 2384
     },
-    "_id": ""
+    "_id": "",
+    "defaultBuildingIcon": {
+      "__uuid__": "81aaf45b-30ad-4dc4-9218-69d1fdab207c@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    }
   },
   {
     "__type__": "cc.CompPrefabInfo",

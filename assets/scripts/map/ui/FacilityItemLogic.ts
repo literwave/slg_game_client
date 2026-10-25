@@ -1,4 +1,4 @@
-import { _decorator, Component, Label, Node } from 'cc';
+import { _decorator, Component, Label, Node, Sprite, SpriteFrame, UITransform, resources } from 'cc';
 const { ccclass, property } = _decorator;
 
 import DateUtil from "../../utils/DateUtil";
@@ -25,6 +25,37 @@ export default class FacilityItemLogic extends Component {
     public cityId: number = 0;
     public data: Facility = null;
     public cfg: FacilityConfig = null;
+    private iconKey = '';
+    private iconSprite: Sprite = null;
+
+    /** 配置未填写专用图片时也显示建筑图，不能只留下旧边框和空底板。 */
+    public setIcon(path: string, fallback: SpriteFrame): void {
+        const key = path || fallback?.uuid || '';
+        if (this.iconSprite && this.iconKey === key) return;
+        this.iconKey = key;
+        if (!this.iconSprite) {
+            const icon = new Node('BuildingIcon');
+            icon.layer = this.node.layer;
+            (this.node.getChildByName('bg') || this.node).addChild(icon);
+            icon.addComponent(UITransform);
+            icon.setPosition(0, 5, 0);
+            this.iconSprite = icon.addComponent(Sprite);
+            this.iconSprite.sizeMode = Sprite.SizeMode.CUSTOM;
+            this.iconSprite.trim = false;
+        }
+        const apply = (frame: SpriteFrame) => {
+            this.iconSprite.spriteFrame = frame;
+            if (!frame) return;
+            const size = frame.originalSize, scale = Math.min(84 / size.width, 72 / size.height);
+            this.iconSprite.node.getComponent(UITransform).setContentSize(size.width * scale, size.height * scale);
+        };
+        apply(fallback);
+        if (path) resources.load(path.endsWith('/spriteFrame') ? path : `${path}/spriteFrame`, SpriteFrame, (error, frame) => {
+            if (!this.isValid || this.iconKey !== key) return;
+            if (error || !(frame instanceof SpriteFrame)) { console.warn('建筑图标载入失败:', path, error); return; }
+            apply(frame);
+        });
+    }
 
     protected onLoad(): void {
         this.node.on(Node.EventType.TOUCH_END, this.onTouchItem, this);
@@ -42,6 +73,7 @@ export default class FacilityItemLogic extends Component {
     }
 
     protected onTouchItem() {
+        if (!this.data) return;
         AudioManager.instance.playClick();
         EventMgr.emit(LogicEvent.selectFacilityItem, this.cityId, this.data.type);
     }

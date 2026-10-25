@@ -1,4 +1,4 @@
-import { _decorator, Component, ScrollView, Node, Label } from 'cc';
+import { _decorator, Component, ScrollView, Node, Label, Layout, SpriteFrame } from 'cc';
 const { ccclass, property } = _decorator;
 
 import FacilityDesLogic from "./FacilityDesLogic";
@@ -13,6 +13,9 @@ import { LogicEvent } from '../../common/LogicEvent';
 export default class FacilityListLogic extends Component {
     @property(ScrollView)
     scrollView: ScrollView = null;
+
+    @property(SpriteFrame)
+    defaultBuildingIcon: SpriteFrame = null;
 
     protected _curCityId: number = 0;
     protected _curSelectType: number = -1;
@@ -34,6 +37,7 @@ export default class FacilityListLogic extends Component {
 
     protected initView(): void {
         const configs = MapUICommand.getInstance().proxy.getFacilityConfigs();
+        this._itemLogics.clear();
         let configIndex = 0;
         let children: Node[] = this.scrollView.content.children;
         for (let i: number = 0; i < children.length; i++) {
@@ -42,22 +46,31 @@ export default class FacilityListLogic extends Component {
                 let item: Node = subChildren[j];
                 if (item.name.indexOf("CityFacilityItem") == 0) {
                     const config = configs[configIndex++];
-                    if (!config) { item.active = false; continue; }
+                    item.active = !!config;
+                    if (!config) continue;
                     let type: number = config.type;
-                    let comp: FacilityItemLogic = item.addComponent(FacilityItemLogic);
+                    let comp: FacilityItemLogic = item.getComponent(FacilityItemLogic) || item.addComponent(FacilityItemLogic);
                     comp.labelRate = item.getChildByName("labelRate").getComponent(Label);
                     comp.labelName = item.getChildByName("labelName").getComponent(Label);
                     comp.labelTime = item.getChildByName("labelTime").getComponent(Label);
                     comp.lockNode = item.getChildByName("lockNode");
                     comp.labelTime.string = "";
                     comp.type = type;
+                    comp.setIcon(config.icon, this.defaultBuildingIcon);
                     this._itemLogics.set(type, comp);
                 }
             }
+            // 收起旧版多余的空行，避免滚动后看到大片空白。
+            children[i].active = subChildren.some(item => item.name.indexOf('CityFacilityItem') === 0 && item.active);
         }
+        this.scrollView.content.getComponent(Layout)?.updateLayout();
     }
 
     protected updateView(): void {
+        const configs = MapUICommand.getInstance().proxy.getFacilityConfigs();
+        if (configs.length !== this._itemLogics.size || configs.some(cfg => !this._itemLogics.has(cfg.type))) {
+            this.initView();
+        }
         let dataList: Map<number, Facility> = MapUICommand.getInstance().proxy.getMyFacilitys(this._curCityId);
         if (dataList && dataList.size > 0) {
             dataList.forEach((data: Facility, type: number) => {
@@ -69,7 +82,7 @@ export default class FacilityListLogic extends Component {
                     logic.setData(this._curCityId, data, cfg, isUnlock);
                 }
             });
-            if (this._curSelectType == -1) {
+            if (!this._itemLogics.has(this._curSelectType)) {
                 this.setCurSelectType(this._itemLogics.keys().next().value);//默认选中主城
             }
         }
@@ -134,7 +147,10 @@ export default class FacilityListLogic extends Component {
 
     public setData(data: any): void {
         this._curCityId = data.cityId;
+        // 面板复用或配置晚到时重新启用槽位；不能沿用首次空配置时的隐藏状态。
+        this.initView();
         MapUICommand.getInstance().qryCityFacilities(this._curCityId);
         this.updateView();
+        this.scrollView.scrollToTop(0);
     }
 }
