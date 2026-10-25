@@ -31,16 +31,6 @@
   },
   {
     "Id": 4,
-    "Name": "令牌",
-    "Desc": "招募武将与创建联盟等消耗的信物（非资源）",
-    "Icon": "ui/resource_icons/icon_token",
-    "BuyDiamond": 10,
-    "useParams": [],
-    "Kind": 7,
-    "Overlap": 100000
-  },
-  {
-    "Id": 5,
     "Name": "石料",
     "Desc": "建造升级与城防消耗的基础资源",
     "Icon": "ui/resource_icons/icon_stone",
@@ -50,7 +40,17 @@
     "Overlap": 100000
   },
   {
-    "Id": 6,
+    "Id": 100,
+    "Name": "令牌",
+    "Desc": "创建联盟、兑换等消耗的通用信物（非资源）",
+    "Icon": "ui/resource_icons/icon_token",
+    "BuyDiamond": 10,
+    "useParams": [],
+    "Kind": 7,
+    "Overlap": 100000
+  },
+  {
+    "Id": 101,
     "Name": "训练加速",
     "Desc": "立即缩短练兵时间（秒）",
     "Icon": "",
@@ -64,7 +64,7 @@
     "Overlap": 999
   },
   {
-    "Id": 7,
+    "Id": 102,
     "Name": "治疗加速",
     "Desc": "立即缩短伤兵治疗时间（秒）",
     "Icon": "",
@@ -78,6 +78,16 @@
     "Overlap": 999
   },
   {
+    "Id": 103,
+    "Name": "点将符",
+    "Desc": "在点将台招募武将时消耗",
+    "Icon": "",
+    "BuyDiamond": 50,
+    "useParams": [],
+    "Kind": 9,
+    "Overlap": 9999
+  },
+  {
     "Id": 1001,
     "Name": "迁城令",
     "Desc": "将主城迁移至指定坐标",
@@ -86,5 +96,369 @@
     "useParams": [],
     "Kind": 6,
     "Overlap": 99
+  },
+  {
+    "Id": 11001,
+    "Name": "吕布碎片",
+    "Desc": "用于合成或升星武将「吕布」",
+    "Icon": "ui/hero/card_1001_v2",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1001
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11002,
+    "Name": "刘协碎片",
+    "Desc": "用于合成或升星武将「刘协」",
+    "Icon": "ui/hero/card_1002",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1002
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11003,
+    "Name": "张让碎片",
+    "Desc": "用于合成或升星武将「张让」",
+    "Icon": "ui/hero/card_1003",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1003
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11004,
+    "Name": "貂蝉碎片",
+    "Desc": "用于合成或升星武将「貂蝉」",
+    "Icon": "ui/hero/card_1004",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1004
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11005,
+    "Name": "何太后碎片",
+    "Desc": "用于合成或升星武将「何太后」",
+    "Icon": "ui/hero/card_1005",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1005
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11006,
+    "Name": "黄盖碎片",
+    "Desc": "用于合成或升星武将「黄盖」",
+    "Icon": "ui/hero/card_1006",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1006
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11007,
+    "Name": "董卓碎片",
+    "Desc": "用于合成或升星武将「董卓」",
+    "Icon": "ui/hero/card_1007",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1007
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11008,
+    "Name": "张角碎片",
+    "Desc": "用于合成或升星武将「张角」",
+    "Icon": "ui/hero/card_1008",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1008
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11009,
+    "Name": "董卓sp碎片",
+    "Desc": "用于合成或升星武将「董卓sp」",
+    "Icon": "ui/hero/card_1009",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1009
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11010,
+    "Name": "吕布sp碎片",
+    "Desc": "用于合成或升星武将「吕布sp」",
+    "Icon": "ui/hero/card_1010",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1010
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11011,
+    "Name": "贾诩碎片",
+    "Desc": "用于合成或升星武将「贾诩」",
+    "Icon": "ui/hero/card_1011",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1011
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11012,
+    "Name": "步练师碎片",
+    "Desc": "用于合成或升星武将「步练师」",
+    "Icon": "ui/hero/card_1012",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1012
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11013,
+    "Name": "赵云碎片",
+    "Desc": "用于合成或升星武将「赵云」",
+    "Icon": "ui/hero/card_1013",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1013
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11014,
+    "Name": "吕蒙碎片",
+    "Desc": "用于合成或升星武将「吕蒙」",
+    "Icon": "ui/hero/card_1014",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1014
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11015,
+    "Name": "甄姬碎片",
+    "Desc": "用于合成或升星武将「甄姬」",
+    "Icon": "ui/hero/card_1015",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1015
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11016,
+    "Name": "刘备sp碎片",
+    "Desc": "用于合成或升星武将「刘备sp」",
+    "Icon": "ui/hero/card_1016",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1016
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11017,
+    "Name": "诸葛亮碎片",
+    "Desc": "用于合成或升星武将「诸葛亮」",
+    "Icon": "ui/hero/card_1017",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1017
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11018,
+    "Name": "陆逊碎片",
+    "Desc": "用于合成或升星武将「陆逊」",
+    "Icon": "ui/hero/card_1018",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1018
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11019,
+    "Name": "马云禄碎片",
+    "Desc": "用于合成或升星武将「马云禄」",
+    "Icon": "ui/hero/card_1019",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1019
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11020,
+    "Name": "黄月英碎片",
+    "Desc": "用于合成或升星武将「黄月英」",
+    "Icon": "ui/hero/card_1020",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1020
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11021,
+    "Name": "马超碎片",
+    "Desc": "用于合成或升星武将「马超」",
+    "Icon": "ui/hero/card_1021",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1021
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11022,
+    "Name": "曹操碎片",
+    "Desc": "用于合成或升星武将「曹操」",
+    "Icon": "ui/hero/card_1022",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1022
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11023,
+    "Name": "关羽碎片",
+    "Desc": "用于合成或升星武将「关羽」",
+    "Icon": "ui/hero/card_1023",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1023
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11024,
+    "Name": "张飞碎片",
+    "Desc": "用于合成或升星武将「张飞」",
+    "Icon": "ui/hero/card_1024",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1024
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11025,
+    "Name": "周瑜碎片",
+    "Desc": "用于合成或升星武将「周瑜」",
+    "Icon": "ui/hero/card_1025",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1025
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11026,
+    "Name": "孙尚香碎片",
+    "Desc": "用于合成或升星武将「孙尚香」",
+    "Icon": "ui/hero/card_1026",
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1026
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
   }
 ]

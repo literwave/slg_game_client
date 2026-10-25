@@ -62,7 +62,7 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 50
       }
     ]
@@ -167,6 +167,11 @@
       {
         "reward_type": 1,
         "item_id": 4,
+        "item_count": 800
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
         "item_count": 100
       }
     ]
@@ -185,7 +190,7 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 80
       }
     ]
@@ -241,6 +246,11 @@
         "reward_type": 1,
         "item_id": 3,
         "item_count": 800
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 1200
       }
     ]
   },
@@ -258,7 +268,7 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 150
       }
     ]
@@ -291,7 +301,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 200
       }
     ]

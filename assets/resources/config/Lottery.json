@@ -3,13 +3,408 @@
     "Id": 1,
     "CostList": [
       {
-        "cost_type": 1,
-        "count": 10
+        "item_id": 103,
+        "count": 1
       }
     ],
     "CommonPools": [
       {
-        "reward_type": 1
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 500,
+        "weight": 900
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 500,
+        "weight": 900
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 300,
+        "weight": 650
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 300,
+        "weight": 650
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 1200,
+        "weight": 350
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 1200,
+        "weight": 350
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 600,
+        "weight": 200
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 600,
+        "weight": 200
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 10,
+        "weight": 500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 30,
+        "weight": 200
+      },
+      {
+        "reward_type": 1,
+        "item_id": 101,
+        "item_count": 1,
+        "weight": 450
+      },
+      {
+        "reward_type": 1,
+        "item_id": 102,
+        "item_count": 1,
+        "weight": 450
+      },
+      {
+        "reward_type": 1,
+        "item_id": 103,
+        "item_count": 1,
+        "weight": 300
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1001,
+        "item_count": 1,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11003,
+        "item_count": 5,
+        "weight": 400
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11002,
+        "item_count": 5,
+        "weight": 250
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11005,
+        "item_count": 5,
+        "weight": 250
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11006,
+        "item_count": 3,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11007,
+        "item_count": 3,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11012,
+        "item_count": 3,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11015,
+        "item_count": 3,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11019,
+        "item_count": 3,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11020,
+        "item_count": 3,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11001,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11004,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11008,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11009,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11010,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11011,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11013,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11014,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11016,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11017,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11018,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11021,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11022,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11023,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11024,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11025,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11026,
+        "item_count": 2,
+        "weight": 30
+      }
+    ],
+    "HeroPools": [
+      {
+        "reward_type": 3,
+        "item_id": 1003,
+        "item_count": 1,
+        "weight": 600
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1002,
+        "item_count": 1,
+        "weight": 225
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1005,
+        "item_count": 1,
+        "weight": 225
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1006,
+        "item_count": 1,
+        "weight": 50
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1007,
+        "item_count": 1,
+        "weight": 50
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1012,
+        "item_count": 1,
+        "weight": 50
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1015,
+        "item_count": 1,
+        "weight": 50
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1019,
+        "item_count": 1,
+        "weight": 50
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1020,
+        "item_count": 1,
+        "weight": 50
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1001,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1004,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1008,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1009,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1010,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1011,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1013,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1014,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1016,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1017,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1018,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1021,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1022,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1023,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1024,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1025,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1026,
+        "item_count": 1,
+        "weight": 9
       }
     ]
   },
@@ -17,8 +412,408 @@
     "Id": 10,
     "CostList": [
       {
-        "cost_type": 1,
-        "count": 1000
+        "item_id": 103,
+        "count": 10
+      }
+    ],
+    "CommonPools": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 500,
+        "weight": 900
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 500,
+        "weight": 900
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 300,
+        "weight": 650
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 300,
+        "weight": 650
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 1200,
+        "weight": 350
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 1200,
+        "weight": 350
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 600,
+        "weight": 200
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 600,
+        "weight": 200
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 10,
+        "weight": 500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 30,
+        "weight": 200
+      },
+      {
+        "reward_type": 1,
+        "item_id": 101,
+        "item_count": 1,
+        "weight": 450
+      },
+      {
+        "reward_type": 1,
+        "item_id": 102,
+        "item_count": 1,
+        "weight": 450
+      },
+      {
+        "reward_type": 1,
+        "item_id": 103,
+        "item_count": 1,
+        "weight": 300
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1001,
+        "item_count": 1,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11003,
+        "item_count": 5,
+        "weight": 400
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11002,
+        "item_count": 5,
+        "weight": 250
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11005,
+        "item_count": 5,
+        "weight": 250
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11006,
+        "item_count": 3,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11007,
+        "item_count": 3,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11012,
+        "item_count": 3,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11015,
+        "item_count": 3,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11019,
+        "item_count": 3,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11020,
+        "item_count": 3,
+        "weight": 100
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11001,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11004,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11008,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11009,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11010,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11011,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11013,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11014,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11016,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11017,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11018,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11021,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11022,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11023,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11024,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11025,
+        "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 11026,
+        "item_count": 2,
+        "weight": 30
+      }
+    ],
+    "HeroPools": [
+      {
+        "reward_type": 3,
+        "item_id": 1003,
+        "item_count": 1,
+        "weight": 600
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1002,
+        "item_count": 1,
+        "weight": 225
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1005,
+        "item_count": 1,
+        "weight": 225
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1006,
+        "item_count": 1,
+        "weight": 50
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1007,
+        "item_count": 1,
+        "weight": 50
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1012,
+        "item_count": 1,
+        "weight": 50
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1015,
+        "item_count": 1,
+        "weight": 50
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1019,
+        "item_count": 1,
+        "weight": 50
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1020,
+        "item_count": 1,
+        "weight": 50
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1001,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1004,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1008,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1009,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1010,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1011,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1013,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1014,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1016,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1017,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1018,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1021,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1022,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1023,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1024,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1025,
+        "item_count": 1,
+        "weight": 9
+      },
+      {
+        "reward_type": 3,
+        "item_id": 1026,
+        "item_count": 1,
+        "weight": 9
       }
     ]
   }

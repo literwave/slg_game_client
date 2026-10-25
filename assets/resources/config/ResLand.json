@@ -124,7 +124,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 10
       }
     ],
@@ -154,7 +154,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 20
       }
     ],
@@ -185,7 +185,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 30
       }
     ],
@@ -215,7 +215,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 50
       }
     ],
@@ -246,7 +246,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 80
       }
     ],
@@ -277,7 +277,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 100
       }
     ],
@@ -410,7 +410,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 10
       }
     ],
@@ -441,7 +441,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 20
       }
     ],
@@ -472,7 +472,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 30
       }
     ],
@@ -503,7 +503,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 50
       }
     ],
@@ -534,7 +534,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 80
       }
     ],
@@ -565,7 +565,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 100
       }
     ],
@@ -698,7 +698,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 10
       }
     ],
@@ -728,7 +728,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 20
       }
     ],
@@ -759,7 +759,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 30
       }
     ],
@@ -789,7 +789,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 50
       }
     ],
@@ -820,7 +820,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 80
       }
     ],
@@ -851,7 +851,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 100
       }
     ],
@@ -866,7 +866,7 @@
     "Name": "1级石场",
     "Desc": "浅层石料，守卫较弱",
     "Icon": "",
-    "OutputItem": 5,
+    "OutputItem": 4,
     "Capacity": 1500,
     "GatherSpeed": 150,
     "MonsterGroups": [
@@ -877,7 +877,7 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 5,
+        "item_id": 4,
         "item_count": 400
       }
     ],
@@ -892,7 +892,7 @@
     "Name": "2级石场",
     "Desc": "初开的采石场",
     "Icon": "",
-    "OutputItem": 5,
+    "OutputItem": 4,
     "Capacity": 3000,
     "GatherSpeed": 220,
     "MonsterGroups": [
@@ -902,7 +902,7 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 5,
+        "item_id": 4,
         "item_count": 600
       }
     ],
@@ -917,7 +917,7 @@
     "Name": "3级石场",
     "Desc": "可采的石场",
     "Icon": "",
-    "OutputItem": 5,
+    "OutputItem": 4,
     "Capacity": 5500,
     "GatherSpeed": 350,
     "MonsterGroups": [
@@ -928,7 +928,7 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 5,
+        "item_id": 4,
         "item_count": 900
       }
     ],
@@ -943,7 +943,7 @@
     "Name": "4级石场",
     "Desc": "富饶石场",
     "Icon": "",
-    "OutputItem": 5,
+    "OutputItem": 4,
     "Capacity": 9000,
     "GatherSpeed": 480,
     "MonsterGroups": [
@@ -953,7 +953,7 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 5,
+        "item_id": 4,
         "item_count": 1400
       }
     ],
@@ -968,7 +968,7 @@
     "Name": "5级石场",
     "Desc": "深掘石场",
     "Icon": "",
-    "OutputItem": 5,
+    "OutputItem": 4,
     "Capacity": 13000,
     "GatherSpeed": 650,
     "MonsterGroups": [
@@ -979,12 +979,12 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 5,
+        "item_id": 4,
         "item_count": 2000
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 10
       }
     ],
@@ -999,7 +999,7 @@
     "Name": "6级石场",
     "Desc": "精石石场",
     "Icon": "",
-    "OutputItem": 5,
+    "OutputItem": 4,
     "Capacity": 18000,
     "GatherSpeed": 850,
     "MonsterGroups": [
@@ -1009,12 +1009,12 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 5,
+        "item_id": 4,
         "item_count": 2800
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 20
       }
     ],
@@ -1029,7 +1029,7 @@
     "Name": "7级石场",
     "Desc": "玄石石场",
     "Icon": "",
-    "OutputItem": 5,
+    "OutputItem": 4,
     "Capacity": 25000,
     "GatherSpeed": 1100,
     "MonsterGroups": [
@@ -1040,12 +1040,12 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 5,
+        "item_id": 4,
         "item_count": 4000
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 30
       }
     ],
@@ -1060,7 +1060,7 @@
     "Name": "8级石场",
     "Desc": "寒石石场",
     "Icon": "",
-    "OutputItem": 5,
+    "OutputItem": 4,
     "Capacity": 33000,
     "GatherSpeed": 1400,
     "MonsterGroups": [
@@ -1070,12 +1070,12 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 5,
+        "item_id": 4,
         "item_count": 5500
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 50
       }
     ],
@@ -1090,7 +1090,7 @@
     "Name": "9级石场",
     "Desc": "龙石石场",
     "Icon": "",
-    "OutputItem": 5,
+    "OutputItem": 4,
     "Capacity": 43000,
     "GatherSpeed": 1800,
     "MonsterGroups": [
@@ -1101,12 +1101,12 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 5,
+        "item_id": 4,
         "item_count": 8000
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 80
       }
     ],
@@ -1121,7 +1121,7 @@
     "Name": "10级石场",
     "Desc": "神石石场",
     "Icon": "",
-    "OutputItem": 5,
+    "OutputItem": 4,
     "Capacity": 56000,
     "GatherSpeed": 2200,
     "MonsterGroups": [
@@ -1132,12 +1132,12 @@
     "Reward": [
       {
         "reward_type": 1,
-        "item_id": 5,
+        "item_id": 4,
         "item_count": 12000
       },
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 100
       }
     ],

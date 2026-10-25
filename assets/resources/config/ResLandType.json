@@ -21,6 +21,6 @@
     "Id": 4,
     "Name": "石场",
     "Enum": "STONE",
-    "Desc": "产出石料（对齐 Item.Id=5）"
+    "Desc": "产出石料（对齐 Item.Id=4）"
   }
 ]

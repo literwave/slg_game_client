@@ -36,8 +36,9 @@ message p_common_info_int_str {
 	string v = 2;
 }
 
+// heroId → Hero.Id（配置 id，无独立 heroUid）
 message p_hero_base_info {
-	int32 heroType = 1;
+	int32 heroId = 1;
 	int32 exp = 2;
 	int32 lv = 3;
 	int32 star = 4;

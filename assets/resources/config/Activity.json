@@ -51,7 +51,7 @@
         "reward": [
           {
             "reward_type": 1,
-            "item_id": 4,
+            "item_id": 100,
             "item_count": 50
           }
         ]
@@ -76,7 +76,7 @@
         "reward": [
           {
             "reward_type": 1,
-            "item_id": 6,
+            "item_id": 101,
             "item_count": 2
           }
         ]
@@ -86,7 +86,7 @@
         "reward": [
           {
             "reward_type": 1,
-            "item_id": 4,
+            "item_id": 100,
             "item_count": 100
           }
         ]
@@ -106,7 +106,7 @@
           },
           {
             "reward_type": 1,
-            "item_id": 4,
+            "item_id": 100,
             "item_count": 200
           }
         ]
@@ -138,7 +138,7 @@
         "reward": [
           {
             "reward_type": 1,
-            "item_id": 4,
+            "item_id": 100,
             "item_count": 500
           },
           {
@@ -154,7 +154,7 @@
         "reward": [
           {
             "reward_type": 1,
-            "item_id": 4,
+            "item_id": 100,
             "item_count": 300
           },
           {
@@ -170,7 +170,7 @@
         "reward": [
           {
             "reward_type": 1,
-            "item_id": 4,
+            "item_id": 100,
             "item_count": 150
           },
           {
@@ -186,7 +186,7 @@
         "reward": [
           {
             "reward_type": 1,
-            "item_id": 4,
+            "item_id": 100,
             "item_count": 50
           },
           {
@@ -201,7 +201,7 @@
   {
     "Id": 3,
     "Name": "限时求贤",
-    "Desc": "开服限时招募，消耗令牌减半",
+    "Desc": "开服限时招募，消耗点将符减半",
     "Icon": "",
     "Type": 3,
     "Order": 3,
@@ -240,7 +240,7 @@
         1,
         2,
         3,
-        5
+        4
       ]
     },
     "Rewards": []
@@ -264,7 +264,7 @@
     "Rewards": [
       {
         "reward_type": 1,
-        "item_id": 4,
+        "item_id": 100,
         "item_count": 200
       },
       {
@@ -279,7 +279,7 @@
       },
       {
         "reward_type": 1,
-        "item_id": 6,
+        "item_id": 101,
         "item_count": 5
       }
     ]
@@ -334,7 +334,7 @@
         "reward": [
           {
             "reward_type": 1,
-            "item_id": 4,
+            "item_id": 100,
             "item_count": 20
           }
         ]
@@ -344,12 +344,12 @@
         "reward": [
           {
             "reward_type": 1,
-            "item_id": 4,
+            "item_id": 100,
             "item_count": 50
           },
           {
             "reward_type": 1,
-            "item_id": 6,
+            "item_id": 101,
             "item_count": 1
           }
         ]
@@ -372,7 +372,7 @@
     "Params": {
       "exchanges": [
         {
-          "cost_item": 4,
+          "cost_item": 100,
           "cost_count": 10,
           "reward_type": 1,
           "item_id": 1,
@@ -380,7 +380,7 @@
           "limit": 10
         },
         {
-          "cost_item": 4,
+          "cost_item": 100,
           "cost_count": 10,
           "reward_type": 1,
           "item_id": 2,
@@ -388,23 +388,23 @@
           "limit": 10
         },
         {
-          "cost_item": 4,
+          "cost_item": 100,
           "cost_count": 10,
           "reward_type": 1,
-          "item_id": 5,
+          "item_id": 4,
           "item_count": 1000,
           "limit": 10
         },
         {
-          "cost_item": 4,
+          "cost_item": 100,
           "cost_count": 20,
           "reward_type": 1,
-          "item_id": 6,
+          "item_id": 101,
           "item_count": 1,
           "limit": 5
         },
         {
-          "cost_item": 4,
+          "cost_item": 100,
           "cost_count": 50,
           "reward_type": 1,
           "item_id": 1001,
@@ -440,7 +440,7 @@
         "reward": [
           {
             "reward_type": 1,
-            "item_id": 4,
+            "item_id": 100,
             "item_count": 300
           },
           {
@@ -456,7 +456,7 @@
         "reward": [
           {
             "reward_type": 1,
-            "item_id": 4,
+            "item_id": 100,
             "item_count": 150
           },
           {
@@ -472,7 +472,7 @@
         "reward": [
           {
             "reward_type": 1,
-            "item_id": 4,
+            "item_id": 100,
             "item_count": 50
           },
           {
