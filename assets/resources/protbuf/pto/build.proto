@@ -2,6 +2,20 @@ syntax = "proto3";
 
 package Build;
 
+// bid → BuildingDetail.Id
+message p_build_info {
+	int32 bid = 1;
+	int32 level = 2;
+}
+
+// 拉取全部建筑
+message c2s_req_build {
+}
+
+message s2c_req_build {
+	repeated p_build_info buildList = 1;
+}
+
 // 建造/升级即时完成，无队列、无时间；结果用 s2c_sync_build 同步
 message s2c_sync_build {
 	int32 bid = 1;
