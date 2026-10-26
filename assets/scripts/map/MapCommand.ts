@@ -14,6 +14,7 @@ import { LogicEvent } from '../common/LogicEvent';
 import WorldCampaign from './WorldCampaign';
 import LoginCommand from '../login/LoginCommand';
 import WorldCommand from '../world/WorldCommand';
+import MapMarkCommand from '../world/MapMarkCommand';
 import BuildCommand from '../build/BuildCommand';
 import { isResourceLandCell } from '../world/ResourceLand';
 
@@ -52,12 +53,12 @@ export default class MapCommand {
         EventMgr.on(ServerConfig.nationMap_build, this.onNationMapBuild, this);
         EventMgr.on(ServerConfig.nationMap_upBuild, this.onNationMapUpBuild, this);
         EventMgr.on(ServerConfig.roleCity_push, this.onRoleCityPush, this);
-        EventMgr.on(ServerConfig.role_posTagList, this.onPosTagList, this);
-        EventMgr.on(ServerConfig.role_opPosTag, this.onOpPosTag, this);
+        EventMgr.on(LogicEvent.updateTag, this.syncMarks, this);
         EventMgr.on(LogicEvent.updateWorldEntities, this.syncWorldCities, this);
         EventMgr.on(LogicEvent.updateCityPosition, this.syncWorldCities, this);
         EventMgr.on(LogicEvent.updateMyRole, this.syncWorldCities, this);
         EventMgr.on(LogicEvent.updateCityBuilds, this.syncWorldCities, this);
+        this.syncMarks();
     }
 
     public onDestory(): void {
@@ -69,6 +70,7 @@ export default class MapCommand {
         this._cityProxy.initData();
         this._buildProxy.initData();
         this.syncWorldCities();
+        this.syncMarks();
     }
 
     private syncWorldCities(): void {
@@ -141,24 +143,15 @@ export default class MapCommand {
         console.log("onNationMapUpBuild", data, otherData);
     }
 
-    protected onPosTagList(data: any, otherData: any): void {
-        console.log("onPosTagList", data, otherData);
-        if (data.code == 0) {
-            this._proxy.updateMapPosTags(data.msg.pos_tags);
-        }
-    }
-
-    protected onOpPosTag(data: any, otherData: any): void {
-        console.log("onOpPosTag", data, otherData);
-        if (data.code == 0) {
-            if (data.msg.type == 0) {
-                this._proxy.removeMapPosTag(data.msg.x, data.msg.y);
-                EventMgr.emit(LogicEvent.updateTag);
-            } else if (data.msg.type == 1) {
-                this._proxy.addMapPosTag(data.msg.x, data.msg.y, data.msg.name);
-                EventMgr.emit(LogicEvent.updateTag);
-            }
-        }
+    private syncMarks(): void {
+        // 新协议只保存坐标，展示名称从当前地图数据推导，不发送旧版 name 字段。
+        const names = { 50: '要塞', 51: '城池', 52: '林地', 53: '铁矿', 54: '石料', 55: '粮田' };
+        this._proxy.updateMapPosTags(MapMarkCommand.getInstance().marks.values().map(pos => {
+            const id = MapUtil.getIdByCellPoint(pos.x, pos.y), city = this._cityProxy.getCity(id), res = this._proxy.getResData(id);
+            const name = city?.name || (res && !res.isEmpty && names[res.type]
+                ? `${res.level}级${names[res.type]}` : '地图标记');
+            return { ...pos, name };
+        }));
     }
 
 
@@ -430,27 +423,14 @@ export default class MapCommand {
         // NetManager.getInstance().send(sendData);
     }
 
-    public posTagList(): void {
-        let sendData: any = {
-            name: ServerConfig.role_posTagList,
-            msg: {
-            }
-        };
-        NetManager.getInstance().send(sendData);
+    public posTagList(): boolean {
+        return MapMarkCommand.getInstance().requestList();
     }
 
     //1添加、0移除
-    public opPosTag(type: number, x: number, y: number, name = ""): void {
-        let sendData: any = {
-            name: ServerConfig.role_opPosTag,
-            msg: {
-                type: type,
-                x: x,
-                y: y,
-                name: name,
-            }
-        };
-        NetManager.getInstance().send(sendData);
+    public opPosTag(type: number, x: number, y: number, _name = ""): boolean {
+        const marks = MapMarkCommand.getInstance();
+        return type === 1 ? marks.add({ x, y }) : type === 0 ? marks.remove({ x, y }) : false;
     }
 
 }

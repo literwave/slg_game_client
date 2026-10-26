@@ -25,12 +25,16 @@ import LoadingLogic from './common/LoadingLogic';
 import ReconnectLogic, { ReconnectState } from './common/ReconnectLogic';
 import RewardCommand from './reward/RewardCommand';
 import RewardWindowLogic from './reward/RewardWindowLogic';
+import LotteryRewardWindow from './reward/LotteryRewardWindow';
 import SystemOpenCommand from './systemopen/SystemOpenCommand';
 import WorldCommand from './world/WorldCommand';
+import MapMarkCommand from './world/MapMarkCommand';
 import ProgressionCommand from './progression/ProgressionCommand';
 import BuildCommand from './build/BuildCommand';
 import LotteryCommand from './general/LotteryCommand';
 import InventoryCommand from './inventory/InventoryCommand';
+import ChatCommand from './chat/ChatCommand';
+import UnionCommand from './union/UnionCommand';
 
 @ccclass('Main')
 export default class Main extends Component {
@@ -74,6 +78,8 @@ export default class Main extends Component {
     private _heroWarmupTimer: ReturnType<typeof setTimeout> | null = null;
     private _mapPreparation: Generator<void, void, unknown> | null = null;
     private _afterLoadingDraw: (() => void) | null = null;
+    private _cityStateRequested = false;
+    private _cityStateTimer: ReturnType<typeof setTimeout> | null = null;
 
 
     protected onLoad(): void {
@@ -92,6 +98,7 @@ export default class Main extends Component {
 
         EventMgr.on(LogicEvent.enterMap, this.onEnterMap, this);
         EventMgr.on(CoreEvent.mapReady, this.onMapReady, this);
+        EventMgr.on(LogicEvent.updateCityBuilds, this.onCityBuildsChanged, this);
         EventMgr.on(CoreEvent.mapLoadFailed, this.onMapLoadFailed, this);
         EventMgr.on(LogicEvent.enterLogin, this.enterLogin, this);
         EventMgr.on(LogicEvent.showToast, this.onShowToast, this);
@@ -107,11 +114,14 @@ export default class Main extends Component {
         RewardCommand.getInstance();
         LotteryCommand.getInstance();
         InventoryCommand.getInstance();
-        EventMgr.on(LogicEvent.lotteryResult, result => RewardWindowLogic.show(result.rewards), this);
+        UnionCommand.getInstance();
+        ChatCommand.getInstance();
+        EventMgr.on(LogicEvent.lotteryResult, result => LotteryRewardWindow.show(result), this);
         TroopCommand.getInstance();
         // 登录前注册协议监听，避免地图/UI 懒创建模块时漏掉登录确认。
         // 这里只初始化；任务/行军列表仍等 client_load_ok 回包后才拉取。
         WorldCommand.getInstance();
+        MapMarkCommand.getInstance();
         ProgressionCommand.getInstance();
         BuildCommand.getInstance();
 
@@ -245,6 +255,7 @@ export default class Main extends Component {
         this._skillAssetsReady = false;
         this._headAssetsReady = false;
         this._finishingLoading = false;
+        this._cityStateRequested = false;
         const generation = ++this._loadGeneration;
         const startedAt = Date.now();
         try {
@@ -356,6 +367,12 @@ export default class Main extends Component {
         this.tryFinishLoading();
     }
 
+    private onCityBuildsChanged(): void {
+        if (!this._enteringMap || !this._cityStateRequested) return;
+        // 同一推送还会刷新地图城池，下一帧再淡出，确保材质和等级图已经应用。
+        this.scheduleOnce(this.tryFinishLoading, 0);
+    }
+
     private tryFinishLoading(): void {
         if (!this._enteringMap || this._finishingLoading || !this._mapReady || !this._mapUiReady) return;
         if (!this._heroAssetsReady) {
@@ -370,6 +387,28 @@ export default class Main extends Component {
             EventMgr.emit(CoreEvent.mapLoadProgress, 0.98, '正在准备头像…');
             return;
         }
+        // 地图和资源已就绪即可通知服务器；遮罩保留到真实主城等级到达，
+        // 避免先露出 level=0 的默认城图，再在玩家眼前切换等级外观。
+        if (!this._cityStateRequested) {
+            this._cityStateRequested = true;
+            const generation = this._loadGeneration;
+            this._cityStateTimer = setTimeout(() => {
+                this._cityStateTimer = null;
+                if (this.isValid && this._enteringMap && generation === this._loadGeneration) {
+                    this.failMapLoading(new Error('主城资料读取超时'));
+                }
+            }, 12000);
+            LoginCommand.getInstance().notifyClientLoaded();
+        }
+        if (!this._enteringMap || this._finishingLoading) return;
+        const buildings = BuildCommand.getInstance();
+        if (!buildings.loaded) {
+            if (buildings.loadError) this.failMapLoading(new Error(buildings.loadError));
+            else EventMgr.emit(CoreEvent.mapLoadProgress, 0.99, '正在准备主城…');
+            return;
+        }
+        if (this._cityStateTimer !== null) clearTimeout(this._cityStateTimer);
+        this._cityStateTimer = null;
         this.finishLoading();
     }
 
@@ -459,7 +498,6 @@ export default class Main extends Component {
         RewardWindowLogic.init();
         RewardCommand.getInstance().setUIReady();
         SystemOpenCommand.getInstance().setUIReady();
-        LoginCommand.getInstance().notifyClientLoaded();
     }
 
     private disposeLoadingNow(): void {
@@ -477,6 +515,9 @@ export default class Main extends Component {
         this._headAssetsReady = false;
         this._finishingLoading = false;
         this._heroRequest = null;
+        this._cityStateRequested = false;
+        if (this._cityStateTimer !== null) clearTimeout(this._cityStateTimer);
+        this._cityStateTimer = null;
         if (this._heroWarmupTimer !== null) clearTimeout(this._heroWarmupTimer);
         this._heroWarmupTimer = null;
         if (this._loadingNode) {

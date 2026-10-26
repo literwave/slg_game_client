@@ -244,7 +244,7 @@ export default class MapScene extends Component {
                 layers.res.addItem(areaId, resource);
             }
             if (resource.type === MapResType.SYS_CITY) layers.sysCity.addItem(areaId, resource);
-            if (resource.type <= MapResType.FORTRESS && this._cmd.proxy.isPosTag(x, y)) {
+            if (this._cmd.proxy.isPosTag(x, y)) {
                 layers.tag.addItem(areaId, resource);
             }
         }

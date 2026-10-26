@@ -1,4 +1,4 @@
-import { _decorator, Component, Toggle, ScrollView, Prefab, Node, instantiate, tween, Tween, Vec3, UITransform, Label, Layout, Color } from 'cc';
+import { _decorator, Component, Toggle, ScrollView, Prefab, Node, instantiate, tween, Tween, Vec3, UITransform, Label, Layout, Color, Button } from 'cc';
 const { ccclass, property } = _decorator;
 
 import { ArmyData } from "../../general/ArmyProxy";
@@ -13,6 +13,8 @@ import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
 import { drawCommandPanel, drawCommandHandle } from './RightHudSkin';
+import MapMarkCommand from '../../world/MapMarkCommand';
+import { caption, ManagementColors, panelButton } from './ManagementStyle';
 
 @ccclass('RightInfoNodeLogic')
 export default class RightInfoNodeLogic extends Component {
@@ -131,8 +133,22 @@ export default class RightInfoNodeLogic extends Component {
     }
 
     protected initTags(): void {
+        const command = MapMarkCommand.getInstance();
         let tags = MapCommand.getInstance().proxy.getPosTags();
         this.clearList(this.tagsScrollView);
+        const content = this.tagsScrollView.content, width = content.getComponent(UITransform).width || 250;
+        const summary = caption(content, 'MarkSummary', command.loading ? '正在读取标记…'
+            : command.error || `标记 ${tags.length} / ${command.limit || '—'}`, 0, 0, width, 13, ManagementColors.gold, Label.HorizontalAlign.CENTER);
+        summary.node.getComponent(UITransform).setContentSize(width, 32);
+        if (command.error && !command.loading) {
+            const retry = new Node('MarkRetry'); retry.layer = content.layer; content.addChild(retry);
+            retry.addComponent(Button); panelButton(retry, '重新读取', 0, 0, width, 32);
+            retry.on(Button.EventType.CLICK, () => command.requestList());
+        }
+        if (command.loaded && !tags.length && !command.loading && !command.error) {
+            const empty = caption(content, 'MarkEmpty', '点击地图格子\n选择“标记”即可收藏', 0, 0, width - 16, 13, ManagementColors.muted, Label.HorizontalAlign.CENTER);
+            empty.enableWrapText = true; empty.node.getComponent(UITransform).setContentSize(width, 56);
+        }
         for (let i: number = 0; i < tags.length; i++) {
             var tag = tags[i];
 
@@ -141,6 +157,7 @@ export default class RightInfoNodeLogic extends Component {
             item.parent = this.tagsScrollView.content;
             item.getComponent(RightTagItemLogic).setData(tag);
         }
+        content.getComponent(Layout)?.updateLayout();
     }
 
     protected onUpdateArmyList(datas: ArmyData[]): void {
@@ -325,6 +342,8 @@ export default class RightInfoNodeLogic extends Component {
             this.armyScrollView.node.active = false;
             this.cityScrollView.node.active = false;
             this.tagsScrollView.node.active = true;
+            const marks = MapMarkCommand.getInstance();
+            if (!marks.loaded && !marks.loading) marks.requestList();
             this.initTags();
         }
     }

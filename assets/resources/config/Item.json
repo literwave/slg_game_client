@@ -4,6 +4,7 @@
     "Name": "粮草",
     "Desc": "主城建设与军队消耗的基础资源",
     "Icon": "ui/item_icons/items/item_1",
+    "Quality": 1,
     "BuyDiamond": 10,
     "useParams": [],
     "Kind": 1,
@@ -14,6 +15,7 @@
     "Name": "木材",
     "Desc": "建造升级所需的基础资源",
     "Icon": "ui/item_icons/items/item_2",
+    "Quality": 1,
     "BuyDiamond": 10,
     "useParams": [],
     "Kind": 2,
@@ -24,6 +26,7 @@
     "Name": "铁矿",
     "Desc": "兵营与高级建筑消耗的战略资源",
     "Icon": "ui/item_icons/items/item_3",
+    "Quality": 1,
     "BuyDiamond": 10,
     "useParams": [],
     "Kind": 3,
@@ -34,6 +37,7 @@
     "Name": "石料",
     "Desc": "建造升级与城防消耗的基础资源",
     "Icon": "ui/item_icons/items/item_4",
+    "Quality": 1,
     "BuyDiamond": 10,
     "useParams": [],
     "Kind": 4,
@@ -44,6 +48,7 @@
     "Name": "令牌",
     "Desc": "创建联盟、兑换等消耗的通用信物（非资源）",
     "Icon": "ui/item_icons/items/item_100",
+    "Quality": 2,
     "BuyDiamond": 10,
     "useParams": [],
     "Kind": 7,
@@ -54,6 +59,7 @@
     "Name": "训练加速",
     "Desc": "立即缩短练兵时间（秒）",
     "Icon": "ui/item_icons/items/item_101",
+    "Quality": 2,
     "BuyDiamond": 50,
     "useParams": [
       {
@@ -68,6 +74,7 @@
     "Name": "治疗加速",
     "Desc": "立即缩短伤兵治疗时间（秒）",
     "Icon": "ui/item_icons/items/item_102",
+    "Quality": 2,
     "BuyDiamond": 50,
     "useParams": [
       {
@@ -82,6 +89,7 @@
     "Name": "点将符",
     "Desc": "在点将台招募武将时消耗",
     "Icon": "ui/item_icons/items/item_103",
+    "Quality": 3,
     "BuyDiamond": 50,
     "useParams": [],
     "Kind": 9,
@@ -92,6 +100,7 @@
     "Name": "迁城令",
     "Desc": "将主城迁移至指定坐标",
     "Icon": "ui/item_icons/items/item_1001",
+    "Quality": 4,
     "BuyDiamond": 100,
     "useParams": [],
     "Kind": 6,
@@ -102,6 +111,7 @@
     "Name": "吕布碎片",
     "Desc": "用于合成或升星武将「吕布」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1001",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -116,6 +126,7 @@
     "Name": "刘协碎片",
     "Desc": "用于合成或升星武将「刘协」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1002",
+    "Quality": 3,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -130,6 +141,7 @@
     "Name": "张让碎片",
     "Desc": "用于合成或升星武将「张让」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1003",
+    "Quality": 2,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -144,6 +156,7 @@
     "Name": "貂蝉碎片",
     "Desc": "用于合成或升星武将「貂蝉」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1004",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -158,6 +171,7 @@
     "Name": "何太后碎片",
     "Desc": "用于合成或升星武将「何太后」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1005",
+    "Quality": 3,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -172,6 +186,7 @@
     "Name": "黄盖碎片",
     "Desc": "用于合成或升星武将「黄盖」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1006",
+    "Quality": 4,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -186,6 +201,7 @@
     "Name": "董卓碎片",
     "Desc": "用于合成或升星武将「董卓」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1007",
+    "Quality": 4,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -200,6 +216,7 @@
     "Name": "张角碎片",
     "Desc": "用于合成或升星武将「张角」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1008",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -214,6 +231,7 @@
     "Name": "董卓sp碎片",
     "Desc": "用于合成或升星武将「董卓sp」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1009",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -228,6 +246,7 @@
     "Name": "吕布sp碎片",
     "Desc": "用于合成或升星武将「吕布sp」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1010",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -242,6 +261,7 @@
     "Name": "贾诩碎片",
     "Desc": "用于合成或升星武将「贾诩」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1011",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -256,6 +276,7 @@
     "Name": "步练师碎片",
     "Desc": "用于合成或升星武将「步练师」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1012",
+    "Quality": 4,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -270,6 +291,7 @@
     "Name": "赵云碎片",
     "Desc": "用于合成或升星武将「赵云」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1013",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -284,6 +306,7 @@
     "Name": "吕蒙碎片",
     "Desc": "用于合成或升星武将「吕蒙」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1014",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -298,6 +321,7 @@
     "Name": "甄姬碎片",
     "Desc": "用于合成或升星武将「甄姬」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1015",
+    "Quality": 4,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -312,6 +336,7 @@
     "Name": "刘备sp碎片",
     "Desc": "用于合成或升星武将「刘备sp」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1016",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -326,6 +351,7 @@
     "Name": "诸葛亮碎片",
     "Desc": "用于合成或升星武将「诸葛亮」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1017",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -340,6 +366,7 @@
     "Name": "陆逊碎片",
     "Desc": "用于合成或升星武将「陆逊」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1018",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -354,6 +381,7 @@
     "Name": "马云禄碎片",
     "Desc": "用于合成或升星武将「马云禄」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1019",
+    "Quality": 4,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -368,6 +396,7 @@
     "Name": "黄月英碎片",
     "Desc": "用于合成或升星武将「黄月英」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1020",
+    "Quality": 4,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -382,6 +411,7 @@
     "Name": "马超碎片",
     "Desc": "用于合成或升星武将「马超」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1021",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -396,6 +426,7 @@
     "Name": "曹操碎片",
     "Desc": "用于合成或升星武将「曹操」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1022",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -410,6 +441,7 @@
     "Name": "关羽碎片",
     "Desc": "用于合成或升星武将「关羽」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1023",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -424,6 +456,7 @@
     "Name": "张飞碎片",
     "Desc": "用于合成或升星武将「张飞」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1024",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -438,6 +471,7 @@
     "Name": "周瑜碎片",
     "Desc": "用于合成或升星武将「周瑜」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1025",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {
@@ -452,6 +486,7 @@
     "Name": "孙尚香碎片",
     "Desc": "用于合成或升星武将「孙尚香」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1026",
+    "Quality": 5,
     "BuyDiamond": 20,
     "useParams": [
       {

@@ -19,6 +19,7 @@ import PlayerCityGround from './PlayerCityGround';
 import MapUtil from './MapUtil';
 import { isResourceLandCell } from '../world/ResourceLand';
 import WorldCommand, { MarchTargetType } from '../world/WorldCommand';
+import MapMarkCommand from '../world/MapMarkCommand';
 import { hasId, idKey } from '../network/pto/ProtocolCommand';
 import { caption, hideSprite, inkSurface, ManagementColors, panelButton, place, textStyle } from './ui/ManagementStyle';
 
@@ -125,6 +126,8 @@ export default class MapClickUILogic extends Component {
     }
 
     protected onDestroy(): void {
+        // 地面选框挂在地图层；弹窗销毁时仍由本组件负责回收。
+        if (this.bgSelect?.isValid && this.bgSelect.parent !== this.node) this.bgSelect.destroy();
         this._data = null;
         this._pixelPos = null;
     }
@@ -135,6 +138,9 @@ export default class MapClickUILogic extends Component {
         EventMgr.on(LogicEvent.updateWorldEntities, this.onWorldResourceChanged, this);
         EventMgr.on(LogicEvent.updateMarches, this.onWorldResourceChanged, this);
         EventMgr.on(LogicEvent.updateMyRole, this.onWorldResourceChanged, this);
+        EventMgr.on(LogicEvent.updateTag, this.onMarksChanged, this);
+        this.bgSelect.active = !!this._data && !(this._data instanceof MapCityData);
+        this.placeGroundSelection();
 
         var uiOpacity = this.bgSelect.getComponent(UIOpacity) || this.bgSelect.addComponent(UIOpacity);
         uiOpacity.opacity = 255;
@@ -151,6 +157,7 @@ export default class MapClickUILogic extends Component {
         EventMgr.emit(LogicEvent.selectPlayerCity, null);
         EventMgr.targetOff(this);
         this._t?.stop();
+        if (this.bgSelect?.isValid) this.bgSelect.active = false;
         this.stopCountDown();
     }
 
@@ -173,15 +180,24 @@ export default class MapClickUILogic extends Component {
 
 
     protected onTagAdd(): void {
+        if (!this._data) return;
         AudioManager.instance.playClick();
         MapCommand.getInstance().opPosTag(1, this._data.x, this._data.y, this.labelName.string);
-        this.node.parent = null;
     }
 
     protected onTagRemove(): void {
+        if (!this._data) return;
         AudioManager.instance.playClick();
         MapCommand.getInstance().opPosTag(0, this._data.x, this._data.y);
-        this.node.parent = null;
+    }
+
+    private onMarksChanged(): void {
+        if (!this._data) return;
+        const ownCity = this._data instanceof MapCityData && this._data.rid == MapCommand.getInstance().cityProxy.myId;
+        const marked = MapMarkCommand.getInstance().has(this._data);
+        this.btnTagAdd.node.active = !ownCity && !marked;
+        this.btnTagRemove.node.active = !ownCity && marked;
+        this.layoutPanel();
     }
 
     protected onClickOccupy(): void {
@@ -400,6 +416,9 @@ export default class MapClickUILogic extends Component {
 
     private layoutPanel(): void {
         if (!this._panel) return;
+        const marks = MapMarkCommand.getInstance();
+        const marking = !!this._data && marks.pendingAt(this._data);
+        this.btnTagAdd.interactable = this.btnTagRemove.interactable = marks.sessionReady && marks.loaded && !marks.loading && !marks.busy;
         const yieldLines = this.leftInfoNode.active ? this.labelYield.string.split('\n').length : 0;
         const buttons = this.buttons().filter(button => button.node.active);
         const rowCount = Math.ceil(buttons.length / 3);
@@ -443,7 +462,7 @@ export default class MapClickUILogic extends Component {
             const texts = new Map<Button, string>([[this.btnEnter, '进入'], [this.btnOccupy, WorldCampaign.gateAt(this._data.x, this._data.y) ? '攻打关隘' : '占领'],
                 [this.btnMove, '移动'], [this.btnGiveUp, '放弃'], [this.btnReclaim, '屯田'], [this.btnBuild, '建造'],
                 [this._btnRelocate, LoginCommand.getInstance().movingCity ? '迁城中…' : '迁城'],
-                [this.btnTransfer, '调动'], [this.btnTagAdd, '标记'], [this.btnTagRemove, '取消标记']]);
+                [this.btnTransfer, '调动'], [this.btnTagAdd, marking ? '标记中…' : '标记'], [this.btnTagRemove, marking ? '取消中…' : '取消标记']]);
             const text = texts.get(buttons[i]) || label?.string || '进入';
             panelButton(buttons[i].node, text, -contentWidth / 2 + width / 2 + (i % 3) * (width + 8),
                 -height / 2 + 30 + (rowCount - 1 - Math.floor(i / 3)) * 46, width, 36, buttons[i] === this.btnOccupy || buttons[i] === this.btnEnter);
@@ -451,17 +470,35 @@ export default class MapClickUILogic extends Component {
         hideSprite(this.bgSelect);
         const ui = this.bgSelect.getComponent(UITransform);
         const g = inkSurface(this.bgSelect, 'SelectionOutline', ui.width, ui.height, null, null);
-        g.lineWidth = 4; g.strokeColor = new Color(239, 209, 126, 255); g.fillColor = new Color(204, 180, 104, 45);
+        g.lineWidth = 2; g.strokeColor = new Color(239, 209, 126, 220); g.fillColor = new Color(204, 180, 104, 24);
         g.moveTo(0, ui.height / 2); g.lineTo(ui.width / 2, 0); g.lineTo(0, -ui.height / 2);
         g.lineTo(-ui.width / 2, 0); g.close(); g.fill(); g.stroke();
         // 内外双线在地表形成清晰选中标记，不缩放或裁切建筑本身。
-        g.lineWidth = 1.5; g.strokeColor = new Color(255, 241, 185, 210);
+        g.lineWidth = 1; g.strokeColor = new Color(255, 241, 185, 130);
         g.moveTo(0, ui.height * .43); g.lineTo(ui.width * .43, 0); g.lineTo(0, -ui.height * .43);
         g.lineTo(-ui.width * .43, 0); g.close(); g.stroke();
         this.lateUpdate();
     }
 
+    /** 信息面板留在交互层，地块选框放在部队下方，避免金线穿过人物。 */
+    private placeGroundSelection(): void {
+        if (!this.bgSelect?.isValid || !this.node.activeInHierarchy) return;
+        for (let parent = this.node.parent; parent; parent = parent.parent) {
+            const armyLayer = (parent.getComponent('MapArmyLogic') as Component & { parentLayer: Node })?.parentLayer;
+            if (!armyLayer?.parent) continue;
+            if (this.bgSelect.parent !== armyLayer.parent) this.bgSelect.setParent(armyLayer.parent, true);
+            // 从前方移至目标索引时数组会先缩短一项，明确保持在 armyLayer 前一位。
+            const index = armyLayer.getSiblingIndex();
+            const current = this.bgSelect.getSiblingIndex(), target = current < index ? index - 1 : index;
+            if (current !== target) this.bgSelect.setSiblingIndex(target);
+            this.bgSelect.setWorldPosition(this.node.worldPosition);
+            this.bgSelect.setWorldScale(this.node.worldScale);
+            return;
+        }
+    }
+
     protected lateUpdate(): void {
+        this.placeGroundSelection();
         if (!this._panel || !this._data) return;
         if (!this._camera) for (let p = this.node.parent; p; p = p.parent) {
             this._camera = p.getChildByName('Map Camera')?.getComponent(Camera);

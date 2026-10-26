@@ -242,7 +242,7 @@ test('HUD subscribes after loading, pulls latest cached values and never registe
     }, { ...cc, input: { on: key => keys.push(key), off() {} }, Input: { EventType: { KEY_DOWN: 'down', KEY_UP: 'up' } } }, f.clock, true).default;
     const ui = new UI();
     ui.node = new Node();
-    for (const method of ['initHudNavigation', 'initMoreMenu', 'initHeadIconEntry', 'initTaskTracker', 'layoutHud', 'updateRole', 'clearAllNode']) ui[method] = () => {};
+    for (const method of ['initHudNavigation', 'initMoreMenu', 'initHeadIconEntry', 'initTaskTracker', 'initChatStrip', 'initResourceIcons', 'layoutHud', 'updateRole', 'clearAllNode']) ui[method] = () => {};
     ui.updateRoleRes = () => updates++;
     ui.onLoad();
     for (let i = 0; i < 100; i++) f.EventMgr.emit(LogicEvent.upateMyRoleRes);
@@ -272,7 +272,8 @@ function mainFixture() {
     const renderFrame = () => {
         for (const listener of drawListeners.splice(0)) listener.callback.call(listener.target);
     };
-    let resourceComplete, finishCallback, finishes = 0, uiReady = 0;
+    let resourceComplete, finishCallback, finishes = 0, uiReady = 0, loadNotices = 0;
+    const buildings = { loaded: true, loadError: '' };
     const configs = new Map();
     const Main = load('assets/scripts/Main.ts', {
         './utils/EventMgr': { EventMgr: f.EventMgr }, './common/LogicEvent': { LogicEvent }, './core/CoreEvent': { CoreEvent },
@@ -285,12 +286,13 @@ function mainFixture() {
         './map/MapCommand': asDefault({ getInstance: () => ({ proxy: { *initMapResConfigBatched() { yield 0.5; yield 1; } } }) }),
         './map/ui/MapUICommand': asDefault({ getInstance: () => ({ proxy: { setBasic() {}, setAllFacilityCfg() {} } }) }),
         './login/LoginCommand': asDefault({ getInstance: () => ({
-            beginMapLoading() {}, notifyClientLoaded() {},
+            beginMapLoading() {}, notifyClientLoaded() { loadNotices++; },
             headIcons: { initConfig() {}, preloadIcons: async () => {} },
         }) }),
         './skill/SkillCommand': asDefault({ getInstance: () => ({
             proxy: { initSkillConfig() {}, preloadSkillIcons: async () => {} },
         }) }),
+        './build/BuildCommand': asDefault({ getInstance: () => buildings }),
         './reward/RewardCommand': asDefault({ getInstance: () => ({ setUIReady() {} }) }),
         './systemopen/SystemOpenCommand': asDefault({ getInstance: () => ({ setUIReady() {} }) }),
         './reward/RewardWindowLogic': asDefault({ init() {} }), './systemopen/SystemUnlockWindow': asDefault({ init() {} }),
@@ -304,7 +306,8 @@ function mainFixture() {
     };
     main.clearAllScene = () => {};
     f.EventMgr.on(CoreEvent.gameReady, () => uiReady++, {});
-    return { ...f, main, scheduled, renderFrame, drawListeners, completeResources: () => resourceComplete(null, [], [{}, [
+    f.EventMgr.on(LogicEvent.updateCityBuilds, main.onCityBuildsChanged, main);
+    return { ...f, main, buildings, scheduled, renderFrame, drawListeners, get loadNotices() { return loadNotices; }, completeResources: () => resourceComplete(null, [], [{}, [
         { name: 'Hero', json: Object.fromEntries(heroConfig.map(hero => [hero.Id, hero])) },
         { name: 'Global', json: {} }, { name: 'mapRes_0', json: {} },
     ]]), get finishes() { return finishes; }, get uiReady() { return uiReady; }, finishFade: () => finishCallback() };
@@ -330,11 +333,13 @@ test('entry requests heroes before resource load and finishes only after warmup 
     f.images.splice(0).forEach(image => image.callback(null, new SpriteFrame(image.url)));
     await flush();
     assert.equal(f.finishes, 1);
+    assert.equal(f.loadNotices, 1, '资源准备好后即通知服务器，不等待遮罩退出');
     assert.equal(f.uiReady, 0);
     f.main.onMapReady();
     assert.equal(f.finishes, 1);
     f.finishFade();
     assert.equal(f.uiReady, 1);
+    assert.equal(f.loadNotices, 1, '退出加载页不重复发送加载完成');
     assert.ok(f.command.proxy.getGeneralTex(1001));
     assert.ok(f.command.proxy.getGeneralTex(1022));
     assert.equal(f.clock.timers.size, 0);
@@ -356,6 +361,44 @@ test('slow or abandoned image warmup cannot block entry or finish a newer login'
     assert.equal(f.uiReady, 0, 'old fade/image callbacks must not activate a logged-out HUD');
     assert.equal(f.main._heroAssetsReady, false);
     assert.equal(f.clock.timers.size, 0);
+});
+
+test('主城真实等级到达前保留遮罩，重复刷新不重发加载通知，回包后仅退出一次', async () => {
+    const f = mainFixture(); f.buildings.loaded = false;
+    f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
+    f.snapshot([]); f.completeResources();
+    for (let i = 0; i < 10; i++) f.main.update();
+    f.main.onMapReady(); await flush();
+    assert.equal(f.loadNotices, 1);
+    assert.equal(f.finishes, 0, '不能先显示默认城池');
+    assert.equal(f.uiReady, 0);
+    f.EventMgr.emit(LogicEvent.updateCityBuilds);
+    assert.equal(f.loadNotices, 1); assert.equal(f.finishes, 0);
+    f.buildings.loaded = true;
+    f.EventMgr.emit(LogicEvent.updateCityBuilds);
+    f.EventMgr.emit(LogicEvent.updateCityBuilds);
+    assert.equal(f.finishes, 0, '同一建筑事件先应用城图，再开始淡出');
+    while (f.scheduled.length) f.scheduled.shift().call(f.main);
+    assert.equal(f.finishes, 1); assert.equal(f.uiReady, 0);
+    f.finishFade();
+    assert.equal(f.uiReady, 1); assert.equal(f.clock.timers.size, 0);
+    f.command.clearData();
+});
+
+test('主城资料超时不会卡死加载页，取消进场后迟到的建筑回包不能打开地图', async () => {
+    const f = mainFixture(); f.buildings.loaded = false;
+    let failed = 0;
+    f.main.failMapLoading = () => { failed++; f.main.disposeLoadingNow(); };
+    f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
+    f.snapshot([]); f.completeResources();
+    for (let i = 0; i < 10; i++) f.main.update();
+    f.main.onMapReady(); await flush();
+    f.clock.tick(12000);
+    assert.equal(failed, 1); assert.equal(f.finishes, 0);
+    assert.equal(f.clock.timers.size, 0);
+    f.buildings.loaded = true; f.EventMgr.emit(LogicEvent.updateCityBuilds);
+    assert.equal(f.finishes, 0); assert.equal(f.uiReady, 0);
+    f.command.clearData();
 });
 
 test('repeated sends do not leak protocol listeners; received protocols still reach their handlers', () => {

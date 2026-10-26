@@ -124,3 +124,35 @@ message s2c_aoi_leave {
 message s2c_aoi_update {
 	repeated p_aoi_entity entities = 1;
 }
+
+// ---------- 地图标记 ----------
+// 上限见 Global.Id=18（value1）；以格子坐标唯一，pos 用 Common.p_pos（int）
+message p_mark_info {
+	Common.p_pos pos = 1;
+}
+
+// 请求全部标记
+message c2s_req_mark_list {
+}
+
+message s2c_req_mark_list {
+	repeated p_mark_info markList = 1;
+}
+
+// 添加标记
+message c2s_add_mark {
+	Common.p_pos pos = 1;
+}
+
+message s2c_add_mark {
+	p_mark_info markInfo = 1;
+}
+
+// 删除标记
+message c2s_del_mark {
+	Common.p_pos pos = 1;
+}
+
+message s2c_del_mark {
+	Common.p_pos pos = 1;
+}

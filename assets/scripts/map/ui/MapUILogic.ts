@@ -38,6 +38,10 @@ import MapTaskTracker from './MapTaskTracker';
 import PlayerServicesPanel, { ServiceSection } from './PlayerServicesPanel';
 import { CityPosition } from '../../login/LoginCommand';
 import { itemIconPath } from '../../common/ItemPresentation';
+import InventoryPanel from './InventoryPanel';
+import ChatLogic from '../../chat/ChatLogic';
+import MapChatStrip from '../../chat/MapChatStrip';
+import { chatDockLayout } from '../../chat/ChatPresentation';
 
 @ccclass('MapUILogic')
 export default class MapUILogic extends Component {
@@ -202,6 +206,8 @@ export default class MapUILogic extends Component {
     private _playerAvatar: Sprite | null = null;
     private _taskTracker: MapTaskTracker | null = null;
     private _servicesPanel: PlayerServicesPanel | null = null;
+    private _inventoryPanel: InventoryPanel | null = null;
+    private _chatStrip: MapChatStrip | null = null;
 
     protected onLoad(): void {
 
@@ -216,6 +222,7 @@ export default class MapUILogic extends Component {
         this.initMoreMenu();
         this.initHeadIconEntry();
         this.initTaskTracker();
+        this.initChatStrip();
         this.initResourceIcons();
         this.node.on(Node.EventType.SIZE_CHANGED, this.layoutHud, this);
         this.layoutHud();
@@ -333,6 +340,15 @@ export default class MapUILogic extends Component {
         this._taskTracker.initialize(() => this.openServices('tasks'));
     }
 
+    private initChatStrip(): void {
+        const hud = this.node.getChildByName('HudRoot');
+        if (!hud || this._chatStrip) return;
+        const node = new Node('ChatStrip'); node.layer = hud.layer;
+        hud.addChild(node); node.setSiblingIndex(1);
+        this._chatStrip = node.addComponent(MapChatStrip);
+        this._chatStrip.initialize((channel, target, name) => this.openChat(channel, target, name));
+    }
+
     private openServices(section: ServiceSection): void {
         if (!this._uiListenersReady || !this.contentNode) return;
         AudioManager.instance.playClick(); this.closeMoreMenu();
@@ -343,6 +359,24 @@ export default class MapUILogic extends Component {
         }
         this._servicesPanel.node.setSiblingIndex(this.topLayer());
         this._servicesPanel.show(section);
+    }
+
+    public openInventory(): void {
+        if (!this._uiListenersReady || !this.contentNode) return;
+        AudioManager.instance.playClick(); this.closeMoreMenu();
+        if (!this._inventoryPanel?.isValid) {
+            const node = new Node('InventoryPanel'); node.layer = this.node.layer;
+            this.contentNode.addChild(node);
+            this._inventoryPanel = node.addComponent(InventoryPanel);
+        }
+        this._inventoryPanel.node.setSiblingIndex(this.topLayer());
+        this._inventoryPanel.show(destination => {
+            if (destination === 'lottery') this.openDraw();
+            else if (destination === 'heroes') this.onClickGeneral();
+            else if (destination === 'alliance') this.openUnion();
+            else if (destination === 'city') this.openInnerCity();
+            else EventMgr.emit(LogicEvent.showToast, '在地图选中可迁入的地块后，点击迁城');
+        });
     }
 
 
@@ -380,7 +414,8 @@ export default class MapUILogic extends Component {
         const width = rootUi.width;
         const height = rootUi.height;
         this.drawHudTopShade(width, height);
-        this._taskTracker?.layout(width, height);
+        this._chatStrip?.layout(width, height);
+        this._taskTracker?.layout(width, height, chatDockLayout(width, height).taskBottom);
         const margin = 12;
         const top = height * 0.5;
         const bottom = -height * 0.5 + margin;
@@ -498,9 +533,38 @@ export default class MapUILogic extends Component {
         this.initInnerCityEntry();
         arrangeHudEntries(this.node.getChildByName('HudRoot'), {
             recruit: this.recruitIcon, warReport: this.warReportIcon,
-            chat: this.chatMenuIcon, skill: this.skillMenuIcon,
+            skill: this.skillMenuIcon,
             settings: this.settingsMenuIcon,
         });
+        this.initInventoryEntry();
+    }
+
+    private initInventoryEntry(): void {
+        const more = this.node.getChildByPath('HudRoot/MorePanel');
+        if (!more || more.getChildByName('InventoryButton')) return;
+        const template = more.getChildByName('MailButton') || more.getChildByName('MarketButton');
+        if (!template) return;
+        const entry = instantiate(template); entry.name = 'InventoryButton'; entry.active = true;
+        const button = entry.getComponent(Button);
+        const label = entry.getChildByName('Background')?.getComponentInChildren(Label) || entry.getComponentInChildren(Label);
+        if (!button || !label) { entry.destroy(); return; }
+        button.clickEvents = []; label.string = '背包';
+        const icon = entry.getChildByName('Icon');
+        if (icon) {
+            const sprite = icon.getComponent(Sprite); if (sprite) sprite.enabled = false;
+            // Sprite 和 Graphics 不能挂在同一个节点，单独的绘制节点跟随菜单图标布局。
+            const drawing = new Node('BagGlyph'); drawing.layer = icon.layer;
+            drawing.addComponent(UITransform).setContentSize(48, 48); icon.addChild(drawing);
+            const g = drawing.addComponent(Graphics);
+            g.clear(); g.fillColor = new Color(125, 88, 46); g.strokeColor = new Color(232, 198, 130); g.lineWidth = 1.5;
+            g.roundRect(-13, -15, 26, 28, 5); g.fill(); g.stroke();
+            g.moveTo(-8, 12); g.lineTo(-7, 18); g.lineTo(7, 18); g.lineTo(8, 12); g.stroke();
+            g.fillColor = new Color(176, 132, 67); g.roundRect(-13, 1, 26, 12, 4); g.fill(); g.stroke();
+            g.fillColor = new Color(240, 214, 151); g.roundRect(-3, -3, 6, 9, 1); g.fill();
+            g.moveTo(-8, -6); g.lineTo(-8, -13); g.moveTo(8, -6); g.lineTo(8, -13); g.stroke();
+        }
+        more.addChild(entry); entry.setSiblingIndex(0);
+        entry.on(Button.EventType.CLICK, this.openInventory, this);
     }
 
     private ensureSettingsPanel(): Setting {
@@ -840,15 +904,15 @@ export default class MapUILogic extends Component {
     }
 
 
-    protected openChat(): void {
-        AudioManager.instance.playClick();
-        if (this._chatNode == null) {
-            this._chatNode = instantiate(this.chatPrefab);
-            this._chatNode.parent = this.contentNode;
-        } else {
-            this._chatNode.active = true;
+    protected openChat(channel = 1, targetId = '0', name = ''): void {
+        if (!this._uiListenersReady || !this.contentNode) return;
+        AudioManager.instance.playClick(); this.closeMoreMenu();
+        if (!this._chatNode?.isValid) {
+            this._chatNode = new Node('ChatPanel'); this._chatNode.layer = this.node.layer;
+            this.contentNode.addChild(this._chatNode); this._chatNode.addComponent(ChatLogic);
         }
         this._chatNode.setSiblingIndex(this.topLayer());
+        this._chatNode.getComponent(ChatLogic).show(channel, targetId, name);
     }
 
 

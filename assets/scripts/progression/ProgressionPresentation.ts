@@ -1,5 +1,8 @@
 import ConfigManager from '../core/ConfigManager';
 import { TaskInfo } from './ProgressionCommand';
+import { itemGlyph, itemIconPath } from '../common/ItemPresentation';
+import { normalizeRewardQuality } from '../common/RewardQuality';
+import { getConfigIconPath } from '../utils/ConfigIcon';
 
 export interface RewardPreview { rewardType: number; itemId: number; itemCount: number; }
 export function configRows(name: string): any[] {
@@ -15,6 +18,13 @@ export function rewardName(reward: RewardPreview): string {
     if (reward.rewardType === 4) return '兵力';
     const row = configRows(reward.rewardType === 3 ? 'Hero' : 'Item').find(r => Number(r.Id ?? r.id) === reward.itemId);
     return row?.Name || row?.name || (reward.rewardType === 3 ? '武将' : '道具') + reward.itemId;
+}
+export function taskRewardPresentation(reward: RewardPreview): { name: string; quality: number; icon: string; glyph: string } {
+    const hero = reward.rewardType === 3, soldier = reward.rewardType === 4;
+    const row = !soldier && configRows(hero ? 'Hero' : 'Item').find(r => Number(r.Id ?? r.id) === reward.itemId);
+    return { name: rewardName(reward), quality: normalizeRewardQuality(row?.Quality),
+        icon: soldier ? '' : hero ? getConfigIconPath(row?.Icon) : itemIconPath(reward.itemId),
+        glyph: soldier ? '兵' : hero ? '将' : itemGlyph(reward.itemId) };
 }
 export function taskPresentation(task: TaskInfo): { name: string; detail: string; target: number; rewards: RewardPreview[]; order: number; nextId: number } {
     const table = { 1: 'MainTask', 2: 'DailyTask', 3: 'WeekTask' }[task.taskType];

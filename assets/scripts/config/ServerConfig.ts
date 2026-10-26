@@ -114,6 +114,12 @@ const ServerConfig = {
     s2c_aoi_enter: "World.s2c_aoi_enter",
     s2c_aoi_leave: "World.s2c_aoi_leave",
     s2c_aoi_update: "World.s2c_aoi_update",
+    c2s_req_mark_list: "World.c2s_req_mark_list",
+    s2c_req_mark_list: "World.s2c_req_mark_list",
+    c2s_add_mark: "World.c2s_add_mark",
+    s2c_add_mark: "World.s2c_add_mark",
+    c2s_del_mark: "World.c2s_del_mark",
+    s2c_del_mark: "World.s2c_del_mark",
 
     //新
     c2s_user_login: "Login.c2s_user_login",

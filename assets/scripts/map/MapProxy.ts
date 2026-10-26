@@ -110,6 +110,7 @@ export default class MapProxy {
         this.overview = false;
         this.strategic = false;
         this._mapAreaDatas.length = 0;
+        this._mapPosTags = [];
     }
 
     /**地图建筑基础配置信息*/

@@ -3,7 +3,7 @@ const { ccclass } = _decorator;
 
 import BuildTagLogic from "./entries/BuildTagLogic";
 import MapBaseLayerLogic from "./MapBaseLayerLogic";
-import { MapResData, MapResType } from "./MapProxy";
+import { MapResData } from "./MapProxy";
 import MapUtil from "./MapUtil";
 import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
@@ -34,7 +34,7 @@ export default class MapBuildTagLogic extends MapBaseLayerLogic {
         }
         for (const tag of tags) {
             const data = this._cmd.proxy.getResData(MapUtil.getIdByCellPoint(tag.x, tag.y));
-            if (data && data.type <= MapResType.FORTRESS) {
+            if (data) {
                 this.addItem(MapUtil.getAreaIdByCellPoint(tag.x, tag.y), data);
             }
         }

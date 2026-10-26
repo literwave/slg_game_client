@@ -1,6 +1,6 @@
 
 import { _decorator, BlockInputEvents, Button, Color, Component, Graphics, Label, Node, SafeArea,
-    Sprite, SpriteFrame, Tween, UIOpacity, UITransform, Vec3, Widget, resources, tween } from 'cc';
+    Sprite, SpriteFrame, UIOpacity, UITransform, Widget, resources } from 'cc';
 import GeneralCommand from '../../general/GeneralCommand';
 import LotteryCommand from '../../general/LotteryCommand';
 import LoginCommand from '../../login/LoginCommand';
@@ -8,6 +8,7 @@ import { EventMgr } from '../../utils/EventMgr';
 import Modal from '../../utils/Modal';
 import { LogicEvent } from '../../common/LogicEvent';
 import { itemName } from '../../common/ItemPresentation';
+import LotterySkipControl from '../../reward/LotterySkipControl';
 import { caption, inkSurface, ManagementColors as C, panelButton, place } from './ManagementStyle';
 
 const { ccclass, property } = _decorator;
@@ -34,18 +35,8 @@ export default class DrawLogic extends Component {
     private displays: HeroDisplay[] = [];
     private actions: Array<{ node: Node; cost: Label; count: number }> = [];
     private close: Node;
-    private ceremony: Node;
-    private seal: Node;
-    private rays: Sprite;
-    private ceremonyTitle: Label;
-    private ceremonyHint: Label;
-    private skip: Node;
     private retry: Node;
-    private started = false;
-    private skipped = false;
-    private clock = 0;
-    private completeAt = -1;
-    private previousTimes = 0;
+    private skip: LotterySkipControl;
     private layingOut = false;
 
     protected onLoad(): void {
@@ -81,22 +72,7 @@ export default class DrawLogic extends Component {
             this.actions.push({ node, cost, count });
         }
         this.retry = this.button('RetryInfo', this.panel, () => LotteryCommand.getInstance().requestInfo());
-        this.ceremony = this.makeNode('SummoningCeremony', this.panel);
-        this.rays = this.makeSprite('Rays', this.ceremony);
-        this.loadFrame(this.rays, 'ui/system_unlock/rays_gold/spriteFrame');
-        this.rays.color = new Color(255, 220, 160, 140);
-        this.seal = this.makeNode('CommandSeal', this.ceremony);
-        const g = this.seal.addComponent(Graphics);
-        g.fillColor = new Color(132, 54, 41); g.strokeColor = GOLD; g.lineWidth = 2;
-        g.moveTo(0, 82); g.lineTo(64, 46); g.lineTo(64, -46); g.lineTo(0, -82);
-        g.lineTo(-64, -46); g.lineTo(-64, 46); g.close(); g.fill(); g.stroke();
-        g.strokeColor = new Color(223, 180, 110, 90);
-        g.rect(-48, -48, 96, 96); g.stroke();
-        caption(this.seal, 'SealGlyph', '将', 0, 0, 100, 58, new Color(245, 224, 176), Label.HorizontalAlign.CENTER);
-        this.ceremonyTitle = caption(this.ceremony, 'CeremonyTitle', '点将令出', 0, -128, 420, 29, GOLD, Label.HorizontalAlign.CENTER);
-        this.ceremonyHint = caption(this.ceremony, 'CeremonyHint', '群英将至', 0, -170, 420, 15, C.muted, Label.HorizontalAlign.CENTER);
-        this.skip = this.button('SkipAnimation', this.panel, () => this.skipAnimation());
-        this.ceremony.active = this.skip.active = false;
+        this.skip = new LotterySkipControl(this.panel);
         this.node.on(Node.EventType.SIZE_CHANGED, this.layout, this);
         this.safe.on(Node.EventType.SIZE_CHANGED, this.layout, this);
         this.layout();
@@ -105,14 +81,15 @@ export default class DrawLogic extends Component {
     protected onEnable(): void {
         EventMgr.on(LogicEvent.lotteryChanged, this.refresh, this);
         EventMgr.on(LogicEvent.upateMyRoleRes, this.refresh, this);
-        this.started = false; this.skipped = false; this.completeAt = -1;
         this.safe?.getComponent(SafeArea)?.updateArea();
         this.layout();
         LotteryCommand.getInstance().requestInfo();
         this.refresh();
     }
-    protected onDisable(): void { EventMgr.targetOff(this); this.started = false; this.stopCeremony(); }
-    protected onDestroy(): void { EventMgr.targetOff(this); this.stopCeremony(); }
+    protected onDisable(): void { EventMgr.targetOff(this); }
+    protected onDestroy(): void {
+        this.skip?.dispose(); EventMgr.targetOff(this);
+    }
 
     private buildHeroCards(): void {
         const choices = Array.from(GeneralCommand.getInstance().proxy.getGeneralAllCfg().values())
@@ -174,13 +151,13 @@ export default class DrawLogic extends Component {
             panelButton(a.node, i === 0 ? '点将一次' : '点将十次', x, bottom + (compact ? 71 : 96), bw, compact ? 42 : 52, i === 1);
             place(a.cost.node, x, bottom + (compact ? 36 : 55), bw + 10, 24);
         }
-        place(this.countLabel.node, 0, bottom + (compact ? 113 : 151), w - 50, 24);
+        const preferenceY = bottom + (compact ? 113 : 151);
+        place(this.countLabel.node, -w * .21, preferenceY, w * .42, 26);
+        this.countLabel.overflow = Label.Overflow.SHRINK;
+        place(this.skip.node, w * .24, preferenceY, 164, 40);
         place(this.hint.node, 0, bottom + (compact ? 15 : 24), w - 42, compact ? 22 : 32);
         this.hint.fontSize = compact ? 11 : 14;
         panelButton(this.retry, '重新连接', 0, bottom + (compact ? 113 : 150), 140, 32);
-        place(this.ceremony, 0, 20, w - 50, h - 150);
-        place(this.rays.node, 0, 20, Math.min(w - 48, 500), Math.min(w - 48, 500));
-        panelButton(this.skip, '跳过动画', w / 2 - 130, top - 36, 130, 44);
         const g = this.ornaments;
         g.clear(); g.strokeColor = C.line; g.lineWidth = 1;
         g.moveTo(-w / 2 + 26, top - 98); g.lineTo(w / 2 - 26, top - 98); g.stroke();
@@ -196,59 +173,27 @@ export default class DrawLogic extends Component {
         const firstCost = options[0]?.costs[0];
         this.balance.string = firstCost ? itemName(firstCost.itemId) + '  ' + bag.getItemCount(firstCost.itemId).toLocaleString() : '';
         this.countLabel.string = cmd.loaded ? '累计点将 ' + cmd.lotteryTimes + ' 次' : '正在读取点将信息…';
-        const playing = this.started && !this.skipped;
-        this.title.node.active = this.subtitle.node.active = !playing || this.panel.getComponent(UITransform).width > 550;
-        this.art.active = !playing; this.ceremony.active = this.skip.active = playing;
         this.close.getComponent(Button).interactable = true;
-        this.close.active = !playing;
         for (const a of this.actions) {
             const option = options.find(o => o.count === a.count);
             const enough = !!option && option.costs.every(c => bag.getItemCount(c.itemId) >= c.count);
-            const enabled = enough && cmd.loaded && !cmd.pending && !cmd.loading && !this.started;
+            const enabled = enough && cmd.canDraw;
             a.node.getComponent(Button).interactable = enabled;
             a.node.getComponent(UIOpacity).opacity = enabled ? 255 : 115;
-            a.node.active = a.cost.node.active = !playing;
             a.cost.string = option ? option.costs.map(c => itemName(c.itemId) + ' ' + c.count + ' / ' + bag.getItemCount(c.itemId)).join(' · ') : '点将配置暂不可用';
             a.cost.color = enough ? C.muted : new Color(221, 156, 128);
         }
-        this.countLabel.node.active = !playing;
-        this.retry.active = !cmd.loaded && !cmd.loading && !cmd.pending && !playing;
+        this.countLabel.node.active = true;
+        this.retry.active = !cmd.loaded && !cmd.loading && !cmd.pending;
         if (this.retry.active) this.countLabel.node.active = false;
         this.hint.string = cmd.error || (cmd.pending ? '点将令已发出，正在等候结果…' : '消耗点将符，可获武将、武将碎片及军资');
-        if (this.started && !cmd.pending && this.completeAt < 0) {
-            this.completeAt = this.clock + .65;
-            this.ceremonyTitle.string = cmd.lotteryTimes > this.previousTimes ? '点将完成' : '暂未应召';
-            this.ceremonyHint.string = cmd.error || '所得奖励将在弹窗中展示';
-        }
     }
     private draw(count: number): void {
-        if (this.started) return;
-        const cmd = LotteryCommand.getInstance();
-        this.previousTimes = cmd.lotteryTimes;
-        if (!cmd.draw(count)) { this.refresh(); return; }
-        this.started = true; this.skipped = false; this.clock = 0; this.completeAt = -1;
-        this.ceremonyTitle.string = '点将令出'; this.ceremonyHint.string = '群英将至';
-        this.stopCeremony();
-        this.seal.setPosition(0, 35); this.seal.setScale(.4, .4, 1);
-        tween(this.seal).to(.55, { scale: new Vec3(1, 1, 1), position: new Vec3() }, { easing: 'backOut' }).start();
+        // 演出只由真实奖励触发，发请求时保持当前弹窗和等待提示。
+        LotteryCommand.getInstance().draw(count);
         this.refresh();
-    }
-    /** 跳过仅结束演出，不取消、不重发请求，不提前填充结果。 */
-    public skipAnimation(): void {
-        this.skipped = true; this.stopCeremony();
-        if (!LotteryCommand.getInstance().pending) this.started = false;
-        this.refresh();
-    }
-    protected update(dt: number): void {
-        if (!this.started) return;
-        this.clock += Math.min(dt, .1);
-        if (this.rays?.isValid) this.rays.node.angle += dt * 12;
-        if (this.completeAt >= 0 && this.clock >= this.completeAt) {
-            this.started = false; this.stopCeremony(); this.refresh();
-        }
     }
     protected onClickClose(): void { this.node.active = false; }
-    private stopCeremony(): void { if (this.seal) Tween.stopAllByTarget(this.seal); }
     private button(name: string, parent: Node, action: () => void): Node {
         const node = this.makeNode(name, parent); node.addComponent(Button); node.addComponent(UIOpacity);
         node.on(Button.EventType.CLICK, action, this); return node;

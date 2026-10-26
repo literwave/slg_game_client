@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package Lottery;
 
+import "common.proto";
+
 message c2s_req_user_lottery_info {
 }
 
@@ -13,7 +15,9 @@ message c2s_user_lottery {
     int32 useLotteryTimes = 1;
 }
 
+// rewardList：本次获得列表（rewardType/itemId/itemCount，与 Lottery 池配置一致）
 message s2c_user_lottery {
     int32 useLotteryTimes = 1;
     int32 lotteryTimes = 2;
+    repeated Common.p_reward_info rewardList = 3;
 }

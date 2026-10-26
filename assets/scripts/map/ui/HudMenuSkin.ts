@@ -4,7 +4,6 @@ import { hideSprite, inkSurface, ManagementColors as C, manualLayout, place, tex
 interface HudMenuIcons {
     recruit: SpriteFrame;
     warReport: SpriteFrame;
-    chat: SpriteFrame;
     skill: SpriteFrame;
     settings: SpriteFrame;
 }
@@ -53,8 +52,8 @@ export function arrangeHudEntries(hud: Node, icons: HudMenuIcons): void {
     const chat = more.getChildByName('ChatButton');
     const skill = more.getChildByName('SkillButton');
     const settings = more.getChildByName('SettingButton');
-    if (![recruit, collection, market, general, union, innerCity, moreButton, report, chat, skill, settings].every(Boolean)
-        || ![icons.recruit, icons.warReport, icons.chat, icons.skill, icons.settings].every(Boolean) || !menuLabel(recruit)) {
+    if (![recruit, collection, market, general, union, innerCity, moreButton, report, skill, settings].every(Boolean)
+        || ![icons.recruit, icons.warReport, icons.skill, icons.settings].every(Boolean) || !menuLabel(recruit)) {
         throw new Error('[HUD] 菜单入口或图标引用不完整');
     }
 
@@ -70,7 +69,7 @@ export function arrangeHudEntries(hud: Node, icons: HudMenuIcons): void {
     report.setSiblingIndex(moreIndex + (report.getSiblingIndex() > moreIndex ? 1 : 0));
     replaceIcon(recruit, icons.recruit);
     replaceIcon(report, icons.warReport);
-    replaceIcon(chat, icons.chat);
+    if (chat) chat.active = false;
     replaceIcon(skill, icons.skill);
     settings.active = true;
     replaceIcon(settings, icons.settings);
@@ -129,8 +128,8 @@ export function styleBottomNavigation(navigation: Node, width: number): void {
 export function styleMoreMenu(panel: Node | null, width: number): void {
     if (!panel) return;
     manualLayout(panel);
-    const entries = ['MailButton', 'RankButton', 'btnCollection',
-        'ChatButton', 'SkillButton', 'MarketButton', 'SettingButton']
+    const entries = ['InventoryButton', 'MailButton', 'RankButton', 'btnCollection',
+        'SkillButton', 'MarketButton', 'SettingButton']
         .map(name => panel.getChildByName(name)).filter(node => node?.active);
     const columns = Math.max(1, Math.min(5, Math.floor((width - 16) / 56)));
     const rows = Math.max(1, Math.ceil(entries.length / columns));

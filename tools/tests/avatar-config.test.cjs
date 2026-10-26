@@ -177,6 +177,7 @@ async function main() {
     });
     await test('地图、UI、武将、技能、头像全就绪才发送一次客户端加载完成', () => {
         const h = harness();
+        const buildings = h.load('build/BuildCommand').default.getInstance();
         h.authenticate();
         const Main = h.load('Main').default;
         const main = new Main();
@@ -195,9 +196,13 @@ async function main() {
         assert.equal(Object.keys(notices[0].data).length, 0);
         assert.equal(notices[0].msg.length, 0);
         assert.equal(h.proto.getIdByMsgType(notices[0].name), JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/protbuf/net_pb.json'), 'utf8')).define.User.c2s_client_load_ok);
-        assert.ok(uiReady);
+        assert.equal(uiReady, false, '主城等级未到达，尚不能退出加载页');
         assert.equal(h.sent.some(msg => msg.name === h.server.s2c_client_load_ok), false);
         h.events.emit(h.server.s2c_client_load_ok, {});
+        assert.equal(buildings.loading, true);
+        h.events.emit(h.server.s2c_req_build, { buildList: [{ bid: 1, level: 1 }] });
+        main.tryFinishLoading();
+        assert.ok(uiReady);
         assert.equal(h.command.clientLoadAcknowledged, true);
         assert.equal(h.command.proxy.getRoleData().headIcon, 1001);
     });

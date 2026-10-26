@@ -85,6 +85,8 @@ export class LogicEvent {
     public static openDrawResult:string = "open_draw_result";
     public static interiorCollect:string = "interior_collect";
     public static interiorOpenCollect:string = "interior_openCollect";
+    public static chatReadChanged = 'chat_read_changed';
+    public static chatSendResult = 'chat_send_result';
     public static openGeneralConvert:string = "open_general_convert";
     public static openGeneralRoster:string = "open_general_roster";
     public static openGeneral:string = "open_general";

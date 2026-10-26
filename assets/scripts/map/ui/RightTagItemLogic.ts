@@ -1,7 +1,7 @@
 import { _decorator, Component, Label } from 'cc';
 const { ccclass, property } = _decorator;
 
-import { MapCityData } from "../MapCityProxy";
+import { MapTagPos } from "../MapProxy";
 import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
@@ -14,7 +14,7 @@ export default class RightTagItemLogic extends Component {
     @property(Label)
     labelPos: Label = null;
 
-    protected _data: MapCityData = null;
+    protected _data: MapTagPos = null;
 
 
     protected onLoad(): void {
@@ -38,7 +38,7 @@ export default class RightTagItemLogic extends Component {
     public setData(data:any): void {
         this._data = data;
         if (this._data) {
-            this.labelInfo.string = this._data.name;
+            this.labelInfo.string = this._data.name || '地图标记';
             this.labelPos.string = "(" + this._data.x + ", " + this._data.y + ")";
         }
     }

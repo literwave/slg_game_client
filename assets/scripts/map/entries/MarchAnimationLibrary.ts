@@ -6,10 +6,13 @@ export const MARCH_DIRECTIONS = ['r', 'ru', 'u', 'lu', 'l', 'ld', 'd', 'rd'];
 export interface MarchAnimationSet {
     clips: AnimationClip[];
     idleFrames: SpriteFrame[];
+    mirrored: boolean[];
 }
 
 const sets = new Map<MarchUnitKind, Promise<MarchAnimationSet>>();
-let idleSheet: Promise<SpriteFrame[]> | undefined;
+// 图集五行分别为右、右上、上、右下、下；左侧方向复用对应镜像。
+const DIRECTION_ROWS = [0, 1, 2, 1, 0, 3, 4, 3];
+const MIRRORED = [false, false, false, true, true, true, false, false];
 
 /** 固定画布和落脚点，避免逐帧裁透明边导致抖动；所有部队共享帧资源。 */
 function loadSheet(path: string, columns: number, rows: number): Promise<SpriteFrame[]> {
@@ -45,18 +48,35 @@ function loadSheet(path: string, columns: number, rows: number): Promise<SpriteF
 export function loadMarchAnimations(kind: MarchUnitKind): Promise<MarchAnimationSet> {
     let pending = sets.get(kind);
     if (pending) return pending;
-    if (!idleSheet) idleSheet = loadSheet('ui/march/formation_idle_sheet', 4, 4);
-    pending = Promise.all([loadSheet(`ui/march/${kind}_walk_sheet`, 6, 8), idleSheet]).then(([frames, standing]) => {
-        const clips = MARCH_DIRECTIONS.map((direction, row) => {
-            const clip = AnimationClip.createWithSpriteFrames(frames.slice(row * 6, row * 6 + 6), 10);
+    const sheet = kind === 'cavalry' ? 'commander_march_sheet' : 'guard_march_cycle';
+    // 骑将的原斜向过于侧身，单独替换为有纵深透视的前/后三分之四视角。
+    // 步兵使用已经补齐收腿、换脚阶段的完整步态图集。
+    const diagonal = kind === 'cavalry' ? loadSheet('ui/march/commander_march_diagonal', 7, 2) : Promise.resolve(null);
+    // 前斜向重新绘制八帧四蹄交替的步态，不能继续使用前腿始终蜷起的旧六帧。
+    const frontWalk = kind === 'cavalry' ? loadSheet('ui/march/commander_march_front_walk', 4, 2) : Promise.resolve(null);
+    const sideWalk = kind === 'cavalry' ? loadSheet('ui/march/commander_march_side_walk', 5, 2) : Promise.resolve(null);
+    pending = Promise.all([loadSheet(`ui/march/${sheet}`, 7, 5), diagonal, frontWalk, sideWalk])
+        .then(([frames, diagonalFrames, frontWalkFrames, sideWalkFrames]) => {
+        const directionalFrames = MARCH_DIRECTIONS.map((_, index) => {
+            if (diagonalFrames && index % 2) {
+                const row = index < 4 ? 0 : 1;
+                return diagonalFrames.slice(row * 7, row * 7 + 7);
+            }
+            const first = DIRECTION_ROWS[index] * 7;
+            return frames.slice(first, first + 7);
+        });
+        const clips = MARCH_DIRECTIONS.map((direction, index) => {
+            const walk = sideWalkFrames && (index === 0 || index === 4) ? sideWalkFrames
+                : frontWalkFrames && (index === 5 || index === 7) ? frontWalkFrames : directionalFrames[index].slice(0, 6);
+            // 骑将与护卫共用 0.75 秒周期；不同帧数、转向切片不会改变整队的步态相位。
+            const clip = AnimationClip.createWithSpriteFrames(walk, walk.length / .75);
             clip.name = `${kind}_walk_${direction}`;
             clip.wrapMode = AnimationClip.WrapMode.Loop;
             clip.addRef();
             return clip;
         });
-        // 停驻图集前两行骑兵，后两行步兵；各自顺序与 MARCH_DIRECTIONS 一致。
-        const first = kind === 'cavalry' ? 0 : 8;
-        return { clips, idleFrames: standing.slice(first, first + 8) };
+        // 每行最后一格是同一套装备的站姿；画布均为 256²，落脚线统一在距底边 18px。
+        return { clips, idleFrames: directionalFrames.map(row => row[6]), mirrored: MIRRORED.slice() };
     });
     sets.set(kind, pending);
     // 同一图集加载失败只报告一次，避免每个队员重复刷屏；不自动重试或覆盖资源。

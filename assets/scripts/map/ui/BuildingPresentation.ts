@@ -1,4 +1,21 @@
 import type { FacilityConfig } from './MapUIProxy';
+import { buildingGoalConditions } from './BuildingProgressionGraph';
+
+/** 路线图可查看未来等级；只有真实下一等级允许发送升级请求。 */
+export function buildingGoalPresentation(cfg: FacilityConfig, targetLevel: number, levels: ReadonlyMap<number, number>,
+    configs: FacilityConfig[], resources: Array<{ k: number; v: number }>) {
+    const current = levels.get(cfg.type) || 0;
+    const virtual = new Map(levels); virtual.set(cfg.type, Math.max(0, targetLevel - 1));
+    const state = buildingPresentation(cfg, virtual, configs, resources);
+    const conditions = buildingGoalConditions(cfg, targetLevel).map(c => ({ ...c,
+        name: configs.find(item => item.type === c.type)?.name || '前置建筑',
+        currentLevel: levels.get(c.type) || 0, met: (levels.get(c.type) || 0) >= c.level }));
+    const achieved = current >= targetLevel, maxed = achieved && !cfg.upLevels[current];
+    const unlocked = conditions.every(c => c.met);
+    return { ...state, level: current, targetLevel, achieved, maxed, conditions, unlocked,
+        canAct: !achieved && targetLevel === current + 1 && !!cfg.upLevels[current] && unlocked && state.enough,
+        action: maxed ? '已达上限' : achieved ? '查看下一等级' : !unlocked ? '先完成前置' : !state.enough ? '资源不足' : current ? '升级建筑' : '建造建筑' };
+}
 
 export function buildingPresentation(cfg: FacilityConfig, levels: ReadonlyMap<number, number>,
     configs: FacilityConfig[], resources: Array<{ k: number; v: number }>) {

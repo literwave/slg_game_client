@@ -52,7 +52,7 @@ function harness(loadFacilities = true) {
         'network/pto/ProtoManager', 'network/pto/ProtocolCommand', 'network/pto/SnapshotStore', 'network/socket/NetInterface',
         'core/ConfigManager', 'world/WorldCommand', 'world/ResourceLand', 'build/BuildCommand', 'map/ui/BuildingPresentation',
         'map/MapCityProxy', 'map/MapCommand', 'map/MapCityLogic', 'map/MapBaseLayerLogic', 'map/PlayerCityAppearance', 'map/entries/FacilityBuildLogic',
-        'map/ui/MapUIProxy', 'map/ui/MapUICommand', 'map/ui/FacilityDesLogic', 'map/ui/FacilityListLogic',
+        'map/ui/MapUIProxy', 'map/ui/MapUICommand', 'map/ui/BuildingProgressionGraph', 'map/ui/FacilityDesLogic', 'map/ui/FacilityListLogic',
         'map/ui/FacilityItemLogic', 'map/ui/MapUILogic', 'scene/MapScene']);
     const stubs = {
         'login/LoginCommand': { default: { getInstance: () => login } },
@@ -345,6 +345,68 @@ test('城建前置显示真实进度与目标，后续引导不提前解锁建�
     assert.deepEqual(plain(next.filter(n => n.targetLevel === 1 && n.requiredLevel === 2).map(n => n.type)), [3, 12, 13, 16]);
     assert.ok(!buildingNextUnlocks(1, new Map([[1, 10]]), configs).some(n => n.targetLevel === 1));
     assert.equal(levels.get(16), undefined, '展示路线不能修改服务器建筑状态');
+});
+test('分层连线以真实目标等级建图，升级互相依赖也不会形成循环', () => {
+    const h = harness(), { buildingProgressionGraph, buildingGraphFocus } = h.load('map/ui/BuildingProgressionGraph');
+    const configs = h.ui.proxy.getFacilityConfigs(), levels = new Map([[1, 1]]);
+    const graph = buildingProgressionGraph(configs, levels), byKey = new Map(graph.nodes.map(n => [n.key, n]));
+    const has = (from, to) => graph.edges.some(e => e.from === from && e.to === to);
+    assert.ok(has('10:1', '1:2') && has('11:1', '1:2'));
+    assert.ok(has('1:2', '13:1') && has('13:1', '1:3') && has('16:1', '1:3'));
+    assert.ok(has('1:3', '4:1') && has('1:3', '9:1'));
+    assert.ok(graph.edges.every(e => byKey.get(e.from).rank < byKey.get(e.to).rank));
+    assert.equal(new Set(graph.nodes.map(n => n.key)).size, graph.nodes.length);
+    assert.ok(configs.every(c => graph.nodes.some(n => n.type === c.type && n.goal)));
+    const focus = buildingGraphFocus('1:3', graph.edges);
+    assert.ok(focus.ancestors.has('10:1') && focus.ancestors.has('13:1'));
+    assert.ok(focus.descendants.has('4:1'));
+    assert.ok(!focus.ancestors.has('15:1'));
+    assert.deepEqual(Array.from(levels), [[1, 1]], '规划路线不会写入真实建筑等级');
+});
+test('分层连线筛选保留跨类别前置，已完成主城共享当前等级节点', () => {
+    const h = harness(), { buildingProgressionGraph } = h.load('map/ui/BuildingProgressionGraph');
+    const configs = h.ui.proxy.getFacilityConfigs();
+    const military = buildingProgressionGraph(configs, new Map([[1, 1]]), 1);
+    assert.ok(military.nodes.some(n => n.type === 13), '军事路线需要保留主城升级所需仓库');
+    assert.ok(!military.nodes.some(n => n.type === 15), '无关商行不出现在军事路线');
+    const maxMain = configs.find(c => c.type === 1).upLevels.length;
+    const developed = buildingProgressionGraph(configs, new Map([[1, maxMain], [13, 3], [16, 1]]));
+    assert.deepEqual(plain(developed.nodes.filter(n => n.type === 1).map(n => n.level)), [maxMain]);
+    assert.ok(developed.edges.filter(e => e.from === `1:${maxMain}`).every(e => e.met));
+    assert.ok(developed.nodes.some(n => n.key === '13:4'));
+    assert.ok(!developed.nodes.some(n => n.key === '13:3'), '卡片已含当前等级，无需重复自身已完成前一级');
+});
+test('分层连线远期目标只允许引导，不越级建造或改变资源', () => {
+    const h = harness(), { buildingGoalPresentation } = h.load('map/ui/BuildingPresentation');
+    const configs = h.ui.proxy.getFacilityConfigs(), main = configs.find(c => c.type === 1);
+    const levels = new Map([[1, 1], [10, 1], [11, 1]]), before = plain(h.balances.resList);
+    const next = buildingGoalPresentation(main, 2, levels, configs, h.balances.resList);
+    assert.equal(next.canAct, true);
+    assert.equal(next.costs.find(c => c.id === 1).need, main.upLevels[1].grain);
+    const future = buildingGoalPresentation(main, 3, levels, configs, h.balances.resList);
+    assert.equal(future.canAct, false);
+    assert.ok(future.conditions.some(c => c.type === 1 && c.level === 2 && !c.met));
+    assert.ok(future.conditions.some(c => c.type === 13 && !c.met));
+    const completed = buildingGoalPresentation(main, 1, levels, configs, []);
+    assert.equal(completed.achieved, true); assert.equal(completed.canAct, false);
+    assert.equal(completed.action, '查看下一等级');
+    assert.deepEqual(plain(h.balances.resList), before);
+    assert.equal(h.sent.length, 0);
+});
+test('分层连线在窄屏与横屏内完整容纳卡片，同行同列不重叠', () => {
+    const h = harness(), { buildingProgressionGraph, layoutBuildingGraph } = h.load('map/ui/BuildingProgressionGraph');
+    const configs = h.ui.proxy.getFacilityConfigs();
+    for (const width of [250, 310, 420, 657]) {
+        const graph = buildingProgressionGraph(configs, new Map([[1, 1]]));
+        const layout = layoutBuildingGraph(graph.nodes, width);
+        for (const node of graph.nodes) {
+            assert.ok(Math.abs(node.x) + layout.cardWidth / 2 <= width / 2);
+            assert.ok(-node.y + layout.cardHeight / 2 <= layout.height);
+        }
+        graph.nodes.forEach((a, i) => graph.nodes.slice(i + 1).forEach(b => {
+            assert.ok(Math.abs(a.x - b.x) >= layout.cardWidth || Math.abs(a.y - b.y) >= layout.cardHeight);
+        }));
+    }
 });
 test('内城入口直达新建筑面板', () => {
     const h = harness(), hud = new (h.load('map/ui/MapUILogic').default)();

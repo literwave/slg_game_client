@@ -35,7 +35,7 @@ class Widget { static AlignMode = { ON_WINDOW_RESIZE: 1 }; updateAlignment() { c
 class SafeArea { updateArea() { this.node.getComponent(Widget).updateAlignment(); } }
 class ScrollView { getScrollOffset() { return { y: this.content.position.y - this.node.getComponent(UITransform).height / 2 }; } stopAutoScroll() {} }
 class Mask { static Type = { GRAPHICS_RECT: 1 }; }
-const cc = { Component, Node, UITransform, Button, Label, Color, Graphics, Sprite, SpriteFrame, Widget, SafeArea, ScrollView, Mask,
+const cc = { Component, Node, UITransform, Button, Label, Color, Graphics, Sprite, SpriteFrame, Widget, SafeArea, ScrollView, Mask, UIOpacity: class { opacity = 255; },
     BlockInputEvents: class {}, Layout: class {}, view: { getVisibleSize: () => ({ width: 1280, height: 720 }) },
     resources: { load(name, Type, cb) {
         loadedIcons.push(name); assert.ok(fs.existsSync(path.join(root, 'assets/resources', name.replace('/spriteFrame', '') + '.png')), name);
@@ -80,6 +80,16 @@ function load(name) {
 const presentation = load('progression/ProgressionPresentation');
 assert.equal(presentation.taskPresentation(tasks[0]).target, 1);
 assert.ok(presentation.taskPresentation(tasks[0]).detail.includes('1'));
+for (const itemId of [1, 100, 103, 11001, 11002, 11006]) {
+    const item = configs.Item.find(row => row.Id === itemId);
+    const reward = { rewardType: 1, itemId, itemCount: 99999 };
+    const shown = presentation.taskRewardPresentation(reward);
+    assert.equal(shown.quality, item.Quality, '任务奖励品质必须来自 Item.Quality，数量不改变品质');
+    assert.equal(shown.name, item.Name);
+    assert.ok(shown.icon.endsWith('/spriteFrame'));
+}
+assert.equal(presentation.taskRewardPresentation({ rewardType: 1, itemId: 999999, itemCount: 99999 }).quality, 0);
+assert.equal(presentation.taskRewardPresentation({ rewardType: 4, itemId: 1, itemCount: 99999 }).quality, 0, '兵力不误用同 ID 的道具品质');
 console.log('PASS 任务配置、目标和奖励映射');
 
 const Panel = load('map/ui/PlayerServicesPanel').default;
@@ -98,7 +108,7 @@ console.log('PASS 真实界面任务筛选、领奖等待与超时恢复');
 
 panel.show('mail'); panel.content.children[0].getChildByName('Action').click();
 assert.deepEqual(sent.at(-1), ['mail-detail', 1, uid]);
-detail = { rewardList: [{ rewardType: 1, itemId: 5, itemCount: 200 }] }; panel.render();
+detail = { rewardList: [{ rewardType: 1, itemId: 4, itemCount: 200 }] }; panel.render();
 assert.equal(panel.footer.getChildByName('Delete').getComponent(Button).interactable, false, '未领附件不可删除');
 panel.content.children[1].getChildByName('Action').click(); assert.deepEqual(sent.at(-1), ['mail-claim', [{ mailKind: 1, mailUid: uid }]]);
 panel.filters.getChildByName('Lock').click(); assert.deepEqual(sent.at(-1), ['mail-lock', 1, uid, true]);
@@ -142,9 +152,9 @@ for (const [button, key] of [['MailButton', 'mail'], ['RankButton', 'rank']]) {
 }
 assert.equal(menu.getChildByName('ActivityButton'), undefined, '活动暂不开放入口');
 assert.equal(menu.getChildByName('TaskButton'), undefined, '任务入口移到地图左侧');
-assert.ok(loadedIcons.includes('ui/resource_icons/icon_stone/spriteFrame'));
-const icon = fs.readFileSync(path.join(root, 'assets/resources/ui/resource_icons/icon_stone.png'));
-assert.equal(icon.readUInt32BE(16), 128); assert.equal(icon.readUInt32BE(20), 128);
+assert.ok(loadedIcons.includes('ui/item_icons/items/item_4/spriteFrame'));
+const icon = fs.readFileSync(path.join(root, 'assets/resources/ui/item_icons/items/item_4.png'));
+assert.equal(icon.readUInt32BE(16), 256); assert.equal(icon.readUInt32BE(20), 256);
 console.log('PASS 邮件/排行入口可达，石料图标路径与尺寸正确');
 
 const { EventMgr } = load('utils/EventMgr');
@@ -157,13 +167,24 @@ tracker.initialize(() => sent.push(['open', 'tasks'])); tracker.layout(1280, 720
 const body = trackerNode.getChildByName('TaskAction');
 const flush = () => { const callback = tracker.scheduled; tracker.scheduled = null; callback?.(); };
 assert.equal(tracker.current.taskId, 1001);
-assert.equal(body.getChildByName('ActionText').getComponent(Label).string, '点击领取');
+assert.equal(body.getChildByName('ActionText').active, false);
+assert.equal(body.getChildByName('RewardHint'), undefined, '移除通用小金匣');
+const rewardRow = body.getChildByName('TaskRewards');
+assert.equal(rewardRow.active, true);
+assert.equal(rewardRow.children.filter(node => node.active).length, 2);
+assert.deepEqual(rewardRow.children.slice(0, 2).map(node => node.getChildByName('Count').getComponent(Label).string), ['×500', '×500']);
+assert.ok(rewardRow.children.slice(0, 2).every(node => node.getChildByName('Icon').getComponent(Sprite).enabled));
+const firstFrame = rewardRow.children[0].getChildByName('Icon').getComponent(Sprite).spriteFrame, loadsBeforeClaim = loadedIcons.length;
+assert.equal(tracker.claimPulse, true);
 const claimsBefore = sent.filter(p => p[0] === 'task-claim').length;
 body.click(); tracker.activate();
 assert.equal(sent.filter(p => p[0] === 'task-claim').length, claimsBefore + 1, '快速重复点击只领一次');
 assert.equal(body.getComponent(Button).interactable, false);
 assert.equal(tracker.current.taskId, 1001, '发送后不提前切换');
-assert.equal(body.getChildByName('ActionText').getComponent(Label).string, '领取中…');
+assert.equal(body.getChildByName('ActionText').active, false);
+assert.equal(tracker.claimPulse, false, '请求中停止可领取呼吸光');
+assert.equal(rewardRow.children[0].getChildByName('Icon').getComponent(Sprite).spriteFrame, firstFrame);
+assert.equal(loadedIcons.length, loadsBeforeClaim, '领奖等待时复用当前奖励，不重新加载或替换图标');
 trackerNode.getChildByName('AllTasks').click();
 assert.deepEqual(sent.at(-1), ['open', 'tasks']);
 assert.equal(sent.filter(p => p[0] === 'task-claim').length, claimsBefore + 1, '全部按钮不会冒泡触发领奖');
@@ -192,19 +213,53 @@ assert.equal(body.getChildByName('ActionText').getComponent(Label).string, '同�
 tasks.push({ taskId: 1003, taskType: 1, progress: 1, state: 0 });
 pending.delete(S.c2s_req_task_list); EventMgr.emit(E.updateTasks); flush();
 assert.equal(tracker.current.taskId, 1003);
-assert.equal(body.getChildByName('ProgressText').getComponent(Label).string, '1 / 2');
+assert.ok(body.getChildByName('TaskDetail').getComponent(Label).string.endsWith('1/2'));
+assert.equal(rewardRow.active, true, '进行中仍直接展示真实奖励');
+assert.equal(trackerNode.getChildByName('RewardGlow').active, false);
 assert.equal(body.getComponent(Button).interactable, false, '未完成任务不发领奖请求');
 console.log('PASS 下一项未同步时等待/手动刷新，收到新任务后更新进度');
+
+const taskConfig = configs.MainTask.find(row => row.Id === 1003), originalRewards = taskConfig.Reward;
+taskConfig.Reward = [100, 103, 11001, 11006].map(itemId => ({ reward_type: 1, item_id: itemId, item_count: 5 }));
+const originalLoad = cc.resources.load, delayed = [];
+cc.resources.load = (name, Type, callback) => delayed.push(callback);
+tracker.render();
+const palette = load('common/RewardQuality');
+taskConfig.Reward.forEach((reward, i) => {
+    const quality = configs.Item.find(row => row.Id === reward.item_id).Quality;
+    const color = rewardRow.children[i].getChildByName('Count').getComponent(Label).color;
+    assert.deepEqual([color.r, color.g, color.b], palette.rewardQualityStyle(quality).accent);
+});
+assert.equal(trackerNode.getComponent(UITransform).height, 160, '四项奖励在右侧分两排');
+assert.equal(rewardRow.children[0].position.y, rewardRow.children[1].position.y);
+assert.ok(rewardRow.children[2].position.y < rewardRow.children[0].position.y);
+for (const slot of rewardRow.children) {
+    const rowBox = rewardRow.getComponent(UITransform), slotBox = slot.getComponent(UITransform);
+    assert.ok(Math.abs(slot.position.y) + slotBox.height / 2 <= rowBox.height / 2);
+}
+taskConfig.Reward = originalRewards; tracker.render();
+const currentFrame = rewardRow.children[0].getChildByName('Icon').getComponent(Sprite).spriteFrame;
+delayed.forEach(callback => callback(null, new SpriteFrame()));
+assert.equal(rewardRow.children[0].getChildByName('Icon').getComponent(Sprite).spriteFrame, currentFrame, '旧任务的迟到图片不能覆盖当前奖励');
+cc.resources.load = originalLoad;
+console.log('PASS 任务奖励品质配色、图标复用及异步切换保护');
 
 for (const [w, h] of [[1280, 720], [375, 812], [812, 375], [2560, 1080]]) {
     tracker.layout(w, h);
     const box = trackerNode.getComponent(UITransform), all = trackerNode.getChildByName('AllTasks');
     const allBox = all.getComponent(UITransform), bodyBox = body.getComponent(UITransform);
-    assert.equal(trackerNode.position.x - box.width / 2, -w / 2 + 12);
-    assert.ok(trackerNode.position.y + box.height / 2 <= h / 2 - (w < 860 ? 128 : 88));
+    assert.equal(trackerNode.position.x - box.width / 2, -w / 2 + (w < 720 ? 12 : 20));
+    assert.ok(trackerNode.position.y + box.height / 2 <= h / 2 - 88);
     assert.ok(trackerNode.position.y - box.height / 2 >= -h / 2);
     assert.ok(allBox.width >= 44 && allBox.height >= 44);
     assert.ok(all.position.y - allBox.height / 2 >= body.position.y + bodyBox.height / 2);
+    const title = body.getChildByName('TaskTitle'), titleBox = title.getComponent(UITransform);
+    assert.ok(title.position.x + titleBox.width / 2 < rewardRow.position.x - rewardRow.getComponent(UITransform).width / 2, '任务文字和右侧奖励不重叠');
+    for (const node of rewardRow.children.filter(node => node.active)) {
+        const itemBox = node.getComponent(UITransform), rowBox = rewardRow.getComponent(UITransform);
+        assert.ok(Math.abs(node.position.x) + itemBox.width / 2 <= rowBox.width / 2);
+        assert.ok(body.position.y + rewardRow.position.y - itemBox.height / 2 >= -box.height / 2);
+    }
     assert.ok(trackerNode.getComponent(cc.BlockInputEvents));
 }
 console.log('PASS 左侧任务卡横竖屏边界、独立点击区与地图输入阻挡');
@@ -215,7 +270,7 @@ assert.equal(body.getComponent(Button).interactable, false);
 assert.equal(body.getChildByName('ActionText').getComponent(Label).string, '等待连接');
 progression.sessionReady = true; EventMgr.emit(E.protocolRequestChanged); flush();
 assert.equal(tracker.current.taskId, 1003, '会话恢复后任务卡重新显示服务端任务');
-assert.equal(body.getChildByName('ProgressText').getComponent(Label).string, '1 / 2');
+assert.ok(body.getChildByName('TaskDetail').getComponent(Label).string.endsWith('1/2'));
 assert.notEqual(body.getChildByName('ActionText').getComponent(Label).string, '等待连接');
 tracker.onDestroy(); assert.equal(EventMgr.targetInName.has(tracker), false);
 assert.equal(presentation.trackedTask([{ taskId: 1001, taskType: 1, state: 0 }, { taskId: 1002, taskType: 1, state: 1 }]).taskId, 1001);

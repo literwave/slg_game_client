@@ -177,7 +177,13 @@
             "c2s_aoi_focus": 140,
             "s2c_aoi_enter": 141,
             "s2c_aoi_leave": 142,
-            "s2c_aoi_update": 143
+            "s2c_aoi_update": 143,
+            "c2s_req_mark_list": 144,
+            "s2c_req_mark_list": 145,
+            "c2s_add_mark": 146,
+            "s2c_add_mark": 147,
+            "c2s_del_mark": 148,
+            "s2c_del_mark": 149
         }
     }
 }

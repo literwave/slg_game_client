@@ -6,7 +6,6 @@ import { NetEvent } from '../network/socket/NetInterface';
 import { NetManager } from '../network/socket/NetManager';
 import { ProtoManager } from '../network/pto/ProtoManager';
 import { protocolPayload } from '../network/pto/ProtocolCommand';
-import RewardCommand from '../reward/RewardCommand';
 import { EventMgr } from '../utils/EventMgr';
 
 export interface LotteryReward { rewardType: number; itemId: number; itemCount: number; }
@@ -22,15 +21,12 @@ interface DrawRequest {
     id: number;
     count: number;
     before: number;
-    total: number | null;
-    rewards: LotteryReward[] | null;
-    rewardKey: string;
     timedOut: boolean;
 }
 
 const RESPONSE_TIMEOUT = 10000;
 
-/** 只显示服务端奖励；计数确认包不是抽奖结果，客户端不抽池、不补发。 */
+/** 使用点将回包自带的 rewardList，不拦截其它来源的通用奖励。 */
 export default class LotteryCommand {
     private static _instance: LotteryCommand;
     static getInstance(): LotteryCommand {
@@ -45,16 +41,15 @@ export default class LotteryCommand {
     private _serial = 0;
     private _drawTimer: ReturnType<typeof setTimeout> | null = null;
     private _infoTimer: ReturnType<typeof setTimeout> | null = null;
-    private _rewardShowType: number | null = null;
-    private _lastRewardKey = '';
-    private _lastRewardAt = 0;
+    private _lastPresentedTotal = -1;
 
     get loaded(): boolean { return this._loaded; }
     get lotteryTimes(): number { return this._lotteryTimes; }
     get pending(): boolean { return !!this._request && !this._request.timedOut; }
     get error(): string { return this._error; }
     get loading(): boolean { return this._infoTimer !== null; }
-    get rewardPresentationReady(): boolean { return this._rewardShowType !== null; }
+    get sessionReady(): boolean { return this.ready; }
+    get canDraw(): boolean { return this.ready && this._loaded && !this._request && !this.loading; }
 
     get options(): LotteryOption[] {
         const config = ConfigManager.getInstance().getConfig('Lottery');
@@ -72,13 +67,6 @@ export default class LotteryCommand {
         EventMgr.on(S.s2c_user_lottery, this.onDraw, this);
         EventMgr.on(NetEvent.ServerDisconnected, this.clearData, this);
         EventMgr.on(E.enterLogin, this.clearData, this);
-        RewardCommand.getInstance().setInterceptor(data => this.consumeReward(data));
-    }
-
-    /** 必须来自服务端约定的专用展示类型，不能用“正在点将”猜测奖励来源。 */
-    setRewardShowType(showType: number | null): void {
-        // 0/1 是不展示/普通弹窗，不能作为点将专属来源。
-        this._rewardShowType = showType !== null && this.uint(showType) && showType > 1 ? showType : null;
     }
 
     private onLogin(): void { this.ready = true; }
@@ -90,8 +78,7 @@ export default class LotteryCommand {
         this._lotteryTimes = 0;
         this._error = '';
         this._request = null;
-        this._lastRewardKey = '';
-        this._lastRewardAt = 0;
+        this._lastPresentedTotal = -1;
         this.stopDrawTimer();
         this.stopInfoTimer();
         this.changed();
@@ -99,7 +86,6 @@ export default class LotteryCommand {
 
     onDestory(): void {
         this.clearData();
-        RewardCommand.getInstance().setInterceptor(null);
         EventMgr.targetOff(this);
     }
 
@@ -121,7 +107,7 @@ export default class LotteryCommand {
     }
 
     draw(count: number): boolean {
-        if (!this.ready || !this._loaded || this._request || this.loading) return false;
+        if (!this.canDraw) return false;
         const option = this.options.find(row => row.count === count);
         if (!option) return false;
         const bag = LoginCommand.getInstance().proxy;
@@ -132,8 +118,7 @@ export default class LotteryCommand {
             return false;
         }
         const request: DrawRequest = {
-            id: ++this._serial, count, before: this._lotteryTimes, total: null,
-            rewards: null, rewardKey: '', timedOut: false,
+            id: ++this._serial, count, before: this._lotteryTimes, timedOut: false,
         };
         this._request = request;
         this._error = '';
@@ -164,7 +149,6 @@ export default class LotteryCommand {
         const request = this._request;
         if (request?.timedOut) {
             // 读请求排在写请求之后，确认服务端计数后才允许再次扣费。
-            if (request.rewards) this.releaseReward(request);
             this._request = null;
             if (data.lotteryTimes === request.before) {
                 this._error = '本次点将未完成，可重新点将';
@@ -178,55 +162,32 @@ export default class LotteryCommand {
         const request = this._request;
         const data = protocolPayload(raw);
         if (!data) {
-            if (!request) return;
-            this.fail('点将未成功，请稍后重试');
+            if (request) this.fail('点将未成功，请稍后重试');
             return;
         }
-        if (!this.uint(data.lotteryTimes, true) || !this.uint(data.useLotteryTimes)) return;
-        if (data.lotteryTimes < this._lotteryTimes) return;
+        if (!this.uint(data.lotteryTimes, true) || !this.uint(data.useLotteryTimes)
+            || data.lotteryTimes < data.useLotteryTimes) return;
+        // 累计次数是本会话的单调序号，重复包不能重播；后续抽到相同奖励仍是有效结果。
+        if (data.lotteryTimes <= this._lastPresentedTotal || data.lotteryTimes < this._lotteryTimes) return;
+        const matches = request && data.useLotteryTimes === request.count && data.lotteryTimes === request.before + request.count;
         this._lotteryTimes = data.lotteryTimes;
         this._loaded = true;
-        if (!request || data.useLotteryTimes !== request.count || data.lotteryTimes !== request.before + request.count) {
+        if (matches) { this._request = null; this.stopDrawTimer(); }
+        this._lastPresentedTotal = data.lotteryTimes;
+        const rewards = data.rewardList;
+        if (!Array.isArray(rewards) || !rewards.length || !rewards.every(reward =>
+            this.uint(reward?.rewardType) && this.uint(reward?.itemId, true) && this.uint(reward?.itemCount))) {
+            this._error = '点将已完成，服务端未返回有效的奖励明细';
+            EventMgr.emit(E.showToast, this._error);
             this.changed();
             return;
         }
-        request.total = data.lotteryTimes;
-        // 没有专用奖励标识的旧服务端保留通用奖励弹窗，不误吞其它来源奖励。
-        if (!this.rewardPresentationReady) {
-            this._request = null;
-            this.stopDrawTimer();
-        } else this.tryComplete(request);
-        this.changed();
-    }
-
-    /** RewardCommand 的唯一拦截点；返回 false 时原通用奖励逻辑照常处理。 */
-    private consumeReward(data: any): boolean {
-        if (!this.ready || this._rewardShowType === null || !Array.isArray(data?.showTypeList)
-            || !data.showTypeList.includes(this._rewardShowType)) return false;
-        const rewards = data.rewardList;
-        if (!Array.isArray(rewards) || !rewards.length || !rewards.every(reward =>
-            this.uint(reward?.rewardType) && this.uint(reward?.itemId, true) && this.uint(reward?.itemCount))) return false;
-        const key = JSON.stringify(rewards);
-        const request = this._request;
-        // 无请求序号，只对已完成请求紧邻的重复奖励去重；新请求可合法抽到相同奖励。
-        if (!request) return this._lastRewardKey === key && Date.now() - this._lastRewardAt < 2000;
-        if (request.rewardKey === key) return true;
-        if (request.rewards) return request.rewardKey === key;
-        request.rewards = rewards.map(reward => ({ rewardType: reward.rewardType, itemId: reward.itemId, itemCount: reward.itemCount }));
-        request.rewardKey = key;
-        if (request.timedOut) {
-            this.releaseReward(request);
-        } else this.tryComplete(request);
-        return true;
-    }
-
-    private tryComplete(request: DrawRequest): void {
-        if (this._request !== request || request.total === null || !request.rewards || request.timedOut) return;
-        const result: LotteryResult = { id: request.id, count: request.count, lotteryTimes: request.total, rewards: request.rewards };
-        this.rememberReward(request);
-        this._request = null;
-        this.stopDrawTimer();
         this._error = '';
+        const result: LotteryResult = {
+            id: matches ? request.id : ++this._serial, count: data.useLotteryTimes,
+            lotteryTimes: data.lotteryTimes,
+            rewards: rewards.map(reward => ({ rewardType: reward.rewardType, itemId: reward.itemId, itemCount: reward.itemCount })),
+        };
         EventMgr.emit(E.lotteryResult, result);
         this.changed();
     }
@@ -237,13 +198,11 @@ export default class LotteryCommand {
         request.timedOut = true;
         this._loaded = false;
         this._error = '点将响应较慢，正在核对结果';
-        if (request.rewards) this.releaseReward(request);
         this.changed();
         this.requestInfo();
     }
 
     private fail(message: string): void {
-        if (this._request?.rewards) this.releaseReward(this._request);
         this._request = null;
         this.stopDrawTimer();
         this._error = message;
@@ -251,16 +210,6 @@ export default class LotteryCommand {
         EventMgr.emit(E.showToast, message);
     }
 
-    private releaseReward(request: DrawRequest): void {
-        if (!request.rewards) return;
-        this.rememberReward(request);
-        EventMgr.emit(E.showReward, request.rewards);
-        request.rewards = null;
-    }
-    private rememberReward(request: DrawRequest): void {
-        this._lastRewardKey = request.rewardKey;
-        this._lastRewardAt = Date.now();
-    }
     private stopDrawTimer(): void { if (this._drawTimer !== null) clearTimeout(this._drawTimer); this._drawTimer = null; }
     private stopInfoTimer(): void { if (this._infoTimer !== null) clearTimeout(this._infoTimer); this._infoTimer = null; }
     private changed(): void { EventMgr.emit(E.lotteryChanged); }

@@ -194,7 +194,6 @@ export default class RewardWindowLogic extends Component {
     private closing: boolean = false;
     private playToken: number = 0;
     private shownAt: number = 0;
-    private skipButton: Node;
     private previousButton: Node;
     private nextButton: Node;
     private pageLabel: Label;
@@ -235,7 +234,6 @@ export default class RewardWindowLogic extends Component {
             const n = this.createNode(name, this.panel, 120, 42, 0, 0);
             n.addComponent(Button); n.on(Button.EventType.CLICK, action, this); return n;
         };
-        this.skipButton = button('SkipAnimation', () => this.skipAnimation());
         this.previousButton = button('PreviousPage', () => this.changePage(-1));
         this.nextButton = button('NextPage', () => this.changePage(1));
         this.pageLabel = caption(this.panel, 'PageNumber', '', 0, 0, 150, 14, C.muted, Label.HorizontalAlign.CENTER);
@@ -304,7 +302,6 @@ export default class RewardWindowLogic extends Component {
             this.node.setSiblingIndex(this.node.parent.children.length - 1);
         }
         this.buildItems();
-        this.skipButton.active = true;
         if (this.confirm) this.confirm.active = true;
 
         if (this.opacity) {
@@ -326,8 +323,7 @@ export default class RewardWindowLogic extends Component {
         if (Date.now() - this.shownAt < MIN_VISIBLE_TIME * 1000) {
             return;
         }
-        if (!this.idleReady) this.skipAnimation();
-        else this.dismiss();
+        this.dismiss();
     }
 
     private onPanelTouch(event: EventTouch): void {
@@ -442,10 +438,9 @@ export default class RewardWindowLogic extends Component {
         this.scheduleOnce(() => {
             this.elapsed = 0;
             this.idleReady = true;
-            this.skipButton.active = false;
         }, Math.max(1.5, 0.72 + (this.itemNodes.length - 1) * 0.11));
         this.schedule(this.spawnAmbientSpark, 0.24, 1000000);
-        // 点将可能有多页奖励，保留结果直到玩家主动关闭。
+        // 多页奖励保留到玩家主动关闭。
     }
 
     private animateItems(): void {
@@ -647,7 +642,7 @@ export default class RewardWindowLogic extends Component {
     }
 
     /** 完成到最终展示状态，异步贴图返回也不会重新播放演出。 */
-    public skipAnimation(): void {
+    private finishReveal(): void {
         this.playToken++;
         this.unscheduleAllCallbacks();
         this.stopFxTweens();
@@ -662,11 +657,11 @@ export default class RewardWindowLogic extends Component {
         }
         this.fxRays.setScale(1, 1, 1); this.setOpacity(this.fxRays, 110);
         this.fxGlow.setScale(1, 1, 1); this.setOpacity(this.fxGlow, 145);
-        this.skipButton.active = false; this.idleReady = true;
+        this.idleReady = true;
     }
 
     private changePage(direction: number): void {
-        this.skipAnimation();
+        this.finishReveal();
         this.page = Math.max(0, Math.min(Math.ceil(this.rewards.length / this.pageSize) - 1, this.page + direction));
         this.buildItems();
     }
@@ -689,14 +684,12 @@ export default class RewardWindowLogic extends Component {
         place(this.panel, 0, 0, this.windowWidth, this.windowHeight);
         inkSurface(this.panel, 'ResultSurface', this.windowWidth, this.windowHeight, new Color(26, 30, 26, 252), C.line);
         const top = this.windowHeight / 2, bottom = -top;
-        const titleWidth = narrow ? this.windowWidth - 180 : 280;
-        place(this.titleNode, narrow ? -this.windowWidth / 2 + 22 + titleWidth / 2 : 0, top - 42, titleWidth, 44);
+        place(this.titleNode, 0, top - 42, this.windowWidth - 44, 44);
         const titleLabel = this.titleNode?.getComponent(Label);
         if (titleLabel) titleLabel.overflow = Label.Overflow.SHRINK;
         place(this.subtitleNode, 0, top - 78, Math.min(300, this.windowWidth - 44), 26);
         place(this.dividerNode, 0, top - 100, this.windowWidth - 70, 2);
         place(this.content, 0, (footerHeight - headerHeight) / 2, this.windowWidth - 42, this.cardAreaHeight);
-        panelButton(this.skipButton, '跳过动画', this.windowWidth / 2 - 83, top - 34, 130, 40);
         panelButton(this.confirm, '收下奖励', 0, bottom + 38, 150, 44, true);
         const navWidth = narrow ? Math.min(104, (this.windowWidth - 110) / 2) : 104;
         const navX = this.windowWidth / 2 - 24 - navWidth / 2;
@@ -709,7 +702,7 @@ export default class RewardWindowLogic extends Component {
     private onResize(): void {
         if (!this.panel || !this.node.activeInHierarchy || this.closing || !this.rewards.length) return;
         const firstReward = this.page * this.pageSize;
-        this.skipAnimation();
+        this.finishReveal();
         this.layoutWindow();
         this.page = Math.min(Math.floor(firstReward / this.pageSize), Math.max(0, Math.ceil(this.rewards.length / this.pageSize) - 1));
         this.buildItems();

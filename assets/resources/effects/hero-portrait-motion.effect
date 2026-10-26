@@ -1,0 +1,69 @@
+CCEffect %{
+  techniques:
+  - passes:
+    - vert: portrait-vs:vert
+      frag: portrait-fs:frag
+      depthStencilState:
+        depthTest: false
+        depthWrite: false
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendDstAlpha: one_minus_src_alpha
+      rasterizerState:
+        cullMode: none
+      properties:
+        portraitRect: { value: [0, 0, 1, 1] }
+        portraitMotion: { value: [0, 0, 0, 0] }
+}%
+CCProgram portrait-vs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #if USE_LOCAL
+    #include <builtin/uniforms/cc-local>
+  #endif
+  in vec3 a_position;
+  in vec2 a_texCoord;
+  in vec4 a_color;
+  out vec2 uv0;
+  out vec4 color;
+  vec4 vert () {
+    vec4 pos = vec4(a_position, 1.0);
+    #if USE_LOCAL
+      pos = cc_matWorld * pos;
+    #endif
+    uv0 = a_texCoord; color = a_color;
+    return cc_matViewProj * pos;
+  }
+}%
+CCProgram portrait-fs %{
+  precision highp float;
+  #include <builtin/internal/embedded-alpha>
+  in vec2 uv0;
+  in vec4 color;
+  uniform Portrait {
+    vec4 portraitRect;
+    vec4 portraitMotion;
+  };
+  #pragma builtin(local)
+  layout(set = 2, binding = 12) uniform sampler2D cc_spriteTexture;
+  vec4 frag () {
+    vec2 p = (uv0 - portraitRect.xy) / portraitRect.zw;
+    float t = portraitMotion.x, strength = portraitMotion.y;
+    // 只移动胸腹与衣摆；脸部、四边和整幅画的位置不动。
+    float edge = smoothstep(0.0, 0.12, p.x) * smoothstep(0.0, 0.12, 1.0 - p.x)
+      * smoothstep(0.30, 0.44, p.y) * (1.0 - smoothstep(0.88, 1.0, p.y));
+    vec2 body = (p - vec2(0.5, 0.56)) / vec2(0.27, 0.24);
+    float breath = exp(-dot(body, body) * 2.0) * sin(t * 1.7);
+    float cloth = smoothstep(0.50, 0.78, p.y) * smoothstep(0.08, 0.36, abs(p.x - 0.5));
+    vec2 drift = vec2(cloth * sin(t * 1.3 + p.y * 8.0) * 0.0015, breath * 0.0012);
+    vec2 sampleP = clamp(p + drift * edge * strength, vec2(0.0), vec2(1.0));
+    vec4 result = CCSampleWithAlphaSeparated(cc_spriteTexture, portraitRect.xy + sampleP * portraitRect.zw);
+    // 缓慢、低强度的暖色流光，不闪白、不改变轮廓透明度。
+    float sweep = exp(-pow((p.x + p.y * 0.3 - (t * 0.23 - 0.2)) / 0.16, 2.0));
+    result.rgb += vec3(0.060, 0.042, 0.015) * sweep * strength * result.a;
+    return result * color;
+  }
+}%
