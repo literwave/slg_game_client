@@ -45,7 +45,7 @@ const util = { mapSize: { width: 1000, height: 1000 }, areaCellSize: { width: 10
 function harness(loadFacilities = true) {
     const cache = new Map(), sent = [], timers = new Map(); let tid = 0;
     const role = { userId: uid, name: '长安', cityPos: { x: 12, y: 20 }, allianceId: otherUid };
-    const balances = { resList: [1, 2, 3, 4, 5].map(k => ({ k, v: k === 4 ? 123 : 1000000 })) };
+    const balances = { resList: [1, 2, 3, 4, 100].map(k => ({ k, v: k === 100 ? 123 : 1000000 })) };
     const login = { proxy: { getRoleData: () => role, getRoleResData: () => balances, hasItemCount: () => false } };
     class EmptyProxy { initData() {} clearData() {} }
     const actual = new Set(['utils/EventMgr', 'common/LogicEvent', 'config/ServerConfig', 'config/Basci',
@@ -260,10 +260,10 @@ test('所有建筑等级保留石料成本，余额不足阻止升级，满足�
     h.build.requestBuildings(); h.receive(h.S.s2c_req_build, { buildList: [] });
     for (const row of table('BuildingLv')) assert.equal(h.ui.proxy.getFacilityCfgByType(row.BuildingType).upLevels[row.Lv - 1].stone, row.CostStone);
     for (const [bid, level] of [[1, 2], [13, 1], [16, 1]]) h.receive(h.S.s2c_sync_build, { bid, level });
-    h.balances.resList.find(r => r.k === 5).v = 149;
+    h.balances.resList.find(r => r.k === 4).v = 149;
     const view = detail(h, 1); assert.equal(view.btnUp.interactable, false); assert.match(view.labelNeed.string, /150\/149/);
     const n = h.sent.length; view.onClickUp(); assert.equal(h.sent.length, n);
-    h.balances.resList.find(r => r.k === 5).v = 150; h.ui.qryCityFacilities(1);
+    h.balances.resList.find(r => r.k === 4).v = 150; h.ui.qryCityFacilities(1);
     assert.equal(view.btnUp.interactable, true); view.onClickUp(); assert.equal(h.sent.at(-1).name, h.S.c2s_up_build);
 });
 
@@ -319,7 +319,7 @@ test('新版城建详情按配置展示前置条件、四类资源和当前上�
     let state = buildingPresentation(main, new Map([[1, 1]]), configs, h.balances.resList);
     assert.equal(state.canAct, false); assert.equal(state.conditions.length, 2);
     state = buildingPresentation(main, new Map([[1, 1], [10, 1], [11, 1]]), configs, h.balances.resList);
-    assert.equal(state.canAct, true); assert.deepEqual(plain(state.costs.map(c => c.id)), [1, 2, 3, 5]);
+    assert.equal(state.canAct, true); assert.deepEqual(plain(state.costs.map(c => c.id)), [1, 2, 3, 4]);
     state = buildingPresentation(main, new Map([[1, main.upLevels.length]]), configs, []);
     assert.equal(state.maxed, true); assert.equal(state.canAct, false);
 });
@@ -365,9 +365,9 @@ test('资源栏粮木铁石四项图标/数量对应且不显示令牌', () => {
         dot.addComponent(Sprite).spriteFrame = { uuid: sprite._spriteFrame.__uuid__ };
         text.addComponent(Label); slot.addChild(dot); slot.addChild(text); bar.addChild(slot);
     }
-    h.balances.resList = [1, 2, 3, 4, 5].map(k => ({ k, v: k * 100 }));
+    h.balances.resList = [1, 2, 3, 4, 100].map(k => ({ k, v: k * 100 }));
     hud.srollLayout = { node: bar }; hud.updateRoleRes();
-    [1, 2, 3, 5].forEach((id, index) => {
+    [1, 2, 3, 4].forEach((id, index) => {
         const icon = table('Item').find(r => r.Id === id).Icon;
         const meta = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources', icon + '.png.meta'), 'utf8'));
         const frame = Object.values(meta.subMetas).find(s => s.importer === 'sprite-frame');
@@ -375,7 +375,7 @@ test('资源栏粮木铁石四项图标/数量对应且不显示令牌', () => {
         assert.ok(!bar.children[index].getChildByName('New Label').getComponent(Label).string.includes('令牌'));
         assert.equal(bar.children[index].getChildByName('New Label').getComponent(Label).string, ['粮', '木', '铁', '石'][index] + ' ' + id * 100);
     });
-    h.balances.resList = h.balances.resList.filter(r => r.k !== 5); hud.updateRoleRes();
+    h.balances.resList = h.balances.resList.filter(r => r.k !== 4); hud.updateRoleRes();
     assert.equal(bar.children[3].getChildByName('New Label').getComponent(Label).string, '石 0');
 });
 test('主城 1—30 级随 Build 回包逐级换独立外观，AOI 未知等级不推断', () => {

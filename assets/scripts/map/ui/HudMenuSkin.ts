@@ -62,7 +62,7 @@ export function arrangeHudEntries(hud: Node, icons: HudMenuIcons): void {
     market.name = 'MarketButton';
     market.parent = more;
     recruit.parent = navigation;
-    menuLabel(recruit).string = '招募';
+    menuLabel(recruit).string = '点将';
     [innerCity, general, recruit, union, moreButton].forEach((node, index) => node.setSiblingIndex(index));
     report.parent = hud;
     // 菜单向左避开战报；战报在遮罩上方，展开更多时仍可直接打开。

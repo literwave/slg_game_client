@@ -17,10 +17,13 @@ export default class HeadIconProxy {
     private _loads = new Map<string, Promise<SpriteFrame | null>>();
     private _generation = 0;
 
-    public initConfig(rows: any[], heroes: any[]): void {
+    public initConfig(rows: any[], heroes: any[] | Record<string, any>): void {
         this.clear();
         if (!Array.isArray(rows) || !rows.length) throw new Error('未找到头像配置 HeadIcon');
-        const names = new Map<number, string>((heroes || []).map(hero => [Number(hero.Id), hero.Name || hero.name]));
+        const heroRows: any[] = Array.isArray(heroes) ? heroes
+            : heroes && typeof heroes === 'object' ? Object.keys(heroes).map(key => heroes[key]) : [];
+        const names = new Map<number, string>(heroRows.filter(hero => hero && typeof hero === 'object')
+            .map(hero => [Number(hero.Id), hero.Name || hero.name]));
         for (const row of rows) {
             const id = Number(row?.Id);
             const heroId = Number(row?.HeroId);

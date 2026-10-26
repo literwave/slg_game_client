@@ -56,7 +56,7 @@ const netInterface = load('assets/scripts/network/socket/NetInterface.ts');
 const { NetEvent } = netInterface;
 const { ServerConfig } = load('assets/scripts/config/ServerConfig.ts');
 const portraitPaths = load('assets/scripts/general/GeneralPortrait.ts');
-const heroConfig = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/Hero.json'), 'utf8'));
+const heroConfig = Object.values(JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/Hero.json'), 'utf8')));
 const flush = async () => { for (let i = 0; i < 16; i++) await Promise.resolve(); };
 function fixture() {
     const { EventMgr } = load('assets/scripts/utils/EventMgr.ts');
@@ -92,9 +92,9 @@ test('early response and sync survive late config; UI refresh is coalesced; reop
     const pending = f.command.beginLoading();
     assert.equal(f.command.qryMyGenerals(), pending);
     assert.equal(f.sent.length, 1);
-    f.snapshot([{ heroType: 1001, lv: 2 }]);
+    f.snapshot([{ heroId: 1001, lv: 2 }]);
     assert.equal(await pending, true);
-    f.EventMgr.emit(ServerConfig.s2c_sync_hero_base_info, { heroInfo: { heroType: 1001, lv: 7 } });
+    f.EventMgr.emit(ServerConfig.s2c_sync_hero_base_info, { heroInfo: { heroId: 1001, lv: 7 } });
     const hero = f.command.proxy.getMyGeneral(1001);
     f.command.proxy.initHeroConfig(heroConfig, {});
     assert.equal(f.command.proxy.getMyGeneral(1001), hero, 'config must not replace received data');
@@ -107,7 +107,7 @@ test('early response and sync survive late config; UI refresh is coalesced; reop
     assert.equal(f.sent.length, 1, 'opening the list must not resend the initial snapshot');
     f.EventMgr.emit(NetEvent.ServerReconnectSuccess);
     assert.equal(f.sent.length, 2, 'reconnect needs a new authoritative snapshot');
-    f.snapshot([{ heroType: 1001, lv: 8 }]);
+    f.snapshot([{ heroId: 1001, lv: 8 }]);
     assert.equal(hero.level, 7);
     assert.equal(f.command.proxy.getMyGeneral(1001).level, 8);
     assert.equal(refreshes, 2);
@@ -129,11 +129,11 @@ test('timeout permits retry; empty list is ready; logout rejects pending work an
     const pending = f.command.qryMyGenerals(true);
     f.command.clearData();
     assert.equal(await pending, false);
-    f.snapshot([{ heroType: 1001 }]);
+    f.snapshot([{ heroId: 1001 }]);
     assert.equal(f.command.proxy.getMyGenerals().length, 0);
     assert.equal(f.clock.timers.size, 0);
     const nextSession = f.command.beginLoading();
-    f.snapshot([{ heroType: 1022, lv: 3 }]);
+    f.snapshot([{ heroId: 1022, lv: 3 }]);
     assert.equal(await nextSession, true);
     assert.deepEqual(f.command.proxy.getMyGenerals().map(hero => hero.id), [1022]);
     f.command.clearData();
@@ -155,7 +155,7 @@ test('portrait prefetch shares in-flight loads, retries errors and caps full_her
     assert.equal(await retry, frame);
     assert.equal(await proxy.loadGeneralTex(1001), frame);
     assert.equal(f.images.length, 0);
-    proxy.setMyGenerals(heroConfig.map(cfg => ({ heroType: cfg.Id })));
+    proxy.setMyGenerals(heroConfig.map(cfg => ({ heroId: cfg.Id })));
     let done = false;
     const warmup = proxy.preloadMyPortraits(() => true).then(() => done = true);
     await flush();
@@ -172,7 +172,7 @@ test('portrait prefetch shares in-flight loads, retries errors and caps full_her
     heroConfig.forEach(cfg => assert.ok(proxy.getGeneralTex(cfg.Id)));
     const other = new f.Proxy();
     other.initHeroConfig(heroConfig, {});
-    other.setMyGenerals(heroConfig.map(cfg => ({ heroType: cfg.Id })));
+    other.setMyGenerals(heroConfig.map(cfg => ({ heroId: cfg.Id })));
     let current = true;
     const cancelled = other.preloadMyPortraits(() => current);
     assert.equal(f.images.length, 4);
@@ -242,14 +242,14 @@ test('HUD subscribes after loading, pulls latest cached values and never registe
     }, { ...cc, input: { on: key => keys.push(key), off() {} }, Input: { EventType: { KEY_DOWN: 'down', KEY_UP: 'up' } } }, f.clock, true).default;
     const ui = new UI();
     ui.node = new Node();
-    for (const method of ['initMoreMenu', 'initAvatarEntry', 'layoutHud', 'updateRole', 'clearAllNode']) ui[method] = () => {};
+    for (const method of ['initHudNavigation', 'initMoreMenu', 'initHeadIconEntry', 'initTaskTracker', 'layoutHud', 'updateRole', 'clearAllNode']) ui[method] = () => {};
     ui.updateRoleRes = () => updates++;
     ui.onLoad();
     for (let i = 0; i < 100; i++) f.EventMgr.emit(LogicEvent.upateMyRoleRes);
     assert.deepEqual([updates, troopRequests, systemRequests, keys.length], [1, 0, 0, 0]);
     assert.equal(f.EventMgr.events.has(ServerConfig.s2c_gm_command_help), false);
     f.EventMgr.emit(CoreEvent.gameReady); f.EventMgr.emit(CoreEvent.gameReady);
-    assert.deepEqual([updates, troopRequests, systemRequests, keys.length], [2, 1, 1, 2]);
+    assert.deepEqual([updates, troopRequests, systemRequests, keys.length], [2, 1, 0, 0]);
     f.EventMgr.emit(LogicEvent.upateMyRoleRes);
     assert.equal(updates, 3);
     ui.onDestroy();
@@ -260,6 +260,18 @@ test('HUD subscribes after loading, pulls latest cached values and never registe
 function mainFixture() {
     const f = fixture();
     const scheduled = [];
+    const drawListeners = [];
+    const director = {
+        once(event, callback, target) { drawListeners.push({ event, callback, target }); },
+        off(event, callback, target) {
+            const index = drawListeners.findIndex(listener => listener.event === event
+                && listener.callback === callback && listener.target === target);
+            if (index >= 0) drawListeners.splice(index, 1);
+        },
+    };
+    const renderFrame = () => {
+        for (const listener of drawListeners.splice(0)) listener.callback.call(listener.target);
+    };
     let resourceComplete, finishCallback, finishes = 0, uiReady = 0;
     const configs = new Map();
     const Main = load('assets/scripts/Main.ts', {
@@ -271,11 +283,18 @@ function mainFixture() {
             getConfig: name => configs.get(name), getConfigItem: () => null,
         }) }),
         './map/MapCommand': asDefault({ getInstance: () => ({ proxy: { *initMapResConfigBatched() { yield 0.5; yield 1; } } }) }),
-        './map/ui/MapUICommand': asDefault({ getInstance: () => ({ proxy: { setBasic() {} } }) }),
+        './map/ui/MapUICommand': asDefault({ getInstance: () => ({ proxy: { setBasic() {}, setAllFacilityCfg() {} } }) }),
+        './login/LoginCommand': asDefault({ getInstance: () => ({
+            beginMapLoading() {}, notifyClientLoaded() {},
+            headIcons: { initConfig() {}, preloadIcons: async () => {} },
+        }) }),
+        './skill/SkillCommand': asDefault({ getInstance: () => ({
+            proxy: { initSkillConfig() {}, preloadSkillIcons: async () => {} },
+        }) }),
         './reward/RewardCommand': asDefault({ getInstance: () => ({ setUIReady() {} }) }),
         './systemopen/SystemOpenCommand': asDefault({ getInstance: () => ({ setUIReady() {} }) }),
         './reward/RewardWindowLogic': asDefault({ init() {} }), './systemopen/SystemUnlockWindow': asDefault({ init() {} }),
-    }, cc, f.clock, true).default;
+    }, { ...cc, director, Director: { EVENT_AFTER_DRAW: 'after-draw' } }, f.clock, true).default;
     const main = new Main();
     main.node = new Node();
     main.scheduleOnce = callback => scheduled.push(callback);
@@ -285,18 +304,24 @@ function mainFixture() {
     };
     main.clearAllScene = () => {};
     f.EventMgr.on(CoreEvent.gameReady, () => uiReady++, {});
-    return { ...f, main, scheduled, completeResources: () => resourceComplete(null, [], [{}, [
-        { name: 'Hero', json: heroConfig }, { name: 'Global', json: {} }, { name: 'mapRes_0', json: {} },
+    return { ...f, main, scheduled, renderFrame, drawListeners, completeResources: () => resourceComplete(null, [], [{}, [
+        { name: 'Hero', json: Object.fromEntries(heroConfig.map(hero => [hero.Id, hero])) },
+        { name: 'Global', json: {} }, { name: 'mapRes_0', json: {} },
     ]]), get finishes() { return finishes; }, get uiReady() { return uiReady; }, finishFade: () => finishCallback() };
 }
 
 test('entry requests heroes before resource load and finishes only after warmup and loading fade', async () => {
     const f = mainFixture();
     f.main.onEnterMap(); f.main.onEnterMap();
-    assert.equal(f.sent.length, 1);
+    assert.equal(f.sent.length, 0, '加载遮罩提交首帧前不能发起武将请求');
+    assert.equal(f.scheduled.length, 0);
+    assert.equal(f.drawListeners.length, 1, '重复进入不注册第二个首帧回调');
+    f.renderFrame();
     assert.equal(f.scheduled.length, 1);
-    f.snapshot([{ heroType: 1001 }, { heroType: 1022 }]);
-    f.scheduled.shift()(); f.completeResources();
+    f.scheduled.shift()();
+    assert.equal(f.sent.length, 1);
+    f.snapshot([{ heroId: 1001 }, { heroId: 1022 }]);
+    f.completeResources();
     for (let i = 0; i < 10; i++) f.main.update();
     f.main.onMapReady();
     await flush();
@@ -318,8 +343,8 @@ test('entry requests heroes before resource load and finishes only after warmup 
 
 test('slow or abandoned image warmup cannot block entry or finish a newer login', async () => {
     const f = mainFixture();
-    f.main.onEnterMap(); f.snapshot([{ heroType: 1001 }]);
-    f.scheduled.shift()(); f.completeResources();
+    f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
+    f.snapshot([{ heroId: 1001 }]); f.completeResources();
     for (let i = 0; i < 10; i++) f.main.update();
     f.main.onMapReady(); await flush();
     f.clock.tick(10000);

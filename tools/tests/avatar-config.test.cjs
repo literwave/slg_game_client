@@ -265,7 +265,10 @@ async function main() {
         h.events.on(h.logic.updateCityPosition, p => notices.push({ ...p }), notices);
         h.events.on(h.logic.scrollToMap, (x, y) => moves.push([x, y]), moves);
         assert.equal(h.server.c2s_move_city, 'User.c2s_move_city');
-        assert.equal(h.proto.getIdByMsgType(h.server.c2s_move_city), 108);
+        const commonIds = JSON.parse(fs.readFileSync(path.join(root, 'external/game_common/client/net_pb.json'), 'utf8')).define;
+        assert.ok(Number.isInteger(commonIds.User.c2s_move_city) && commonIds.User.c2s_move_city > 0);
+        assert.equal(h.proto.getIdByMsgType(h.server.c2s_move_city), commonIds.User.c2s_move_city,
+            '客户端迁城消息号必须与最新 game_common 协议表一致');
         assert.equal(h.command.moveCity({ x: 290, y: 850 }), true);
         const packet = h.sent.at(-1);
         assert.equal(packet.name, 'User.c2s_move_city'); assert.ok(packet.msg instanceof Uint8Array);

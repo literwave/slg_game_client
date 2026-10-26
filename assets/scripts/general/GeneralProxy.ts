@@ -80,8 +80,10 @@ export class gSkill {
 export class GeneralData {
     id: number = 0;
     cfgId: number = 0;
-    hero_type: number = 0;  // 配置ID & 唯一ID
-    heroType: number = 0;
+    /** Hero.Id。协议没有独立的武将实例 ID；部队 heroIdx 同样引用此 ID。 */
+    heroId: number = 0;
+    hero_type: number = 0;  // 旧界面使用的配置 ID 别名
+    newTag: boolean = false;
     exp: number = 0;
     level: number = 0;
     order: number = 0;
@@ -103,16 +105,20 @@ export class GeneralData {
     hasPrPoint: number = 0;
     usePrPoint: number = 0;
 
+    public static getHeroId(data: any): number {
+        const value = Number(data?.heroId ?? data?.heroType ?? data?.hero_type ?? data?.cfgId ?? data?.heroIdx ?? data?.id);
+        return Number.isInteger(value) && value > 0 ? value : 0;
+    }
+
     public static createFromServer(serverData: any, generalData: GeneralData = null, generalCfg: GeneralConfig): GeneralData {
         let data: GeneralData = generalData || new GeneralData();
         if (!serverData) return data;
-        const heroIdx = Number(serverData.heroType != null ? serverData.heroType :
-            (serverData.hero_type != null ? serverData.hero_type :
-                (serverData.heroIdx != null ? serverData.heroIdx : serverData.id)));
-        data.hero_type = heroIdx;
-        data.heroType = heroIdx;
-        data.id = heroIdx;
-        data.cfgId = heroIdx;
+        const heroId = GeneralData.getHeroId(serverData);
+        data.heroId = heroId;
+        data.hero_type = heroId;
+        data.id = heroId;
+        data.cfgId = heroId;
+        data.newTag = serverData.newTag === true;
 
         data.level = Number(serverData.lv != null ? serverData.lv : (serverData.level != null ? serverData.level : 1));
         data.exp = Number(serverData.exp || 0);
@@ -267,11 +273,10 @@ export default class GeneralProxy {
 
         for (var i = 0; i < datas.length; i++) {
             const serverItem = datas[i];
-            let id = Number(serverItem.heroType != null ? serverItem.heroType :
-                (serverItem.hero_type != null ? serverItem.hero_type :
-                    (serverItem.heroIdx != null ? serverItem.heroIdx : serverItem.id)));
+            const id = GeneralData.getHeroId(serverItem);
+            if (!id) continue;
             let data: GeneralData = GeneralData.createFromServer(serverItem, null, this.getGeneralCfg(id));
-            this._myGenerals.set(data.hero_type, data);
+            this._myGenerals.set(data.heroId, data);
         }
     }
 
@@ -284,13 +289,13 @@ export default class GeneralProxy {
         if (!data) {
             return;
         }
-        let id = Number(data.heroType != null ? data.heroType : (data.hero_type != null ? data.hero_type : data.id));
+        const id = GeneralData.getHeroId(data);
         const state = Number(data.state || 0);
         if (state != 0 && id) {
             this._myGenerals.delete(Number(id));
         } else if (id) {
             let general: GeneralData = GeneralData.createFromServer(data, this._myGenerals.get(Number(id)), this.getGeneralCfg(id));
-            this._myGenerals.set(general.hero_type, general);
+            this._myGenerals.set(general.heroId, general);
         }
     }
 
@@ -363,13 +368,13 @@ export default class GeneralProxy {
     }
 
     /** 加载页与卡片共用缓存和在途请求。失败不缓存，后续打开界面可以重试。 */
-    public loadGeneralTex(heroType: number | string): Promise<SpriteFrame | null> {
-        const cached = this.getGeneralTex(heroType);
+    public loadGeneralTex(heroId: number | string): Promise<SpriteFrame | null> {
+        const cached = this.getGeneralTex(heroId);
         if (cached && isValid(cached)) return Promise.resolve(cached);
-        const config = this.getGeneralCfg(heroType);
+        const config = this.getGeneralCfg(heroId);
         const path = getGeneralPortraitPath(config && config.icon);
         if (!path) {
-            console.warn('武将未配置 Icon:', heroType);
+            console.warn('武将未配置 Icon:', heroId);
             return Promise.resolve(null);
         }
         const pending = this._heroTexLoads.get(path);
@@ -386,7 +391,7 @@ export default class GeneralProxy {
                     resolve(null);
                     return;
                 }
-                this.setGeneralTex(heroType, frame);
+                this.setGeneralTex(heroId, frame);
                 resolve(frame);
             });
         });

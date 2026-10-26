@@ -3,6 +3,7 @@ import { _decorator, BlockInputEvents, Button, Color, Component, Graphics, Label
 import BuildCommand from '../../build/BuildCommand';
 import { buildingArt, buildingNextUnlocks, buildingPresentation, buildingStages } from './BuildingPresentation';
 import LoginCommand from '../../login/LoginCommand';
+import { itemIconPath } from '../../common/ItemPresentation';
 import { LogicEvent } from '../../common/LogicEvent';
 import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
@@ -256,7 +257,7 @@ export default class CityBuildingPanel extends Component {
     private refresh(): void {
         if (!this.panel || !this.node.activeInHierarchy) return;
         const b = BuildCommand.getInstance(), configs = MapUICommand.getInstance().proxy.getFacilityConfigs();
-        const balances = LoginCommand.getInstance().proxy.getRoleResData()?.resList || [];
+        const balances = this.resourceBalances();
         const known = b.loaded;
         const built = configs.filter(cfg => (b.levels.get(cfg.type) || 0) > 0).length;
         this.summary.string = known ? `主城 ${b.levels.get(1) || 0} 级    ·    已建 ${built} / ${configs.length}    ·    待建 ${configs.length - built}` : '正在读取城内建筑…';
@@ -359,7 +360,7 @@ export default class CityBuildingPanel extends Component {
                 -top - 58 - Math.floor(i / costColumns) * 62, costWidth, 54);
             inkSurface(row.node, 'Surface', costWidth, 54, C.inset, null);
             row.icon.node.setPosition(-costWidth / 2 + 19, 0, 0);
-            this.setArt(row.icon, `ui/resource_icons/icon_${state.costs[i].icon}`, 24, 24);
+            this.setArt(row.icon, itemIconPath(state.costs[i].id).replace(/\/spriteFrame$/, ''), 24, 24);
             place(row.label.node, 19, 0, costWidth - 46, 44);
             row.label.string = `${state.costs[i].name} ${state.costs[i].need.toLocaleString()}\n持有 ${state.costs[i].have.toLocaleString()}`;
             row.label.fontSize = 13; row.label.lineHeight = 19; row.label.enableWrapText = true;
@@ -391,13 +392,18 @@ export default class CityBuildingPanel extends Component {
         this.actionHint.overflow = Label.Overflow.SHRINK;
     }
 
+    private resourceBalances(): Array<{ k: number; v: number }> {
+        const proxy = LoginCommand.getInstance().proxy;
+        return [1, 2, 3, 4].map(k => ({ k, v: proxy.getItemCount(k) }));
+    }
+
     private onAction(): void {
         const b = BuildCommand.getInstance();
         if (!b.loaded || b.loadError || b.loading || !b.sessionReady) return;
         const configs = MapUICommand.getInstance().proxy.getFacilityConfigs();
         const cfg = configs.find(item => item.type === this.selected);
         if (!cfg) return;
-        const state = buildingPresentation(cfg, b.levels, configs, LoginCommand.getInstance().proxy.getRoleResData()?.resList || []);
+        const state = buildingPresentation(cfg, b.levels, configs, this.resourceBalances());
         const blocked = state.conditions.find(c => !c.met);
         if (blocked) { this.selectBuilding(blocked.type); return; }
         if (!state.canAct) return;

@@ -16,7 +16,7 @@ export function buildingPresentation(cfg: FacilityConfig, levels: ReadonlyMap<nu
         { id: 1, name: '粮食', icon: 'grain', need: next?.grain || 0 },
         { id: 2, name: '木材', icon: 'wood', need: next?.wood || 0 },
         { id: 3, name: '铁矿', icon: 'iron', need: next?.iron || 0 },
-        { id: 5, name: '石料', icon: 'stone', need: next?.stone || 0 },
+        { id: 4, name: '石料', icon: 'stone', need: next?.stone || 0 },
     ].map(cost => ({ ...cost, have: Number(resources.find(row => Number(row.k) === cost.id)?.v || 0) }));
     const unlocked = conditions.every(condition => condition.met);
     const enough = costs.every(cost => cost.have >= cost.need);

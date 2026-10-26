@@ -19,6 +19,20 @@ export function toProtoId(value: any): number | string {
     return Number.isSafeInteger(number) ? number : text;
 }
 
+export interface ItemStack { itemUid: string; itemId: number; itemCnt: number; }
+export interface InventoryItem { itemId: number; count: number; stacks: number; }
+
+/** 保留 int64 实例 ID；拒绝已失真的 JS 大整数及无效数量。 */
+export function normalizeItemStack(row: any): ItemStack | null {
+    if (!row || (typeof row.itemUid === 'number' && !Number.isSafeInteger(row.itemUid))) return null;
+    const uid = String(row.itemUid ?? '').replace(/^0+(?=\d)/, '');
+    if (!/^[1-9]\d*$/.test(uid) || uid.length > 19 || (uid.length === 19 && uid > '9223372036854775807')) return null;
+    const id = row.itemId, count = row.itemCnt;
+    if (!Number.isInteger(count) || count < 0 || count > 0x7fffffff
+        || !Number.isInteger(id) || id < (count === 0 ? 0 : 1) || id > 0x7fffffff) return null;
+    return { itemUid: uid, itemId: id, itemCnt: count };
+}
+
 export class Role {
     userId: number | string = 0;
     name: string = "";
@@ -49,8 +63,9 @@ export default class LoginProxy {
     private _roleResData: any = null;
 
     //物品堆叠：itemUid -> { itemId, count }；itemCnt 是该堆叠当前数量
-    private _itemStacks: Map<number, { itemId: number; count: number }> = new Map();
+    private _itemStacks: Map<string, { itemId: number; count: number }> = new Map();
     private _itemTotals: Map<number, number> = new Map();
+    private _itemsLoaded = false;
 
     private _token: string = null;
 
@@ -59,8 +74,7 @@ export default class LoginProxy {
         this._loginData = null;
         this._roleData = null;
         this._roleResData = null;
-        this._itemStacks.clear();
-        this._itemTotals.clear();
+        this.clearItemData();
         this._token = ""
     }
 
@@ -118,25 +132,66 @@ export default class LoginProxy {
         return this._roleResData;
     }
 
-    public updateItemData(itemUid: number, itemId: number, itemCnt: number): void {
-        const uid = toProtoInt(itemUid);
-        const id = toProtoInt(itemId);
-        if (id <= 0) {
-            return;
+    public get itemsLoaded(): boolean { return this._itemsLoaded; }
+
+    public clearItemData(): void {
+        this._itemStacks.clear(); this._itemTotals.clear(); this._itemsLoaded = false;
+    }
+
+    public updateItemData(itemUid: any, itemId: number, itemCnt: number): boolean {
+        const row = normalizeItemStack({ itemUid, itemId, itemCnt });
+        if (!row) return false;
+        // 删除后保留该道具已知为零的语义，避免回退到旧资源快照。
+        const previous = this._itemStacks.get(row.itemUid);
+        if (previous) this._itemTotals.set(previous.itemId, 0);
+        if (row.itemId > 0) this._itemTotals.set(row.itemId, 0);
+        if (row.itemCnt === 0) this._itemStacks.delete(row.itemUid);
+        else this._itemStacks.set(row.itemUid, { itemId: row.itemId, count: row.itemCnt });
+        this.rebuildItemTotals();
+        return true;
+    }
+
+    /** 全量包是替换而非累加；全部校验成功后才切换快照。 */
+    public replaceItemData(rows: any[]): boolean {
+        if (!Array.isArray(rows)) return false;
+        const next = new Map<string, { itemId: number; count: number }>(), seen = new Set<string>();
+        for (const value of rows) {
+            const row = normalizeItemStack(value);
+            if (!row || seen.has(row.itemUid)) return false;
+            seen.add(row.itemUid);
+            if (row.itemCnt > 0) next.set(row.itemUid, { itemId: row.itemId, count: row.itemCnt });
         }
-        this._itemStacks.set(uid, { itemId: id, count: Math.max(0, toProtoInt(itemCnt)) });
-        this._itemTotals.clear();
+        this._itemStacks = next;
+        this._itemTotals.clear(); this.rebuildItemTotals(); this._itemsLoaded = true;
+        return true;
+    }
+
+    public getInventoryItems(): InventoryItem[] {
+        const rows = new Map<number, InventoryItem>();
         this._itemStacks.forEach(stack => {
-            this._itemTotals.set(stack.itemId, (this._itemTotals.get(stack.itemId) || 0) + stack.count);
+            const row = rows.get(stack.itemId) || { itemId: stack.itemId, count: 0, stacks: 0 };
+            row.count += stack.count; row.stacks++; rows.set(stack.itemId, row);
         });
+        return Array.from(rows.values()).sort((a, b) => a.itemId - b.itemId);
+    }
+
+    private rebuildItemTotals(): void {
+        this._itemTotals.forEach((_, id) => this._itemTotals.set(id, 0));
+        this._itemStacks.forEach(stack => this._itemTotals.set(stack.itemId, (this._itemTotals.get(stack.itemId) || 0) + stack.count));
     }
 
     public hasItemCount(itemId: number): boolean {
-        return this._itemTotals.has(itemId);
+        return this._itemsLoaded || this._itemTotals.has(itemId) || this.resourceItem(itemId) !== undefined;
     }
 
     public getItemCount(itemId: number): number {
-        return this._itemTotals.get(itemId) || 0;
+        // 推送为 0 也表示明确的余额，不能退回到旧的资源快照。
+        return this._itemTotals.has(itemId) ? this._itemTotals.get(itemId)!
+            : this._itemsLoaded ? 0 : Math.max(0, toProtoInt(this.resourceItem(itemId)?.v));
+    }
+
+    private resourceItem(itemId: number): any | undefined {
+        return this._roleResData?.resList?.find(row => Number(row?.k) === itemId);
     }
 
 

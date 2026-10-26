@@ -168,7 +168,7 @@ export default class CityArmySettingLogic extends Component {
         if (!curData) {
             return;
         }
-        const heroIdx = Number(curData.hero_type ?? curData.heroType ?? curData.cfgId ?? curData.id);
+        const heroIdx = GeneralData.getHeroId(curData);
         if (!heroIdx) {
             return;
         }

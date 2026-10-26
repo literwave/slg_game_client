@@ -1,7 +1,8 @@
 import { _decorator, BlockInputEvents, Button, Color, Component, Label, Mask, Node, SafeArea,
     ScrollView, Sprite, SpriteFrame, UITransform, Widget, resources } from 'cc';
 import ProgressionCommand from '../../progression/ProgressionCommand';
-import { configRows, rewardName, rewardPreview, RewardPreview, taskPresentation } from '../../progression/ProgressionPresentation';
+import { rewardName, rewardPreview, RewardPreview, taskPresentation } from '../../progression/ProgressionPresentation';
+import { itemIconPath } from '../../common/ItemPresentation';
 import MailCommand from '../../mail/MailCommand';
 import RankCommand from '../../rank/RankCommand';
 import { ServerConfig as S } from '../../config/ServerConfig';
@@ -281,15 +282,15 @@ export default class PlayerServicesPanel extends Component {
     private rewards(parent: Node, rewards: RewardPreview[], y: number, available: number): void {
         if (!rewards.length) return;
         const text = rewards.map(r => `${rewardName(r)} ×${r.itemCount}`).join('  ');
-        const first = rewards[0], item = configRows('Item').find(row => row.Id === first.itemId);
-        const hasIcon = first.rewardType !== 3 && !!item?.Icon;
+        const first = rewards[0];
+        const path = [1, 2, 6].indexOf(first.rewardType) >= 0 ? itemIconPath(first.itemId) : '';
+        const hasIcon = !!path;
         const label = caption(parent, 'Rewards', text, -this.rowWidth / 2 + 16 + available / 2 + (hasIcon ? 14 : 0), y,
             available - (hasIcon ? 28 : 0), 14, C.gold);
         label.enableWrapText = true; label.node.getComponent(UITransform).height = 44;
         if (hasIcon) {
             const icon = this.make('RewardIcon', parent, 30, 30); icon.setPosition(-this.rowWidth / 2 + 30, y, 0);
             const sprite = icon.addComponent(Sprite); sprite.sizeMode = Sprite.SizeMode.CUSTOM;
-            const path = String(item.Icon).replace(/\.png$/i, '').replace(/\/spriteFrame$/i, '') + '/spriteFrame';
             resources.load(path, SpriteFrame, (error, frame) => { if (!error && frame instanceof SpriteFrame && sprite.isValid) sprite.spriteFrame = frame; });
         }
     }

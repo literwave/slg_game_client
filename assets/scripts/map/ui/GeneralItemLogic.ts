@@ -191,12 +191,7 @@ export default class GeneralItemLogic extends Component {
     }
 
     private getHeroIdx(data: any): number {
-        if (!data) {
-            return 0;
-        }
-        return Number(data.hero_type != null ? data.hero_type :
-            (data.heroType != null ? data.heroType :
-                (data.cfgId != null ? data.cfgId : data.id))) || 0;
+        return GeneralData.getHeroId(data);
     }
 
 
@@ -243,8 +238,8 @@ export default class GeneralItemLogic extends Component {
     protected onClickGeneral(event: any): void {
         AudioManager.instance.playClick();
         if (this._curData) {
-            const heroType = this.getHeroIdx(this._curData);
-            var cfgData = this._curData.config || GeneralCommand.getInstance().proxy.getGeneralCfg(heroType);
+            const heroId = this.getHeroIdx(this._curData);
+            var cfgData = this._curData.config || GeneralCommand.getInstance().proxy.getGeneralCfg(heroId);
             console.log("onClickGeneral:", this._type);
 
             //武将详情

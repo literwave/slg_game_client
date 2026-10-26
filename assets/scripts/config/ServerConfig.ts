@@ -2,6 +2,8 @@
 import { _decorator } from 'cc';
 
 const ServerConfig = {
+    c2s_req_all_item_data: "Item.c2s_req_all_item_data",
+    s2c_req_all_item_data: "Item.s2c_req_all_item_data",
     c2s_req_activity_list: "Activity.c2s_req_activity_list",
     s2c_req_activity_list: "Activity.s2c_req_activity_list",
     s2c_sync_activity: "Activity.s2c_sync_activity",

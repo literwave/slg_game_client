@@ -114,8 +114,8 @@ export default class FacilityDesLogic extends Component {
             //未达到最高级时
             const proxy = LoginCommand.getInstance().proxy;
             const res = proxy.getRoleResData()?.resList || [];
-            const amount = (id: number) => Number(res.find(r => Number(r.k) === id)?.v || 0);
-            let roleRes: any = { grain: amount(1), wood: amount(2), iron: amount(3), stone: amount(5), decree: amount(4) };
+            const amount = (id: number) => proxy.hasItemCount(id) ? proxy.getItemCount(id) : Number(res.find(r => Number(r.k) === id)?.v || 0);
+            let roleRes: any = { grain: amount(1), wood: amount(2), iron: amount(3), stone: amount(4), decree: amount(100) };
             let upLevel: FacilityUpLevel = this._cfg.upLevels[curLevel];
             let needStrList: string[] = [];
             if (upLevel.grain > 0) {

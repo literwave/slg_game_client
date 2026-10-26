@@ -12,6 +12,7 @@ interface RewardShowModes {
 export default class RewardCommand {
     private _uiReady = false;
     private _pendingRewards: any[] = [];
+    private _interceptor: ((data: any) => boolean) | null = null;
     protected static _instance: RewardCommand;
     public static getInstance(): RewardCommand {
         if (this._instance == null) {
@@ -53,6 +54,10 @@ export default class RewardCommand {
         }
     }
 
+    public setInterceptor(interceptor: ((data: any) => boolean) | null): void {
+        this._interceptor = interceptor;
+    }
+
     protected onShowReward(data: any): void {
         const rewardList = (data && data.rewardList) || [];
         if (!rewardList.length) {
@@ -62,6 +67,7 @@ export default class RewardCommand {
             this._pendingRewards.push(data);
             return;
         }
+        if (this._interceptor?.(data)) return;
         if (!this.needWindow(data.showTypeList)) {
             console.log("RewardCommand skip show reward, showTypeList:", data.showTypeList);
             return;

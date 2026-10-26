@@ -1,4 +1,4 @@
-import { _decorator, Component, Prefab, Node, Layout, Label, EditBox, Button, Color, Graphics, instantiate, UITransform, Vec2, Sprite, SpriteFrame, input, Input, EventKeyboard, KeyCode, game, Game } from 'cc';
+import { _decorator, Component, Prefab, Node, Layout, Label, EditBox, Button, Color, Graphics, instantiate, UITransform, Vec2, Sprite, SpriteFrame, input, Input, EventKeyboard, KeyCode, game, Game, resources } from 'cc';
 const { ccclass, property } = _decorator;
 
 import LoginCommand from "../../login/LoginCommand";
@@ -37,6 +37,7 @@ import { Setting } from './Setting';
 import MapTaskTracker from './MapTaskTracker';
 import PlayerServicesPanel, { ServiceSection } from './PlayerServicesPanel';
 import { CityPosition } from '../../login/LoginCommand';
+import { itemIconPath } from '../../common/ItemPresentation';
 
 @ccclass('MapUILogic')
 export default class MapUILogic extends Component {
@@ -192,7 +193,7 @@ export default class MapUILogic extends Component {
         { key: 1, name: "粮" },
         { key: 2, name: "木" },
         { key: 3, name: "铁" },
-        { key: 5, name: "石" },
+        { key: 4, name: "石" },
     ];
     private _uiListenersReady = false;
     private _hudTopShade: Graphics | null = null;
@@ -215,11 +216,26 @@ export default class MapUILogic extends Component {
         this.initMoreMenu();
         this.initHeadIconEntry();
         this.initTaskTracker();
+        this.initResourceIcons();
         this.node.on(Node.EventType.SIZE_CHANGED, this.layoutHud, this);
         this.layoutHud();
         this.scheduleOnce(this.layoutHud, 0);
         this.updateRoleRes();
         this.updateRole();
+    }
+
+    private initResourceIcons(): void {
+        const bar = this.node.getChildByName('ResourceBar');
+        this._resArray.forEach((resource, index) => {
+            const icon = bar?.getChildByName(`ResSlot${index}`)?.getChildByName('Dot')?.getComponent(Sprite);
+            if (!icon) return;
+            resources.load(itemIconPath(resource.key), SpriteFrame, (error, frame) => {
+                if (!error && frame instanceof SpriteFrame && icon.isValid) {
+                    icon.sizeMode = Sprite.SizeMode.CUSTOM;
+                    icon.spriteFrame = frame;
+                }
+            });
+        });
     }
 
     private onGameReady(): void {

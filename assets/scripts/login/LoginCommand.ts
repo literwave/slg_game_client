@@ -351,7 +351,8 @@ export default class LoginCommand {
         if (!data) {
             return;
         }
-        this._proxy.updateItemData(data.itemUid, data.itemId, data.itemCnt);
+        if (!this._proxy.updateItemData(data.itemUid, data.itemId, data.itemCnt)) return;
+        EventMgr.emit(LogicEvent.itemSynced, data);
         EventMgr.emit(LogicEvent.upateMyRoleRes);
     }
 

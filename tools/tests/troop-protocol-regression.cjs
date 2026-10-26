@@ -26,7 +26,7 @@ function harness() {
         view: { on() {}, off() {} },
     };
     const heroes = new Map([1001, 1002, 1003, 1004].map(id => [id, {
-        hero_type: id, heroType: id, cfgId: id, level: 1,
+        hero_type: id, heroId: id, cfgId: id, level: 1,
         config: { name: '武将' + id, speed: 3, attack: 100 },
     }]));
     const generals = {
@@ -235,7 +235,7 @@ test('配置页上阵、替换和下阵共用协议，空 map 能清空最后一
     const h = harness();
     h.ready([{ troopIdx: 1, posMap: { 1: { heroIdx: 1001, soldier: { count: 0, hurtCount: 0 } }, 2: { heroIdx: 1002, soldier: { count: 0, hurtCount: 0 } } } }]);
     const settings = h.createSettings();
-    settings.onChooseGeneral(null, { heroType: 1003 }, 0);
+    settings.onChooseGeneral(null, { heroId: 1003 }, 0);
     assert.deepEqual(plain(h.sent.at(-1).data.troopInfo.posMap), { 1: { heroIdx: 1003, soldier: { count: 0, hurtCount: 0 } }, 2: { heroIdx: 1002, soldier: { count: 0, hurtCount: 0 } } });
     assert.equal(settings.labelCost.string, '编队保存中…');
     h.receive(h.server.s2c_edit_troop, h.sent.at(-1).data);

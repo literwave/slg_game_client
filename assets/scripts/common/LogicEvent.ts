@@ -37,6 +37,10 @@ export class LogicEvent {
     public static hideWaiting:string = "hide_waiting";
     public static showTip:string = "show_tip";
     public static showReward:string = "show_reward";
+    public static lotteryChanged:string = "lottery_changed";
+    public static lotteryResult:string = "lottery_result";
+    public static itemSynced = "item_synced";
+    public static updateInventory = "update_inventory";
 
     public static createRole:string = "createRole";
     public static enterServerComplete:string = "enterServerComplete";

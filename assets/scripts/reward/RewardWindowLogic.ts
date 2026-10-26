@@ -3,6 +3,9 @@ import { EventMgr } from "../utils/EventMgr";
 import { LogicEvent } from "../common/LogicEvent";
 import ConfigManager from "../core/ConfigManager";
 import { getGeneralPortraitPath } from '../general/GeneralPortrait';
+import { Button, BlockInputEvents, view } from 'cc';
+import { caption, inkSurface, panelButton, place, ManagementColors as C } from '../map/ui/ManagementStyle';
+import { itemGlyph, itemIconPath, itemName } from '../common/ItemPresentation';
 
 const { ccclass } = _decorator;
 
@@ -21,22 +24,13 @@ interface RewardFxAssets {
 const FX_GOLD = new Color(255, 221, 158, 255);
 const FX_GOLD_BRIGHT = new Color(255, 241, 208, 255);
 const FX_CENTER_Y = 12;
-const AUTO_DISMISS_DELAY = 5.5;
 const MIN_VISIBLE_TIME = 0.55;
 
 const REWARD_TYPE_ITEM = 1;
 const REWARD_TYPE_RES = 2;
 const REWARD_TYPE_HERO = 3;
-const REWARD_TYPE_EQUIP = 4;
+const REWARD_TYPE_SOLDIER = 4;
 const REWARD_TYPE_CONVERT_ITEM = 6;
-
-const ITEM_NAME_FALLBACK: { [key: number]: string } = {
-    1: "粮食",
-    2: "木材",
-    3: "铁矿",
-    5: "石料",
-    4: "令牌",
-};
 
 @ccclass('RewardWindowLogic')
 export default class RewardWindowLogic extends Component {
@@ -200,6 +194,17 @@ export default class RewardWindowLogic extends Component {
     private closing: boolean = false;
     private playToken: number = 0;
     private shownAt: number = 0;
+    private skipButton: Node;
+    private previousButton: Node;
+    private nextButton: Node;
+    private pageLabel: Label;
+    private page = 0;
+    private pageSize = 10;
+    private columns = 5;
+    private cardRows = 2;
+    private cardAreaHeight = 410;
+    private windowWidth = 800;
+    private windowHeight = 590;
 
     protected onLoad(): void {
         this.opacity = this.node.getComponent(UIOpacity) || this.node.addComponent(UIOpacity);
@@ -225,13 +230,47 @@ export default class RewardWindowLogic extends Component {
         }
         this.prepareVeil();
         this.buildFxNodes();
+        if (!this.node.getComponent(BlockInputEvents)) this.node.addComponent(BlockInputEvents);
+        const button = (name: string, action: () => void) => {
+            const n = this.createNode(name, this.panel, 120, 42, 0, 0);
+            n.addComponent(Button); n.on(Button.EventType.CLICK, action, this); return n;
+        };
+        this.skipButton = button('SkipAnimation', () => this.skipAnimation());
+        this.previousButton = button('PreviousPage', () => this.changePage(-1));
+        this.nextButton = button('NextPage', () => this.changePage(1));
+        this.pageLabel = caption(this.panel, 'PageNumber', '', 0, 0, 150, 14, C.muted, Label.HorizontalAlign.CENTER);
+        if (this.confirm) {
+            if (!this.confirm.getComponent(Button)) this.confirm.addComponent(Button);
+            this.confirm.on(Button.EventType.CLICK, () => this.dismiss(), this);
+        }
         this.node.active = false;
     }
 
+    protected onEnable(): void {
+        view.on('canvas-resize', this.onResize, this);
+        view.on('design-resolution-changed', this.onResize, this);
+    }
+
     protected onDestroy(): void {
+        view.off('canvas-resize', this.onResize, this);
+        view.off('design-resolution-changed', this.onResize, this);
         this.playToken++;
         if (RewardWindowLogic._current === this) {
             RewardWindowLogic._current = null;
+        }
+    }
+
+    protected onDisable(): void {
+        view.off('canvas-resize', this.onResize, this);
+        view.off('design-resolution-changed', this.onResize, this);
+        this.playToken++;
+        this.unscheduleAllCallbacks();
+        this.stopFxTweens();
+        if (this.opacity) Tween.stopAllByTarget(this.opacity);
+        for (const cell of this.itemNodes) {
+            Tween.stopAllByTarget(cell);
+            const opacity = cell.getComponent(UIOpacity);
+            if (opacity) Tween.stopAllByTarget(opacity);
         }
     }
 
@@ -259,10 +298,14 @@ export default class RewardWindowLogic extends Component {
         this.unscheduleAllCallbacks();
         this.stopFxTweens();
         this.rewards = append ? this.rewards.concat(list) : list.slice();
+        this.page = 0;
+        this.layoutWindow();
         if (this.node.parent) {
             this.node.setSiblingIndex(this.node.parent.children.length - 1);
         }
         this.buildItems();
+        this.skipButton.active = true;
+        if (this.confirm) this.confirm.active = true;
 
         if (this.opacity) {
             Tween.stopAllByTarget(this.opacity);
@@ -283,7 +326,8 @@ export default class RewardWindowLogic extends Component {
         if (Date.now() - this.shownAt < MIN_VISIBLE_TIME * 1000) {
             return;
         }
-        this.dismiss();
+        if (!this.idleReady) this.skipAnimation();
+        else this.dismiss();
     }
 
     private onPanelTouch(event: EventTouch): void {
@@ -362,11 +406,11 @@ export default class RewardWindowLogic extends Component {
 
         if (this.panel) {
             Tween.stopAllByTarget(this.panel);
-            this.panel.setScale(0.86, 0.86, 1);
-            this.panel.angle = -2;
+            this.panel.setScale(0.96, 0.96, 1);
+            this.panel.angle = 0;
             tween(this.panel)
                 .delay(0.04)
-                .to(0.52, { scale: new Vec3(1, 1, 1), angle: 0 }, { easing: 'backOut' })
+                .to(0.4, { scale: new Vec3(1, 1, 1), angle: 0 }, { easing: 'quadOut' })
                 .start();
         }
 
@@ -398,9 +442,10 @@ export default class RewardWindowLogic extends Component {
         this.scheduleOnce(() => {
             this.elapsed = 0;
             this.idleReady = true;
-        }, 0.92);
+            this.skipButton.active = false;
+        }, Math.max(1.5, 0.72 + (this.itemNodes.length - 1) * 0.11));
         this.schedule(this.spawnAmbientSpark, 0.24, 1000000);
-        this.scheduleOnce(() => this.dismiss(), AUTO_DISMISS_DELAY);
+        // 点将可能有多页奖励，保留结果直到玩家主动关闭。
     }
 
     private animateItems(): void {
@@ -409,13 +454,13 @@ export default class RewardWindowLogic extends Component {
             if (!cell || !cell.isValid) {
                 continue;
             }
-            const delay = 0.26 + i * 0.055;
+            const delay = 0.32 + i * 0.11;
             const opacity = this.ensureOpacity(cell);
-            cell.setScale(0.55, 0.55, 1);
+            cell.setScale(0.04, 0.96, 1);
             Tween.stopAllByTarget(cell);
             Tween.stopAllByTarget(opacity);
             opacity.opacity = 0;
-            tween(cell).delay(delay).to(0.3, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' }).start();
+            tween(cell).delay(delay).to(0.4, { scale: new Vec3(1, 1, 1) }, { easing: 'cubicOut' }).start();
             tween(opacity).delay(delay).to(0.18, { opacity: 255 }).start();
             this.scheduleOnce(() => this.spawnSparkAtNode(cell, 2), delay + 0.08);
         }
@@ -558,13 +603,10 @@ export default class RewardWindowLogic extends Component {
             }
         }
 
-        const list = this.rewards.slice(0, 8);
-        if (this.rewards.length > 8) {
-            console.warn('RewardWindow only shows first 8 rewards, total:', this.rewards.length);
-        }
-        const rows = Math.ceil(list.length / 4);
-        const cellW = 110;
-        const cellH = 108;
+        const list = this.rewards.slice(this.page * this.pageSize, (this.page + 1) * this.pageSize);
+        const rows = Math.ceil(list.length / this.columns);
+        const cellW = Math.min(136, (this.windowWidth - 60) / this.columns - 10);
+        const cellH = Math.min(144, (this.cardAreaHeight - (this.cardRows - 1) * 8) / this.cardRows);
         const gapX = 10;
         const gapY = 8;
 
@@ -573,18 +615,104 @@ export default class RewardWindowLogic extends Component {
             cell.active = true;
             cell.parent = this.content;
 
-            const row = Math.floor(i / 4);
-            const col = i % 4;
-            const countInRow = Math.min(4, list.length - row * 4);
+            const row = Math.floor(i / this.columns);
+            const col = i % this.columns;
+            const countInRow = Math.min(this.columns, list.length - row * this.columns);
             const rowWidth = countInRow * cellW + (countInRow - 1) * gapX;
             const x = -rowWidth / 2 + cellW / 2 + col * (cellW + gapX);
             const totalHeight = rows * cellH + (rows - 1) * gapY;
             const y = totalHeight / 2 - cellH / 2 - row * (cellH + gapY);
 
             cell.setPosition(x, y, 0);
+            cell.getComponent(UITransform).setContentSize(cellW, cellH);
+            inkSurface(cell, 'RewardCard', cellW, cellH, new Color(41, 40, 32),
+                list[i].rewardType === REWARD_TYPE_HERO ? new Color(220, 174, 92) : C.line);
+            const iconNode = cell.getChildByName('Icon');
+            const iconSize = Math.min(64, cellW - 28, cellH - 72);
+            place(iconNode, 0, 18, iconSize, iconSize);
+            const nameNode = cell.getChildByName('Name'), countNode = cell.getChildByName('Count');
+            place(nameNode, 0, -cellH / 2 + 39, cellW - 12, 24);
+            place(countNode, 0, -cellH / 2 + 16, cellW - 12, 23);
+            const name = nameNode?.getComponent(Label), count = countNode?.getComponent(Label);
+            if (name) { name.fontSize = 15; name.lineHeight = 20; name.enableWrapText = false; name.overflow = Label.Overflow.SHRINK; }
+            if (count) { count.fontSize = 17; count.lineHeight = 21; count.enableWrapText = false; count.overflow = Label.Overflow.SHRINK; }
             this.itemNodes.push(cell);
             this.fillCell(cell, list[i]);
         }
+        const pages = Math.max(1, Math.ceil(this.rewards.length / this.pageSize));
+        this.pageLabel.string = (this.page + 1) + ' / ' + pages;
+        this.previousButton.active = this.nextButton.active = this.pageLabel.node.active = pages > 1;
+        this.previousButton.getComponent(Button).interactable = this.page > 0;
+        this.nextButton.getComponent(Button).interactable = this.page < pages - 1;
+    }
+
+    /** 完成到最终展示状态，异步贴图返回也不会重新播放演出。 */
+    public skipAnimation(): void {
+        this.playToken++;
+        this.unscheduleAllCallbacks();
+        this.stopFxTweens();
+        if (this.opacity) { Tween.stopAllByTarget(this.opacity); this.opacity.opacity = 255; }
+        this.panel.setScale(1, 1, 1); this.panel.angle = 0;
+        for (const node of [this.titleNode, this.subtitleNode, this.dividerNode, this.confirm, ...this.itemNodes]) {
+            if (!node?.isValid) continue;
+            Tween.stopAllByTarget(node);
+            const opacity = this.ensureOpacity(node); Tween.stopAllByTarget(opacity); opacity.opacity = 255;
+            const base = this.basePositions.get(node); if (base) node.setPosition(base);
+            node.setScale(1, 1, 1);
+        }
+        this.fxRays.setScale(1, 1, 1); this.setOpacity(this.fxRays, 110);
+        this.fxGlow.setScale(1, 1, 1); this.setOpacity(this.fxGlow, 145);
+        this.skipButton.active = false; this.idleReady = true;
+    }
+
+    private changePage(direction: number): void {
+        this.skipAnimation();
+        this.page = Math.max(0, Math.min(Math.ceil(this.rewards.length / this.pageSize) - 1, this.page + direction));
+        this.buildItems();
+    }
+
+    private layoutWindow(): void {
+        const size = view.getVisibleSize();
+        this.windowWidth = Math.min(840, size.width - 36);
+        this.windowHeight = Math.min(600, size.height - 36);
+        this.columns = this.windowWidth >= 700 ? 5 : this.windowWidth >= 560 ? 4 : this.windowWidth >= 400 ? 3 : 2;
+        const narrow = this.windowWidth < 470;
+        const footerHeight = narrow ? 130 : 94;
+        const headerHeight = 110;
+        this.cardAreaHeight = this.windowHeight - headerHeight - footerHeight;
+        this.cardRows = this.cardAreaHeight >= 244 ? 2 : 1;
+        this.pageSize = this.columns * this.cardRows;
+        place(this.node, 0, 0, size.width, size.height);
+        place(this.veil, 0, 0, size.width, size.height);
+        const shade = this.veil.getChildByName('RewardSolidBackdrop')?.getComponent(Graphics);
+        if (shade) { shade.clear(); shade.fillColor = new Color(6, 10, 9, 185); shade.rect(-size.width / 2, -size.height / 2, size.width, size.height); shade.fill(); }
+        place(this.panel, 0, 0, this.windowWidth, this.windowHeight);
+        inkSurface(this.panel, 'ResultSurface', this.windowWidth, this.windowHeight, new Color(26, 30, 26, 252), C.line);
+        const top = this.windowHeight / 2, bottom = -top;
+        const titleWidth = narrow ? this.windowWidth - 180 : 280;
+        place(this.titleNode, narrow ? -this.windowWidth / 2 + 22 + titleWidth / 2 : 0, top - 42, titleWidth, 44);
+        const titleLabel = this.titleNode?.getComponent(Label);
+        if (titleLabel) titleLabel.overflow = Label.Overflow.SHRINK;
+        place(this.subtitleNode, 0, top - 78, Math.min(300, this.windowWidth - 44), 26);
+        place(this.dividerNode, 0, top - 100, this.windowWidth - 70, 2);
+        place(this.content, 0, (footerHeight - headerHeight) / 2, this.windowWidth - 42, this.cardAreaHeight);
+        panelButton(this.skipButton, '跳过动画', this.windowWidth / 2 - 83, top - 34, 130, 40);
+        panelButton(this.confirm, '收下奖励', 0, bottom + 38, 150, 44, true);
+        const navWidth = narrow ? Math.min(104, (this.windowWidth - 110) / 2) : 104;
+        const navX = this.windowWidth / 2 - 24 - navWidth / 2;
+        panelButton(this.previousButton, '上一页', -navX, bottom + (narrow ? 94 : 38), navWidth, 40);
+        panelButton(this.nextButton, '下一页', navX, bottom + (narrow ? 94 : 38), navWidth, 40);
+        place(this.pageLabel.node, 0, bottom + (narrow ? 94 : 76), narrow ? this.windowWidth - 64 - 2 * navWidth : 120, 22);
+        for (const node of [this.titleNode, this.subtitleNode, this.dividerNode]) this.captureBasePosition(node);
+    }
+
+    private onResize(): void {
+        if (!this.panel || !this.node.activeInHierarchy || this.closing || !this.rewards.length) return;
+        const firstReward = this.page * this.pageSize;
+        this.skipAnimation();
+        this.layoutWindow();
+        this.page = Math.min(Math.floor(firstReward / this.pageSize), Math.max(0, Math.ceil(this.rewards.length / this.pageSize) - 1));
+        this.buildItems();
     }
 
     private createNode(name: string, parent: Node, width: number, height: number, x: number, y: number): Node {
@@ -639,6 +767,15 @@ export default class RewardWindowLogic extends Component {
             return;
         }
         icon.node.active = false;
+        // 点将符、加速等道具允许未配置插图，仍显示可辨认的用途徽记。
+        const glyph = this.createNode('ItemGlyph', cell, 66, 58, icon.node.position.x, icon.node.position.y);
+        const glyphLabel = glyph.addComponent(Label);
+        glyphLabel.string = info.rewardType === REWARD_TYPE_HERO ? '将' : info.rewardType === REWARD_TYPE_SOLDIER ? '兵' : itemGlyph(info.itemId);
+        glyphLabel.fontSize = 34;
+        glyphLabel.lineHeight = 40;
+        glyphLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        glyphLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        glyphLabel.color = FX_GOLD;
         const path = this.getIconPath(info);
         if (!path) {
             return;
@@ -648,23 +785,19 @@ export default class RewardWindowLogic extends Component {
                 return;
             }
             icon.spriteFrame = frame;
+            const ui = icon.node.getComponent(UITransform), size = frame.originalSize;
+            const fit = Math.min(ui.width / size.width, ui.height / size.height);
+            ui.setContentSize(size.width * fit, size.height * fit);
             icon.node.active = true;
+            if (glyph.isValid) glyph.active = false;
         });
     }
 
     private getIconPath(info: RewardInfo): string {
-        const item = this.getItemConfig(info.itemId);
         const isItemReward = info.rewardType === REWARD_TYPE_ITEM
             || info.rewardType === REWARD_TYPE_RES
-            || info.rewardType === REWARD_TYPE_EQUIP
             || info.rewardType === REWARD_TYPE_CONVERT_ITEM;
-        if (isItemReward && item) {
-            const icon = typeof item.Icon === 'string' ? item.Icon.trim() : '';
-            if (icon) {
-                const base = icon.replace(/\.png$/i, '').replace(/\/spriteFrame$/i, '');
-                return `${base}/spriteFrame`;
-            }
-        }
+        if (isItemReward) return itemIconPath(info.itemId);
         if (info.rewardType === REWARD_TYPE_HERO) {
             const hero = this.getHeroConfig(info.itemId);
             return getGeneralPortraitPath(hero && hero.Icon);
@@ -673,34 +806,22 @@ export default class RewardWindowLogic extends Component {
     }
 
     private getRewardName(info: RewardInfo): string {
+        if (info.rewardType === REWARD_TYPE_SOLDIER) return '兵力';
         if (info.rewardType === REWARD_TYPE_HERO) {
             const hero = this.getHeroConfig(info.itemId);
             return (hero && hero.name) || `武将 ${info.itemId}`;
         }
         if (info.rewardType === REWARD_TYPE_ITEM
             || info.rewardType === REWARD_TYPE_RES
-            || info.rewardType === REWARD_TYPE_EQUIP
             || info.rewardType === REWARD_TYPE_CONVERT_ITEM) {
-            const item = this.getItemConfig(info.itemId);
-            const name = item && (item.Name || item.name);
-            return name || ITEM_NAME_FALLBACK[info.itemId] || `道具 ${info.itemId}`;
+            return itemName(info.itemId);
         }
         return "奖励";
     }
 
-    private getItemConfig(itemId: number): any {
-        const items = ConfigManager.getInstance().getConfig('Item');
-        if (!Array.isArray(items)) {
-            return null;
-        }
-        return items.find((cfg: any) => cfg && cfg.Id === itemId) || null;
-    }
-
     private getHeroConfig(heroId: number): any {
         const heroes = ConfigManager.getInstance().getConfig("Hero");
-        if (!Array.isArray(heroes)) {
-            return null;
-        }
-        return heroes.find((cfg: any) => cfg && cfg.Id === heroId) || null;
+        const rows: any[] = Array.isArray(heroes) ? heroes : heroes && typeof heroes === 'object' ? Object.keys(heroes).map(key => heroes[key]) : [];
+        return rows.find((cfg: any) => cfg && Number(cfg.Id) === heroId) || null;
     }
 }

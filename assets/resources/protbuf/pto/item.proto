@@ -2,8 +2,24 @@ syntax = "proto3";
 
 package Item;
 
+// itemUid 为道具实例唯一 id；itemId → Item.Id；itemCnt 为数量（0 表示删除）
+message p_item_data {
+	int64 itemUid = 1;
+	int32 itemId = 2;
+	int32 itemCnt = 3;
+}
+
+// 同步单个道具（增删改）
 message s2c_sync_item_data {
 	int64 itemUid = 1;
 	int32 itemId = 2;
 	int32 itemCnt = 3;
+}
+
+// 请求全部道具
+message c2s_req_all_item_data {
+}
+
+message s2c_req_all_item_data {
+	repeated p_item_data itemList = 1;
 }
