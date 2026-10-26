@@ -1,0 +1,26 @@
+[
+  {
+    "Id": 0,
+    "Name": "在城",
+    "Enum": "IN_CITY",
+    "Desc": "部队在主城内"
+  },
+  {
+    "Id": 1,
+    "Name": "行军",
+    "Enum": "MARCH",
+    "Desc": "部队行军中"
+  },
+  {
+    "Id": 2,
+    "Name": "停留",
+    "Enum": "STAY",
+    "Desc": "部队在野外停留"
+  },
+  {
+    "Id": 3,
+    "Name": "采集",
+    "Enum": "GATHER",
+    "Desc": "部队正在采集资源地"
+  }
+]

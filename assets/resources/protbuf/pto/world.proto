@@ -94,6 +94,7 @@ message s2c_req_march_list {
 
 // ---------- AOI ----------
 // 视野内实体；entityType → EntityType.Id（1主城 2行军部队 3怪物组 4资源地）
+// 主城额外填 name、level；改名/主城升级时用 s2c_aoi_update 同步
 message p_aoi_entity {
 	int64 entityId = 1;
 	uint32 entityType = 2;
@@ -103,6 +104,8 @@ message p_aoi_entity {
 	repeated Common.p_pos_f path = 6;  // 仅行军中的部队填，含起点终点
 	double startTime = 7;
 	double endTime = 8;
+	string name = 9;               // 主城：玩家名/城名
+	uint32 level = 10;             // 主城：主城建筑等级（BuildingDetail.Id=1），非角色等级
 }
 
 // 客户端上报视野中心（拖地图等）
@@ -120,7 +123,7 @@ message s2c_aoi_leave {
 	repeated int64 entityIds = 1;
 }
 
-// 实体更新（主要是 pos）
+// 实体更新（pos；主城改名/升级等）
 message s2c_aoi_update {
 	repeated p_aoi_entity entities = 1;
 }
@@ -129,6 +132,7 @@ message s2c_aoi_update {
 // 上限见 Global.Id=18（value1）；以格子坐标唯一，pos 用 Common.p_pos（int）
 message p_mark_info {
 	Common.p_pos pos = 1;
+	string name = 2;
 }
 
 // 请求全部标记
@@ -142,6 +146,7 @@ message s2c_req_mark_list {
 // 添加标记
 message c2s_add_mark {
 	Common.p_pos pos = 1;
+	string name = 2;
 }
 
 message s2c_add_mark {
