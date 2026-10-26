@@ -18,6 +18,10 @@ export interface MarchInfo {
 export interface WorldEntity {
     entityId: number | string; entityType: number; ownerId: number | string; cfgId: number;
     pos: WorldPosition; path: WorldPosition[]; startTime: number; endTime: number;
+    /** 主城的玩家名/城名；由 AOI enter/update 同步。其他实体可不填。 */
+    name?: string;
+    /** 主城建筑等级（BuildingDetail.Id=1），不是角色等级。 */
+    level?: number;
 }
 
 export default class WorldCommand extends ProtocolCommand {

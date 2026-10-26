@@ -109,6 +109,7 @@ export default class MapCityProxy {
         const validPos = (p: { x: number; y: number } | null | undefined) => !!p
             && Number.isInteger(p.x) && Number.isInteger(p.y) && p.x >= 0 && p.y >= 0
             && p.x < MapUtil.mapSize.width && p.y < MapUtil.mapSize.height;
+        const cityLevel = (level: number | undefined) => Number.isInteger(level) && level > 0 ? level : 0;
         this.myId = role?.userId || 0;
         this.myUnionId = role?.allianceId || 0;
         const next = new Map<string, MapCityData>();
@@ -121,16 +122,18 @@ export default class MapCityProxy {
             if (!this.worldCityIds.has(key)) this.worldCityIds.set(key, this.nextWorldCityId++);
             const city = new MapCityData();
             Object.assign(city, { cityId: this.worldCityIds.get(key), entityId: entity.entityId,
-                rid: entity.ownerId, x: entity.pos.x, y: entity.pos.y, name: '玩家主城', isMain: 1, fromWorld: true });
+                rid: entity.ownerId, x: entity.pos.x, y: entity.pos.y,
+                name: entity.name?.trim() || '玩家主城', level: cityLevel(entity.level), isMain: 1, fromWorld: true });
             city.id = MapUtil.getIdByCellPoint(city.x, city.y);
             next.set(key, city);
         }
         const ownPos = validPos(role?.cityPos) ? role.cityPos : ownEntity?.pos;
         if (validId(this.myId) && validPos(ownPos)) {
             const city = new MapCityData();
+            // 自己的城建快照优先；登录尚未收到 Build 时可直接使用 AOI 的建筑等级。
             Object.assign(city, { cityId: 1, entityId: ownEntity?.entityId || 0, rid: this.myId,
-                x: ownPos.x, y: ownPos.y, name: role?.name ? `${role.name}的主城` : '我的主城',
-                isMain: 1, level: mainLevel, unionId: this.myUnionId, fromWorld: true });
+                x: ownPos.x, y: ownPos.y, name: role?.name ? `${role.name}的主城` : ownEntity?.name?.trim() || '我的主城',
+                isMain: 1, level: cityLevel(mainLevel) || cityLevel(ownEntity?.level), unionId: this.myUnionId, fromWorld: true });
             city.id = MapUtil.getIdByCellPoint(city.x, city.y);
             next.set('own', city);
             this._myCitys = [city];

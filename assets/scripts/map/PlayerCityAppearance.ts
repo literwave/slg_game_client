@@ -16,7 +16,7 @@ export function playerCityFootprint(tileWidth: number, tileHeight: number): { wi
 }
 
 export function playerCityAppearance(level: number, tileWidth = 200, tileHeight = tileWidth / 2) {
-    // AOI 未提供其他玩家建筑等级时保持默认城图。
+    // 兼容未携带建筑等级的旧回包；新 AOI 按真实主城等级选择对应城图。
     const value = Number.isFinite(level) && level > 0
         ? Math.min(PLAYER_CITY_MAX_LEVEL, Math.max(1, Math.floor(level))) : 0;
     const [rawWidth, rawHeight] = IMAGE_SIZES[value];

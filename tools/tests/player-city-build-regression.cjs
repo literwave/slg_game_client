@@ -47,7 +47,7 @@ function harness(loadFacilities = true) {
     const role = { userId: uid, name: '长安', cityPos: { x: 12, y: 20 }, allianceId: otherUid };
     const balances = { resList: [1, 2, 3, 4, 100].map(k => ({ k, v: k === 100 ? 123 : 1000000 })) };
     const login = { proxy: { getRoleData: () => role, getRoleResData: () => balances, hasItemCount: () => false } };
-    class EmptyProxy { initData() {} clearData() {} }
+    class EmptyProxy { initData() {} clearData() {} updateMapPosTags() {} isPosTag() { return false; } }
     const actual = new Set(['utils/EventMgr', 'common/LogicEvent', 'config/ServerConfig', 'config/Basci',
         'network/pto/ProtoManager', 'network/pto/ProtocolCommand', 'network/pto/SnapshotStore', 'network/socket/NetInterface',
         'core/ConfigManager', 'world/WorldCommand', 'world/ResourceLand', 'build/BuildCommand', 'map/ui/BuildingPresentation',
@@ -56,6 +56,7 @@ function harness(loadFacilities = true) {
         'map/ui/FacilityItemLogic', 'map/ui/MapUILogic', 'scene/MapScene']);
     const stubs = {
         'login/LoginCommand': { default: { getInstance: () => login } },
+        'world/MapMarkCommand': { default: { getInstance: () => ({ marks: { values: () => [] } }) } },
         'utils/Tools': { Tools: { numberToShow: n => String(n) } },
         'utils/DateUtil': { default: { leftTimeStr: () => '00:01' } },
         'map/MapUtil': { default: util }, 'map/MapProxy': { default: EmptyProxy, MapResType: { WOOD: 52, GRAIN: 55, SYS_CITY: 51, SYS_FORTRESS: 50, FORTRESS: 30 } },
@@ -224,6 +225,64 @@ test('World 城池进入/更新/离开、自己的 AOI 离开不丢主城，迁�
     assert.ok(p.getCity(0)); assert.ok(p.getCity(1001)); assert.equal(p.getCity(999), undefined, '边界不能绕行到另一行');
     h.map.clearData(); assert.equal(p.getMyMainCity(), null); assert.equal(p.getCity(0), undefined);
 });
+test('AOI 名称和主城等级经真实编解码进入地图，改名升级原地刷新', () => {
+    const h = harness(), p = h.map.cityProxy;
+    const { playerCityAppearance } = h.load('map/PlayerCityAppearance');
+    const entity = { ...h.entity(), name: '洛阳城主', level: 3 };
+    const cell = util.getIdByCellPoint(entity.pos.x, entity.pos.y);
+    h.receive(h.S.s2c_aoi_enter, { entities: [entity] });
+    const initial = p.getCity(cell);
+    assert.equal(h.world.entities.get(entityId).name, '洛阳城主');
+    assert.equal(initial.name, '洛阳城主'); assert.equal(initial.level, 3);
+    assert.equal(playerCityAppearance(initial.level).art, 'player_city_lv3');
+    assert.equal(initial.entityId, entityId, '新增字段不能损失 int64 身份');
+
+    const layer = new (h.load('map/MapCityLogic').default)();
+    layer._cmd = h.map; layer._itemMap = new Map([[util.getAreaIdByCellPoint(45, 60), new Map()]]);
+    const refreshed = [], added = [], removed = [];
+    layer.updateItem = (area, city) => refreshed.push(city);
+    layer.addItem = (area, city) => added.push(city);
+    layer.removeItem = (area, id) => removed.push(id);
+    h.events.on(h.E.updateCitys, layer.onUpdateCitys, layer);
+    h.receive(h.S.s2c_aoi_update, { entities: [{ ...entity, name: '新洛阳', level: 30 }] });
+    const updated = p.getCity(cell);
+    assert.equal(updated.cityId, initial.cityId); assert.equal(updated.name, '新洛阳');
+    assert.equal(playerCityAppearance(updated.level).art, 'player_city_lv30');
+    assert.deepEqual(refreshed, [updated]); assert.equal(added.length, 0); assert.equal(removed.length, 0);
+    assert.equal(p.getCity(cell + 1), updated, '原有九格点击区域也引用新数据');
+    h.receive(h.S.s2c_aoi_update, { entities: [{ ...entity, name: '新洛阳', level: 30 }] });
+    assert.equal(refreshed.length, 1, '相同快照不重复刷新城图');
+
+    h.receive(h.S.s2c_aoi_leave, { entityIds: [entityId] }); assert.equal(p.getCity(cell), undefined);
+    h.receive(h.S.s2c_aoi_enter, { entities: [{ ...entity, name: '重返洛阳', level: 4 }] });
+    assert.equal(p.getCity(cell).cityId, initial.cityId); assert.equal(p.getCity(cell).name, '重返洛阳');
+    assert.equal(playerCityAppearance(p.getCity(cell).level).art, 'player_city_lv4');
+});
+
+test('AOI 兼容缺失名称等级，不使用 cfgId 或角色等级推断主城外观', () => {
+    const h = harness(), p = h.map.cityProxy;
+    const entity = { ...h.entity(), cfgId: 30, name: '  ', level: 0 };
+    h.role.level = 29;
+    h.receive(h.S.s2c_aoi_enter, { entities: [entity] });
+    const city = p.getCity(util.getIdByCellPoint(45, 60));
+    assert.equal(city.name, '玩家主城'); assert.equal(city.level, 0);
+    assert.equal(h.load('map/PlayerCityAppearance').playerCityAppearance(city.level).art, 'county');
+    h.receive(h.S.s2c_aoi_update, { entities: [h.entity()] });
+    assert.equal(p.getCity(city.id).name, '玩家主城'); assert.equal(p.getCity(city.id).level, 0);
+});
+
+test('自己的主城可先用 AOI 等级，收到 Build 后以城建快照为准', () => {
+    const h = harness(), p = h.map.cityProxy;
+    const own = { ...h.entity('9007199254740999', uid, 12, 20), name: '长安', level: 7 };
+    h.receive(h.S.s2c_aoi_enter, { entities: [own] });
+    assert.equal(p.getMyMainCity().level, 7); assert.equal(p.getMyMainCity().name, '长安的主城');
+    h.receive(h.S.s2c_sync_build, { bid: 1, level: 8 });
+    h.receive(h.S.s2c_aoi_update, { entities: [own] });
+    assert.equal(p.getMyMainCity().level, 8, '较晚的旧 AOI 不能覆盖新的城建推送');
+    h.receive(h.S.s2c_aoi_leave, { entityIds: [own.entityId] });
+    assert.equal(p.getMyMainCity().level, 8); assert.equal(p.getMyMainCity().name, '长安的主城');
+});
+
 test('拒绝非法 World 坐标和非城市实体，无坐标时不伪造主城', () => {
     const h = harness(); h.role.cityPos = null;
     h.receive(h.S.s2c_aoi_enter, { entities: [h.entity(entityId, otherUid, -1, 10), { ...h.entity('10'), entityType: 4 }] });
