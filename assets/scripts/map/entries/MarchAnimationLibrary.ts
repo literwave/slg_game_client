@@ -6,6 +6,8 @@ export const MARCH_DIRECTIONS = ['r', 'ru', 'u', 'lu', 'l', 'ld', 'd', 'rd'];
 export interface MarchAnimationSet {
     clips: AnimationClip[];
     idleFrames: SpriteFrame[];
+    /** 占领驻守时的举武器姿势；没有则退回 idleFrames。 */
+    guardFrames?: SpriteFrame[];
     mirrored: boolean[];
 }
 
@@ -77,9 +79,23 @@ export function loadMarchAnimations(kind: MarchUnitKind): Promise<MarchAnimation
         });
         // 每行最后一格是同一套装备的站姿；画布均为 256²，落脚线统一在距底边 18px。
         return { clips, idleFrames: directionalFrames.map(row => row[6]), mirrored: MIRRORED.slice() };
-    });
+    }).then((set: MarchAnimationSet) => loadGuardFrames(kind).then(guardFrames => {
+        set.guardFrames = guardFrames;
+        return set;
+    }, () => set));
     sets.set(kind, pending);
     // 同一图集加载失败只报告一次，避免每个队员重复刷屏；不自动重试或覆盖资源。
     void pending.catch(error => console.error('[MarchAnimation]', kind, error));
     return pending;
+}
+
+/** 占领中举武器防守姿势；图集 4×4，上两行骑将、下两行步兵，左右方向镜像。 */
+function loadGuardFrames(kind: MarchUnitKind): Promise<SpriteFrame[]> {
+    return loadSheet('ui/march/formation_idle_sheet', 4, 4).then(frames => {
+        const base = kind === 'cavalry' ? 0 : 8;
+        // 列约：侧、斜、正、斜；左侧方向走镜像。前半球用第二行。
+        const cols = [3, 2, 1, 2, 3, 2, 1, 2];
+        const front = [false, false, false, false, false, true, true, true];
+        return MARCH_DIRECTIONS.map((_, index) => frames[base + (front[index] ? 4 : 0) + cols[index]]);
+    });
 }

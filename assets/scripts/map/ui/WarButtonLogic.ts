@@ -1,4 +1,4 @@
-import { _decorator, Color, Component, Graphics, Node, Sprite } from 'cc';
+import { _decorator, Color, Component, Graphics, Node, Sprite, UITransform } from 'cc';
 const { ccclass, property } = _decorator;
 
 import BattleCommand from '../../battle/BattleCommand';
@@ -17,7 +17,14 @@ export default class WarButtonLogic extends Component {
         this.tipsNode = this.tipsNode || this.node.getChildByName('img_gem_21');
         if (this.tipsNode) {
             const sprite = this.tipsNode.getComponent(Sprite); if (sprite) sprite.enabled = false;
-            const g = this.tipsNode.getComponent(Graphics) || this.tipsNode.addComponent(Graphics);
+            // Sprite 与 Graphics 都是 UIRenderer，红点使用独立子节点。
+            let dot = this.tipsNode.getChildByName('UnreadDot');
+            if (!dot) {
+                dot = new Node('UnreadDot'); dot.layer = this.tipsNode.layer;
+                dot.addComponent(UITransform).setContentSize(12, 12);
+                this.tipsNode.addChild(dot);
+            }
+            const g = dot.getComponent(Graphics) || dot.addComponent(Graphics);
             g.clear(); g.fillColor = new Color(204, 56, 44); g.circle(0, 0, 5.5); g.fill();
             g.lineWidth = 1; g.strokeColor = new Color(248, 205, 148); g.circle(0, 0, 5.5); g.stroke();
         }

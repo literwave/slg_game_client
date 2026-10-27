@@ -9,6 +9,7 @@ import { AudioManager } from '../../common/AudioManager';
 import { itemName } from '../../common/ItemPresentation';
 import InventoryIconCache from '../../inventory/InventoryIconCache';
 import BattleReplayView from './BattleReplayView';
+import BattleReplayPaintedView from './BattleReplayPaintedView';
 import { reportUnitArt } from './ReportUnitArt';
 import { caption, headerRule, inkSurface, ManagementColors as C, panelButton, place } from './ManagementStyle';
 const { ccclass } = _decorator;
@@ -204,9 +205,24 @@ export default class BattleReportPanel extends Component {
         } else {
             const title = caption(root, 'Result', `${reportResult(brief.result)} · ${reportKind(brief)}`, 0, y - 16, width - 36, 23, brief.result === 1 ? WIN : LOSS);
             title.overflow = Label.Overflow.SHRINK; y -= 38;
-            caption(root, 'Date', reportTime(brief.time), -50, y - 14, width - 136, 13, C.muted);
-            const locate = this.button(root, 'Locate', () => { this.close(); EventMgr.emit(E.scrollToMap, brief.pos.x, brief.pos.y); });
-            panelButton(locate, '定位战场', width / 2 - 65, y - 14, 94, 28); locate.getComponent(Button).interactable = !!brief.pos;
+            const dateWidth=width-176;
+            caption(root, 'Date', reportTime(brief.time), -width/2+18+dateWidth/2, y-14, dateWidth, 13, C.muted);
+            const hasPosition=Number.isFinite(brief.pos?.x)&&Number.isFinite(brief.pos?.y);
+            const coordinates=this.button(root,'Coordinates',()=>{
+                if(!hasPosition)return;
+                this.close();EventMgr.emit(E.scrollToMap,brief.pos.x,brief.pos.y);
+            });
+            place(coordinates,width/2-82,y-14,128,32);
+            const link=caption(coordinates,'CoordinateText',hasPosition?`(${brief.pos.x}, ${brief.pos.y})`:'坐标未知',
+                0,0,128,14,hasPosition?C.gold:C.muted,Label.HorizontalAlign.RIGHT);
+            link.isUnderline=hasPosition;link.overflow=Label.Overflow.SHRINK;
+            const coordinateButton=coordinates.getComponent(Button);coordinateButton.interactable=hasPosition;
+            coordinateButton.target=link.node;coordinateButton.transition=Button.Transition.SCALE;
+            coordinateButton.zoomScale=.96;coordinateButton.duration=.08;
+            if(hasPosition){
+                coordinates.on(Node.EventType.MOUSE_ENTER,()=>link.color=C.text);
+                coordinates.on(Node.EventType.MOUSE_LEAVE,()=>link.color=C.gold);
+            }
             y -= 36;
             if (!info) {
                 y -= this.text(root, 'Loading', detailPending ? '正在加载战报详情…' : '详情暂未加载，请重试', y, width - 36, 15, C.muted) + 16;
@@ -221,14 +237,17 @@ export default class BattleReportPanel extends Component {
                         if (page === 'replay' && !replay) c.requestReplay(this.selected);
                         this.renderDetail();
                     });
-                    panelButton(tab, i ? '战斗回放' : '战况总览', (i - .5) * (width - 30) / 2, y - 17, (width - 38) / 2, 34, this.page === page);
+                    panelButton(tab, i ? '回合回放' : '战况总览', (i - .5) * (width - 30) / 2, y - 17, (width - 38) / 2, 34, this.page === page);
                 });
                 y -= 46;
                 if (this.page === 'summary') y = this.summary(root, info, y, width);
                 else if (replay) {
-                    const stage = this.nodeAt(root, 'ReplayStage'), player = stage.addComponent(BattleReplayView);
-                    const height = player.initialize(info, replay, width - 24, m.bodyHeight + y - 12);
-                    stage.setPosition(0, y - height / 2); y -= height;
+                    const stage=this.nodeAt(root,'ReplayStage'),player=stage.addComponent(BattleReplayView);
+                    const openBattlefield=BattleReplayPaintedView.supports(info)?()=>{
+                        player.pause();AudioManager.instance.playClick();BattleReplayPaintedView.open(this.safe,info,replay);
+                    }:undefined;
+                    const height=player.initialize(info,replay,width-24,m.bodyHeight+y-18,openBattlefield);
+                    stage.setPosition(0,y-height/2);y-=height;
                 } else {
                     y -= this.text(root, 'ReplayLoading', replayPending ? '正在加载回合记录…' : '回合记录暂未加载', y, width - 36, 15, C.muted) + 14;
                     if (!replayPending) {

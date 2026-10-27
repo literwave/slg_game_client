@@ -1,8 +1,31 @@
-import { _decorator, JsonAsset } from 'cc';
+import { JsonAsset, resources } from 'cc';
 
 export default class ConfigManager {
     private static _instance: ConfigManager = null;
     private _configs: { [key: string]: any } = {};
+    private _pendingConfigs = new Map<string, Promise<void>>();
+
+    /** 独立打开的功能也等待所需配置，不依赖主界面的初始化时序。 */
+    async ensureConfigs(names: string[]): Promise<void> {
+        await Promise.all(names.map(name => {
+            if (this._configs[name]) return Promise.resolve();
+            const pending = this._pendingConfigs.get(name);
+            if (pending) return pending;
+            const request = new Promise<void>((resolve, reject) => {
+                resources.load(`config/${name}`, JsonAsset, (error, asset) => {
+                    if (error) { reject(error); return; }
+                    if (!asset?.json) { reject(new Error(`配置 ${name} 内容为空`)); return; }
+                    this._configs[name] = asset.json;
+                    resolve();
+                });
+            }).then(() => { this._pendingConfigs.delete(name); }, error => {
+                this._pendingConfigs.delete(name);
+                throw error;
+            });
+            this._pendingConfigs.set(name, request);
+            return request;
+        }));
+    }
 
     public static getInstance(): ConfigManager {
         if (!ConfigManager._instance) {

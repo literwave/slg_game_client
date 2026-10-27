@@ -10,6 +10,7 @@ interface Member {
     node: Node; animation: Animation; lag: number; side: number;
     sprite: Sprite; animations?: MarchAnimationSet;
     clip: string; moving: boolean; dustPhase: number; facing: number;
+    guardPose: boolean;
     foot?: Vec2;
     arrivalFoot?: Vec2;
 }
@@ -32,6 +33,7 @@ export default class MarchFormation {
     private dust: Graphics;
     private dustElapsed = 0;
     private dustVisible = false;
+    private guarding = false;
 
     constructor(private host: Node) {
         this.root = new Node('MarchFormation');
@@ -64,6 +66,14 @@ export default class MarchFormation {
         }
     }
 
+    /** 占领倒计时期间举起兵器防守；行军途中不生效。 */
+    setGuarding(on: boolean): void {
+        if (this.guarding === on) return;
+        this.guarding = on;
+        this.root.setPosition(on ? 22 : 0, on ? -10 : 0, 0);
+        for (const member of this.members) this.applyPose(member, member.moving);
+    }
+
     private addMember(name: string, kind: MarchUnitKind, lag: number, side: number, size: number): void {
         const node = new Node(name); node.layer = this.host.layer; this.root.addChild(node);
         const shadow = new Node('GroundShadow'); shadow.layer = node.layer; node.addChild(shadow);
@@ -82,7 +92,7 @@ export default class MarchFormation {
         const animation = body.addComponent(Animation);
         body.active = false;
         const member: Member = { node, animation, sprite, lag, side, clip: '', moving: false,
-            facing: 7, dustPhase: this.members.length * .097 };
+            facing: 7, guardPose: false, dustPhase: this.members.length * .097 };
         this.members.push(member);
         const revision = this.revision;
         void loadMarchAnimations(kind).then(animations => {
@@ -191,6 +201,7 @@ export default class MarchFormation {
         const changedClip = member.clip !== clip;
         if (changedClip) member.sprite.node.setScale(animations.mirrored[member.facing] ? -1 : 1, 1, 1);
         if (moving) {
+            member.guardPose = false;
             if (changedClip || changed) {
                 member.animation.play(clip);
                 // 由队列统一采样，避免每个 Animation 各自累计时间造成错拍。
@@ -201,9 +212,13 @@ export default class MarchFormation {
                 state.time = this.gaitTime % state.duration;
                 state.sample();
             }
-        } else if (changedClip || changed) {
+        } else if (changedClip || changed || member.guardPose !== this.guarding) {
             member.animation.stop();
-            member.sprite.spriteFrame = animations.idleFrames[member.facing];
+            member.guardPose = this.guarding;
+            const frames = this.guarding && animations.guardFrames?.length
+                ? animations.guardFrames : animations.idleFrames;
+            member.sprite.spriteFrame = frames[member.facing] || animations.idleFrames[member.facing];
+            member.sprite.node.setScale(animations.mirrored[member.facing] ? -1 : 1, 1, 1);
         }
         member.clip = clip;
     }

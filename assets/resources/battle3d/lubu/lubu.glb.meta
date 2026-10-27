@@ -1,0 +1,564 @@
+{
+  "ver": "2.3.14",
+  "importer": "gltf",
+  "imported": true,
+  "uuid": "65135491-a8bf-4076-9c06-98b2a775009f",
+  "files": [
+    "__original-animation-0.bin",
+    "__original-animation-1.bin",
+    "__original-animation-2.bin",
+    "__original-animation-3.bin",
+    "__original-animation-4.bin",
+    "__original-animation-5.bin"
+  ],
+  "subMetas": {
+    "36706": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@36706",
+      "displayName": "",
+      "id": "36706",
+      "name": "Dark leather.material",
+      "userData": {
+        "gltfIndex": 3
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "57146": {
+      "importer": "gltf-animation",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@57146",
+      "displayName": "",
+      "id": "57146",
+      "name": "Walk.animation",
+      "userData": {
+        "gltfIndex": 5,
+        "wrapMode": 2,
+        "sample": 30,
+        "span": {
+          "from": 0,
+          "to": 1.3666666746139526
+        },
+        "events": []
+      },
+      "ver": "1.0.18",
+      "imported": true,
+      "files": [
+        ".bin"
+      ],
+      "subMetas": {}
+    },
+    "98038": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@98038",
+      "displayName": "",
+      "id": "98038",
+      "name": "Charcoal undercoat.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "b2dff": {
+      "importer": "gltf-mesh",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@b2dff",
+      "displayName": "",
+      "id": "b2dff",
+      "name": "Quilted torso.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 95189
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "2cd1c": {
+      "importer": "gltf-animation",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@2cd1c",
+      "displayName": "",
+      "id": "2cd1c",
+      "name": "Attack.animation",
+      "userData": {
+        "gltfIndex": 0,
+        "wrapMode": 2,
+        "sample": 30,
+        "span": {
+          "from": 0,
+          "to": 1.3333333730697632
+        },
+        "events": []
+      },
+      "ver": "1.0.18",
+      "imported": true,
+      "files": [
+        ".bin"
+      ],
+      "subMetas": {}
+    },
+    "ca7e4": {
+      "importer": "gltf-animation",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@ca7e4",
+      "displayName": "",
+      "id": "ca7e4",
+      "name": "Death.animation",
+      "userData": {
+        "gltfIndex": 1,
+        "wrapMode": 2,
+        "sample": 30,
+        "span": {
+          "from": 0,
+          "to": 1.5
+        },
+        "events": []
+      },
+      "ver": "1.0.18",
+      "imported": true,
+      "files": [
+        ".bin"
+      ],
+      "subMetas": {}
+    },
+    "6c2ab": {
+      "importer": "gltf-animation",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@6c2ab",
+      "displayName": "",
+      "id": "6c2ab",
+      "name": "Hit.animation",
+      "userData": {
+        "gltfIndex": 2,
+        "wrapMode": 2,
+        "sample": 30,
+        "span": {
+          "from": 0,
+          "to": 0.8333333134651184
+        },
+        "events": []
+      },
+      "ver": "1.0.18",
+      "imported": true,
+      "files": [
+        ".bin"
+      ],
+      "subMetas": {}
+    },
+    "c2696": {
+      "importer": "gltf-animation",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@c2696",
+      "displayName": "",
+      "id": "c2696",
+      "name": "Idle.animation",
+      "userData": {
+        "gltfIndex": 3,
+        "wrapMode": 2,
+        "sample": 30,
+        "span": {
+          "from": 0,
+          "to": 3.0333333015441895
+        },
+        "events": []
+      },
+      "ver": "1.0.18",
+      "imported": true,
+      "files": [
+        ".bin"
+      ],
+      "subMetas": {}
+    },
+    "060ca": {
+      "importer": "gltf-animation",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@060ca",
+      "displayName": "",
+      "id": "060ca",
+      "name": "Salute.animation",
+      "userData": {
+        "gltfIndex": 4,
+        "wrapMode": 2,
+        "sample": 30,
+        "span": {
+          "from": 0,
+          "to": 2.3333332538604736
+        },
+        "events": []
+      },
+      "ver": "1.0.18",
+      "imported": true,
+      "files": [
+        ".bin"
+      ],
+      "subMetas": {}
+    },
+    "592e8": {
+      "importer": "gltf-skeleton",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@592e8",
+      "displayName": "",
+      "id": "592e8",
+      "name": "Lubu.skeleton",
+      "userData": {
+        "gltfIndex": 0,
+        "jointsLength": 23
+      },
+      "ver": "1.0.1",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "c2347": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@c2347",
+      "displayName": "",
+      "id": "c2347",
+      "name": "Warm olive skin.material",
+      "userData": {
+        "gltfIndex": 1
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "e4a9e": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@e4a9e",
+      "displayName": "",
+      "id": "e4a9e",
+      "name": "Oxblood silk.material",
+      "userData": {
+        "gltfIndex": 2
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "efb66": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@efb66",
+      "displayName": "",
+      "id": "efb66",
+      "name": "Blued iron.material",
+      "userData": {
+        "gltfIndex": 4
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "d0725": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@d0725",
+      "displayName": "",
+      "id": "d0725",
+      "name": "Antique brass.material",
+      "userData": {
+        "gltfIndex": 5
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f7e62": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@f7e62",
+      "displayName": "",
+      "id": "f7e62",
+      "name": "Recessed brass.material",
+      "userData": {
+        "gltfIndex": 6
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "3e8d9": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@3e8d9",
+      "displayName": "",
+      "id": "3e8d9",
+      "name": "Ivory sclera.material",
+      "userData": {
+        "gltfIndex": 7
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "35b40": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@35b40",
+      "displayName": "",
+      "id": "35b40",
+      "name": "Brown iris.material",
+      "userData": {
+        "gltfIndex": 8
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "75ce1": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@75ce1",
+      "displayName": "",
+      "id": "75ce1",
+      "name": "Black hair.material",
+      "userData": {
+        "gltfIndex": 9
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "05721": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@05721",
+      "displayName": "",
+      "id": "05721",
+      "name": "Facial creases.material",
+      "userData": {
+        "gltfIndex": 10
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "22b4a": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@22b4a",
+      "displayName": "",
+      "id": "22b4a",
+      "name": "Natural lips.material",
+      "userData": {
+        "gltfIndex": 11
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "4531c": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@4531c",
+      "displayName": "",
+      "id": "4531c",
+      "name": "Pheasant bronze.material",
+      "userData": {
+        "gltfIndex": 12
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "b1158": {
+      "importer": "gltf-material",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@b1158",
+      "displayName": "",
+      "id": "b1158",
+      "name": "Brushed blade steel.material",
+      "userData": {
+        "gltfIndex": 13
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "fd1d9": {
+      "importer": "gltf-scene",
+      "uuid": "65135491-a8bf-4076-9c06-98b2a775009f@fd1d9",
+      "displayName": "",
+      "id": "fd1d9",
+      "name": "lubu.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "animationImportSettings": [
+      {
+        "name": "Attack",
+        "duration": 1.3333333730697632,
+        "fps": 30,
+        "splits": [
+          {
+            "name": "Attack",
+            "from": 0,
+            "to": 1.3333333730697632,
+            "wrapMode": 2,
+            "previousId": "2cd1c"
+          }
+        ]
+      },
+      {
+        "name": "Death",
+        "duration": 1.5,
+        "fps": 30,
+        "splits": [
+          {
+            "name": "Death",
+            "from": 0,
+            "to": 1.5,
+            "wrapMode": 2,
+            "previousId": "ca7e4"
+          }
+        ]
+      },
+      {
+        "name": "Hit",
+        "duration": 0.8333333134651184,
+        "fps": 30,
+        "splits": [
+          {
+            "name": "Hit",
+            "from": 0,
+            "to": 0.8333333134651184,
+            "wrapMode": 2,
+            "previousId": "6c2ab"
+          }
+        ]
+      },
+      {
+        "name": "Idle",
+        "duration": 3.0333333015441895,
+        "fps": 30,
+        "splits": [
+          {
+            "name": "Idle",
+            "from": 0,
+            "to": 3.0333333015441895,
+            "wrapMode": 2,
+            "previousId": "c2696"
+          }
+        ]
+      },
+      {
+        "name": "Salute",
+        "duration": 2.3333332538604736,
+        "fps": 30,
+        "splits": [
+          {
+            "name": "Salute",
+            "from": 0,
+            "to": 2.3333332538604736,
+            "wrapMode": 2,
+            "previousId": "060ca"
+          }
+        ]
+      },
+      {
+        "name": "Walk",
+        "duration": 1.3666666746139526,
+        "fps": 30,
+        "splits": [
+          {
+            "name": "Walk",
+            "from": 0,
+            "to": 1.3666666746139526,
+            "wrapMode": 2,
+            "previousId": "57146"
+          }
+        ]
+      }
+    ],
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "65135491-a8bf-4076-9c06-98b2a775009f@b2dff"
+      ],
+      "skeletons": [
+        "65135491-a8bf-4076-9c06-98b2a775009f@592e8"
+      ],
+      "textures": [],
+      "materials": [
+        "65135491-a8bf-4076-9c06-98b2a775009f@98038",
+        "65135491-a8bf-4076-9c06-98b2a775009f@c2347",
+        "65135491-a8bf-4076-9c06-98b2a775009f@e4a9e",
+        "65135491-a8bf-4076-9c06-98b2a775009f@36706",
+        "65135491-a8bf-4076-9c06-98b2a775009f@efb66",
+        "65135491-a8bf-4076-9c06-98b2a775009f@d0725",
+        "65135491-a8bf-4076-9c06-98b2a775009f@f7e62",
+        "65135491-a8bf-4076-9c06-98b2a775009f@3e8d9",
+        "65135491-a8bf-4076-9c06-98b2a775009f@35b40",
+        "65135491-a8bf-4076-9c06-98b2a775009f@75ce1",
+        "65135491-a8bf-4076-9c06-98b2a775009f@05721",
+        "65135491-a8bf-4076-9c06-98b2a775009f@22b4a",
+        "65135491-a8bf-4076-9c06-98b2a775009f@4531c",
+        "65135491-a8bf-4076-9c06-98b2a775009f@b1158"
+      ],
+      "scenes": [
+        "65135491-a8bf-4076-9c06-98b2a775009f@fd1d9"
+      ]
+    }
+  }
+}

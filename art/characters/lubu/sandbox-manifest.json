@@ -1,0 +1,12 @@
+[
+  {
+    "name": "commander",
+    "triangles": 11215,
+    "materials": 1
+  },
+  {
+    "name": "infantry",
+    "triangles": 1633,
+    "materials": 1
+  }
+]

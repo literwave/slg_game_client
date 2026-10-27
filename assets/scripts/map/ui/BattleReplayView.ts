@@ -23,15 +23,19 @@ export default class BattleReplayView extends Component {
     private narration: Label;
     private progress: Graphics;
     private toggle: Node;
+    private restartButton: Node;
     private speedButton: Node;
+    private controlsCenterX = 0;
     private width = 600;
     private fieldHeight = 292;
 
-    public initialize(info: ReportInfo, replay: any, width: number, availableHeight = 450): number {
+    public initialize(info: ReportInfo, replay: any, width: number, availableHeight = 450, openBattlefield?: () => void): number {
         this.width = width; this.replay = new ReportReplay(info, replay.actions || []);
         const n = Math.max(info.atkSide?.units?.length || 0, info.defSide?.units?.length || 0, 3);
-        const height = Math.max(320, availableHeight, 174 + n * 44);
-        this.fieldHeight = height - 134;
+        const extraRow = openBattlefield && width < 520 ? 44 : 0;
+        const height = Math.max(availableHeight, 174 + n * 44 + extraRow);
+        this.fieldHeight = height - 134 - extraRow;
+        this.controlsCenterX = openBattlefield && !extraRow ? -105 : 0;
         const rowHeight = (this.fieldHeight - 40) / n, cardHeight = Math.min(72, rowHeight - 6);
         place(this.node, 0, 0, width, height);
         inkSurface(this.node, 'Battlefield', width, height, new Color(26, 34, 29), C.line);
@@ -50,9 +54,10 @@ export default class BattleReplayView extends Component {
                 const imageSize = Math.min(width < 380 ? 34 : 48, cardHeight - 10);
                 reportUnitArt(cell, side, unit, -cellW / 2 + imageSize / 2 + 7, 2, imageSize);
                 const textW = cellW - imageSize - 22, tx = (imageSize + 8) / 2;
-                const name = caption(cell, 'Name', reportUnitName(side, unit), tx, cardHeight / 2 - 12, textW, 14); name.overflow = Label.Overflow.SHRINK;
-                const count = caption(cell, 'Soldiers', String(unit.beforeSoldier?.count || 0), tx, cardHeight / 2 - 29, textW, 12, C.muted);
-                const barNode = new Node('Health'); barNode.layer = cell.layer; cell.addChild(barNode); place(barNode, tx, -cardHeight / 2 + 6, textW, 4);
+                const compact = cardHeight < 48;
+                const name = caption(cell, 'Name', reportUnitName(side, unit), tx, cardHeight / 2 - (compact ? 10 : 12), textW, compact ? 13 : 14); name.overflow = Label.Overflow.SHRINK;
+                const count = caption(cell, 'Soldiers', String(unit.beforeSoldier?.count || 0), tx, cardHeight / 2 - (compact ? 24 : 29), textW, compact ? 11 : 12, C.muted);
+                const barNode = new Node('Health'); barNode.layer = cell.layer; cell.addChild(barNode); place(barNode, tx, -cardHeight / 2 + (compact ? 4 : 6), textW, 4);
                 const bar = barNode.addComponent(Graphics);
                 const hit = caption(cell, 'Hit', '', 0, 4, cellW, 23, DEF, Label.HorizontalAlign.CENTER); hit.isBold = true;
                 this.views.set(`${sideIndex + 1}:${unit.pos}`, { node: cell, homeX: x, homeY: y, bar, count, hit,
@@ -61,24 +66,38 @@ export default class BattleReplayView extends Component {
         });
         this.trail = this.make('AttackTrail').addComponent(Graphics);
         const bottom = -height / 2;
-        this.status = caption(this.node, 'Round', '', 0, bottom + 118, width - 28, 13, C.gold, Label.HorizontalAlign.CENTER);
-        this.narration = caption(this.node, 'Narration', this.replay.actions.length ? '双方列阵，准备交锋' : '本次战斗暂无回放记录', 0, bottom + 83, width - 28, 13, C.text, Label.HorizontalAlign.CENTER);
+        this.status = caption(this.node, 'Round', '', 0, bottom + 118 + extraRow, width - 28, 13, C.gold, Label.HorizontalAlign.CENTER);
+        this.narration = caption(this.node, 'Narration', this.replay.actions.length ? '双方列阵，准备交锋' : '本次战斗暂无回放记录', 0, bottom + 83 + extraRow, width - 28, 13, C.text, Label.HorizontalAlign.CENTER);
         this.narration.enableWrapText = true; this.narration.overflow = Label.Overflow.SHRINK; this.narration.node.getComponent(UITransform).height = 40;
-        this.progress = this.make('Progress').addComponent(Graphics); this.progress.node.setPosition(0, bottom + 58);
-        this.toggle = this.button('Play', () => { if (this.replay.finished) this.restart(); else { this.playing = !this.playing; this.controls(); } });
+        this.progress = this.make('Progress').addComponent(Graphics); this.progress.node.setPosition(0, bottom + 58 + extraRow);
+        this.toggle = this.button('Play', () => { if (this.replay.finished&&!this.action) this.restart(); else { this.playing = !this.playing; this.controls(); } });
         this.speedButton = this.button('Speed', () => { this.speed = this.speed === 4 ? 1 : this.speed * 2; this.controls(); });
-        const restart = this.button('Restart', () => this.restart());
-        panelButton(this.toggle, '播放', -92, bottom + 27, 92, 34, true);
-        panelButton(this.speedButton, '1×', 4, bottom + 27, 72, 34);
-        panelButton(restart, '重播', 92, bottom + 27, 92, 34);
+        this.restartButton = this.button('Restart', () => this.restart());
+        panelButton(this.toggle, '播放', -92, bottom + 27 + extraRow, 92, 34, true);
+        panelButton(this.speedButton, '1×', 4, bottom + 27 + extraRow, 72, 34);
+        panelButton(this.restartButton, '重播', 92 + this.controlsCenterX, bottom + 27 + extraRow, 92, 34);
+        if (openBattlefield) {
+            const launch = this.button('OpenPaintedReplay', openBattlefield);
+            panelButton(launch, '观看战场回放', extraRow ? 0 : width / 2 - 102, bottom + 27, 174, 34, true);
+            launch.getComponent(Button).interactable = this.replay.actions.length > 0;
+            launch.getComponentInChildren(Label).node.setPosition(10, 0);
+            const icon = new Node('PlayIcon'); icon.layer = launch.layer; launch.addChild(icon); icon.addComponent(UITransform);
+            const g = icon.addComponent(Graphics); g.fillColor = C.text;
+            g.moveTo(-65, -5); g.lineTo(-65, 5); g.lineTo(-57, 0); g.close(); g.fill();
+        }
         this.paint(); this.controls();
         return height;
     }
     private make(name: string): Node { const node = new Node(name); node.layer = this.node.layer; node.addComponent(UITransform); this.node.addChild(node); return node; }
     private button(name: string, callback: () => void): Node { const node = this.make(name); node.addComponent(Button); node.on(Button.EventType.CLICK, callback, this); return node; }
+    public pause():void { this.playing=false;if(this.toggle)this.controls(); }
     private restart(): void { this.replay.reset(); this.action = null; this.phase = 1; this.elapsed = 0; this.playing = true; this.resetAnimation(); this.paint(); this.controls(); }
     private controls(): void {
-        this.toggle.getComponentInChildren(Label).string = this.replay.finished ? '重播' : this.playing ? '暂停' : '播放';
+        const finished=this.replay.finished&&!this.action;
+        this.restartButton.active=!finished;
+        this.toggle.setPosition(this.controlsCenterX+(finished?-42:-92),this.toggle.position.y);
+        this.speedButton.setPosition(this.controlsCenterX+(finished?52:4),this.speedButton.position.y);
+        this.toggle.getComponentInChildren(Label).string = finished ? '重播' : this.playing ? '暂停' : '播放';
         this.toggle.getComponent(Button).interactable = this.replay.actions.length > 0;
         this.speedButton.getComponentInChildren(Label).string = `${this.speed}×`;
     }
@@ -90,7 +109,7 @@ export default class BattleReplayView extends Component {
         const step = Math.min(dt, .1) * this.speed; this.elapsed += step;
         if (!this.action || this.elapsed >= .86) {
             this.resetAnimation();
-            if (this.replay.finished) { this.playing = false; this.narration.string = `${reportResult(this.replay.info.brief.result)} · 战斗结束`; this.controls(); return; }
+            if (this.replay.finished) { this.playing = false;this.action=null; this.narration.string = `${reportResult(this.replay.info.brief.result)} · 战斗结束`; this.controls(); return; }
             this.elapsed = 0; this.phase = 0; this.impactApplied = false; this.action = this.replay.step();
             this.narration.string = replayLines(this.action, this.replay.info).join('  ');
         }

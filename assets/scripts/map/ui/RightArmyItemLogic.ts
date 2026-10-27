@@ -65,9 +65,15 @@ export default class RightArmyItemLogic extends Component {
             if (this.labelPos && world.isTroopAtHome(this._troop.troopIdx)) {
                 this.labelPos.string = this._troop.getHeroCount() ? '主城待命' : '尚未编队';
             } else if (march && this.labelPos) {
-                this.labelPos.string = march.state === 1
-                    ? `${march.targetType === MarchTargetType.ReturnCity ? '回城' : march.targetType === MarchTargetType.Move ? '移动' : '行军'} ${DateUtil.converSecondStr(Math.max(0, march.endTime * 1000 - DateUtil.getServerTime()))}`
-                    : `驻留 (${march.endPos.x}, ${march.endPos.y})`;
+                const left = Math.max(0, march.endTime * 1000 - DateUtil.getServerTime());
+                if (march.targetType === MarchTargetType.OccupyResource && march.state === 2 && left > 0) {
+                    this.labelPos.string = `占领中 ${DateUtil.converSecondStr(left)}`;
+                } else if (march.state === 1) {
+                    this.labelPos.string = `${march.targetType === MarchTargetType.ReturnCity ? '回城'
+                        : march.targetType === MarchTargetType.Move ? '移动' : '行军'} ${DateUtil.converSecondStr(left)}`;
+                } else {
+                    this.labelPos.string = `驻留 (${march.endPos.x}, ${march.endPos.y})`;
+                }
             }
         }
         if (this._data && (this._data.state > 0 || this._data.cmd == ArmyCmd.Reclaim)) {
@@ -181,7 +187,10 @@ export default class RightArmyItemLogic extends Component {
         const order = this.order || this._data?.order || 0;
         const hasHeroes = this._troop ? this._troop.getSortedHeroes().length > 0 : !!this._firstGeneral;
         const world = WorldCommand.getInstance(), march = this._troop && world.marches.get(this._troop.troopIdx);
+        const occupyLeft = march && march.targetType === MarchTargetType.OccupyResource && march.state === 2
+            && march.endTime * 1000 > DateUtil.getServerTime();
         const troopState = !hasHeroes ? '待配置' : !march || world.isTroopAtHome(this._troop.troopIdx) ? '待命'
+            : occupyLeft ? '占领中'
             : march.state === 1 ? (march.targetType === MarchTargetType.ReturnCity ? '回城中' : '行军中') : '驻留';
         const state = this._data ? ArmyCommand.getInstance().getArmyStateDes(this._data).replace(/[\[\]【】]/g, '') : troopState;
         drawCommandRow(top, !!this.bottomNode?.active, true);

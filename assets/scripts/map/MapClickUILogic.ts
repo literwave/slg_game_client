@@ -397,29 +397,69 @@ export default class MapClickUILogic extends Component {
         this.layoutPanel();
     }
 
-    /** 归属只读取 AOI ownerId，不把行军到达或本地倒计时当作占领成功。 */
+    /** 占领中只认到达后的倒计时；归属仍只认倒计时结束后的 AOI ownerId。 */
     private updateWorldResourceInfo(): void {
         const empty = !!this._data?.isEmpty;
         if ((!empty && !isResourceLandCell(this._data)) || this._data instanceof MapCityData) return;
         const world = WorldCommand.getInstance();
         const entity = world.resourceLandAt(this._data.x, this._data.y);
         const userId = LoginCommand.getInstance().proxy.getRoleData()?.userId;
-        const mine = entity && hasId(userId) && idKey(entity.ownerId) === idKey(userId);
-        const other = entity && hasId(entity.ownerId) && !mine;
-        this.labelUnion.string = other ? '其他玩家领地' : mine ? '己方领地 · 已占领' : '未占领';
+        const entityId = world.resourceLandEntityId(this._data.x, this._data.y);
+        const march = world.marches.values().find(m => m.targetType === MarchTargetType.OccupyResource
+            && idKey(m.targetId) === idKey(entityId));
+        const now = DateUtil.getServerTime() / 1000;
+        const countdown = world.occupyCountdownAt(this._data.x, this._data.y, now);
+        const occupying = !!countdown;
+        const marching = march?.state === 1;
+        const mine = !occupying && entity && hasId(userId) && idKey(entity.ownerId) === idKey(userId);
+        const other = entity && hasId(entity.ownerId) && !mine && !occupying;
+        this.labelUnion.string = occupying ? '占领中' : other ? '其他玩家领地' : mine ? '己方领地 · 已占领' : '未占领';
         this.labelLunxian.string = '';
-        this.btnOccupy.node.active = !other;
+        this.btnOccupy.node.active = !other && !occupying && !marching;
         if (empty && !mine && !other) {
             this.labelName.string = '空地';
             this.labelYield.string = '无资源产出';
         }
+        this.unschedule(this.tickOccupyCountdown);
+        if (occupying) {
+            this.paintOccupyCountdown(countdown, march?.troopIdx);
+            this.schedule(this.tickOccupyCountdown, .2);
+        } else if (mine) this.labelSoldierCnt.string = empty ? '选择部队驻守' : '选择部队采集';
+        else if (marching) this.labelSoldierCnt.string = `部队${march.troopIdx} · 出征中`;
+        else if (march) this.labelSoldierCnt.string = `部队${march.troopIdx}已到达`;
+        else this.labelSoldierCnt.string = empty ? '选择部队出征占领' : '选择部队出征，战斗胜利后占领';
+        if (!occupying && this.durableNode) {
+            // 资源地点开时耐久条不显示；占领读条复用同一节点。
+            if (!(this._data instanceof MapBuildData) && !(this._data instanceof MapCityData)) {
+                this.durableNode.active = false;
+            }
+        }
+    }
+
+    private tickOccupyCountdown = (): void => {
+        if (!this._data || this._data instanceof MapCityData) { this.unschedule(this.tickOccupyCountdown); return; }
+        const world = WorldCommand.getInstance();
+        const now = DateUtil.getServerTime() / 1000;
+        const countdown = world.occupyCountdownAt(this._data.x, this._data.y, now);
+        if (!countdown) { this.updateWorldResourceInfo(); this.layoutPanel(); return; }
         const entityId = world.resourceLandEntityId(this._data.x, this._data.y);
         const march = world.marches.values().find(m => m.targetType === MarchTargetType.OccupyResource
             && idKey(m.targetId) === idKey(entityId));
-        if (mine) this.labelSoldierCnt.string = empty ? '选择部队驻守' : '选择部队采集';
-        else if (march) this.labelSoldierCnt.string = march.state === 1 ? `部队${march.troopIdx} · 出征占领中`
-            : `部队${march.troopIdx}已到达 · 等待服务端结算`;
-        else this.labelSoldierCnt.string = empty ? '选择部队出征占领' : '选择部队出征，战斗胜利后占领';
+        this.paintOccupyCountdown(countdown, march?.troopIdx);
+    };
+
+    private paintOccupyCountdown(countdown: { startTime: number; endTime: number }, troopIdx?: number): void {
+        const now = DateUtil.getServerTime() / 1000;
+        const left = Math.max(0, countdown.endTime - now);
+        const span = Math.max(.001, countdown.endTime - countdown.startTime);
+        const who = troopIdx ? `部队${troopIdx} · ` : '';
+        this.labelSoldierCnt.string = `${who}占领倒计时 ${DateUtil.converSecondStr(left * 1000)}`;
+        if (this.durableNode && this.progressBarDurable && this.labelDurable) {
+            this.durableNode.active = true;
+            this.progressBarDurable.node.active = true;
+            this.progressBarDurable.progress = Math.min(1, Math.max(0, (now - countdown.startTime) / span));
+            this.labelDurable.string = DateUtil.converSecondStr(left * 1000);
+        }
     }
 
     private layoutPanel(): void {

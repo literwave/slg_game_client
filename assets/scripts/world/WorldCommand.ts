@@ -126,6 +126,30 @@ export default class WorldCommand extends ProtocolCommand {
         const matches = Array.from(this.entities.values()).filter(e => e.entityType === 4 && e.pos?.x === x && e.pos?.y === y);
         return matches.length === 1 ? matches[0] : undefined;
     }
+    /**
+     * 击败守卫后的占领倒计时（Global.Id=19）。
+     * 以资源地 AOI 的 startTime/endTime 为准；行军仍驻留且 state=2 时也可读到。
+     * 行军途中（state=1）不算占领中。
+     */
+    occupyCountdownAt(x: number, y: number, nowSec: number): { startTime: number; endTime: number } | null {
+        if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isFinite(nowSec)) return null;
+        const active = (start: number, end: number) =>
+            Number.isFinite(start) && Number.isFinite(end) && end > start && end > nowSec;
+        const entity = this.resourceLandAt(x, y);
+        if (entity && active(entity.startTime, entity.endTime)) {
+            return { startTime: entity.startTime, endTime: entity.endTime };
+        }
+        const entityId = this.resourceLandEntityId(x, y);
+        for (const march of this.marches.values()) {
+            if (march.targetType !== MarchTargetType.OccupyResource || march.state !== 2) continue;
+            const sameCell = Math.round(march.endPos?.x) === x && Math.round(march.endPos?.y) === y;
+            if (!sameCell && idKey(march.targetId) !== idKey(entityId)) continue;
+            if (active(march.startTime, march.endTime)) {
+                return { startTime: march.startTime, endTime: march.endTime };
+            }
+        }
+        return null;
+    }
     resourceLandIssue(x: number, y: number, mapType: number, level: number): string {
         const cfg = resourceLandForCell(mapType, level);
         if (!cfg) return mapType === 54 ? '石料资源配置尚未同步，请稍后重试' : '资源地配置尚未同步，请稍后重试';

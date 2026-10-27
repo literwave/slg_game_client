@@ -1,0 +1,146 @@
+{
+  "style": "手绘三国 2.5D 分层角色",
+  "reference": "assets/resources/ui/battle_replay/painted/motion_lubu.png",
+  "basePrompt": "Edit the supplied character-parts atlas into a NEW Three Kingdoms hero atlas for the character below. Use the supplied atlas ONLY for its polished hand-painted Chinese miniature/chibi strategy-game style: bold clean dark contours, detailed cloth folds and layered armor, shaded painted volumes, slightly large expressive head. Keep real transparent alpha, no background, no ground, no cast shadows, no words, no labels, no watermark. NOT an assembled full-body character: this must be a production CUTOUT RIG parts sheet.\n\nSTRICT layout: 4 equal columns x 3 equal rows, horizontal image about 1536x1152. Ten individually isolated parts, centered inside their OWN cells, with generous transparent margin between cells. Row1: [headless sleeveless TORSO including belt and short tunic/skirt, HEAD including hair/headdress, FAR UPPER ARM, FAR FOREARM with CLOSED HAND]. Row2: [NEAR UPPER ARM, NEAR FOREARM with CLOSED HAND, FAR WHOLE LEG with boot, NEAR WHOLE LEG with boot]. Row3: [complete WEAPON by itself, narrow hanging CAPE or trailing robe cloth by itself, EMPTY, EMPTY]. A part must never enter a neighbor cell. No extraneous head, hands, arms or weapons inside torso/cape cells. Opaque painted body parts with smooth alpha edges. Forearms have hands at their lower ends. Weapons must stand VERTICAL, with blade/spear tip at TOP and the grip/handle near the BOTTOM. Do NOT draw weapons pointing downward. Fans have handle pointing downward. All weapons entirely inside weapon cell.\n\nAll pieces anatomically compatible with a compact, approximately three-head-high game character facing three-quarter RIGHT (face looking RIGHT), camera slightly from above. Torso without head or limbs, empty sleeves/arm sockets, legs separated. Arms hang downward in neutral pose. Cape flows gently downward, never sideways like a rigid flag. Keep faces distinct and recognizable. Weapons clean strong silhouette.\nCHARACTER: ",
+  "characters": [
+    {
+      "id": 1002,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1002.png",
+      "description": "Liu Xie / 刘协, youthful Han emperor, refined pale face with narrow dark eyes, black hair in small gold imperial crown, deep burgundy Han robe with dark gold dragon-edged vest, narrow royal red cloth hanging behind, black and gold boots. Held prop: short golden ceremonial command tablet, upright."
+    },
+    {
+      "id": 1003,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1003.png",
+      "description": "Zhang Rang / 张让, older court eunuch with narrow sly eyes and clean-shaven pale face, tall black gauze court hat, dark purple-brown court robe with bronze trim and muted lavender sleeves, black shoes. Held prop: thin white horsetail fly-whisk on a dark wooden handle, upright."
+    },
+    {
+      "id": 1004,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1004.png",
+      "description": "Diao Chan / 貂蝉, young beautiful East Asian woman with confident elegant eyes, black high twin-bun updo with small gold floral pins, rose and ivory layered dance-warrior dress with fitted gold waist armour, violet pink draped sleeves, slim feminine boots and legs. Flowing narrow pink silk cloth. Held prop: opened round rose-gold silk fan with a handle pointing down."
+    },
+    {
+      "id": 1005,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1005.png",
+      "description": "Empress He / 何太后, dignified mature East Asian woman with serious eyes, high black updo and compact golden phoenix crown, dark crimson and black silk palace dress richly trimmed in gold, long red silk arm sleeves, dark cloth shoes. Held prop: ornate short jade-and-gold ruyi sceptre with handle down."
+    },
+    {
+      "id": 1006,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1006.png",
+      "description": "Huang Gai / 黄盖, rugged elder East Asian general with grey beard, weathered brown skin and stern eyes, small topknot, broad dark iron and aged bronze lamellar armour over rust brown cloth, sturdy legs, leather gauntlets. Deep burnt-orange narrow cape. Held weapon: heavy Chinese iron whip rod (bian), long straight segmented metal club, handle at bottom."
+    },
+    {
+      "id": 1007,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1007.png",
+      "description": "Dong Zhuo / 董卓, very broad stocky powerful adult East Asian warlord, round menacing face, thick black moustache and beard, simple bronze helmet, heavy dark brown black iron armour with large bronze fittings, heavy boots, dull dark red cape. Held weapon: broad curved Chinese dao sabre, blade tip up, handle at bottom."
+    },
+    {
+      "id": 1008,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1008.png",
+      "description": "Zhang Jiao / 张角, ageing Taoist sage with long dark-grey beard, fierce eyes, yellow turban with modest embroidered band, ochre yellow Taoist robes with ink black trim and brass talisman ornaments, brown cloth boots. Narrow ochre mantle. Held prop: wooden Taoist staff with bronze ring and small paper talismans at the TOP, handle at bottom."
+    },
+    {
+      "id": 1009,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1009.png",
+      "description": "Dong Zhuo SP / 董卓SP, terrifying broad stocky bearded warlord, distinct thick black beard and cruel eyes, dark hornless iron helmet with gold-burgundy crest, extremely heavy blackened bronze armour with crimson jade studs, dark red skirt and boots, deep purple-red cape. Held weapon: large heavy single-edged glaive with axe-like steel head at top and long dark staff at bottom. No monster parts."
+    },
+    {
+      "id": 1010,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1010.png",
+      "description": "Lü Bu SP / 吕布SP, handsome fierce young adult warrior, long black hair, compact black-gold crown with TWO SHORT backward swept dark red plumes not taller than head. Black and crimson armour with gold edges, red dark sleeves, gold black boots. Narrow dark scarlet cape gently hanging down. Held weapon: Fangtian double-crescent halberd with bright silver blade AT TOP and long black handle toward bottom. Distinct from normal Lü Bu, darker armour, black-red palette. Plumes part of head cell and shorter than the face height."
+    },
+    {
+      "id": 1011,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1011.png",
+      "description": "Jia Xu / 贾诩, lean elderly cunning strategist with long thin black-grey beard and narrowed eyes, tall soft black cloth cap, midnight-purple and charcoal scholar robes with muted silver trim, plum sleeves, black cloth shoes, narrow plum mantle. Held prop: closed bamboo strategy scroll tied in deep purple silk, upright."
+    },
+    {
+      "id": 1012,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1012.png",
+      "description": "Bu Lianshi / 步练师, gentle dignified young adult East Asian woman with black elaborate bun and jade hairpin, teal jade and cream silk dress with refined gold waist detailing, draped jade sleeves, slim feminine boots, long modest narrow jade mantle. Held prop: small round ivory silk fan with jade handle downward."
+    },
+    {
+      "id": 1013,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1013.png",
+      "description": "Zhao Yun / 赵云, handsome clean-shaven East Asian male warrior with focused calm gaze, silver helmet with compact blue crest, polished silver scale armour over white and blue cloth, strong silver greaves, gauntlets, narrow white cape with pale blue lining. Held weapon: long silver spear, sharp tip upright, shaft pointing down."
+    },
+    {
+      "id": 1015,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1015.png",
+      "description": "Zhen Ji / 甄姬, serene young adult East Asian noblewoman with fine brows, long blue-black hair partly tied in high graceful bun with blue crystal hairpin, flowing pale ice-blue and ivory dress with silver embroidery, soft blue separated sleeves, slim feminine white boots. Narrow pale-blue hanging silk mantle. Held prop: small feather fan with pale-blue white feathers and silver handle downward."
+    },
+    {
+      "id": 1016,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1016.png",
+      "description": "Liu Bei SP / 刘备SP, kind middle-aged East Asian male ruler, slim moustache and neat pointed black beard, modest green-gold crown on black tied hair, deep forest-green robes over subtle gold lamellar breastplate, gold-trimmed cuffs, black boots, dark green cape. Held weapon: elegant straight Chinese jian sword, silver blade upright, gold handle at bottom."
+    },
+    {
+      "id": 1017,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1017.png",
+      "description": "Zhuge Liang / 诸葛亮, calm East Asian strategist with long neat black beard and thoughtful eyes, traditional tall black guan scholar cap, ivory white Han robes edged teal and dark ink, soft white sleeves, black cloth shoes, narrow ivory mantle. Held prop: iconic white crane-feather fan on dark short handle pointing down. Wise, not armoured, no crown or plume."
+    },
+    {
+      "id": 1018,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1018.png",
+      "description": "Lu Xun / 陆逊, handsome clean-shaven young East Asian strategist with sharp intelligent eyes, modest blue-black scholar cap and tied black hair, elegant deep indigo-blue war robe with bronze lamellar chest armour and silver trim, flowing separated blue sleeves, blue-black boots, short narrow navy mantle. Held prop: red lacquer command baton with bronze tip, handle at bottom. No beard, no crown, no feathers."
+    },
+    {
+      "id": 1019,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1019.png",
+      "description": "Ma Yunlu / 马云禄, athletic young adult East Asian female warrior, expressive confident eyes and long black high ponytail under compact silver helmet with short burgundy crest, silver and ruby red armour fitted over dark red cloth, sturdy feminine boots, narrow burgundy cape. Held weapon: long silver spear with a short red tassel, blade tip upright."
+    },
+    {
+      "id": 1020,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1020.png",
+      "description": "Huang Yueying / 黄月英, clever adult East Asian woman with warm wheat skin, brown dark hair in practical half-up bun with small wooden hairpin, ochre and teal engineer-scholar robes with brass geometric ornaments, separated cloth sleeves and boots, narrow ochre back cloth. Held prop: compact bronze mechanical command fan with radial bamboo slats, handle downward. No goggles or modern machinery."
+    },
+    {
+      "id": 1021,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1021.png",
+      "description": "Ma Chao / 马超, fierce handsome young East Asian cavalry general, silver lion-crested helmet with short white plume, bold brows, white and polished silver armour with cool blue shadows and royal purple trim, silver gauntlets and greaves, narrow white cape. Held weapon: long steel spear with short white horsehair tassel at top, tip up."
+    },
+    {
+      "id": 1022,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1022.png",
+      "description": "Cao Cao / 曹操, authoritative middle-aged East Asian ruler with dark moustache and tidy pointed beard, black scholar-war crown with compact gold fitting, deep royal purple and black robes over gold-edged dark armour, purple sleeves and heavy black boots, narrow dark violet cape. Held weapon: straight double-edged Chinese jian sword, tip up, bronze-gold handle at bottom."
+    },
+    {
+      "id": 1023,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1023.png",
+      "description": "Guan Yu / 关羽, imposing mature East Asian warrior with iconic red-brown face, heavy brows and very long black beard attached to HEAD, green cloth guan headwrap, green robe over bronze-gold lamellar armour, broad shoulders, bronze gauntlets and greaves, narrow dark emerald cape. Held weapon: iconic Green Dragon Crescent Blade, broad steel crescent AT TOP and long dark wooden handle below. Clearly recognizable red face and green clothing."
+    },
+    {
+      "id": 1024,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1024.png",
+      "description": "Zhang Fei / 张飞, very broad muscular East Asian male warrior with fierce round eyes, dark tan skin, thick black short beard and bushy moustache, tied messy black hair and black headband, black iron armour with weathered bronze fittings over deep brown cloth, heavy black boots and gauntlets, narrow charcoal cape. Held weapon: long serpentine spear, wavy steel pointed head at top and black shaft down. Distinct broad stocky silhouette."
+    },
+    {
+      "id": 1025,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1025.png",
+      "description": "Zhou Yu / 周瑜, handsome young adult East Asian commander with refined clean-shaven face, black tied hair under small red and gold command crown, elegant scarlet-red robes over polished gold-bronze breastplate, red ivory sleeves, gold-edged black boots, narrow scarlet cape. Held prop: handsome ivory feather fan with dark red wood handle down. No Lu Bu long hair or plumes."
+    },
+    {
+      "id": 1026,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1026.png",
+      "description": "Sun Shangxiang / 孙尚香, athletic young adult East Asian archer princess with bold eyes and black high ponytail tied with red ribbons, small gold hair clasp, scarlet and gold light armour over ivory cloth, fitted red sleeves with leather archery guards, slim strong legs and red boots, narrow red cape. Held weapon: curved traditional Chinese recurve bow upright with visible taut bowstring and gold-red fittings, no arrow, no hand attached."
+    }
+  ],
+  "additionalCharacters": [
+    {
+      "id": 1014,
+      "asset": "assets/resources/ui/battle_replay/painted/heroes/hero_1014.png",
+      "description": "吕蒙：白衣、青玉与青铜铠甲，文武兼备的吴国将领，直剑。"
+    },
+    {
+      "id": 1001,
+      "asset": "assets/resources/ui/battle_replay/painted/motion_lubu.png",
+      "description": "复用已确认的吕布形象和修正后的披风、短翎。"
+    }
+  ],
+  "effects": {
+    "asset": "assets/resources/ui/battle_replay/painted/skill_elements.png",
+    "prompt": "Create a polished transparent game VFX component atlas for a hand-painted Chinese Three Kingdoms 2.5D battle game. Exactly 4 equal columns x 3 equal rows, twelve separate distinct effects, generous transparent gutter around EVERY cell. Landscape 1536x1152. No labels, no text, no characters, no weapons, no backgrounds, no floor or opaque shadows. High quality clean brushwork, luminous painted white cores with colored tapered strokes, translucent edges. Read left to right top to bottom: ROW 1: (1) orange crimson upright curling FLAME PLUME with white hot center, (2) branching golden white vertical LIGHTNING BOLT, (3) icy cyan teal curling WATER WAVE crescent splash, (4) rosy pink and white swirling PETALS spiral. ROW 2: (5) violet poisonous SMOKE curling mist with jade glints, (6) luminous amber gold translucent SHIELD with simple ornate Chinese metal rim, (7) cyan jade luminous eight trigrams MAGIC SEAL ring perfectly top-down, (8) amber gold rising RALLY RAYS burst fanning upwards. ROW 3: (9) cyan white elongated WIND STREAK tapered pointed sweep, (10) crimson gold circular IMPERIAL SEAL geometric flame-edged ring with NO readable lettering, (11) jade mint green HEALING MOTES cluster rising like fireflies and leaves, (12) golden white glowing ARROW TRAIL diagonally elongated bright tapered ribbon. Every effect fills its own cell but never touches boundaries. Match painterly fantasy strategy battle effects, beautiful distinct silhouettes, render alpha transparency. Avoid black opaque fill, avoid full sheet glow linking elements.",
+    "layout": "4 × 3; 1448 × 1086; twelve 362 × 362 cells"
+  },
+  "animation": "13 clips × 30 interpolated poses; shared joint animation with per-character weapons, head pivots and cloth proportions",
+  "runtime": "Only heroes appearing in the current report are loaded. Recorded battle actions remain authoritative."
+}

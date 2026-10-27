@@ -7,6 +7,7 @@ import MapUtil from '../MapUtil';
 import { resourceFootprint } from '../ResourceFootprint';
 import { caption, ManagementColors } from '../ui/ManagementStyle';
 import { Label } from 'cc';
+import DateUtil from '../../utils/DateUtil';
 const { ccclass, property } = _decorator;
 
 @ccclass('ResLogic')
@@ -15,6 +16,7 @@ export default class ResLogic extends Component {
     spr: Sprite = null;
     protected _data: MapResData = null;
     private ownership = '';
+    private progressKey = '';
 
     public setResourceData(data: MapResData): void {
         this._data = data;
@@ -61,13 +63,18 @@ export default class ResLogic extends Component {
         }
     }
 
-    public setOwnership(owner: 'mine' | 'other' | 'none'): void {
+    public setOwnership(owner: 'mine' | 'other' | 'pending' | 'none'): void {
         const resource = this._data && this._data.type >= MapResType.WOOD && this._data.type <= MapResType.GRAIN;
         if (!resource) owner = 'none';
         const key = `${owner}:${MapUtil.tileSize.width}:${MapUtil.tileSize.height}`;
         if (key === this.ownership) return;
         this.ownership = key;
         let node = this.node.getChildByName('LandOwnership');
+        const pending = this.node.getChildByName('OccupyPending');
+        const bar = this.node.getChildByName('OccupyBar');
+        if (pending) pending.active = owner === 'pending';
+        if (bar) bar.active = owner === 'pending';
+        if (owner !== 'pending') this.progressKey = '';
         if (owner === 'none') { if (node) node.active = false; return; }
         if (!node) {
             node = new Node('LandOwnership'); node.layer = this.node.layer;
@@ -76,12 +83,44 @@ export default class ResLogic extends Component {
         node.active = true; node.setSiblingIndex(0);
         node.getComponent(UITransform).setContentSize(MapUtil.tileSize.width, MapUtil.tileSize.height);
         const g = node.getComponent(Graphics); g.clear();
-        const color = owner === 'mine' ? new Color(105, 169, 183, 140) : new Color(194, 161, 101, 130);
-        g.strokeColor = color; g.lineWidth = 1.5;
-        g.fillColor = new Color(color.r, color.g, color.b, 28);
+        const color = owner === 'pending' ? new Color(214, 176, 92, 220)
+            : owner === 'mine' ? new Color(105, 169, 183, 140) : new Color(194, 161, 101, 130);
+        g.strokeColor = color; g.lineWidth = owner === 'pending' ? 2.5 : 1.5;
+        g.fillColor = new Color(color.r, color.g, color.b, owner === 'pending' ? 18 : 28);
         const x = MapUtil.tileSize.width / 2 - 2, y = MapUtil.tileSize.height / 2 - 1;
         g.moveTo(0, y); g.lineTo(x, 0); g.lineTo(0, -y); g.lineTo(-x, 0); g.close();
         g.fill(); g.stroke();
+        if (owner === 'pending') {
+            caption(this.node, 'OccupyPending', '占领中', 0, 28, 88, 14, ManagementColors.gold, Label.HorizontalAlign.CENTER);
+        }
+    }
+
+    /** 占领倒计时读条；ratio 为已完成比例，leftSec 为剩余秒。 */
+    public setOccupyProgress(ratio: number, leftSec: number): void {
+        if (!this.ownership.startsWith('pending:')) return;
+        const clamped = Math.min(1, Math.max(0, ratio));
+        const key = `${clamped.toFixed(3)}:${Math.ceil(leftSec)}`;
+        if (key === this.progressKey) return;
+        this.progressKey = key;
+        let bar = this.node.getChildByName('OccupyBar');
+        if (!bar) {
+            bar = new Node('OccupyBar'); bar.layer = this.node.layer;
+            this.node.addChild(bar); bar.addComponent(UITransform); bar.addComponent(Graphics);
+        }
+        bar.active = true;
+        bar.setPosition(0, 14, 0);
+        const width = Math.min(96, MapUtil.tileSize.width - 16), height = 6;
+        bar.getComponent(UITransform).setContentSize(width, height);
+        const g = bar.getComponent(Graphics); g.clear();
+        g.fillColor = new Color(32, 34, 26, 200);
+        g.rect(-width / 2, -height / 2, width, height); g.fill();
+        g.fillColor = new Color(214, 176, 92, 230);
+        g.rect(-width / 2, -height / 2, width * clamped, height); g.fill();
+        g.strokeColor = new Color(214, 176, 92, 160); g.lineWidth = 1;
+        g.rect(-width / 2, -height / 2, width, height); g.stroke();
+        caption(this.node, 'OccupyPending',
+            `占领中 ${DateUtil.converSecondStr(Math.max(0, leftSec) * 1000)}`,
+            0, 28, 100, 14, ManagementColors.gold, Label.HorizontalAlign.CENTER);
     }
 
 }

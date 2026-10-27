@@ -1,4 +1,4 @@
-import { _decorator, Component, TiledMap, Camera, Node, Vec2, UITransform, EventMouse, EventTouch, Vec3, view } from 'cc';
+import { _decorator, Component, TiledMap, Camera, Node, Vec2, UITransform, EventMouse, EventTouch, Vec3, view, isValid } from 'cc';
 const { ccclass } = _decorator;
 
 import MapCommand from "./MapCommand";
@@ -57,14 +57,14 @@ export default class MapLogic extends Component {
 
     protected onDestroy(): void {
         EventMgr.targetOff(this);
-        this._inputNode?.targetOff(this);
+        if (isValid(this._inputNode)) this._inputNode.targetOff(this);
         view.off('canvas-resize', this.onViewportResize, this);
         view.off('design-resolution-changed', this.onViewportResize, this);
         this._cmd = null;
     }
 
     public setTiledMap(tiledMap: TiledMap): void {
-        this._inputNode?.targetOff(this);
+        if (isValid(this._inputNode)) this._inputNode.targetOff(this);
         this._tiledMap = tiledMap;
         // 原创底图向外延展；雾区和岸线也能开始拖动，坐标换算仍使用逻辑地图尺寸。
         this._inputNode = tiledMap.node.getChildByName('OriginalGround') || tiledMap.node;

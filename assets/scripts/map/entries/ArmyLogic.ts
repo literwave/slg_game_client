@@ -2,7 +2,7 @@ import { ArmyData } from "../../general/ArmyProxy";
 import DateUtil from "../../utils/DateUtil";
 import MapUtil from "../MapUtil";
 import { Vec2, Node, Animation, Vec3, UITransform, Color, Graphics, Sprite } from "cc";
-import type { MarchInfo, WorldEntity } from '../../world/WorldCommand';
+import WorldCommand, { type MarchInfo, type WorldEntity } from '../../world/WorldCommand';
 import { aoiTroopMotion, MarchMotion, MarchPath } from '../../world/MarchPath';
 import MarchPlayback from '../../world/MarchPlayback';
 import MarchFormation from './MarchFormation';
@@ -216,6 +216,10 @@ export default class ArmyLogic {
         this.drawRemainingMarchRoute(pixel);
         if (this.formation) {
             this.formation.update(this.playback, sample);
+            const cellX = Math.round(sample.position.x), cellY = Math.round(sample.position.y);
+            const occupying = !sample.moving && !!WorldCommand.getInstance()
+                .occupyCountdownAt(cellX, cellY, DateUtil.getServerTime() / 1000);
+            this.formation.setGuarding(occupying);
             this.marching = sample.moving;
             return point;
         }

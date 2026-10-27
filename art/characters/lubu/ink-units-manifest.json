@@ -1,0 +1,17 @@
+[
+  {
+    "name": "commander",
+    "triangles": 6084,
+    "joints": 23
+  },
+  {
+    "name": "infantry",
+    "triangles": 5488,
+    "joints": 23
+  },
+  {
+    "name": "infantry-red",
+    "triangles": 5488,
+    "joints": 23
+  }
+]
