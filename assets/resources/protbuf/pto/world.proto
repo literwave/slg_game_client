@@ -44,7 +44,7 @@ message s2c_sync_troop {
 // ---------- 行军 ----------
 // targetType → TargetType.Id（1回城 2打怪 3占领资源地 4移动）
 // state: 1行军中 2已到达
-// 耗时按路径格数 / Global.Id=17（每秒移动格数）计算 endTime，避免一秒跨多格
+// 耗时按路径格数 / TargetType.Speed（每秒移动格数，number，按 targetType 取）计算 endTime
 message p_march_info {
 	uint32 troopIdx = 1;
 	uint32 targetType = 2;
@@ -95,6 +95,7 @@ message s2c_req_march_list {
 // ---------- AOI ----------
 // 视野内实体；entityType → EntityType.Id（1主城 2行军部队 3怪物组 4资源地）
 // 主城额外填 name、level；改名/主城升级时用 s2c_aoi_update 同步
+// 资源地占领中：startTime/endTime 为占领倒计时（时长 Global.Id=19 秒），到期完成占领
 message p_aoi_entity {
 	int64 entityId = 1;
 	uint32 entityType = 2;
@@ -102,8 +103,8 @@ message p_aoi_entity {
 	int64 ownerId = 4;             // 主城/部队所属玩家，怪物为 0
 	uint32 cfgId = 5;              // 配置 id（如 MonsterGroup.Id）
 	repeated Common.p_pos_f path = 6;  // 仅行军中的部队填，含起点终点
-	double startTime = 7;
-	double endTime = 8;
+	double startTime = 7;          // 行军起点时间；资源地占领中为倒计时起点
+	double endTime = 8;            // 行军到达时间；资源地占领中为倒计时终点
 	string name = 9;               // 主城：玩家名/城名
 	uint32 level = 10;             // 主城：主城建筑等级（BuildingDetail.Id=1），非角色等级
 }

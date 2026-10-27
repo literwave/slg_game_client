@@ -43,7 +43,7 @@ message p_hero_base_info {
 	int32 lv = 3;
 	int32 star = 4;
 	bool newTag = 5;
-	repeated p_common_info skillList = 6; 
+	repeated p_common_info skillList = 6; // k→Skill.Id，v→技能等级；不含自带技（自带技见 Hero.SkillId）
 }
 
 // mailId → Mail.Id（邮件模板）；mailUid 为邮件唯一实例 id

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package Skill;
+
+// skillId → Skill.Id；skillLv 为技能等级（0 表示删除）；同时装备次数受 Skill.Limit 约束
+message p_skill_data {
+	int32 skillId = 1;
+	int32 skillLv = 2;
+}
+
+// 同步单个技能（学习/升级/删除）
+message s2c_sync_skill_data {
+	int32 skillId = 1;
+	int32 skillLv = 2;
+}
+
+// 请求全部已拥有技能
+message c2s_req_all_skill_data {
+}
+
+message s2c_req_all_skill_data {
+	repeated p_skill_data skillList = 1;
+}

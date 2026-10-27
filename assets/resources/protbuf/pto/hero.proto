@@ -14,3 +14,38 @@ message c2s_req_all_hero_base_info {
 message s2c_req_all_hero_base_info {
 	repeated Common.p_hero_base_info heroInfoList = 1;
 }
+
+// 装备技能到武将槽位；heroId → Hero.Id；skillId → Skill.Id；pos 槽位从 0 起（不含自带技）
+message c2s_equip_skill {
+	int32 heroId = 1;
+	int32 skillId = 2;
+	int32 pos = 3;
+}
+message s2c_equip_skill {
+	int32 heroId = 1;
+	int32 skillId = 2;
+	int32 pos = 3;
+}
+
+// 卸下武将槽位技能
+message c2s_unequip_skill {
+	int32 heroId = 1;
+	int32 skillId = 2;
+	int32 pos = 3;
+}
+message s2c_unequip_skill {
+	int32 heroId = 1;
+	int32 skillId = 2;
+	int32 pos = 3;
+}
+
+// 升级武将已装备技能；成功后可用 s2c_sync_hero_base_info 刷新等级
+message c2s_upgrade_skill {
+	int32 heroId = 1;
+	int32 pos = 2;
+}
+message s2c_upgrade_skill {
+	int32 heroId = 1;
+	int32 pos = 2;
+	int32 skillLv = 3;
+}
