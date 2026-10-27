@@ -22,6 +22,8 @@ export default class ArmyLogic {
     protected _lenY: number = 0;
     private march: MarchMotion = null;
     private marchPath: MarchPath = null;
+    private routeGraphics: Graphics = null;
+    private routePixels: Vec2[] = [];
     private marching = false;
     private playback: MarchPlayback = null;
     private formation: MarchFormation = null;
@@ -33,6 +35,7 @@ export default class ArmyLogic {
         this.arrowNode = null;
         this._parentLayer = null;
         this.march = null; this.marchPath = null; this._aniName = ''; this.marching = false;
+        this.routeGraphics = null; this.routePixels = [];
     }
 
     public destroy(): void {
@@ -85,6 +88,7 @@ export default class ArmyLogic {
     public setArmyData(data: ArmyData, aniNode: Node, arrowNode: Node): void {
         this.formation?.destroy(); this.formation = null; this.playback = null;
         this.march = null; this.marchPath = null;
+        this.routeGraphics = null; this.routePixels = [];
         const marker = aniNode.getChildByName('WorldTroopMarker'); if (marker) marker.active = false;
         const route = arrowNode.getChildByName('WorldMarchRoute'); if (route) route.active = false;
         const sprite = arrowNode.getComponent(Sprite); if (sprite) sprite.enabled = true;
@@ -182,12 +186,25 @@ export default class ArmyLogic {
         route.active = true;
         const g = route.getComponent(Graphics); g.clear(); g.lineWidth = 3;
         g.strokeColor = routeColor;
-        this.marchPath.points.forEach((point, index) => {
-            const pixel = MapUtil.mapCellToPixelPoint(new Vec2(point.x, point.y));
-            if (!index) g.moveTo(pixel.x, pixel.y); else g.lineTo(pixel.x, pixel.y);
-        });
-        if (this.marchPath.points.length > 1) g.stroke();
+        this.routeGraphics = g;
+        this.routePixels = this.marchPath.points.map(point => MapUtil.mapCellToPixelPoint(new Vec2(point.x, point.y)));
         this.updateMarch();
+    }
+
+    /** 只画当前位置前方的剩余折线；按播放弧长裁切，折返/交叉路径也不会留下身后的旧线。 */
+    private drawRemainingMarchRoute(pixel: Vec2): void {
+        const g = this.routeGraphics;
+        if (!g) return;
+        g.clear();
+        if (!this.arrowNode.active) return;
+        g.moveTo(pixel.x, pixel.y);
+        let segments = 0;
+        for (let i = 1; i < this.routePixels.length; i++) {
+            if (this.marchPath.distances[i] <= this.playback.distance + .00001) continue;
+            const next = this.routePixels[i];
+            g.lineTo(next.x, next.y); segments++;
+        }
+        if (segments) g.stroke();
     }
 
     private updateMarch(): Vec2 {
@@ -196,6 +213,7 @@ export default class ArmyLogic {
         const point = new Vec2(sample.position.x, sample.position.y), pixel = MapUtil.mapCellToPixelPoint(point);
         this.aniNode.active = true; this.aniNode.setPosition(pixel.x, pixel.y, 0);
         this.arrowNode.active = sample.moving;
+        this.drawRemainingMarchRoute(pixel);
         if (this.formation) {
             this.formation.update(this.playback, sample);
             this.marching = sample.moving;

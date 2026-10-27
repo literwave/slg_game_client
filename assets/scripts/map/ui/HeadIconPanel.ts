@@ -11,6 +11,7 @@ const PAPER = new Color(239, 230, 205, 255);
 const MUTED = new Color(179, 169, 145, 255);
 const GOLD = new Color(178, 148, 99, 255);
 const INK = new Color(39, 39, 32, 255);
+const SAVE_NOTICE_DELAY = .15;
 
 interface HeadTile {
     config: HeadIconConfig;
@@ -20,6 +21,7 @@ interface HeadTile {
     name: Label;
     badge: Label;
     button: Button;
+    paintKey?: string;
 }
 
 @ccclass('HeadIconPanel')
@@ -42,6 +44,10 @@ export default class HeadIconPanel extends Component {
     private _selectedId = 0;
     private _itemWidth = 102;
     private _feedbackMessage = '';
+    private _refreshQueued = false;
+    private _pendingNoticeScheduled = false;
+    private _showPendingNotice = false;
+    private _confirmPaintEnabled: boolean | undefined;
 
     public show(): void {
         if (!this._panel) this.build();
@@ -98,8 +104,7 @@ export default class HeadIconPanel extends Component {
 
         const confirmNode = this.makeNode('Confirm', this._panel, 176, 44);
         this._confirm = confirmNode.addComponent(Button);
-        this._confirm.transition = Button.Transition.SCALE;
-        this._confirm.zoomScale = .97;
+        this._confirm.transition = Button.Transition.NONE;
         this._confirmArt = this.makeNode('Art', confirmNode, 176, 44).addComponent(Graphics);
         this._confirmLabel = this.makeLabel('Label', confirmNode, '使用头像', 18, INK);
         this._confirmLabel.node.getComponent(UITransform).setContentSize(164, 40);
@@ -108,10 +113,10 @@ export default class HeadIconPanel extends Component {
         for (const config of LoginCommand.getInstance().headIcons.configs) this.createTile(config);
         this.node.on(Node.EventType.SIZE_CHANGED, this.layout, this);
         this._safeArea.on(Node.EventType.SIZE_CHANGED, this.layout, this);
-        EventMgr.on(LogicEvent.updateMyRole, this.refresh, this);
-        EventMgr.on(LogicEvent.headIconChangeState, this.refresh, this);
+        EventMgr.on(LogicEvent.updateMyRole, this.queueRefresh, this);
+        EventMgr.on(LogicEvent.headIconChangeState, this.queueRefresh, this);
         EventMgr.on(LogicEvent.headIconFeedback, this.onHeadIconFeedback, this);
-        EventMgr.on(LogicEvent.systemOpenUpdated, this.refresh, this);
+        EventMgr.on(LogicEvent.systemOpenUpdated, this.queueRefresh, this);
     }
 
     private createTile(config: HeadIconConfig): void {
@@ -141,7 +146,7 @@ export default class HeadIconPanel extends Component {
             LoginCommand.getInstance().headIcons.loadIcon(config.id).then(frame => {
                 if (!this.isValid || !sprite.isValid) return;
                 sprite.spriteFrame = frame;
-                this.refresh();
+                this.queueRefresh();
             });
         }
     }
@@ -187,27 +192,66 @@ export default class HeadIconPanel extends Component {
         this.refresh();
     }
 
+    private queueRefresh(): void {
+        if (!this._panel || !this.node.activeInHierarchy || this._refreshQueued) return;
+        // 同一次回包会连续通知保存状态、角色信息和结果，合并后再绘制最终状态。
+        this._refreshQueued = true;
+        this.scheduleOnce(this.flushRefresh, 0);
+    }
+
+    private flushRefresh(): void {
+        this._refreshQueued = false;
+        this.refresh();
+    }
+
+    private showPendingNotice(): void {
+        this._pendingNoticeScheduled = false;
+        if (!this.node.activeInHierarchy || !LoginCommand.getInstance().changingHeadIcon) return;
+        this._showPendingNotice = true;
+        this.refresh();
+    }
+
     private refresh(): void {
         if (!this._panel || !this.node.activeInHierarchy) return;
         const command = LoginCommand.getInstance();
         const current = command.proxy.getRoleData()?.headIcon || 0;
         const display = command.headIcons.getDisplayId(current);
         const busy = command.changingHeadIcon;
+        if (busy) {
+            // 立即锁定重复提交，只有较慢的请求才切换等待文案，避免快速回包时闪一下。
+            if (!this._showPendingNotice && !this._pendingNoticeScheduled) {
+                this._pendingNoticeScheduled = true;
+                this.scheduleOnce(this.showPendingNotice, SAVE_NOTICE_DELAY);
+            }
+        } else {
+            this.unschedule(this.showPendingNotice);
+            this._pendingNoticeScheduled = false;
+            this._showPendingNotice = false;
+        }
         for (const tile of this._tiles) {
             const selected = tile.config.id === this._selectedId;
-            this.drawRect(tile.background, this._itemWidth, 134,
-                selected ? new Color(75, 65, 45, 255) : new Color(48, 48, 39, 255),
-                selected ? GOLD : new Color(100, 94, 73, 160));
+            const paintKey = `${this._itemWidth}:${selected}`;
+            if (tile.paintKey !== paintKey) {
+                tile.paintKey = paintKey;
+                this.drawRect(tile.background, this._itemWidth, 134,
+                    selected ? new Color(75, 65, 45, 255) : new Color(48, 48, 39, 255),
+                    selected ? GOLD : new Color(100, 94, 73, 160));
+            }
             tile.badge.string = tile.config.id === display ? '使用中' : (selected ? '已选择' : '');
             tile.button.interactable = !busy && !!tile.sprite.spriteFrame?.isValid;
         }
         const selected = command.headIcons.getConfig(this._selectedId);
         const ready = !!command.headIcons.getIcon(this._selectedId);
         const alreadyUsed = current === this._selectedId;
-        this._confirm.interactable = !busy && !alreadyUsed && !!selected && ready && command.isHeadIconOpen();
-        this._confirmLabel.string = busy ? '正在保存…' : alreadyUsed ? '当前头像' : '使用头像';
-        this.drawRect(this._confirmArt, 176, 44, this._confirm.interactable ? GOLD : new Color(116, 106, 84, 255));
-        this._status.string = busy ? '正在等待服务器确认' : this._feedbackMessage ||
+        const canUse = !alreadyUsed && !!selected && ready && command.isHeadIconOpen();
+        this._confirm.interactable = !busy && canUse;
+        this._confirmLabel.string = this._showPendingNotice ? '正在保存…' : alreadyUsed ? '当前头像' : '使用头像';
+        const paintEnabled = canUse && !this._showPendingNotice;
+        if (this._confirmPaintEnabled !== paintEnabled) {
+            this._confirmPaintEnabled = paintEnabled;
+            this.drawRect(this._confirmArt, 176, 44, paintEnabled ? GOLD : new Color(116, 106, 84, 255));
+        }
+        this._status.string = this._showPendingNotice ? '正在等待服务器确认' : this._feedbackMessage ||
             (!ready ? '头像图片未就绪，请稍后重试' : selected ? `已选择：${selected.name}` : '请选择一个头像');
         this._status.color = this._feedbackMessage && !busy ? GOLD : PAPER;
     }
@@ -215,20 +259,28 @@ export default class HeadIconPanel extends Component {
     private onHeadIconFeedback(feedback: HeadIconFeedback): void {
         if (!this.node.activeInHierarchy || !this._status) return;
         this._feedbackMessage = feedback.message;
-        this._status.string = feedback.message;
-        this._status.color = GOLD;
         feedback.handled = true;
+        this.queueRefresh();
     }
 
     private confirm(): void {
         AudioManager.instance.playClick();
         this._feedbackMessage = '';
         LoginCommand.getInstance().changeHeadIcon(this._selectedId);
+        this.refresh();
     }
 
     private close(): void {
         AudioManager.instance.playClick();
         this.node.active = false;
+    }
+
+    protected onDisable(): void {
+        this.unschedule(this.flushRefresh);
+        this.unschedule(this.showPendingNotice);
+        this._refreshQueued = false;
+        this._pendingNoticeScheduled = false;
+        this._showPendingNotice = false;
     }
 
     protected onDestroy(): void {

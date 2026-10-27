@@ -11,6 +11,7 @@ let currentEntity = entity, issue = '', blocked = '', busy = false, moveIssue = 
 let cell = { type: 54, level: 3 }, city = null, roster;
 let requestPending = false;
 const world = { sessionReady: true, requestInFlight: () => requestPending, resourceLandAt: () => currentEntity, resourceLandIssue: () => issue,
+    emptyLandIssue: () => '', resourceLandEntityId: (x, y) => 4000000000000000 + y * 1000 + x,
     marches: { get: () => busy ? { state: 1 } : undefined },
     occupyResourceLand: (idx, id) => { if (busy) return false; sent.push([idx, id]); return true; },
     moveTroop: (idx, pos) => { if (!moveAccepted) return false; sent.push(['move', idx, pos]); return true; } };
@@ -79,7 +80,7 @@ selector.setData(1, 10, 20);
 assert.equal(troops.requests, 1); assert.deepEqual(rendered, [[2, 10, 20]]);
 selector.refreshTroops(); assert.equal(selector.armyContainer.children.length, 1);
 // 有主城、旧列表为空的原始报错路径：空地、城池、关隘均不能回退旧协议。
-for (const target of [{ type: 54, level: 3, isEmpty: true }, { type: 51, level: 8 }, { type: 50, level: 8 }, null]) {
+for (const target of [{ type: 51, level: 8 }, { type: 50, level: 8 }, null]) {
     cell = target; selector.setData(1, 10, 20);
     assert.equal(troops.requests, 1); assert.equal(selector.armyContainer.children.length, 0);
     assert.match(selector.status.string, /暂不支持出征/);
@@ -98,8 +99,10 @@ assert.equal(selector.armyContainer.children.length, 1, '没有主将的部队�
 item.setTroopData(roster[0], 10, 20); assert.match(item.labelTip.string, /主将未上阵/);
 roster = [troop]; item.setTroopData(troop, 10, 20);
 troops.editingTroopIdx = 2; item.onClickItem(); assert.equal(sent.length, 1); troops.editingTroopIdx = 0;
-cell = { type: 54, level: 3, isEmpty: true }; item.onClickItem(); assert.equal(sent.length, 1);
+cell = { type: 51, level: 8 }; item.onClickItem(); assert.equal(sent.length, 1);
 selector.refreshTroops(); assert.match(selector.status.string, /目标已变更/);
+cell = { type: 0, level: 0, isEmpty: true }; selector.targetLabel = { string: '' }; selector.setData(1, 10, 20);
+assert.match(selector.targetLabel.string, /空地/); assert.equal(selector.armyContainer.children.length, 1);
 cell = { type: 54, level: 3 }; issue = '等待视野实体'; selector.refreshTroops(); assert.equal(selector.status.string, issue); issue = '';
 selector.refreshTroops(); assert.equal(selector.status.node.active, false); assert.equal(selector.armyContainer.children.length, 1);
 

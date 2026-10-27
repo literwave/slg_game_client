@@ -60,8 +60,9 @@ export default class ArmySelectNodeLogic extends Component {
         const map = MapCommand.getInstance();
         const id = MapUtil.getIdByCellPoint(x, y), cell = map.proxy.getResData(id);
         // 移动按坐标，资源占领按实体；两种操作都只使用新版 World 部队。
+        const occupiable = !!cell && (cell.isEmpty || isResourceLandCell(cell)) && !map.cityProxy.getCity(id);
         this.resourceTarget = cmd === 'move' ? { x, y, action: 'move' }
-            : cmd === ArmyCmd.Attack && isResourceLandCell(cell) && !map.cityProxy.getCity(id) ? { x, y, action: 'occupy' } : null;
+            : cmd === ArmyCmd.Attack && occupiable ? { x, y, action: 'occupy' } : null;
         this.layoutPanel();
         if (this.resourceTarget) TroopCommand.getInstance().requestTroops();
         this.refreshTroops(true);
@@ -79,8 +80,9 @@ export default class ArmySelectNodeLogic extends Component {
     private resourceEntityKey(): string {
         if (this.resourceTarget?.action !== 'occupy') return '';
         const { x, y } = this.resourceTarget;
-        const entity = WorldCommand.getInstance().resourceLandAt(x, y);
-        return entity ? `${entity.entityId}:${entity.cfgId}:${entity.ownerId}` : 'missing';
+        const world = WorldCommand.getInstance();
+        const entity = world.resourceLandAt(x, y);
+        return `${world.resourceLandEntityId(x, y)}:${entity ? entity.ownerId : 0}`;
     }
     private onTargetEntitiesChanged(): void {
         // 其他部队位置推送不能反复重建卡片，否则正在滑动/点击的队伍会被销毁。
@@ -98,11 +100,14 @@ export default class ArmySelectNodeLogic extends Component {
         }
         const { x, y, action } = this.resourceTarget, map = MapCommand.getInstance(), command = TroopCommand.getInstance();
         const id = MapUtil.getIdByCellPoint(x, y), cell = map.proxy.getResData(id);
+        const empty = !!cell?.isEmpty;
+        const world = WorldCommand.getInstance();
+        const blocked = (!empty && !isResourceLandCell(cell)) || !!map.cityProxy.getCity(id);
         const issue = action === 'move' ? map.moveTargetIssue(x, y)
-            : !isResourceLandCell(cell) || map.cityProxy.getCity(id) ? '目标已变更，请重新选择资源地'
-            : map.campaignBlockReason(x, y) || WorldCommand.getInstance().resourceLandIssue(x, y, cell.type, cell.level);
+            : blocked ? '目标已变更，请重新选择空地或资源地'
+            : map.campaignBlockReason(x, y) || (empty ? world.emptyLandIssue(x, y) : world.resourceLandIssue(x, y, cell.type, cell.level));
         if (this.targetLabel) this.targetLabel.string = action === 'move' ? `移动至 (${x}, ${y}) · 点击部队移动`
-            : `${cell?.level || ''}级资源地  (${x}, ${y}) · 点击部队出征`;
+            : empty ? `空地  (${x}, ${y}) · 点击部队出征` : `${cell?.level || ''}级资源地  (${x}, ${y}) · 点击部队出征`;
         if (issue) { this.showStatus(issue); return; }
         if (!command.listReady) {
             this.showStatus(command.listLoading ? '正在同步部队…' : '部队数据尚未同步\n请稍后重新打开选择队伍');

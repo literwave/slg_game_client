@@ -64,7 +64,7 @@ function harness(lazyMapModules = false) {
         union: load('union/UnionCommand').default.getInstance(), chat: load('chat/ChatCommand').default.getInstance(),
         world: lazyMapModules ? null : load('world/WorldCommand').default.getInstance(),
         progress: lazyMapModules ? null : load('progression/ProgressionCommand').default.getInstance(),
-        battle: load('battle/BattleCommand').default.getInstance(), rank: load('rank/RankCommand').default.getInstance(),
+        battle: lazyMapModules ? null : load('battle/BattleCommand').default.getInstance(), rank: load('rank/RankCommand').default.getInstance(),
         build: lazyMapModules ? null : load('build/BuildCommand').default.getInstance(), troop: load('general/TroopCommand').default.getInstance(),
         mail: load('mail/MailCommand').default.getInstance(),
     };
@@ -85,7 +85,7 @@ function test(name, run) { if (filter && !filter.test(name)) return; run(); pass
 const info = (id = 17) => ({ brief: { allianceId: id, name: '长安', flag: 4, joinType: 2, notice: '一起出关', memberCount: 3, memberMax: 40, level: 1 }, leaderId: big, manifesto: '守望相助', createTime: 1 });
 const message = (msgId, channel = 1, senderId = big, targetId = 0) => ({ msgId, channel, senderId, targetId, senderName: '玩家', content: '消息', time: Number(msgId) || 1 });
 
-test('Main 登录前初始化任务与地图，加载确认后请求，任务卡不再漏接会话', () => {
+test('Main 登录前初始化任务、地图与战报，加载确认后请求，不再漏接会话', () => {
     const h = harness(true);
     assert.equal(h.events.events.has(h.S.s2c_req_task_list), false, '复现首次打开地图才创建任务模块');
     const engine = { Component: class {}, Node: class { static EventType = { SIZE_CHANGED: 'size' }; },
@@ -101,6 +101,7 @@ test('Main 登录前初始化任务与地图，加载确认后请求，任务卡
         './world/WorldCommand': h.load('world/WorldCommand'),
         './progression/ProgressionCommand': h.load('progression/ProgressionCommand'),
         './build/BuildCommand': h.load('build/BuildCommand'),
+        './battle/BattleCommand': h.load('battle/BattleCommand'),
     };
     const mod = { exports: {} }, code = ts.transpileModule(fs.readFileSync(path.join(scripts, 'Main.ts'), 'utf8'), {
         compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, experimentalDecorators: true } }).outputText;
@@ -110,10 +111,14 @@ test('Main 登录前初始化任务与地图，加载确认后请求，任务卡
     main.onLoad();
     const progress = h.load('progression/ProgressionCommand').default.getInstance();
     const world = h.load('world/WorldCommand').default.getInstance();
+    const battle = h.load('battle/BattleCommand').default.getInstance();
     assert.equal(progress.sessionReady, false);
     h.authenticate(); assert.equal(progress.sessionReady, true); assert.equal(world.sessionReady, true);
+    assert.equal(battle.sessionReady, true);
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_report_list).length, 0);
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_task_list).length, 0, '加载阶段不抢跑任务请求');
     h.loaded();
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_report_list).length, 1);
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_task_list).length, 1);
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_march_list).length, 1);
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_activity_list).length, 0);
@@ -384,6 +389,61 @@ test('战斗结果去重；战报详情/回放、全部已读和删除使用新�
     assert.equal(h.battle.reports.values().length, 0, '删除后的迟到详情不得恢复战报');
     assert.equal(h.battle.details.size, 0); assert.equal(h.battle.replays.size, 0);
 });
+
+test('战报未读随全量和推送更新，全部已读不吞掉途中新增记录', () => {
+    const h = harness(); h.authenticate(); h.loaded();
+    h.receive(h.S.s2c_req_report_list, { reportList: [{ reportId: big, isRead: false }, { reportId: other, isRead: true }] });
+    assert.equal(h.battle.loaded, true); assert.equal(h.battle.unreadCount, 1);
+    assert.equal(h.battle.readReports(), true);
+    assert.deepEqual(plain(h.sent.at(-1).data.reportIdList).map(String), [big]);
+    assert.equal(h.battle.unreadCount, 1, '确认之前保留红点');
+    h.receive(h.S.s2c_sync_report, { reportBrief: { reportId: '9007199254740997', isRead: false } });
+    h.receive(h.S.s2c_read_report, { reportIdList: [] });
+    assert.equal(h.battle.unreadCount, 1); assert.equal(h.battle.reports.get(big).isRead, true);
+    h.receive(h.S.s2c_sync_report, { reportBrief: { reportId: big, isRead: false } });
+    assert.equal(h.battle.unreadCount, 1, '迟到摘要不得恢复未读');
+    h.disconnect(); assert.equal(h.battle.unreadCount, 0); assert.equal(h.battle.loaded, false);
+});
+test('战报连续查看排队确认，重复确认不串请求，超时不伪造已读', () => {
+    const h = harness(); h.authenticate();
+    h.receive(h.S.s2c_req_report_list, { reportList: [{ reportId: big }, { reportId: other }] });
+    h.battle.readReports([big]); h.battle.readReports([other]);
+    const sent = () => h.sent.filter(p => p.name === h.S.c2s_read_report);
+    assert.equal(sent().length, 1);
+    h.receive(h.S.s2c_read_report, { reportIdList: [big] });
+    assert.equal(sent().length, 2); assert.equal(h.battle.unreadCount, 1);
+    h.receive(h.S.s2c_read_report, { reportIdList: [big] });
+    assert.equal(h.battle.requestInFlight(h.S.c2s_read_report), true);
+    h.tick(8000); assert.equal(h.battle.unreadCount, 1);
+    assert.equal(h.battle.requestInFlight(h.S.c2s_read_report), false);
+    assert.equal(h.battle.readReports([other]), true);
+    h.receive(h.S.s2c_read_report, { reportIdList: [other] });
+    assert.equal(h.battle.unreadCount, 0);
+});
+test('战报列表超时可重试，删除后迟到快照不得恢复红点', () => {
+    const h = harness(); h.authenticate(); h.battle.requestReports(); h.tick(8000);
+    assert.equal(h.battle.loaded, false); assert.ok(h.battle.loadError); assert.equal(h.battle.loading, false);
+    assert.equal(h.battle.requestReports(), true);
+    h.receive(h.S.s2c_req_report_list, { reportList: [{ reportId: big }] });
+    h.battle.deleteReports([big]); h.receive(h.S.s2c_del_report, { reportIdList: [big] });
+    h.receive(h.S.s2c_req_report_list, { reportList: [{ reportId: big }] });
+    assert.equal(h.battle.unreadCount, 0); assert.equal(h.battle.getReports().length, 0);
+});
+test('战报展示兼容资源地和未知类型，战损区分伤兵与阵亡，窄屏保持边界', () => {
+    const h = harness(), config = h.load('core/ConfigManager').default.getInstance();
+    config.loadConfigs(['ReportType', 'Hero', 'Monster', 'Skill'].map(name => ({ name, json: JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config', name + '.json'), 'utf8')) })));
+    const p = h.load('battle/ReportPresentation');
+    assert.equal(p.reportKind({ reportType: 4 }), '占领资源地'); assert.equal(p.reportKind({ reportType: 999 }), '战斗记录');
+    assert.deepEqual(plain(p.soldierTotals({ units: [{ beforeSoldier: { count: 100, hurtCount: 10 }, afterSoldier: { count: 60, hurtCount: 30 } }] })), { before: 100, after: 60, hurt: 30, lost: 20 });
+    assert.equal(p.soldierTotals({ units: [] }), null);
+    const lines = p.replayLines({ fromSide: 1, fromPos: 0, actType: 1, effects: [{ targetSide: 2, targetPos: 2, flags: 2, value: 500 }] }, { atkSide: { units: [] }, defSide: { units: [] } });
+    assert.match(lines[1], /闪避/); assert.doesNotMatch(lines[1], /损失/);
+    for (const [width, height] of [[1280, 720], [900, 500], [390, 844], [320, 480]]) {
+        const m = p.reportLayout(width, height); assert.ok(m.width * m.scale <= width - 27); assert.ok(m.height * m.scale <= height - 27);
+        assert.ok(m.bodyHeight > 0 && m.detailWidth > 0); assert.equal(m.narrow, width < 760);
+    }
+});
+
 test('榜单按类型/页缓存，未上榜 rank=0 保留；建筑只在推送后升级', () => {
     const h = harness(); h.authenticate();
     assert.equal(h.rank.requestRank(1, 1, 20), true); assert.equal(h.rank.requestRank(1, 21, 20), false);

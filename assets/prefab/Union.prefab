@@ -2292,7 +2292,7 @@
     "_tabIndex": 0,
     "_backgroundImage": null,
     "_inputFlag": 5,
-    "_inputMode": 6,
+    "_inputMode": 0,
     "_maxLength": 20,
     "_id": ""
   },

@@ -1,4 +1,4 @@
-import { _decorator, Component, Label, Layout, Prefab, Node, EventTouch, instantiate } from 'cc';
+import { _decorator, Component, Label, Layout, Prefab, Node, UITransform, EventTouch, instantiate, view } from 'cc';
 const { ccclass, property } = _decorator;
 
 import GeneralCommand from "../../general/GeneralCommand";
@@ -69,12 +69,13 @@ export default class GeneralDesLogic extends Component {
     private _generalNode: Node = null;
     private _layoutParent: Node = null;
     private _arranging = false;
+    private _layoutKey = '';
 
     protected onEnable() {
         EventMgr.on(LogicEvent.updateGeneral, this.updateGeneral, this);
         this._layoutParent = this.node.parent;
         this._layoutParent?.on(Node.EventType.SIZE_CHANGED, this.refreshVisualLayout, this);
-        this.refreshVisualLayout();
+        if (this._currData) this.refreshVisualLayout();
     }
 
     protected onDisable() {
@@ -95,14 +96,18 @@ export default class GeneralDesLogic extends Component {
 
         this._generalNode = instantiate(this.generalItemPrefab);
         this._generalNode.parent = this.generalItemParent;
-        this.refreshVisualLayout();
     }
 
     public refreshVisualLayout(): void {
-        if (this._arranging) return;
+        if (this._arranging || !this._currData) return;
+        const size = this.node.parent?.getComponent(UITransform) || view.getVisibleSize();
+        const slots = this.skillIcons.map(icon => !!(icon?.getComponent(SkillIconLogic))?.getSkill());
+        const key = `${size.width}:${size.height}:${slots.join(',')}`;
+        if (key === this._layoutKey) return;
         this._arranging = true;
         try {
             styleGeneralDetail(this);
+            this._layoutKey = key;
         } finally {
             this._arranging = false;
         }
@@ -128,8 +133,8 @@ export default class GeneralDesLogic extends Component {
         var nextCfg = GeneralCommand.getInstance().proxy.getGeneralLevelCfg(this._currData.level + 1);
         var levelExp = nextCfg ? nextCfg.exp : "MAX";
         var maxLevel: number = GeneralCommand.getInstance().proxy.getMaxLevel();
-        if (this.lvLabel) this.lvLabel.string = '等级:' + this._currData.level + "/" + maxLevel;
-        if (this.expLabel) this.expLabel.string = "经验:" + curData.exp + "/" + levelExp;
+        if (this.lvLabel) this.lvLabel.string = this._currData.level + "/" + maxLevel;
+        if (this.expLabel) this.expLabel.string = curData.exp + "/" + levelExp;
 
         if (this.nameLab) this.nameLab.string = this._cfgData.name;
 
@@ -142,18 +147,18 @@ export default class GeneralDesLogic extends Component {
         };
 
 
-        if (this.foreLabel) this.foreLabel.string = "攻击:" + this.formatStat(cfgData.attack);
-        if (this.strategyLabel) this.strategyLabel.string = "生命:" + this.formatStat(cfgData.hp);
-        if (this.defenseLabel) this.defenseLabel.string = "防御:" + this.formatStat(cfgData.defense);
-        if (this.speedLabel) this.speedLabel.string = "速度:" + this.formatStat(cfgData.speed);
-        if (this.destroyLabel) this.destroyLabel.string = "暴击:" + this.formatStat(cfgData.crit);
+        if (this.foreLabel) this.foreLabel.string = this.formatStat(cfgData.attack);
+        if (this.strategyLabel) this.strategyLabel.string = this.formatStat(cfgData.hp);
+        if (this.defenseLabel) this.defenseLabel.string = this.formatStat(cfgData.defense);
+        if (this.speedLabel) this.speedLabel.string = this.formatStat(cfgData.speed);
+        if (this.destroyLabel) this.destroyLabel.string = this.formatStat(cfgData.crit);
 
         var com = this._generalNode ? this._generalNode.getComponent(GeneralItemLogic) : null;
         if (com) {
             com.updateItem({ ...this._currData, listAppearance: 'roster' }, GeneralItemType.GeneralNoThing);
         }
 
-        if (this.powerLabel) this.powerLabel.string = "职业:" + (cfgData.heroClass || "无");
+        if (this.powerLabel) this.powerLabel.string = cfgData.heroClass || "无";
         const skillProxy = SkillCommand.getInstance().proxy;
         const innateSkill = skillProxy.getSkillCfg(cfgData.skillId);
         if (this.costLabel) this.costLabel.string = "技能:" + (innateSkill?.name || cfgData.skill || "无");
@@ -167,7 +172,7 @@ export default class GeneralDesLogic extends Component {
             const icon = this.skillIcons[index]?.getComponent(SkillIconLogic);
             if (icon) icon.setData(displaySkill, equipped);
             const label = this.skillNameLab[index];
-            if (label) label.string = conf?.name || '';
+            if (label) label.string = conf?.name || '选择技能';
         }
         this.refreshVisualLayout();
     }

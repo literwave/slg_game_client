@@ -55,6 +55,13 @@ export default class WorldLandscape extends Component {
         this.material.setProperty('waterTexture', water.original?._texture || water.texture);
         this.material.setProperty('riverTexture', this.riverTexture); sprite.customMaterial = this.material;
         this.decoration = new Node('MountainRanges'); this.decoration.layer = this.node.layer; this.node.addChild(this.decoration);
+        // 山体遮住后方的自然资源图标；城池、关隘、选中提示与部队仍在上层。
+        // 与地面分层，避免资源图标像贴纸一样浮在山顶。
+        const resourceLayer = this.node.parent?.getChildByName('resNode');
+        if (resourceLayer) {
+            this.decoration.setParent(resourceLayer.parent, true);
+            this.decoration.setSiblingIndex(resourceLayer.getSiblingIndex() + 1);
+        }
         this.patches = config.patches.map((p: LandscapePatch) => ({ ...p,
             px: (p.x - p.y) * tile.width * .5,
             py: (size.height - 1 - p.x - p.y) * tile.height * .5 }));
@@ -68,6 +75,10 @@ export default class WorldLandscape extends Component {
     }
 
     protected lateUpdate(): void { this.updateVisible(); }
+
+    protected onDisable(): void {
+        if (this.decoration) this.decoration.active = false;
+    }
 
     /** 上方山体轮廓也属于阻挡，不能穿过山体图像选到背后的土地。 */
     public blockerAt(point: Vec2): Vec2 | null {
@@ -125,6 +136,7 @@ export default class WorldLandscape extends Component {
     }
 
     protected onDestroy(): void {
+        if (this.decoration?.isValid) this.decoration.destroy();
         this.material?.destroy(); this.groundFrame?.destroy(); this.riverTexture?.destroy(); this.riverImage?.destroy();
         this.activePatches.clear(); this.patchBuckets.clear(); this.pool.length = 0;
     }

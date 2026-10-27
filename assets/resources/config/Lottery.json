@@ -247,6 +247,66 @@
         "item_id": 11026,
         "item_count": 2,
         "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2001,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2002,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2005,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2013,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2014,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2025,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2029,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2036,
+        "item_count": 1,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2039,
+        "item_count": 1,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2040,
+        "item_count": 1,
+        "weight": 30
       }
     ],
     "HeroPools": [
@@ -655,6 +715,66 @@
         "reward_type": 1,
         "item_id": 11026,
         "item_count": 2,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2001,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2002,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2005,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2013,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2014,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2025,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2029,
+        "item_count": 1,
+        "weight": 80
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2036,
+        "item_count": 1,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2039,
+        "item_count": 1,
+        "weight": 30
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2040,
+        "item_count": 1,
         "weight": 30
       }
     ],

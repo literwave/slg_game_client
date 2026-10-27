@@ -26,6 +26,7 @@ export default class GeneralListLogic extends Component {
     private _position: number = 0;
     private _convertSupported: boolean = false;
     private _visibleCount: number = 0;
+    private _layoutKey = '';
 
     protected onLoad(): void {
         this._convertSupported = GeneralCommand.getInstance().isProtocolAvailable(ServerConfig.general_convert);
@@ -36,7 +37,6 @@ export default class GeneralListLogic extends Component {
     }
 
     protected onEnable(): void {
-        applyGeneralListSkin(this.node, this._visibleCount, this._type);
         view.on('canvas-resize', this.onCanvasResize, this);
         view.on('design-resolution-changed', this.onCanvasResize, this);
         EventMgr.on(LogicEvent.updateMyGenerals, this.initGeneralCfg, this);
@@ -53,7 +53,16 @@ export default class GeneralListLogic extends Component {
     }
 
     private onCanvasResize(): void {
-        applyGeneralListSkin(this.node, this._visibleCount, this._type);
+        this.applyLayout();
+    }
+
+    private applyLayout(refreshList = true): boolean {
+        const size = view.getVisibleSize();
+        const key = `${size.width}:${size.height}:${this._visibleCount}:${this._type}`;
+        if (key === this._layoutKey) return false;
+        this._layoutKey = key;
+        applyGeneralListSkin(this.node, this._visibleCount, this._type, refreshList);
+        return true;
     }
 
     protected onClickClose(): void {
@@ -83,6 +92,10 @@ export default class GeneralListLogic extends Component {
     }
 
     protected initGeneralCfg(): void {
+        this.refreshGenerals(false);
+    }
+
+    private refreshGenerals(resetScroll: boolean): void {
         if (!this.scrollView) {
             return;
         }
@@ -116,12 +129,17 @@ export default class GeneralListLogic extends Component {
         const comp = this.scrollView.node.getComponent(ListLogic);
         if (comp) {
             this._visibleCount = list.length;
-            applyGeneralListSkin(this.node, this._visibleCount, this._type);
-            comp.setData(list);
+            // 布局参数和新数据一起应用，避免先重画旧列表，再重画新列表。
+            const relayout = this.applyLayout(false);
+            comp.setData(list, resetScroll ? undefined : 0, relayout);
         }
     }
 
 
+
+    public prepareView(): void {
+        this.refreshGenerals(true);
+    }
 
     public setData(data: number[], type: number = 0, position: number = 0): void {
         this._cunGeneral = [];
@@ -132,7 +150,7 @@ export default class GeneralListLogic extends Component {
         this._type = type;
         this._position = position;
 
-        this.initGeneralCfg();
+        this.refreshGenerals(true);
         GeneralCommand.getInstance().qryMyGenerals();
         TroopCommand.getInstance().requestTroops();
     }

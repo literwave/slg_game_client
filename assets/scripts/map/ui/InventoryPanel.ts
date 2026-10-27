@@ -1,9 +1,10 @@
 import { _decorator, BlockInputEvents, Button, Color, Component, Label, Mask, Node, SafeArea,
-    ScrollView, Sprite, SpriteFrame, UITransform, Widget, resources } from 'cc';
+    ScrollView, Sprite, UITransform, Widget } from 'cc';
 import InventoryCommand from '../../inventory/InventoryCommand';
+import InventoryIconCache from '../../inventory/InventoryIconCache';
 import { INVENTORY_CATEGORIES, InventoryCategory, InventoryDestination, inventoryAction,
     inventoryCategory, inventoryLayout } from '../../inventory/InventoryPresentation';
-import { getItemConfig, itemGlyph, itemIconPath, itemName } from '../../common/ItemPresentation';
+import { getItemConfig, itemGlyph, itemName } from '../../common/ItemPresentation';
 import { InventoryItem } from '../../login/LoginProxy';
 import { LogicEvent as E } from '../../common/LogicEvent';
 import { EventMgr } from '../../utils/EventMgr';
@@ -28,6 +29,10 @@ export default class InventoryPanel extends Component {
     private metrics = inventoryLayout(1280, 720);
     private layingOut = false;
     private queued = false;
+    private gridKey = '';
+    private detailKey = '';
+    private artRevision = 0;
+    private preparingArt = '';
     private navigate: (destination: InventoryDestination) => void;
 
     public show(navigate: (destination: InventoryDestination) => void): void {
@@ -50,7 +55,10 @@ export default class InventoryPanel extends Component {
         caption(this.panel, 'Title', '背包', 0, 0, 200, 30, C.text);
         this.status = caption(this.panel, 'Status', '', 0, 0, 580, 14, C.muted);
         this.button(this.panel, 'Close', () => this.close());
-        this.retry = this.button(this.panel, 'Retry', () => InventoryCommand.getInstance().requestItems());
+        this.retry = this.button(this.panel, 'Retry', () => {
+            this.render();
+            InventoryCommand.getInstance().requestItems();
+        });
         this.tabs = this.make('Categories', this.panel, 1, 40);
         this.detail = this.make('Detail', this.panel, 310, 490);
         const scrollNode = this.make('Grid', this.panel, 620, 490);
@@ -109,22 +117,29 @@ export default class InventoryPanel extends Component {
         this.status.string = !cmd.sessionReady ? '连接已断开，等待重新连接' : cmd.loadError
             || (cmd.loading ? '正在同步背包…' : `持有 ${all.length} 种物品`);
         this.retry.active = !!cmd.loadError && cmd.sessionReady && !cmd.loading;
-        this.clear(this.tabs);
         const tw = (m.width - 40 - 18) / 4;
         INVENTORY_CATEGORIES.forEach(([key, name], i) => {
-            const node = this.button(this.tabs, key, () => {
+            const node = this.tabs.getChildByName(key) || this.button(this.tabs, key, () => {
                 if (this.category === key) return;
                 this.category = key; this.render(true);
             });
             panelButton(node, name, (i - 1.5) * (tw + 6), 0, tw, 38, key === this.category);
         });
         const rows = all.filter(row => this.category === 'all' || inventoryCategory(row.itemId) === this.category);
+        if (!this.prepareArt(rows, resetScroll)) return;
         if (!rows.some(row => row.itemId === this.selected)) this.selected = rows[0]?.itemId || 0;
         const offset = resetScroll ? 0 : this.scroll.getScrollOffset().y;
-        this.scroll.stopAutoScroll(); this.clear(this.content);
+        const gridKey = `${m.gridWidth}:${m.gridHeight}:${m.columns}:${rows.map(row => row.itemId).join(',')}`;
+        const layoutChanged = this.gridKey !== gridKey;
+        const owned = new Set(all.map(row => `Item_${row.itemId}`));
+        const visible = new Set(rows.map(row => `Item_${row.itemId}`));
+        for (const cell of this.content.children.slice()) {
+            if (!owned.has(cell.name)) { cell.removeFromParent(); cell.destroy(); }
+            else cell.active = visible.has(cell.name);
+        }
         const cellW = (m.gridWidth - (m.columns - 1) * 8) / m.columns, cellH = 132;
         rows.forEach((row, index) => {
-            const cell = this.button(this.content, `Item_${row.itemId}`, () => {
+            const cell = this.content.getChildByName(`Item_${row.itemId}`) || this.button(this.content, `Item_${row.itemId}`, () => {
                 this.selected = row.itemId; this.render();
             });
             place(cell, -m.gridWidth / 2 + cellW / 2 + (index % m.columns) * (cellW + 8),
@@ -138,17 +153,54 @@ export default class InventoryPanel extends Component {
             count.overflow = Label.Overflow.SHRINK;
         });
         const height = Math.max(m.gridHeight, Math.ceil(rows.length / m.columns) * 140 - 8);
-        this.content.getComponent(UITransform).setContentSize(m.gridWidth, height);
-        this.content.setPosition(0, m.gridHeight / 2 + Math.min(Math.max(0, offset), height - m.gridHeight), 0);
+        if (layoutChanged || resetScroll) {
+            this.scroll.stopAutoScroll();
+            this.content.getComponent(UITransform).setContentSize(m.gridWidth, height);
+            this.content.setPosition(0, m.gridHeight / 2 + Math.min(Math.max(0, offset), height - m.gridHeight), 0);
+            this.gridKey = gridKey;
+        }
         this.empty.node.active = !rows.length;
         this.empty.string = cmd.loading ? '正在整理行囊…' : !cmd.loaded ? (cmd.loadError || '等待背包数据…')
             : this.category === 'all' ? '背包中暂无物品' : '这个分类暂无物品';
         this.renderDetail(rows.find(row => row.itemId === this.selected));
     }
 
+    /** 正常进场时已缓存；新增配置或编辑器热更新时也要等整批图准备好再换页。 */
+    private prepareArt(rows: InventoryItem[], resetScroll: boolean): boolean {
+        const ids = rows.map(row => row.itemId);
+        if (ids.every(id => InventoryIconCache.isReady(id))) {
+            this.preparingArt = '';
+            this.artRevision++;
+            return true;
+        }
+        this.status.string = '正在准备背包物品…';
+        this.empty.node.active = !this.content.children.some(child => child.active);
+        this.empty.string = '正在整理行囊…';
+        const key = `${this.category}:${ids.join(',')}`;
+        if (this.preparingArt === key) return false;
+        this.preparingArt = key;
+        const revision = ++this.artRevision;
+        const isCurrent = () => this.isValid && this.node.activeInHierarchy && revision === this.artRevision;
+        InventoryIconCache.prepare(ids, isCurrent).then(() => {
+            if (!isCurrent()) return;
+            this.preparingArt = '';
+            this.render(resetScroll);
+        }).catch(() => {
+            if (!isCurrent()) return;
+            this.preparingArt = '';
+            this.status.string = '物品图片加载失败，请重试';
+            this.empty.string = '物品图片加载失败，请重试';
+            this.retry.active = true;
+        });
+        return false;
+    }
+
     private renderDetail(row?: InventoryItem): void {
-        this.clear(this.detail);
         const m = this.metrics, w = m.detailWidth, h = m.detailHeight, top = h / 2;
+        const key = `${row?.itemId}:${row?.count}:${w}:${h}:${m.narrow}:${InventoryCommand.getInstance().sessionReady}`;
+        if (key === this.detailKey) return;
+        this.detailKey = key;
+        this.clear(this.detail);
         inkSurface(this.detail, 'Surface', w, h, C.inset, C.line);
         if (!row) {
             caption(this.detail, 'EmptyDetail', '选择物品查看详情', 0, 0, w - 24, 16, C.muted, Label.HorizontalAlign.CENTER);
@@ -181,17 +233,20 @@ export default class InventoryPanel extends Component {
     }
 
     private art(parent: Node, itemId: number, x: number, y: number, size: number): void {
-        const fallback = caption(parent, 'Glyph', itemGlyph(itemId), x, y, size, Math.min(32, size / 2), C.gold, Label.HorizontalAlign.CENTER);
-        const node = this.make('Icon', parent, size, size); node.setPosition(x, y, 0);
-        const sprite = node.addComponent(Sprite); sprite.sizeMode = Sprite.SizeMode.CUSTOM;
-        const path = itemIconPath(itemId); if (!path) return;
-        resources.load(path, SpriteFrame, (error, frame) => {
-            if (error || !(frame instanceof SpriteFrame) || !sprite.isValid) return;
-            sprite.spriteFrame = frame;
-            const fit = Math.min(size / frame.originalSize.width, size / frame.originalSize.height);
-            node.getComponent(UITransform).setContentSize(frame.originalSize.width * fit, frame.originalSize.height * fit);
-            if (fallback.isValid) fallback.node.active = false;
-        });
+        const frame = InventoryIconCache.get(itemId);
+        if (!frame) {
+            caption(parent, 'Glyph', itemGlyph(itemId), x, y, size, Math.min(32, size / 2), C.gold, Label.HorizontalAlign.CENTER);
+            return;
+        }
+        const node = parent.getChildByName('Icon') || this.make('Icon', parent, size, size);
+        node.setPosition(x, y, 0);
+        const sprite = node.getComponent(Sprite) || node.addComponent(Sprite);
+        sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        if (sprite.spriteFrame !== frame) sprite.spriteFrame = frame;
+        const fit = Math.min(size / frame.originalSize.width, size / frame.originalSize.height);
+        node.getComponent(UITransform).setContentSize(frame.originalSize.width * fit, frame.originalSize.height * fit);
+        const fallback = parent.getChildByName('Glyph');
+        if (fallback) fallback.active = false;
     }
     private make(name: string, parent: Node, w: number, h: number): Node {
         const node = new Node(name); node.layer = parent.layer; parent.addChild(node);
@@ -209,6 +264,9 @@ export default class InventoryPanel extends Component {
         w.top = w.bottom = w.left = w.right = 0; w.alignMode = Widget.AlignMode.ALWAYS;
     }
     private close(): void { this.node.active = false; }
-    protected onDisable(): void { this.unscheduleAllCallbacks(); this.queued = false; }
+    protected onDisable(): void {
+        this.unscheduleAllCallbacks(); this.queued = false;
+        this.artRevision++; this.preparingArt = '';
+    }
     protected onDestroy(): void { EventMgr.targetOff(this); }
 }

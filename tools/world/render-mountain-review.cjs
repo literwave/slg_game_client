@@ -9,7 +9,7 @@ async function render(config, x, y) {
     const width = 1400, height = 800, scale = .72;
     const centerX = (x - y) * 100, centerY = (999 - x - y) * 50;
     const metadata = {};
-    for (const art of ['valley', 'ridge', 'foothills']) metadata[art] = await sharp(path.join(root, 'assets/resources/ui/world', art + '.png')).metadata();
+    for (const art of new Set(config.patches.map(p => p.art))) metadata[art] = await sharp(path.join(root, 'assets/resources/ui/world', art + '.png')).metadata();
     const layers = [];
     const ground = await sharp(path.join(root, 'assets/resources/ui/world/plains.png')).resize(512, 512).toBuffer();
     for (let top = 0; top < height; top += 512) for (let left = 0; left < width; left += 512) {

@@ -1,5 +1,5 @@
 
-import { _decorator, Component, Prefab, ToggleContainer, Node, instantiate, view } from 'cc';
+import { _decorator, Component, Prefab, ToggleContainer, Node, UITransform, instantiate, view } from 'cc';
 import GeneralCommand from "../../general/GeneralCommand";
 import { ServerConfig } from '../../config/ServerConfig';
 import { AudioManager } from '../../common/AudioManager';
@@ -34,27 +34,10 @@ export default class GeneralInfoLogic  extends Component {
     private _nodeList:Node[] = [];
     private _supportedTabs:boolean[] = [true, false, false];
     private _arranging = false;
+    private _layoutKey = '';
 
     protected onLoad():void{
         EventMgr.on(LogicEvent.updateOneGenerals, this.updateOnce, this); 
-
-        var des = instantiate(this.generalDesPrefab);
-        des.parent = this.node;
-        des.active = false;
-
-
-        var comp = instantiate(this.generalComposePrefab);
-        comp.parent = this.node;
-        comp.active = false;
-
-
-        var addd = instantiate(this.generalAddPrefab);
-        addd.parent = this.node;
-        addd.active = false;
-
-        this._nodeList[0] = des;
-        this._nodeList[1] = comp;
-        this._nodeList[2] = addd;
 
         this._supportedTabs[1] = GeneralCommand.getInstance().isProtocolAvailable(ServerConfig.general_composeGeneral);
         this._supportedTabs[2] = GeneralCommand.getInstance().isProtocolAvailable(ServerConfig.general_addPrGeneral);
@@ -85,9 +68,13 @@ export default class GeneralInfoLogic  extends Component {
 
     public refreshVisualLayout(): void {
         if (this._arranging) return;
+        const size = this.node.parent?.getComponent(UITransform) || view.getVisibleSize();
+        const key = `${size.width}:${size.height}:${this._supportedTabs.join(',')}`;
+        if (key === this._layoutKey) return;
         this._arranging = true;
         try {
             styleGeneralHeader(this.node);
+            this._layoutKey = key;
         } finally {
             this._arranging = false;
         }
@@ -99,7 +86,7 @@ export default class GeneralInfoLogic  extends Component {
     }
 
     protected updateOnce(curData:any):void{
-        this.setData(this._cfgData,curData)
+        if (this._currData?.hero_type === curData?.hero_type) this.setData(this._cfgData,curData);
     }
    
 
@@ -122,15 +109,22 @@ export default class GeneralInfoLogic  extends Component {
     }
 
     protected setIndex(index:number = 0):void{
+        index = Number(index);
         if (!this._supportedTabs[index]) {
             index = 0;
         }
         if (!this._nodeList[index]) {
-            return;
+            const prefab = [this.generalDesPrefab, this.generalComposePrefab, this.generalAddPrefab][index];
+            if (!prefab) return;
+            // 首次只创建当前页；未开放和未点开的页不占用点击这一帧。
+            const page = instantiate(prefab);
+            page.active = false;
+            page.parent = this.node;
+            this._nodeList[index] = page;
+            this.node.getChildByName('node')?.setSiblingIndex(this.node.children.length - 1);
         }
         this._curIndex = index;
-        this.allVisible();
-        this._nodeList[index].active = true;
+        this._nodeList.forEach((page, pageIndex) => { if (page) page.active = pageIndex === index; });
         if (this.generalToggleContainer && this.generalToggleContainer.toggleItems[index]) {
             this.generalToggleContainer.toggleItems[index].isChecked = true;
         }
@@ -145,12 +139,13 @@ export default class GeneralInfoLogic  extends Component {
 
     protected allVisible():void{
         for(var i = 0; i < this._nodeList.length; i++){
-            this._nodeList[i].active = false;
+            if (this._nodeList[i]) this._nodeList[i].active = false;
         }
     }
 
     protected selectHandle(event:any,other:any):void{
         // console.log("event:",event,other)
+        if (Number(other) === this._curIndex) return;
         AudioManager.instance.playClick();
         this.setIndex(other)
     }

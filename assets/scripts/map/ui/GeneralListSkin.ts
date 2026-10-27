@@ -132,7 +132,7 @@ function control(node: Node | null, caption: string, x: number, y: number,
 }
 
 /** 少量武将居中陈列，完整收藏采用滚动网格。 */
-export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0): void {
+export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0, refreshList = true): void {
     const content = root.getChildByName('New Node');
     const contentTransform = content?.getComponent(UITransform);
     if (!content || !contentTransform) return;
@@ -195,7 +195,7 @@ export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0): v
         scroll.getComponent(UITransform)?.setContentSize(listWidth, listHeight);
         viewport.getComponent(UITransform)?.setContentSize(listWidth, listHeight);
         viewport.getChildByName('content')?.getComponent(UITransform)?.setContentSize(listWidth, listHeight);
-        list?.refreshLayout();
+        if (refreshList) list?.refreshLayout();
     }
 
     let hintNode = content.getChildByName('RosterHint');

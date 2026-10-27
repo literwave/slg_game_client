@@ -449,7 +449,7 @@ export default class ListLogic extends Component {
      * 设置列表数据
      * scrollOffset 没有传值代表刷新到初始位置，其他整数代表相对当前位置的偏移量。
      */
-    public setData(data, scrollOffset?:any):void{
+    public setData(data, scrollOffset?:any, relayout = false):void{
         this._datas = data;
         if (scrollOffset != null && scrollOffset != undefined && !isNaN(scrollOffset)) {
             this._newOffset = this._curOffset + scrollOffset;
@@ -457,7 +457,11 @@ export default class ListLogic extends Component {
             this._newOffset = 0;
         }
         // console.log("list logiv setData", data, scrollOffset, this._newOffset);
-        this.updateList();
+        if (relayout) {
+            this.refreshLayout();
+        } else {
+            this.updateList();
+        }
     }
 
     protected scrollToIndex(index):void {

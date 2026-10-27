@@ -12,7 +12,7 @@ const protocolIds = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources
 let passed = 0;
 
 function harness() {
-    const cache = new Map(), timers = new Map(), sent = [], toasts = [], notifications = [];
+    const cache = new Map(), timers = new Map(), sent = [], toasts = [], notifications = [], layouts = [];
     let timerId = 0, failSend = false, facilityRequests = 0, additionReads = 0;
     const role = { soldierInfo: { count: 0, hurtCount: 0 } };
     class Component { constructor() { this.isValid = true; this.node = { active: true }; } }
@@ -23,7 +23,7 @@ function harness() {
         Component, Label, Node, Prefab: class {}, EditBox: class {}, Slider: class {},
         Sprite: class {}, ProgressBar: class {}, ScrollView: class {}, UITransform: class {},
         _decorator: { ccclass: () => target => target, property: () => () => {} },
-        view: { on() {}, off() {} },
+        view: { on() {}, off() {}, getVisibleSize: () => ({ width: 1280, height: 720 }) },
     };
     const heroes = new Map([1001, 1002, 1003, 1004].map(id => [id, {
         hero_type: id, heroId: id, cfgId: id, level: 1,
@@ -71,7 +71,9 @@ function harness() {
         'utils/DateUtil': { default: {} },
         'utils/ListLogic': { default: class {} },
         'map/ui/GeneralHeadLogic': { default: class {} },
-        'map/ui/GeneralListSkin': { applyGeneralListSkin() {} },
+        'map/ui/GeneralListSkin': { applyGeneralListSkin(root, count, type, refreshList) {
+            layouts.push({ count, type, refreshList });
+        } },
         'map/ui/RightHudSkin': {},
         'map/ui/TroopPanelSkin': { styleTroopPanel() {}, styleTroopCard() {} },
     };
@@ -139,7 +141,7 @@ function harness() {
         settings.setData(0, order);
         return settings;
     }
-    return { load, proto, events, server, logic, net, command, sent, toasts, notifications,
+    return { load, proto, events, server, logic, net, command, sent, toasts, notifications, layouts,
         timers, receive, authenticate, ready, expire, createSettings, heroes, role,
         set failSend(value) { failSend = value; },
         get facilityRequests() { return facilityRequests; },
@@ -186,6 +188,7 @@ test('真实 World 编解码：界面三槽映射协议 1/2/3 站位，回包前
     assert.equal(updated.getHeroIdxAt(0), 1001);
     assert.deepEqual(plain(updated.getHeroMap()), { 1001: 0, 1002: 1, 1003: 2 });
     assert.ok(h.notifications.includes(h.logic.updateTroopList));
+    assert.equal(h.toasts.length, 0, '编队成功静默刷新，不弹保存成功提示');
 });
 
 test('服务端第三站位和稀疏阵容准确还原，导出时保持 1～3；拒绝非法零号站位', () => {
@@ -394,6 +397,29 @@ test('初始列表回包刷新配置页；选将动态排除已编队武将，�
     assert.deepEqual(plain(h.sent.at(-1).data.troopInfo.posMap), { 1: { heroIdx: 1001, soldier: { count: 0, hurtCount: 0 } }, 2: { heroIdx: 1003, soldier: { count: 0, hurtCount: 0 } } });
     h.receive(h.server.s2c_edit_troop, h.sent.at(-1).data);
     assert.equal(settings.labelCost.string, '上阵 2/3');
+});
+
+test('打开选将只应用一次新布局；后台更新保留滚动位置并复用布局', () => {
+    const h = harness();
+    h.ready();
+    const List = h.load('map/ui/GeneralListLogic').default;
+    const list = new List(), renders = [];
+    list.scrollView = { node: { getComponent: () => ({
+        setData: (data, offset, relayout) => renders.push({ data, offset, relayout }),
+    }) } };
+    list.onEnable();
+    assert.equal(h.layouts.length, 0, '打开时不能先重画上一轮的列表');
+    list.setData([], 1, 0);
+    assert.equal(renders.length, 1);
+    assert.equal(renders[0].offset, undefined);
+    assert.equal(renders[0].relayout, true);
+    assert.equal(h.layouts.length, 1);
+    assert.equal(h.layouts[0].refreshList, false, '皮肤设置不能额外刷新旧列表');
+    h.events.emit(h.logic.updateTroopList);
+    assert.equal(renders.length, 2);
+    assert.equal(renders[1].offset, 0, '后台同步不能打断当前滚动位置');
+    assert.equal(renders[1].relayout, false);
+    assert.equal(h.layouts.length, 1, '尺寸、数量和模式未变时复用排版');
 });
 
 test('主城部队面板读取 World 快照，三队可打开，编队更新和清空即时刷新', () => {

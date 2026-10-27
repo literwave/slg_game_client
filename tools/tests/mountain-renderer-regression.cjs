@@ -14,7 +14,7 @@ class Node {
     setScale(x, y) { this.scale = { x, y }; }
     setSiblingIndex(i) { this.order = i; }
 }
-const frames = Object.fromEntries(['valley', 'ridge', 'foothills'].map(name => {
+const frames = Object.fromEntries(['mountain_ridge_connected', 'mountain_shoulder'].map(name => {
     const bytes = fs.readFileSync(path.join(root, 'assets/resources/ui/world', name + '.png'));
     return [name, { originalSize: { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) } }];
 }));

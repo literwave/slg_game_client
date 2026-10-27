@@ -4,7 +4,7 @@ import { ServerConfig as S } from '../config/ServerConfig';
 import { LogicEvent as E } from '../common/LogicEvent';
 import { EventMgr } from '../utils/EventMgr';
 import LoginCommand from '../login/LoginCommand';
-import { resourceLandConfig, resourceLandForCell } from './ResourceLand';
+import { resourceLandForCell } from './ResourceLand';
 
 /** 路径中的p_pos_f保留小数；只有目的格和视野中心使用整数坐标。 */
 export interface WorldPosition { x: number; y: number; }
@@ -87,8 +87,9 @@ export default class WorldCommand extends ProtocolCommand {
     }
     moveTroop(troopIdx: number, targetPos: WorldPosition): boolean {
         const current = this.marches.get(troopIdx);
-        if (!this.validPos(targetPos) || current?.state === 1
-            || current?.state === 2 && current.endPos?.x === targetPos.x && current.endPos?.y === targetPos.y) return false;
+        if (!this.validPos(targetPos)
+            || (current?.state === 1 || current?.state === 2)
+            && current.endPos?.x === targetPos.x && current.endPos?.y === targetPos.y) return false;
         return this.march(troopIdx, MarchTargetType.Move, 0, targetPos);
     }
     cancelMarch(troopIdx: number): boolean {
@@ -117,6 +118,10 @@ export default class WorldCommand extends ProtocolCommand {
         const city = LoginCommand.getInstance().proxy.getRoleData().cityPos;
         return this.march(troopIdx, MarchTargetType.ReturnCity, 0, { x: city.x, y: city.y });
     }
+    /** 与服务端 CONST.res_land_entity_id 相同：RES_LAND + y * 1000 + x。中立地没有实体，出征仍用这个 id。 */
+    resourceLandEntityId(x: number, y: number): number {
+        return 4000000000000000 + y * 1000 + x;
+    }
     resourceLandAt(x: number, y: number): WorldEntity | undefined {
         const matches = Array.from(this.entities.values()).filter(e => e.entityType === 4 && e.pos?.x === x && e.pos?.y === y);
         return matches.length === 1 ? matches[0] : undefined;
@@ -125,21 +130,25 @@ export default class WorldCommand extends ProtocolCommand {
         const cfg = resourceLandForCell(mapType, level);
         if (!cfg) return mapType === 54 ? '石料资源配置尚未同步，请稍后重试' : '资源地配置尚未同步，请稍后重试';
         const entity = this.resourceLandAt(x, y);
-        if (!entity) return '正在等待服务器同步该资源地，请稍后重试';
-        if (entity.cfgId !== cfg.Id) return '地图资源配置与服务器不一致，请更新地图配置';
+        if (entity && entity.cfgId !== cfg.Id) return '地图资源配置与服务器不一致，请更新地图配置';
         const role = LoginCommand.getInstance().proxy.getRoleData();
-        if (hasId(role?.userId) && idKey(entity.ownerId) === idKey(role.userId)) return '这块资源地已归你所有';
+        if (entity && hasId(entity.ownerId) && hasId(role?.userId) && idKey(entity.ownerId) !== idKey(role.userId)) return '资源地已被占领';
         if (role && cfg.OpenCond?.level && role.level < cfg.OpenCond.level) return `主公达到${cfg.OpenCond.level}级后可占领`;
         return '';
     }
-    occupyResourceLand(troopIdx: number, entityId: number | string): boolean {
-        const entity = this.entities.get(idKey(entityId));
-        const cfg = entity && resourceLandConfig(entity.cfgId);
+    /** 空地没有资源等级。已有别的主人时不能再占。 */
+    emptyLandIssue(x: number, y: number): string {
+        const entity = this.resourceLandAt(x, y);
         const role = LoginCommand.getInstance().proxy.getRoleData();
-        if (!entity || entity.entityType !== 4 || !cfg || this.marches.get(troopIdx)?.state === 1
-            || hasId(role?.userId) && idKey(entity.ownerId) === idKey(role.userId)
-            || role && cfg.OpenCond?.level && role.level < cfg.OpenCond.level) return false;
-        return this.march(troopIdx, MarchTargetType.OccupyResource, entity.entityId, entity.pos);
+        if (entity && hasId(entity.ownerId) && hasId(role?.userId) && idKey(entity.ownerId) !== idKey(role.userId)) return '这块空地已被占领';
+        return '';
+    }
+    occupyResourceLand(troopIdx: number, x: number, y: number): boolean {
+        const entity = this.resourceLandAt(x, y);
+        const role = LoginCommand.getInstance().proxy.getRoleData();
+        if (entity && hasId(entity.ownerId) && hasId(role?.userId) && idKey(entity.ownerId) !== idKey(role.userId)) return false;
+        if (!Number.isInteger(x) || !Number.isInteger(y)) return false;
+        return this.march(troopIdx, MarchTargetType.OccupyResource, this.resourceLandEntityId(x, y), { x, y });
     }
     /** 地图格子坐标，250ms 合并拖动上报；不用像素坐标代替格坐标。 */
     focus(pos: WorldPosition): void {

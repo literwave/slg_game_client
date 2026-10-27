@@ -14,6 +14,7 @@
     "Defense": 90,
     "Speed": 98,
     "Crit": 280,
+    "Soldier": 1200,
     "Class": "战士",
     "Star": 5,
     "SkillId": 1001,
@@ -40,6 +41,7 @@
     "Defense": 42,
     "Speed": 52,
     "Crit": 40,
+    "Soldier": 800,
     "Class": "辅助",
     "Star": 3,
     "SkillId": 1002,
@@ -66,6 +68,7 @@
     "Defense": 28,
     "Speed": 46,
     "Crit": 30,
+    "Soldier": 600,
     "Class": "辅助",
     "Star": 2,
     "SkillId": 1003,
@@ -92,6 +95,7 @@
     "Defense": 48,
     "Speed": 105,
     "Crit": 320,
+    "Soldier": 1200,
     "Class": "刺客",
     "Star": 5,
     "SkillId": 1004,
@@ -118,6 +122,7 @@
     "Defense": 36,
     "Speed": 50,
     "Crit": 35,
+    "Soldier": 800,
     "Class": "辅助",
     "Star": 3,
     "SkillId": 1005,
@@ -144,6 +149,7 @@
     "Defense": 125,
     "Speed": 58,
     "Crit": 90,
+    "Soldier": 1000,
     "Class": "坦克",
     "Star": 4,
     "SkillId": 1006,
@@ -170,6 +176,7 @@
     "Defense": 140,
     "Speed": 42,
     "Crit": 70,
+    "Soldier": 1000,
     "Class": "坦克",
     "Star": 4,
     "SkillId": 1007,
@@ -196,6 +203,7 @@
     "Defense": 55,
     "Speed": 72,
     "Crit": 160,
+    "Soldier": 1200,
     "Class": "法师",
     "Star": 5,
     "SkillId": 1008,
@@ -222,6 +230,7 @@
     "Defense": 155,
     "Speed": 48,
     "Crit": 110,
+    "Soldier": 1200,
     "Class": "坦克",
     "Star": 5,
     "SkillId": 1009,
@@ -248,6 +257,7 @@
     "Defense": 100,
     "Speed": 108,
     "Crit": 350,
+    "Soldier": 1200,
     "Class": "战士",
     "Star": 5,
     "SkillId": 1010,
@@ -274,6 +284,7 @@
     "Defense": 50,
     "Speed": 60,
     "Crit": 100,
+    "Soldier": 1200,
     "Class": "法师",
     "Star": 5,
     "Convert": [
@@ -282,7 +293,8 @@
         "item_id": 11011,
         "item_count": 50
       }
-    ]
+    ],
+    "SkillId": 1011
   },
   "1012": {
     "Id": 1012,
@@ -299,6 +311,7 @@
     "Defense": 50,
     "Speed": 60,
     "Crit": 100,
+    "Soldier": 1000,
     "Class": "辅助",
     "Star": 4,
     "Convert": [
@@ -307,7 +320,8 @@
         "item_id": 11012,
         "item_count": 30
       }
-    ]
+    ],
+    "SkillId": 1012
   },
   "1013": {
     "Id": 1013,
@@ -324,6 +338,7 @@
     "Defense": 50,
     "Speed": 60,
     "Crit": 100,
+    "Soldier": 1200,
     "Class": "战士",
     "Star": 5,
     "Convert": [
@@ -332,7 +347,8 @@
         "item_id": 11013,
         "item_count": 50
       }
-    ]
+    ],
+    "SkillId": 1013
   },
   "1014": {
     "Id": 1014,
@@ -349,6 +365,7 @@
     "Defense": 50,
     "Speed": 60,
     "Crit": 100,
+    "Soldier": 1200,
     "Class": "战士",
     "Star": 5,
     "Convert": [
@@ -357,7 +374,8 @@
         "item_id": 11014,
         "item_count": 50
       }
-    ]
+    ],
+    "SkillId": 1014
   },
   "1015": {
     "Id": 1015,
@@ -374,6 +392,7 @@
     "Defense": 50,
     "Speed": 60,
     "Crit": 100,
+    "Soldier": 1000,
     "Class": "法师",
     "Star": 4,
     "Convert": [
@@ -382,7 +401,8 @@
         "item_id": 11015,
         "item_count": 30
       }
-    ]
+    ],
+    "SkillId": 1015
   },
   "1016": {
     "Id": 1016,
@@ -399,6 +419,7 @@
     "Defense": 50,
     "Speed": 60,
     "Crit": 100,
+    "Soldier": 1200,
     "Class": "辅助",
     "Star": 5,
     "Convert": [
@@ -407,7 +428,8 @@
         "item_id": 11016,
         "item_count": 50
       }
-    ]
+    ],
+    "SkillId": 1016
   },
   "1017": {
     "Id": 1017,
@@ -424,6 +446,7 @@
     "Defense": 50,
     "Speed": 60,
     "Crit": 100,
+    "Soldier": 1200,
     "Class": "法师",
     "Star": 5,
     "Convert": [
@@ -432,7 +455,8 @@
         "item_id": 11017,
         "item_count": 50
       }
-    ]
+    ],
+    "SkillId": 1017
   },
   "1018": {
     "Id": 1018,
@@ -449,6 +473,7 @@
     "Defense": 50,
     "Speed": 60,
     "Crit": 100,
+    "Soldier": 1200,
     "Class": "法师",
     "Star": 5,
     "Convert": [
@@ -457,7 +482,8 @@
         "item_id": 11018,
         "item_count": 50
       }
-    ]
+    ],
+    "SkillId": 1018
   },
   "1019": {
     "Id": 1019,
@@ -474,6 +500,7 @@
     "Defense": 50,
     "Speed": 60,
     "Crit": 100,
+    "Soldier": 1000,
     "Class": "刺客",
     "Star": 4,
     "Convert": [
@@ -482,7 +509,8 @@
         "item_id": 11019,
         "item_count": 30
       }
-    ]
+    ],
+    "SkillId": 1019
   },
   "1020": {
     "Id": 1020,
@@ -499,6 +527,7 @@
     "Defense": 50,
     "Speed": 60,
     "Crit": 100,
+    "Soldier": 1000,
     "Class": "辅助",
     "Star": 4,
     "Convert": [
@@ -507,7 +536,8 @@
         "item_id": 11020,
         "item_count": 30
       }
-    ]
+    ],
+    "SkillId": 1020
   },
   "1021": {
     "Id": 1021,
@@ -524,6 +554,7 @@
     "Defense": 50,
     "Speed": 60,
     "Crit": 100,
+    "Soldier": 1200,
     "Class": "战士",
     "Star": 5,
     "Convert": [
@@ -532,7 +563,8 @@
         "item_id": 11021,
         "item_count": 50
       }
-    ]
+    ],
+    "SkillId": 1021
   },
   "1022": {
     "Id": 1022,
@@ -549,6 +581,7 @@
     "Defense": 95,
     "Speed": 92,
     "Crit": 240,
+    "Soldier": 1200,
     "Class": "战士",
     "Star": 5,
     "SkillId": 1022,
@@ -575,6 +608,7 @@
     "Defense": 88,
     "Speed": 100,
     "Crit": 300,
+    "Soldier": 1200,
     "Class": "战士",
     "Star": 5,
     "SkillId": 1023,
@@ -601,6 +635,7 @@
     "Defense": 150,
     "Speed": 38,
     "Crit": 75,
+    "Soldier": 1200,
     "Class": "坦克",
     "Star": 5,
     "SkillId": 1024,
@@ -627,6 +662,7 @@
     "Defense": 48,
     "Speed": 80,
     "Crit": 190,
+    "Soldier": 1200,
     "Class": "法师",
     "Star": 5,
     "SkillId": 1025,
@@ -653,6 +689,7 @@
     "Defense": 42,
     "Speed": 110,
     "Crit": 310,
+    "Soldier": 1200,
     "Class": "刺客",
     "Star": 5,
     "SkillId": 1026,

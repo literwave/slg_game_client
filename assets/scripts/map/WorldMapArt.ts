@@ -24,7 +24,8 @@ export default class WorldMapArt {
             new Promise<void>((resolve, reject) => resources.loadDir('ui/world', SpriteFrame, (error, frames) => {
                 if (error) return reject(error);
                 frames.forEach(frame => {
-                    if (frame.name === 'county' || frame.name.startsWith('player_city_lv')) frame.packable = false;
+                    if (frame.name === 'county' || frame.name.startsWith('player_city_lv')
+                        || frame.name === 'mountain_ridge_connected' || frame.name === 'mountain_shoulder') frame.packable = false;
                     this.frames.set(frame.name, frame);
                 });
                 resolve();
@@ -45,7 +46,7 @@ export default class WorldMapArt {
                 resolve();
             })),
         ]).then(() => {
-            for (const name of ['plains', 'water', 'ridge', 'foothills', 'peaks', 'valley',
+            for (const name of ['plains', 'water', 'mountain_ridge_connected', 'mountain_shoulder',
                 'town', 'county', 'capital', 'fort', GATE_ART, 'forest', 'iron', 'quarry', 'grain',
                 'wild_forest', 'wild_iron', 'wild_quarry', 'wild_grain']) this.frame(name);
             for (const resource of ['forest', 'iron', 'quarry', 'grain']) {

@@ -60,9 +60,12 @@ const stubs = {
     'utils/DateUtil': { default: { getServerTime: () => 0 } }, 'common/BgLogic': { default: class {} },
     'map/MapProxy': { MapResData: class {}, MapResType: { SYS_CITY: 51, SYS_FORTRESS: 50 } },
     'map/MapBuildProxy': { MapBuildData: class {} }, 'general/ArmyProxy': { ArmyCmd: { Attack: 1 } },
-    'login/LoginCommand': { default: { getInstance: () => ({ movingCity: false }) } },
+    'login/LoginCommand': { default: { getInstance: () => ({ movingCity: false, proxy: { getRoleData: () => ({ userId: 1 }) } }) } },
     'core/ConfigManager': { default: {} }, 'general/ArmyCommand': {}, 'general/GeneralCommand': {},
-    'general/TroopCommand': {}, 'world/WorldCommand': {}, 'map/ui/GeneralHeadLogic': { default: class {} },
+    'general/TroopCommand': {}, 'world/WorldCommand': { MarchTargetType: { OccupyResource: 3 }, default: { getInstance: () => ({
+        resourceLandAt: () => undefined, resourceLandEntityId: (x, y) => 4000000000000000 + y * 1000 + x,
+        emptyLandIssue: () => '', resourceLandIssue: () => '', marches: { values: () => [] } }) } },
+    'map/ui/GeneralHeadLogic': { default: class {} },
     'map/ui/MapUICommand': { default: { getInstance: () => ({ proxy: { getDefenseSoldiers: () => 0 } }) } },
     'common/AudioManager': { AudioManager: { instance: { playClick() {} } } },
 };
@@ -137,7 +140,7 @@ for (const target of [
     popup.setCellData(Object.assign(new stubs['map/MapProxy'].MapResData(), target), { x: 0, y: 0 });
     assert.equal(popup.btnMove.node.active, true);
     assert.equal(popup.btnMove.getComponentInChildren(Label).string, '移动');
-    assert.equal(popup.btnOccupy.node.active, !target.isEmpty);
+    assert.equal(popup.btnOccupy.node.active, true);
     popup.onClickMove();
     assert.deepEqual(selectionEvents.at(-1), ['move', target.x, target.y]);
     assert.equal(popup.node.parent, null);

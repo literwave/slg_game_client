@@ -184,7 +184,6 @@ export default class TroopCommand {
         if (confirmed) this.finishEdit();
         EventMgr.emit(LogicEvent.updateTroopList, this._proxy.getTroops());
         EventMgr.emit(LogicEvent.updateTroop, troop);
-        if (confirmed) EventMgr.emit(LogicEvent.showToast, '编队已更新');
     }
 
     private onSyncTroop(data: any): void {

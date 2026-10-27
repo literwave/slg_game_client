@@ -1,11 +1,14 @@
-"""按原始PNG的不透明轮廓连接山脊；只编排位置，不修改美术图片。"""
+"""按山带方向编排连体山脊，用真实透明轮廓合并覆盖，避免逐格堆山。"""
 import collections
+import heapq
+import json
 import math
 import struct
 import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+MOUNTAIN_ART = ('mountain_ridge_connected', 'mountain_shoulder')
 
 
 def read_alpha(name):
@@ -54,7 +57,7 @@ def pixel(x, y):
 
 class Coverage:
     def __init__(self):
-        self.frames = {name: read_alpha(name) for name in ('valley', 'foothills', 'ridge')}
+        self.frames = {name: read_alpha(name) for name in MOUNTAIN_ART}
         self.buckets = collections.defaultdict(list)
 
     def alpha_at(self, patch, px, py):
@@ -105,44 +108,120 @@ def build_mountain_patches(mountains, gates, blocked, noise):
     protected = [pixel(g['x'] + dx, g['y'] + dy) for g in gates
                  for dy in (-1, 0, 1) for dx in (-1, 0, 1)
                  if not blocked[(g['y'] + dy) * 1000 + g['x'] + dx]]
-    patches = []
-    near_gate = lambda x, y: any(max(abs(x - g['x']), abs(y - g['y'])) <= 4 for g in gates)
-
     def clear_pass(p):
         px, py = pixel(p['x'], p['y'])
         return all(not cover.ellipse_at(p, x, y) and cover.alpha_at(p, x, y) < 64
-                   for x, y in protected if abs(px - x) < 600 and abs(py - y) < 600)
+                   for x, y in protected if abs(px - x) < 650 and abs(py - y) < 650)
 
+    # 对共享边只采样一次。先覆盖完整山带，再仅补仍裸露的山脚，
+    # 不会因某个朝前采样点未覆盖，就在每一格重复叠一整座山。
+    sample_cells = set()
+    for idx in sorted(mountains):
+        for x, y in samples(idx % 1000, idx // 1000, mountains):
+            if any(max(abs(x - g['x']), abs(y - g['y'])) <= 3 for g in gates):
+                continue
+            sample_cells.add((int(x * 4), int(y * 4)))
+    points = [pixel(x / 4, y / 4) for x, y in sorted(sample_cells)]
+    point_buckets = collections.defaultdict(list)
+    for i, (px, py) in enumerate(points):
+        point_buckets[math.floor(px / 256), math.floor(py / 256)].append(i)
+
+    def covered_points(p):
+        width, height, alpha = cover.frames[p['art']]
+        px, py = pixel(p['x'], p['y'])
+        h = p['width'] * height / width * p['heightScale']
+        left, bottom = px - p['width'] / 2, py - p['anchorY'] * h
+        result = []
+        for by in range(math.floor(bottom / 256), math.floor((bottom + h) / 256) + 1):
+            for bx in range(math.floor(left / 256), math.floor((left + p['width']) / 256) + 1):
+                for i in point_buckets[bx, by]:
+                    sx, sy = points[i]
+                    u, v = (sx - left) / p['width'], 1 - (sy - bottom) / h
+                    if p['flipX']:
+                        u = 1 - u
+                    if 0 <= u < 1 and 0 <= v < 1 and alpha[int(v * height) * width + int(u * width)] >= 160:
+                        result.append(i)
+        return result
+
+    def direction(x, y):
+        neighbors = [pixel(dx, dy) for dy in range(-5, 6) for dx in range(-5, 6)
+                     if 0 <= x + dx < 1000 and 0 <= y + dy < 1000 and (y + dy) * 1000 + x + dx in mountains]
+        mx = sum(p[0] for p in neighbors) / len(neighbors)
+        my = sum(p[1] for p in neighbors) / len(neighbors)
+        xx = sum((p[0] - mx) ** 2 for p in neighbors)
+        yy = sum((p[1] - my) ** 2 for p in neighbors)
+        xy = sum((p[0] - mx) * (p[1] - my) for p in neighbors)
+        return .5 * math.atan2(2 * xy, xx - yy)
+
+    candidates, heap = [], []
     for idx in sorted(mountains):
         x, y = idx % 1000, idx // 1000
-        if all(cover.covered(sx, sy) for sx, sy in samples(x, y, mountains)):
+        h, angle = noise(x, y), direction(x, y)
+        distance = min(max(abs(x - g['x']), abs(y - g['y'])) for g in gates)
+        shoulder = abs(angle) > .95 or abs(angle) < .16 or distance < 5
+        art = MOUNTAIN_ART[1 if shoulder else 0]
+        width = (720 if shoulder else 1000) + h % 120
+        if distance < 5:
+            width = 180 + distance * 75
+        p = dict(x=x, y=y, art=art, width=width, heightScale=round(.94 + (h % 11) / 100, 2),
+                 anchorY=.38, role='range', flipX=angle > 0)
+        if not clear_pass(p):
             continue
-        h = noise(x // 16, y // 16)
-        gate_distance = min(max(abs(x - g['x']), abs(y - g['y'])) for g in gates)
-        apron = gate_distance <= 4
-        patch = dict(x=x, y=y, art='valley', width=140 + gate_distance * 65 if apron else 620 + noise(x, y) % 70,
-                     heightScale=.8 if apron else .48 + (h % 10) / 100,
-                     anchorY=.48, role='base', flipX=bool(noise(x // 4, y // 4) % 2))
-        if clear_pass(patch):
-            patches.append(patch)
-            cover.add(patch)
+        covered = covered_points(p)
+        if covered:
+            i = len(candidates)
+            candidates.append((p, covered))
+            heapq.heappush(heap, (-len(covered), h, i))
 
-    # 高低起伏沿同一条底脊展开；一段范围仅放一个主峰，不把所有格子都堆成尖峰。
-    peaks = {}
-    for idx in sorted(mountains):
-        x, y = idx % 1000, idx // 1000
-        px, py = pixel(x, y)
-        key = math.floor(px / 760), math.floor(py / 400)
-        if key not in peaks or noise(x, y) < noise(peaks[key][0], peaks[key][1]):
-            peaks[key] = (x, y)
-    for x, y in peaks.values():
-        h = noise(x, y)
-        apron = near_gate(x, y)
-        patch = dict(x=x, y=y, art='foothills' if noise(x // 16, y // 16) % 5 == 0 else 'ridge',
-                     width=220 if apron else 460 + h % 100,
-                     heightScale=.82 + (h % 12) / 100, anchorY=.3, role='crest')
-        # 原图山脊从左上向右下，另一方向的边界翻转后衔接。
-        patch['flipX'] = (y * 1000 + x + 1 in mountains) != ((y + 1) * 1000 + x in mountains)
-        if clear_pass(patch):
-            patches.append(patch)
+    uncovered = bytearray([1]) * len(points)
+    selected = []
+    while heap:
+        negative_count, tie, i = heapq.heappop(heap)
+        p, ids = candidates[i]
+        count = sum(uncovered[j] for j in ids)
+        if not count:
+            continue
+        if count < -negative_count:
+            heapq.heappush(heap, (-count, tie, i))
+            continue
+        selected.append(i)
+        for j in ids:
+            uncovered[j] = 0
+
+    # 去掉后续山体已经完全遮住的候选，保留最少必要的衔接。
+    counts = collections.Counter(j for i in selected for j in candidates[i][1])
+    patches = []
+    for i in reversed(selected):
+        p, ids = candidates[i]
+        if all(counts[j] > 1 for j in ids):
+            for j in ids:
+                counts[j] -= 1
+        else:
+            patches.append(p)
+    patches.sort(key=lambda p: (p['y'], p['x']))
+    # 仅关门紧邻的透明缝可交给关隘素材；其余裸露位置必须报错。
+    missing = [points[i] for i, value in enumerate(uncovered) if value]
+    for px, py in missing:
+        row = (999 * 50 - py) / 100
+        x, y = row + px / 200, row - px / 200
+        if not any(max(abs(x - g['x']), abs(y - g['y'])) <= 5 for g in gates):
+            raise ValueError(f'山脊未覆盖: {(x, y)}')
     return patches
+
+
+if __name__ == '__main__':
+    # 美术重排只写地貌配置，不重建资源、阻挡或服务端地图。
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('campaign', ROOT / 'tools/world/build-campaign-map.py')
+    campaign = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(campaign)
+    target = ROOT / 'assets/resources/world/original-landscape.json'
+    landscape = json.loads(target.read_text(encoding='utf8'))
+    world = json.loads((ROOT / 'assets/resources/world/campaign-map.json').read_text(encoding='utf8'))
+    blocked = bytearray(landscape['width'] * landscape['height'])
+    for idx in landscape['mountainCells'] + landscape['riverCells']:
+        blocked[idx] = 1
+    landscape['patches'] = build_mountain_patches(set(landscape['mountainCells']), world['gates'], blocked, campaign.noise)
+    landscape['version'] = 5
+    target.write_text(json.dumps(landscape, separators=(',', ':')), encoding='utf8')
+    print(json.dumps(dict(patches=len(landscape['patches']), art=dict(collections.Counter(p['art'] for p in landscape['patches'])))))

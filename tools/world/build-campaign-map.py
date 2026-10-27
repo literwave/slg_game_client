@@ -206,7 +206,7 @@ def build():
     mountains = [i for i, value in enumerate(blocked) if value and i not in rivers]
     from mountain_layout import build_mountain_patches
     patches = build_mountain_patches(set(mountains), gates, blocked, noise)
-    landscape = dict(version=4, width=SIZE, height=SIZE, seed=SEED, riverCells=river, mountainCells=mountains, patches=patches)
+    landscape = dict(version=5, width=SIZE, height=SIZE, seed=SEED, riverCells=river, mountainCells=mountains, patches=patches)
     world = ROOT / 'assets/resources/world'
     (ROOT / 'assets/resources/config/mapRes_0.json').write_text(json.dumps(dict(w=SIZE, h=SIZE, list=resources, emptyCells=empty_cells), separators=(',', ':')), encoding='utf8')
     (world / 'original-landscape.json').write_text(json.dumps(landscape, separators=(',', ':')), encoding='utf8')

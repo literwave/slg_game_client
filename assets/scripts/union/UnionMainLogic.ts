@@ -38,6 +38,7 @@ export default class UnionMainLogic extends Component {
         EventMgr.targetOff(this);
     }
     onEnable() {
+        this.editNode.active = false;
         let city:MapCityData = MapCommand.getInstance().cityProxy.getMyMainCity();
         UnionCommand.getInstance().unionInfo(UnionCommand.getInstance().proxy.myAllianceId);
         this.onInfo();
@@ -53,18 +54,18 @@ export default class UnionMainLogic extends Component {
         let city:MapCityData = MapCommand.getInstance().cityProxy.getMyMainCity();
         let unionData:Union = UnionCommand.getInstance().proxy.getUnion(UnionCommand.getInstance().proxy.myAllianceId);
         if (!unionData) return;
-        this.nameLab.string = "联盟:" + unionData.name;
-        console.log("unionData:", unionData);
+        this.nameLab.string = unionData.name;
         if (unionData.notice == ""){
             this.noticeLab.string = "暂无公告";
         }else{
             this.noticeLab.string = unionData.notice;
         }
-        this.mengZhuLab.string = "盟主:" + unionData.getChairman().name
-        this.editNode.active = false;
-
+        this.mengZhuLab.string = unionData.getChairman().name;
         let ok = UnionCommand.getInstance().proxy.canManage();
-        this.modifyBtn.node.active = ok;
+        const editing = ok && this.editNode.active;
+        this.noticeLab.node.active = !editing;
+        this.editNode.active = editing;
+        this.modifyBtn.node.active = ok && !editing;
         this.applyBtn.node.active = ok;
     }
     onUnionNotice(data){
@@ -92,6 +93,7 @@ export default class UnionMainLogic extends Component {
 
     onModify(){
         AudioManager.instance.playClick();
+        this.editBox.string = UnionCommand.getInstance().proxy.getUnion()?.notice || '';
         this.noticeLab.node.active = false;
         this.editNode.active = true;
         this.modifyBtn.node.active = false;

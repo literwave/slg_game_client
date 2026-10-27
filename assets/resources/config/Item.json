@@ -107,6 +107,606 @@
     "Overlap": 99
   },
   {
+    "Id": 2001,
+    "Name": "破军战法书",
+    "Desc": "使用后习得战法「破军」",
+    "Icon": "ui/skill/skill_2001",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2001
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2002,
+    "Name": "强攻战法书",
+    "Desc": "使用后习得战法「强攻」",
+    "Icon": "ui/skill/skill_2002",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2002
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2003,
+    "Name": "横扫战法书",
+    "Desc": "使用后习得战法「横扫」",
+    "Icon": "ui/skill/skill_2003",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2003
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2004,
+    "Name": "乱击战法书",
+    "Desc": "使用后习得战法「乱击」",
+    "Icon": "ui/skill/skill_2004",
+    "Quality": 3,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2004
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2005,
+    "Name": "奇计战法书",
+    "Desc": "使用后习得战法「奇计」",
+    "Icon": "ui/skill/skill_2005",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2005
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2006,
+    "Name": "连环计战法书",
+    "Desc": "使用后习得战法「连环计」",
+    "Icon": "ui/skill/skill_2006",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2006
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2007,
+    "Name": "十面埋伏战法书",
+    "Desc": "使用后习得战法「十面埋伏」",
+    "Icon": "ui/skill/skill_2007",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2007
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2008,
+    "Name": "天火战法书",
+    "Desc": "使用后习得战法「天火」",
+    "Icon": "ui/skill/skill_2008",
+    "Quality": 3,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2008
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2009,
+    "Name": "突袭战法书",
+    "Desc": "使用后习得战法「突袭」",
+    "Icon": "ui/skill/skill_2009",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2009
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2010,
+    "Name": "猛进战法书",
+    "Desc": "使用后习得战法「猛进」",
+    "Icon": "ui/skill/skill_2010",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2010
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2011,
+    "Name": "挫锐战法书",
+    "Desc": "使用后习得战法「挫锐」",
+    "Icon": "ui/skill/skill_2011",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2011
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2012,
+    "Name": "破胆战法书",
+    "Desc": "使用后习得战法「破胆」",
+    "Icon": "ui/skill/skill_2012",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2012
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2013,
+    "Name": "鼓舞战法书",
+    "Desc": "使用后习得战法「鼓舞」",
+    "Icon": "ui/skill/skill_2013",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2013
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2014,
+    "Name": "铁壁战法书",
+    "Desc": "使用后习得战法「铁壁」",
+    "Icon": "ui/skill/skill_2014",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2014
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2015,
+    "Name": "神算战法书",
+    "Desc": "使用后习得战法「神算」",
+    "Icon": "ui/skill/skill_2015",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2015
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2016,
+    "Name": "疾风战法书",
+    "Desc": "使用后习得战法「疾风」",
+    "Icon": "ui/skill/skill_2016",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2016
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2017,
+    "Name": "独行战法书",
+    "Desc": "使用后习得战法「独行」",
+    "Icon": "ui/skill/skill_2017",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2017
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2018,
+    "Name": "坚守战法书",
+    "Desc": "使用后习得战法「坚守」",
+    "Icon": "ui/skill/skill_2018",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2018
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2019,
+    "Name": "深谋战法书",
+    "Desc": "使用后习得战法「深谋」",
+    "Icon": "ui/skill/skill_2019",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2019
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2020,
+    "Name": "疾行战法书",
+    "Desc": "使用后习得战法「疾行」",
+    "Icon": "ui/skill/skill_2020",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2020
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2021,
+    "Name": "挫敌战法书",
+    "Desc": "使用后习得战法「挫敌」",
+    "Icon": "ui/skill/skill_2021",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2021
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2022,
+    "Name": "破甲战法书",
+    "Desc": "使用后习得战法「破甲」",
+    "Icon": "ui/skill/skill_2022",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2022
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2023,
+    "Name": "惑心战法书",
+    "Desc": "使用后习得战法「惑心」",
+    "Icon": "ui/skill/skill_2023",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2023
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2024,
+    "Name": "迟滞战法书",
+    "Desc": "使用后习得战法「迟滞」",
+    "Icon": "ui/skill/skill_2024",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2024
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2025,
+    "Name": "连击战法书",
+    "Desc": "使用后习得战法「连击」",
+    "Icon": "ui/skill/skill_2025",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2025
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2026,
+    "Name": "追斩战法书",
+    "Desc": "使用后习得战法「追斩」",
+    "Icon": "ui/skill/skill_2026",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2026
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2027,
+    "Name": "回马战法书",
+    "Desc": "使用后习得战法「回马」",
+    "Icon": "ui/skill/skill_2027",
+    "Quality": 3,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2027
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2028,
+    "Name": "闪击战法书",
+    "Desc": "使用后习得战法「闪击」",
+    "Icon": "ui/skill/skill_2028",
+    "Quality": 3,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2028
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2029,
+    "Name": "军威战法书",
+    "Desc": "使用后习得战法「军威」",
+    "Icon": "ui/skill/skill_2029",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2029
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2030,
+    "Name": "励军战法书",
+    "Desc": "使用后习得战法「励军」",
+    "Icon": "ui/skill/skill_2030",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2030
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2031,
+    "Name": "固守战法书",
+    "Desc": "使用后习得战法「固守」",
+    "Icon": "ui/skill/skill_2031",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2031
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2032,
+    "Name": "妙策战法书",
+    "Desc": "使用后习得战法「妙策」",
+    "Icon": "ui/skill/skill_2032",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2032
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2033,
+    "Name": "疾驰战法书",
+    "Desc": "使用后习得战法「疾驰」",
+    "Icon": "ui/skill/skill_2033",
+    "Quality": 2,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2033
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2034,
+    "Name": "先登战法书",
+    "Desc": "使用后习得战法「先登」",
+    "Icon": "ui/skill/skill_2034",
+    "Quality": 3,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2034
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2035,
+    "Name": "御敌战法书",
+    "Desc": "使用后习得战法「御敌」",
+    "Icon": "ui/skill/skill_2035",
+    "Quality": 3,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2035
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2036,
+    "Name": "锐进战法书",
+    "Desc": "使用后习得战法「锐进」",
+    "Icon": "ui/skill/skill_2036",
+    "Quality": 3,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2036
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2037,
+    "Name": "落雷战法书",
+    "Desc": "使用后习得战法「落雷」",
+    "Icon": "ui/skill/skill_2037",
+    "Quality": 3,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2037
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2038,
+    "Name": "破阵战法书",
+    "Desc": "使用后习得战法「破阵」",
+    "Icon": "ui/skill/skill_2038",
+    "Quality": 3,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2038
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2039,
+    "Name": "焚营战法书",
+    "Desc": "使用后习得战法「焚营」",
+    "Icon": "ui/skill/skill_2039",
+    "Quality": 3,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2039
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
+    "Id": 2040,
+    "Name": "枭雄战法书",
+    "Desc": "使用后习得战法「枭雄」",
+    "Icon": "ui/skill/skill_2040",
+    "Quality": 3,
+    "BuyDiamond": 80,
+    "useParams": [
+      {
+        "skill_id": 2040
+      }
+    ],
+    "Kind": 10,
+    "Overlap": 99
+  },
+  {
     "Id": 11001,
     "Name": "吕布碎片",
     "Desc": "用于合成或升星武将「吕布」",

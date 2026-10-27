@@ -10,6 +10,7 @@ import TroopCommand from "./general/TroopCommand";
 import LoginCommand from "./login/LoginCommand";
 import MapCommand from "./map/MapCommand";
 import MapUICommand from "./map/ui/MapUICommand";
+import MapUILogic from './map/ui/MapUILogic';
 import { HttpManager } from "./network/http/HttpManager";
 import { NetEvent } from "./network/socket/NetInterface";
 import { NetManager } from "./network/socket/NetManager";
@@ -33,8 +34,10 @@ import ProgressionCommand from './progression/ProgressionCommand';
 import BuildCommand from './build/BuildCommand';
 import LotteryCommand from './general/LotteryCommand';
 import InventoryCommand from './inventory/InventoryCommand';
+import InventoryIconCache from './inventory/InventoryIconCache';
 import ChatCommand from './chat/ChatCommand';
 import UnionCommand from './union/UnionCommand';
+import BattleCommand from './battle/BattleCommand';
 
 @ccclass('Main')
 export default class Main extends Component {
@@ -73,6 +76,7 @@ export default class Main extends Component {
     private _heroAssetsReady = false;
     private _skillAssetsReady = false;
     private _headAssetsReady = false;
+    private _inventoryAssetsReady = false;
     private _finishingLoading = false;
     private _heroRequest: Promise<boolean> | null = null;
     private _heroWarmupTimer: ReturnType<typeof setTimeout> | null = null;
@@ -116,6 +120,7 @@ export default class Main extends Component {
         InventoryCommand.getInstance();
         UnionCommand.getInstance();
         ChatCommand.getInstance();
+        BattleCommand.getInstance();
         EventMgr.on(LogicEvent.lotteryResult, result => LotteryRewardWindow.show(result), this);
         TroopCommand.getInstance();
         // 登录前注册协议监听，避免地图/UI 懒创建模块时漏掉登录确认。
@@ -254,6 +259,7 @@ export default class Main extends Component {
         this._heroAssetsReady = false;
         this._skillAssetsReady = false;
         this._headAssetsReady = false;
+        this._inventoryAssetsReady = false;
         this._finishingLoading = false;
         this._cityStateRequested = false;
         const generation = ++this._loadGeneration;
@@ -308,6 +314,7 @@ export default class Main extends Component {
         if (!tiledMap || !Array.isArray(configAssets)) throw new Error('战场启动资源不完整');
         const configs = ConfigManager.getInstance();
         configs.loadConfigs(configAssets);
+        this.prepareInventoryAssets();
         // 建筑面板使用设施适配层，必须在创建地图/UI 前装入两张建筑表。
         // 等级仍从 Build 推送读取，不能用配置中的初始等级覆盖服务端存档。
         MapUICommand.getInstance().proxy.setAllFacilityCfg(configAssets);
@@ -344,9 +351,16 @@ export default class Main extends Component {
 
         this._mapUIScene = instantiate(this.mapUIScenePrefab);
         this._mapUIScene.parent = this.node;
-        this._mapUiReady = true;
         if (this._loadingNode) this._loadingNode.setSiblingIndex(this.topLayer() + 1);
         EventMgr.emit(CoreEvent.mapLoadProgress, 0.9, '正在部署城池与资源…');
+        yield;
+
+        // 常用面板在遮罩下准备并提交渲染帧，避免首点时创建整页卡片和上传图片。
+        while (!this._heroAssetsReady || !this._skillAssetsReady || !this._headAssetsReady || !this._inventoryAssetsReady) yield;
+        EventMgr.emit(CoreEvent.mapLoadProgress, 0.99, '正在准备武将界面…');
+        const ui = this._mapUIScene.getComponent(MapUILogic);
+        if (ui) yield* ui.prepareGeneralPanels();
+        this._mapUiReady = true;
         this.tryFinishLoading();
     }
 
@@ -387,6 +401,10 @@ export default class Main extends Component {
             EventMgr.emit(CoreEvent.mapLoadProgress, 0.98, '正在准备头像…');
             return;
         }
+        if (!this._inventoryAssetsReady) {
+            EventMgr.emit(CoreEvent.mapLoadProgress, 0.98, '正在准备背包物品…');
+            return;
+        }
         // 地图和资源已就绪即可通知服务器；遮罩保留到真实主城等级到达，
         // 避免先露出 level=0 的默认城图，再在玩家眼前切换等级外观。
         if (!this._cityStateRequested) {
@@ -410,6 +428,20 @@ export default class Main extends Component {
         if (this._cityStateTimer !== null) clearTimeout(this._cityStateTimer);
         this._cityStateTimer = null;
         this.finishLoading();
+    }
+
+    private prepareInventoryAssets(): void {
+        const generation = this._loadGeneration;
+        const isCurrent = () => this.isValid && this._enteringMap && generation === this._loadGeneration;
+        const rows = ConfigManager.getInstance().getConfig('Item');
+        if (!Array.isArray(rows) || !rows.length) throw new Error('未找到物品配置 Item');
+        InventoryIconCache.prepare(rows.map(row => Number(row.Id)), isCurrent).then(() => {
+            if (!isCurrent()) return;
+            this._inventoryAssetsReady = true;
+            this.tryFinishLoading();
+        }).catch(error => {
+            if (isCurrent()) this.failMapLoading(error);
+        });
     }
 
     private prepareHeadIcons(): void {
@@ -513,6 +545,7 @@ export default class Main extends Component {
         this._heroAssetsReady = false;
         this._skillAssetsReady = false;
         this._headAssetsReady = false;
+        this._inventoryAssetsReady = false;
         this._finishingLoading = false;
         this._heroRequest = null;
         this._cityStateRequested = false;

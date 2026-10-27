@@ -57,6 +57,7 @@ const { NetEvent } = netInterface;
 const { ServerConfig } = load('assets/scripts/config/ServerConfig.ts');
 const portraitPaths = load('assets/scripts/general/GeneralPortrait.ts');
 const heroConfig = Object.values(JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/Hero.json'), 'utf8')));
+const itemConfig = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/Item.json'), 'utf8'));
 const flush = async () => { for (let i = 0; i < 16; i++) await Promise.resolve(); };
 function fixture() {
     const { EventMgr } = load('assets/scripts/utils/EventMgr.ts');
@@ -257,7 +258,72 @@ test('HUD subscribes after loading, pulls latest cached values and never registe
     assert.equal(updates, 3);
 });
 
-function mainFixture() {
+test('武将详情只实例化实际打开的页，重开和相同尺寸事件不重复排版', () => {
+    const f = fixture(), size = { width: 1280, height: 720 }, created = [], updates = [];
+    let layouts = 0;
+    const Info = load('assets/scripts/map/ui/GeneralInfoLogic.ts', {
+        '../../utils/EventMgr': { EventMgr: f.EventMgr }, '../../common/LogicEvent': { LogicEvent },
+        '../../config/ServerConfig': { ServerConfig },
+        '../../general/GeneralCommand': asDefault({ getInstance: () => ({ isProtocolAvailable: () => false }) }),
+        './GeneralDetailSkin': { styleGeneralHeader: () => layouts++ },
+    }, { ...cc, UITransform: class {}, view: { on() {}, off() {}, getVisibleSize: () => size }, instantiate: prefab => {
+        const node = new Node(); node.getComponent = () => ({ setData: (cfg, data) => updates.push(data) });
+        created.push(prefab); return node;
+    } }, f.clock, true).default;
+    const info = new Info(); info.node = new Node();
+    info.node.parent = { getComponent: () => size }; info.node.getChildByName = () => null;
+    info.generalDesPrefab = 'details'; info.generalComposePrefab = 'compose'; info.generalAddPrefab = 'add';
+    info.onLoad(); info.onEnable(); info.start();
+    assert.equal(layouts, 1); assert.deepEqual(created, []);
+    const first = { hero_type: 1001 }, second = { hero_type: 1002 };
+    info.setData({}, first); info.setData({}, second); info.setIndex(2);
+    assert.deepEqual(created, ['details'], '未开放页面不能在点击详情时提前实例化');
+    assert.equal(info._nodeList[0].active, true);
+    info.onDisable(); info.onEnable();
+    assert.equal(layouts, 1);
+    size.width = 900; info.refreshVisualLayout(); assert.equal(layouts, 2);
+    const before = updates.length; info.updateOnce({ hero_type: 1003 });
+    assert.equal(updates.length, before, '其它武将的推送不能切换当前档案');
+    info.updateOnce(second); assert.equal(updates.length, before + 1);
+    info._supportedTabs[1] = true; info.setIndex(1); info.setIndex(0); info.setIndex(1);
+    assert.deepEqual(created, ['details', 'compose']);
+    info.onDestroy();
+});
+
+test('武将属性数据照常更新，仅尺寸或技能空槽变化时重画详情布局', () => {
+    const size = { width: 1280, height: 720 }, skills = [null, null, null];
+    let layouts = 0;
+    const Detail = load('assets/scripts/map/ui/GeneralDesLogic.ts', {
+        './GeneralDetailSkin': { styleGeneralDetail: () => layouts++ },
+        '../../general/GeneralCommand': asDefault({ getInstance: () => ({ proxy: {
+            getGeneralLevelCfg: () => ({ exp: 100 }), getMaxLevel: () => 50,
+        } }) }),
+        '../../skill/SkillCommand': asDefault({ getInstance: () => ({ proxy: {
+            getSkillCfg: id => id ? { name: '技能' + id } : null,
+            getSkillForDisplay: id => id ? { cfgId: id } : null,
+        } }) }),
+    }, { ...cc, UITransform: class {}, view: { getVisibleSize: () => size } }, new Clock(), true).default;
+    const detail = new Detail(); detail.node = { parent: { getComponent: () => size } };
+    detail.skillIcons = skills.map((_, i) => ({ getComponent: () => ({
+        getSkill: () => skills[i], setData: data => skills[i] = data,
+    }) }));
+    detail.skillNameLab = skills.map(() => ({ string: '' }));
+    for (const name of ['lvLabel', 'expLabel', 'nameLab', 'foreLabel', 'strategyLabel', 'defenseLabel',
+        'speedLabel', 'destroyLabel', 'powerLabel', 'costLabel']) detail[name] = { string: '' };
+    detail.refreshVisualLayout(); assert.equal(layouts, 0, '未收到数据时不重绘一张空白详情');
+    const cfg = { name: '武将', attack: 10, hp: 50, defense: 20, speed: 30, crit: 2, heroClass: '骑兵', skillId: 1 };
+    detail.setData(cfg, { level: 1, exp: 3, skills: [] });
+    assert.equal(layouts, 1);
+    detail.setData({ ...cfg, attack: 18 }, { level: 2, exp: 7, skills: [] });
+    assert.equal(layouts, 1); assert.equal(detail.foreLabel.string, '18');
+    assert.equal(detail.lvLabel.string, '2/50'); assert.equal(detail.expLabel.string, '7/100');
+    assert.equal(detail.skillNameLab[1].string, '选择技能');
+    detail.setData(cfg, { level: 2, exp: 7, skills: [{ cfgId: 1 }, { cfgId: 2 }] });
+    assert.equal(layouts, 2); assert.equal(detail.skillNameLab[1].string, '技能2');
+    size.height = 480; detail.refreshVisualLayout(); assert.equal(layouts, 3);
+});
+
+function mainFixture(inventoryWarmup = Promise.resolve()) {
     const f = fixture();
     const scheduled = [];
     const drawListeners = [];
@@ -272,9 +338,10 @@ function mainFixture() {
     const renderFrame = () => {
         for (const listener of drawListeners.splice(0)) listener.callback.call(listener.target);
     };
-    let resourceComplete, finishCallback, finishes = 0, uiReady = 0, loadNotices = 0;
+    let resourceComplete, finishCallback, finishes = 0, uiReady = 0, loadNotices = 0, uiWarmups = 0;
     const buildings = { loaded: true, loadError: '' };
     const configs = new Map();
+    const inventoryCalls = [];
     const Main = load('assets/scripts/Main.ts', {
         './utils/EventMgr': { EventMgr: f.EventMgr }, './common/LogicEvent': { LogicEvent }, './core/CoreEvent': { CoreEvent },
         './general/GeneralCommand': asDefault({ getInstance: () => f.command }),
@@ -289,6 +356,10 @@ function mainFixture() {
             beginMapLoading() {}, notifyClientLoaded() { loadNotices++; },
             headIcons: { initConfig() {}, preloadIcons: async () => {} },
         }) }),
+        './inventory/InventoryIconCache': asDefault({ prepare: (ids, isCurrent) => {
+            inventoryCalls.push({ ids, isCurrent });
+            return inventoryWarmup;
+        } }),
         './skill/SkillCommand': asDefault({ getInstance: () => ({
             proxy: { initSkillConfig() {}, preloadSkillIcons: async () => {} },
         }) }),
@@ -296,7 +367,11 @@ function mainFixture() {
         './reward/RewardCommand': asDefault({ getInstance: () => ({ setUIReady() {} }) }),
         './systemopen/SystemOpenCommand': asDefault({ getInstance: () => ({ setUIReady() {} }) }),
         './reward/RewardWindowLogic': asDefault({ init() {} }), './systemopen/SystemUnlockWindow': asDefault({ init() {} }),
-    }, { ...cc, director, Director: { EVENT_AFTER_DRAW: 'after-draw' } }, f.clock, true).default;
+    }, { ...cc, director, Director: { EVENT_AFTER_DRAW: 'after-draw' }, instantiate: () => {
+        const node = new Node();
+        node.getComponent = () => ({ *prepareGeneralPanels() { uiWarmups++; yield; yield; yield; } });
+        return node;
+    } }, f.clock, true).default;
     const main = new Main();
     main.node = new Node();
     main.scheduleOnce = callback => scheduled.push(callback);
@@ -307,10 +382,16 @@ function mainFixture() {
     main.clearAllScene = () => {};
     f.EventMgr.on(CoreEvent.gameReady, () => uiReady++, {});
     f.EventMgr.on(LogicEvent.updateCityBuilds, main.onCityBuildsChanged, main);
-    return { ...f, main, buildings, scheduled, renderFrame, drawListeners, get loadNotices() { return loadNotices; }, completeResources: () => resourceComplete(null, [], [{}, [
+    return { ...f, main, buildings, scheduled, renderFrame, drawListeners, inventoryCalls, get uiWarmups() { return uiWarmups; }, get loadNotices() { return loadNotices; }, completeResources: () => resourceComplete(null, [], [{}, [
         { name: 'Hero', json: Object.fromEntries(heroConfig.map(hero => [hero.Id, hero])) },
+        { name: 'Item', json: itemConfig },
         { name: 'Global', json: {} }, { name: 'mapRes_0', json: {} },
     ]]), get finishes() { return finishes; }, get uiReady() { return uiReady; }, finishFade: () => finishCallback() };
+}
+
+async function settleMap(f) {
+    await flush();
+    for (let i = 0; i < 16; i++) { f.main.update(); await flush(); }
 }
 
 test('entry requests heroes before resource load and finishes only after warmup and loading fade', async () => {
@@ -331,8 +412,9 @@ test('entry requests heroes before resource load and finishes only after warmup 
     assert.equal(f.images.length, 2);
     assert.equal(f.finishes, 0);
     f.images.splice(0).forEach(image => image.callback(null, new SpriteFrame(image.url)));
-    await flush();
+    await settleMap(f);
     assert.equal(f.finishes, 1);
+    assert.equal(f.uiWarmups, 1, '进场只准备一次武将界面');
     assert.equal(f.loadNotices, 1, '资源准备好后即通知服务器，不等待遮罩退出');
     assert.equal(f.uiReady, 0);
     f.main.onMapReady();
@@ -353,6 +435,7 @@ test('slow or abandoned image warmup cannot block entry or finish a newer login'
     for (let i = 0; i < 10; i++) f.main.update();
     f.main.onMapReady(); await flush();
     f.clock.tick(10000);
+    await settleMap(f);
     assert.equal(f.finishes, 1, 'image deadline must release the loading page');
     f.main.disposeLoadingNow(); f.command.clearData();
     f.finishFade();
@@ -363,12 +446,114 @@ test('slow or abandoned image warmup cannot block entry or finish a newer login'
     assert.equal(f.clock.timers.size, 0);
 });
 
+test('背包全表图标就绪前保留进场遮罩，完成后只通知服务器一次', async () => {
+    let resolveIcons;
+    const f = mainFixture(new Promise(resolve => resolveIcons = resolve));
+    f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
+    f.snapshot([]); f.completeResources();
+    for (let i = 0; i < 10; i++) f.main.update();
+    f.main.onMapReady(); await flush();
+    assert.deepEqual(f.inventoryCalls[0].ids, itemConfig.map(row => row.Id));
+    assert.equal(f.inventoryCalls[0].isCurrent(), true);
+    assert.equal(f.finishes, 0);
+    assert.equal(f.loadNotices, 0, '不能先发加载完成，再补背包图片');
+    resolveIcons(); await settleMap(f);
+    assert.equal(f.main._inventoryAssetsReady, true);
+    assert.equal(f.finishes, 1); assert.equal(f.loadNotices, 1);
+    f.main.onMapReady(); f.finishFade();
+    assert.equal(f.uiReady, 1); assert.equal(f.loadNotices, 1);
+    f.command.clearData();
+});
+
+test('退出进场后迟到的物品图片回调不能激活地图；加载失败可退出重试', async () => {
+    for (const abandoned of [true, false]) {
+        let resolveIcons, rejectIcons, failed = 0;
+        const f = mainFixture(new Promise((resolve, reject) => { resolveIcons = resolve; rejectIcons = reject; }));
+        f.main.failMapLoading = () => { failed++; f.main.disposeLoadingNow(); };
+        f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
+        f.snapshot([]); f.completeResources();
+        for (let i = 0; i < 10; i++) f.main.update();
+        f.main.onMapReady(); await flush();
+        if (abandoned) { f.main.disposeLoadingNow(); resolveIcons(); }
+        else rejectIcons(new Error('test missing icon'));
+        await flush();
+        assert.equal(f.main._inventoryAssetsReady, false);
+        assert.equal(f.inventoryCalls[0].isCurrent(), false);
+        assert.equal(f.finishes, 0); assert.equal(f.loadNotices, 0);
+        assert.equal(failed, abandoned ? 0 : 1);
+        assert.equal(f.clock.timers.size, 0);
+        f.command.clearData();
+    }
+});
+
+function inventoryArtFixture() {
+    const clock = new Clock(), images = [], cache = new Map();
+    const engine = { ...cc, resources: {
+        get: url => cache.get(url),
+        load: (url, type, callback) => images.push({ url, callback }),
+    } };
+    const presentation = load('assets/scripts/common/ItemPresentation.ts', {
+        '../core/ConfigManager': asDefault({ getInstance: () => ({ getConfig: () => itemConfig }) }),
+        '../utils/ConfigIcon': load('assets/scripts/utils/ConfigIcon.ts'),
+    });
+    const Art = load('assets/scripts/inventory/InventoryIconCache.ts', {
+        '../common/ItemPresentation': presentation,
+    }, engine, clock).default;
+    const frame = url => Object.assign(new SpriteFrame(url), { refs: 0, addRef() { this.refs++; } });
+    const complete = image => {
+        const value = frame(image.url); cache.set(image.url, value); image.callback(null, value); return value;
+    };
+    return { Art, images, clock, cache, complete, frame, presentation };
+}
+
+test('物品图全表预载限制四路并发，共享请求，打开时可同步取图且只持有一次', async () => {
+    const f = inventoryArtFixture(), ids = itemConfig.map(row => row.Id);
+    const first = f.Art.load(ids[0]);
+    assert.equal(f.Art.load(ids[0]), first);
+    let done = false, loaded = 0;
+    const preparation = f.Art.prepare([...ids, ...ids]).then(() => done = true);
+    while (!done) {
+        assert.ok(f.images.length > 0 && f.images.length <= 4);
+        const batch = f.images.splice(0); loaded += batch.length;
+        batch.forEach(f.complete); await flush();
+    }
+    await preparation;
+    assert.equal(loaded, ids.length);
+    for (const id of ids) {
+        const frame = f.Art.get(id);
+        assert.ok(frame); assert.equal(f.Art.isReady(id), true);
+        assert.equal(await f.Art.load(id), frame); assert.equal(frame.refs, 1);
+    }
+    await f.Art.prepare(ids);
+    assert.equal(f.images.length, 0); assert.equal(f.clock.timers.size, 0);
+    assert.equal(f.Art.isReady(999999), true, '没有图片配置的物品使用固定文字图标');
+});
+
+test('物品图超时与失败可重试，迟到回调不覆盖新图，取消后不继续排队加载', async () => {
+    const f = inventoryArtFixture();
+    const stalled = f.Art.load(1), stale = f.images.shift();
+    f.clock.tick(8000); assert.equal(await stalled, null);
+    const retry = f.Art.load(1), value = f.complete(f.images.shift());
+    assert.equal(await retry, value);
+    stale.callback(null, f.frame('stale'));
+    assert.equal(f.Art.get(1), value);
+    const failed = f.Art.prepare([2]);
+    const rejected = assert.rejects(failed, /背包图标未就绪/);
+    f.images.shift().callback(new Error('missing'), null); await rejected;
+    const recovered = f.Art.prepare([2]); f.complete(f.images.shift()); await recovered;
+    let current = true;
+    const cancelled = f.Art.prepare(itemConfig.map(row => row.Id), () => current);
+    await flush(); assert.equal(f.images.length, 4);
+    current = false; f.images.splice(0).forEach(f.complete); await cancelled;
+    assert.equal(f.images.length, 0); assert.equal(f.clock.timers.size, 0);
+});
+
 test('主城真实等级到达前保留遮罩，重复刷新不重发加载通知，回包后仅退出一次', async () => {
     const f = mainFixture(); f.buildings.loaded = false;
     f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
     f.snapshot([]); f.completeResources();
     for (let i = 0; i < 10; i++) f.main.update();
-    f.main.onMapReady(); await flush();
+    f.main.onMapReady(); await settleMap(f);
     assert.equal(f.loadNotices, 1);
     assert.equal(f.finishes, 0, '不能先显示默认城池');
     assert.equal(f.uiReady, 0);
@@ -392,7 +577,7 @@ test('主城资料超时不会卡死加载页，取消进场后迟到的建筑�
     f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
     f.snapshot([]); f.completeResources();
     for (let i = 0; i < 10; i++) f.main.update();
-    f.main.onMapReady(); await flush();
+    f.main.onMapReady(); await settleMap(f);
     f.clock.tick(12000);
     assert.equal(failed, 1); assert.equal(f.finishes, 0);
     assert.equal(f.clock.timers.size, 0);

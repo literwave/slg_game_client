@@ -12,10 +12,11 @@ import MapCommand from "../MapCommand";
 import MapUtil from "../MapUtil";
 import CityAboutLogic from "./CityAboutLogic";
 import GeneralListLogic from "./GeneralListLogic";
+import GeneralCommand from '../../general/GeneralCommand';
 import TransformLogic from "./TransformLogic";
 import { Tools } from "../../utils/Tools";
 import GeneralInfoLogic from "./GeneralInfoLogic";
-import WarReportLogic from "./WarReportLogic";
+import BattleReportPanel from './BattleReportPanel';
 import DrawRLogic from "./DrawRLogic";
 import { GeneralData } from "../../general/GeneralProxy";
 import SkillLogic from "./SkillLogic";
@@ -42,6 +43,8 @@ import InventoryPanel from './InventoryPanel';
 import ChatLogic from '../../chat/ChatLogic';
 import MapChatStrip from '../../chat/MapChatStrip';
 import { chatDockLayout } from '../../chat/ChatPresentation';
+import { CloudAni } from '../../cloud/CloudAni';
+import { panelButton } from './ManagementStyle';
 
 @ccclass('MapUILogic')
 export default class MapUILogic extends Component {
@@ -188,6 +191,13 @@ export default class MapUILogic extends Component {
     private _gmHistoryIndex = -1;
     private _gmHistoryDraft = "";
     private _gmMessages: string[] = [];
+    private readonly _gmShortcuts: { label: string; command: string }[] = [
+        { label: '布满兵力', command: 'add_soldier' },
+        { label: '全部武将', command: 'full_hero' },
+        { label: '建筑满级', command: 'full_build' },
+        { label: '解锁系统', command: 'open_system 0' },
+        { label: '超级号', command: 'super' },
+    ];
 
     protected _morePanel: Node = null;
     protected _moreMask: Node = null;
@@ -218,6 +228,7 @@ export default class MapUILogic extends Component {
         this.gmCommandBox?.node.on(EditBox.EventType.EDITING_RETURN, this.onClickGMExecute, this);
         this.gmEditBoxX?.node.on(EditBox.EventType.EDITING_RETURN, this.onGMCoordReturn, this);
         this.gmEditBoxY?.node.on(EditBox.EventType.EDITING_RETURN, this.onGMCoordReturn, this);
+        this.initGMShortcuts();
         this.initHudNavigation();
         this.initMoreMenu();
         this.initHeadIconEntry();
@@ -707,6 +718,30 @@ export default class MapUILogic extends Component {
         this.openGeneral([]);
     }
 
+    /** 进场遮罩下分帧准备常用武将页，不发送编队或武将操作请求。 */
+    public *prepareGeneralPanels(): Generator<void, void, unknown> {
+        if (!this.generalPrefab || !this.contentNode) return;
+        if (!this._generalNode) {
+            this._generalNode = instantiate(this.generalPrefab);
+            this._generalNode.parent = this.contentNode;
+        }
+        this._generalNode.getComponent(GeneralListLogic).prepareView();
+        yield;
+        this._generalNode.active = false;
+
+        const general = GeneralCommand.getInstance().proxy.getUseGenerals()[0];
+        if (!general || !this.generalDesPrefab) return;
+        if (!this._generalDesNode) {
+            this._generalDesNode = instantiate(this.generalDesPrefab);
+            this._generalDesNode.parent = this.contentNode;
+        }
+        yield;
+        this._generalDesNode.getComponent(GeneralInfoLogic).setData(
+            GeneralCommand.getInstance().proxy.getGeneralCfg(general.hero_type), general);
+        yield;
+        this._generalDesNode.active = false;
+    }
+
     protected openGeneral(data: number[], type: number = 0, position: number = 0): void {
         if (this._generalNode == null) {
             this._generalNode = instantiate(this.generalPrefab);
@@ -787,13 +822,15 @@ export default class MapUILogic extends Component {
         this.closeMoreMenu();
         AudioManager.instance.playClick();
         if (this._warReportNode == null) {
-            this._warReportNode = instantiate(this.warReportPrefab);
+            this._warReportNode = new Node('BattleReports');
+            this._warReportNode.layer = this.contentNode.layer;
             this._warReportNode.parent = this.contentNode;
+            this._warReportNode.addComponent(BattleReportPanel);
         } else {
             this._warReportNode.active = true;
         }
         this._warReportNode.setSiblingIndex(this.topLayer());
-        this._warReportNode.getComponent(WarReportLogic).updateView();
+        this._warReportNode.getComponent(BattleReportPanel).show();
     }
 
     /**
@@ -1167,6 +1204,29 @@ export default class MapUILogic extends Component {
         return false;
     }
 
+    private initGMShortcuts(): void {
+        const card = this.gmPanel?.getChildByName('GMCard') || this.gmPanel;
+        if (!card || card.getChildByName('GMShortcuts')) return;
+        const row = new Node('GMShortcuts');
+        row.layer = card.layer;
+        card.addChild(row);
+        const width = 112;
+        const gap = 8;
+        const start = -((this._gmShortcuts.length - 1) * (width + gap)) / 2;
+        this._gmShortcuts.forEach((item, index) => {
+            const node = new Node(item.command);
+            node.layer = row.layer;
+            row.addChild(node);
+            node.addComponent(UITransform);
+            node.addComponent(Button);
+            panelButton(node, item.label, start + index * (width + gap), -148, width, 36);
+            node.on(Button.EventType.CLICK, () => {
+                AudioManager.instance.playClick();
+                this.executeGMCommand(item.command);
+            }, this);
+        });
+    }
+
     public toggleGMPanel(): void {
         if (!this.gmPanel || !this._uiListenersReady) return;
         if (this.gmPanel.active) {
@@ -1279,7 +1339,7 @@ export default class MapUILogic extends Component {
             const center = MapCommand.getInstance().proxy.getCurCenterPoint();
             this.setGMTip(center ? `当前坐标 ${center.x} , ${center.y}` : "坐标不可用", true);
         } else if (cmd === "help" || cmd === "?") {
-            this.setGMTip("本地命令：goto x y · pos · clear · help；其它指令会发送到服务器", true);
+            this.setGMTip("本地命令：goto x y · pos · clear · help。快捷：布满兵力、全部武将、建筑满级、解锁系统、超级号", true);
         } else if (cmd === "clear") {
             if (this.gmCommandBox) this.gmCommandBox.string = "";
             this.setGMTip("");
@@ -1345,10 +1405,11 @@ export default class MapUILogic extends Component {
 
         if (this._cloudAniNode == null) {
             this._cloudAniNode = instantiate(this.cloudAniPrefab);
+            this._cloudAniNode.active = false;
             this._cloudAniNode.parent = this.contentNode;
         }
-        this._cloudAniNode.active = true;
         this._cloudAniNode.setSiblingIndex(this.topLayer());
+        this._cloudAniNode.getComponent(CloudAni).play();
 
     }
 

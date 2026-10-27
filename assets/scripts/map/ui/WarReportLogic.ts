@@ -60,6 +60,10 @@ export default class WarReportLogic extends Component {
         MapUICommand.getInstance().qryWarReport();
     }
 
+    public showBattle(data: ReportBrief): void {
+        this.openWarPortDes(data);
+    }
+
     protected openWarPortDes(data:ReportBrief):void{
         console.log("openWarPortDes");
         if (this._warPortDesNode == null) {

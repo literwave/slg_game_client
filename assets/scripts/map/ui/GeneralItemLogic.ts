@@ -62,6 +62,7 @@ export default class GeneralItemLogic extends Component {
     private _cityData: any = null;
     private _orderId: number = 1;
     private _isSelect: boolean = false;
+    private _viewSignature = '';
 
     protected onLoad(): void {
         if (this.delNode) this.delNode.active = false;
@@ -97,12 +98,20 @@ export default class GeneralItemLogic extends Component {
 
 
     protected updateView(curData: any): void {
-        clearGeneralCardSkin(this.node);
         this._curData = curData;
 
         // 服务器下发的 hero_type 就是配置 ID
         const hero_type = this.getHeroIdx(this._curData);
         let cfgData = GeneralCommand.getInstance().proxy.getGeneralCfg(hero_type);
+        const troopIdx = TroopCommand.getInstance().proxy.getTroopIdxByHero(hero_type);
+        const signature = curData.listAppearance === 'roster' ? JSON.stringify([
+            hero_type, curData.level, curData.star_lv, troopIdx, cfgData?.name, cfgData?.star,
+            cfgData?.heroClass, cfgData?.arms, cfgData?.cost, cfgData?.quality, cfgData?.campText, cfgData?.camp,
+        ]) : '';
+        // 列表回包和重开仍更新数据引用，但相同卡片不反复开关旧节点、重排星级和重绘边框。
+        if (signature && signature === this._viewSignature && this.spritePic?.spriteFrame?.isValid) return;
+        this._viewSignature = signature;
+        clearGeneralCardSkin(this.node);
 
         if (cfgData && cfgData.name) {
             this.nameLabel.string = cfgData.name;
@@ -139,7 +148,6 @@ export default class GeneralItemLogic extends Component {
 
         if (this.delNode) this.delNode.active = false;
         if (this.useNode) {
-            const troopIdx = TroopCommand.getInstance().proxy.getTroopIdxByHero(hero_type);
             this.useNode.active = troopIdx > 0;
             if (troopIdx > 0) {
                 hideSprite(this.useNode);

@@ -1,7 +1,7 @@
-import { _decorator, Component, Node } from 'cc';
+import { _decorator, Color, Component, Graphics, Node, Sprite } from 'cc';
 const { ccclass, property } = _decorator;
 
-import MapUICommand from "./MapUICommand";
+import BattleCommand from '../../battle/BattleCommand';
 import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
@@ -13,17 +13,24 @@ export default class WarButtonLogic extends Component {
     @property(Node)
     tipsNode:Node = null;
 
-    protected onLoad():void{
+    protected onEnable():void{
+        this.tipsNode = this.tipsNode || this.node.getChildByName('img_gem_21');
+        if (this.tipsNode) {
+            const sprite = this.tipsNode.getComponent(Sprite); if (sprite) sprite.enabled = false;
+            const g = this.tipsNode.getComponent(Graphics) || this.tipsNode.addComponent(Graphics);
+            g.clear(); g.fillColor = new Color(204, 56, 44); g.circle(0, 0, 5.5); g.fill();
+            g.lineWidth = 1; g.strokeColor = new Color(248, 205, 148); g.circle(0, 0, 5.5); g.stroke();
+        }
         EventMgr.on(LogicEvent.upateWarReport, this.updateView, this);
         this.updateView();
     }
 
 
     protected updateView():void{
-        this.tipsNode.active = MapUICommand.getInstance().proxy.isReadNum()>0?true:false;
+        if (this.tipsNode) this.tipsNode.active = BattleCommand.getInstance().unreadCount > 0;
     }
 
-    protected onDestroy():void{
+    protected onDisable():void{
         EventMgr.targetOff(this);
     }
 

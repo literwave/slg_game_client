@@ -202,13 +202,15 @@ export default class MapClickUILogic extends Component {
 
     protected onClickOccupy(): void {
         AudioManager.instance.playClick();
-        if (this._data instanceof MapCityData || !isResourceLandCell(this._data)) {
-            EventMgr.emit(LogicEvent.showToast, '当前目标暂不支持出征，请选择资源地');
+        const empty = !!this._data?.isEmpty;
+        if (this._data instanceof MapCityData || !empty && !isResourceLandCell(this._data)) {
+            EventMgr.emit(LogicEvent.showToast, '请选择空地或资源地');
             return;
         }
         const { x, y, type, level } = this._data;
+        const world = WorldCommand.getInstance();
         const reason = MapCommand.getInstance().campaignBlockReason(x, y)
-            || WorldCommand.getInstance().resourceLandIssue(x, y, type, level);
+            || (empty ? world.emptyLandIssue(x, y) : world.resourceLandIssue(x, y, type, level));
         if (reason) { EventMgr.emit(LogicEvent.showTip, reason, null); return; }
         // World 协议以真实资源实体为目标，交由服务端判定可达性及战斗占领。
         // 旧 nationMap 的相邻领地数据已不再同步，不能继续用它拦截新版出征。
@@ -264,14 +266,14 @@ export default class MapClickUILogic extends Component {
         this.btnTagRemove.node.active = isTag;
 
         if (this._data instanceof MapResData) {
-            this.btnOccupy.node.active = isResourceLandCell(data);
+            this.btnOccupy.node.active = !!data.isEmpty || isResourceLandCell(data);
             this.durableNode.active = false;
         } else if (this._data instanceof MapBuildData) {
             const build = this._data as MapBuildData;
             const mine = build.rid == MapCommand.getInstance().buildProxy.myId;
             const ally = build.unionId > 0 && build.unionId == MapCommand.getInstance().buildProxy.myUnionId;
             const captive = build.parentId > 0 && build.parentId == MapCommand.getInstance().buildProxy.myUnionId;
-            this.btnOccupy.node.active = isResourceLandCell(data) && !mine && !ally && !captive;
+            this.btnOccupy.node.active = (!!data.isEmpty || isResourceLandCell(data)) && !mine && !ally && !captive;
             this.durableNode.active = this._data.maxDurable > 0;
             this.labelDurable.string = Math.ceil(this._data.curDurable / 100) + "/" + Math.ceil(this._data.maxDurable / 100);
             this.progressBarDurable.progress = this._data.maxDurable > 0 ? this._data.curDurable / this._data.maxDurable : 0;
@@ -381,7 +383,7 @@ export default class MapClickUILogic extends Component {
         if (data.isEmpty) {
             this.labelName.string = '空地';
             this.labelYield.string = '无资源产出';
-            this.labelSoldierCnt.string = '可通行 · 可选为迁城位置';
+            this.labelSoldierCnt.string = '可出征占领，也可迁城';
         } else if (data instanceof MapResData && data.type >= 52 && data.type <= 55) {
             this.labelName.string = `${data.level}级${{ 52: '林地', 53: '铁矿', 54: '石料', 55: '粮田' }[data.type]}`;
         }
@@ -390,28 +392,34 @@ export default class MapClickUILogic extends Component {
     }
 
     private onWorldResourceChanged(): void {
-        if (!this._data || !isResourceLandCell(this._data)) return;
+        if (!this._data?.isEmpty && !isResourceLandCell(this._data)) return;
         this.updateWorldResourceInfo();
         this.layoutPanel();
     }
 
     /** 归属只读取 AOI ownerId，不把行军到达或本地倒计时当作占领成功。 */
     private updateWorldResourceInfo(): void {
-        if (!isResourceLandCell(this._data) || this._data instanceof MapCityData) return;
+        const empty = !!this._data?.isEmpty;
+        if ((!empty && !isResourceLandCell(this._data)) || this._data instanceof MapCityData) return;
         const world = WorldCommand.getInstance();
         const entity = world.resourceLandAt(this._data.x, this._data.y);
         const userId = LoginCommand.getInstance().proxy.getRoleData()?.userId;
         const mine = entity && hasId(userId) && idKey(entity.ownerId) === idKey(userId);
-        this.labelUnion.string = !entity ? '归属同步中' : mine ? '己方领地 · 已占领'
-            : hasId(entity.ownerId) ? '其他玩家领地' : '未占领';
+        const other = entity && hasId(entity.ownerId) && !mine;
+        this.labelUnion.string = other ? '其他玩家领地' : mine ? '己方领地 · 已占领' : '未占领';
         this.labelLunxian.string = '';
-        this.btnOccupy.node.active = !mine;
-        const march = entity && world.marches.values().find(m => m.targetType === MarchTargetType.OccupyResource
-            && idKey(m.targetId) === idKey(entity.entityId));
-        if (mine) this.labelSoldierCnt.string = '资源产出以服务端同步为准';
+        this.btnOccupy.node.active = !other;
+        if (empty && !mine && !other) {
+            this.labelName.string = '空地';
+            this.labelYield.string = '无资源产出';
+        }
+        const entityId = world.resourceLandEntityId(this._data.x, this._data.y);
+        const march = world.marches.values().find(m => m.targetType === MarchTargetType.OccupyResource
+            && idKey(m.targetId) === idKey(entityId));
+        if (mine) this.labelSoldierCnt.string = empty ? '选择部队驻守' : '选择部队采集';
         else if (march) this.labelSoldierCnt.string = march.state === 1 ? `部队${march.troopIdx} · 出征占领中`
             : `部队${march.troopIdx}已到达 · 等待服务端结算`;
-        else this.labelSoldierCnt.string = '选择部队出征，战斗胜利后占领';
+        else this.labelSoldierCnt.string = empty ? '选择部队出征占领' : '选择部队出征，战斗胜利后占领';
     }
 
     private layoutPanel(): void {

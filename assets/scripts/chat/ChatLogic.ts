@@ -155,6 +155,10 @@ export default class ChatLogic extends Component {
         this.viewport.getComponent(Widget).updateAlignment();
         place(this.empty.node, 0, 0, w - 72, Math.min(110, bodyHeight));
         panelButton(this.latest, '新消息  ↓', 0, bodyBottom + 24, 142, 34, true);
+        place(this.scroll.node, 0, (bodyTop + bodyBottom) / 2, w - 32, bodyHeight);
+        this.viewport.getComponent(Widget).updateAlignment();
+        place(this.empty.node, 0, 0, w - 72, Math.min(110, bodyHeight));
+        panelButton(this.latest, '新消息  ↓', 0, bodyBottom + 24, 142, 34, true);
         place(this.composer, 0, -top + 52, w - 32, 88);
         inkSurface(this.composer, 'Surface', w - 32, 88, C.inset, C.line);
         this.placeEdit(this.input, -42, 10, w - 138, 44);
@@ -237,7 +241,7 @@ export default class ChatLogic extends Component {
                     caption(row, 'Unread', count ? String(count) : '›', w / 2 - 24, 0, 32, 14, C.gold, Label.HorizontalAlign.CENTER);
                     used += 70;
                 });
-            } else rows.forEach(msg => { used += this.message(msg, used, w) + 16; });
+            } else rows.forEach(msg => { used += this.message(msg, used, w) + 14; });
             const contentHeight = Math.max(h, used + 8);
             this.content.getComponent(UITransform).setContentSize(w, contentHeight);
             const anchorNode = anchor && this.content.getChildByName(anchor.name);
@@ -265,34 +269,43 @@ export default class ChatLogic extends Component {
         const avatar = this.button(row, 'Avatar', () => {
             if (!own && validChatTarget(msg.rid)) this.switchChannel(3, idKey(msg.rid), msg.nick_name);
         });
+        // 头像与气泡共用顶部基线，昵称和时间单独占一行。
+        const avatarSize = 40, bubbleTop = 24, edge = width / 2 - 58;
         const x = own ? width / 2 - 28 : -width / 2 + 28;
-        place(avatar, x, -26, 44, 44);
-        inkSurface(avatar, 'Frame', 44, 44, C.panel, own ? C.gold : C.line);
-        const fallback = caption(avatar, 'Initial', (msg.nick_name || '将').slice(0, 1), 0, 0, 42, 22, C.gold, Label.HorizontalAlign.CENTER);
-        const iconNode = this.make('Icon', avatar); place(iconNode, 0, 0, 40, 40);
+        place(avatar, x, -bubbleTop - avatarSize / 2, avatarSize, avatarSize);
+        inkSurface(avatar, 'Frame', avatarSize, avatarSize, C.panel, C.line);
+        const fallback = caption(avatar, 'Initial', (msg.nick_name || '将').slice(0, 1), 0, 0, 38, 22, C.gold, Label.HorizontalAlign.CENTER);
+        const iconNode = this.make('Icon', avatar); place(iconNode, 0, 0, 38, 38);
         const sprite = iconNode.addComponent(Sprite); sprite.sizeMode = Sprite.SizeMode.CUSTOM;
         const icons = LoginCommand.getInstance().headIcons, iconId = icons.getDisplayId(msg.headIcon);
         sprite.spriteFrame = icons.getIcon(iconId);
         if (sprite.spriteFrame) fallback.node.active = false;
         else icons.loadIcon(iconId).then(frame => { if (sprite.isValid && frame) { sprite.spriteFrame = frame; fallback.node.active = false; } });
-        const maxWidth = Math.max(110, width - 136);
-        const nameX = own ? width / 2 - 64 - maxWidth / 2 : -width / 2 + 64 + maxWidth / 2;
-        caption(row, 'Sender', shortChatText((own ? '我' : msg.nick_name || '主公') + '  ·  ' + chatTime(msg.time), Math.floor(maxWidth / 12)),
-            nameX, -12, maxWidth, 12, own ? C.gold : C.muted, own ? Label.HorizontalAlign.RIGHT : Label.HorizontalAlign.LEFT);
+        const maxWidth = Math.floor(Math.max(80, Math.min(width - 116, width * .76)));
+        const nameX = own ? edge - maxWidth / 2 : -edge + maxWidth / 2;
+        const sender = caption(row, 'Sender', shortChatText((own ? '我' : msg.nick_name || '主公') + '  ·  ' + chatTime(msg.time), Math.floor(maxWidth / 12)),
+            nameX, -9, maxWidth, 12, C.muted, own ? Label.HorizontalAlign.RIGHT : Label.HorizontalAlign.LEFT);
+        sender.node.getComponent(UITransform).height = 18;
+        sender.lineHeight = 18;
         const bubble = this.make('Bubble', row);
         const text = caption(bubble, 'Message', msg.msg, 0, 0, maxWidth - 24, 16, C.text);
         text.overflow = Label.Overflow.NONE; text.enableWrapText = false; text.updateRenderData(true);
-        const bubbleWidth = Math.min(maxWidth, Math.max(64, text.node.getComponent(UITransform).width + 24));
-        const bubbleX = own ? width / 2 - 64 - bubbleWidth / 2 : -width / 2 + 64 + bubbleWidth / 2;
+        const bubbleWidth = Math.min(maxWidth, Math.max(44, Math.ceil(text.node.getComponent(UITransform).width) + 24));
+        const bubbleX = own ? edge - bubbleWidth / 2 : -edge + bubbleWidth / 2;
         text.node.getComponent(UITransform).width = bubbleWidth - 24;
-        text.enableWrapText = true; text.lineHeight = 24; text.overflow = Label.Overflow.RESIZE_HEIGHT;
+        text.enableWrapText = true; text.lineHeight = 22; text.overflow = Label.Overflow.RESIZE_HEIGHT;
         text.updateRenderData(true);
-        const height = Math.max(24, text.node.getComponent(UITransform).height) + 20;
-        place(bubble, bubbleX, -30 - height / 2, bubbleWidth, height);
-        inkSurface(bubble, 'Surface', bubbleWidth, height, own ? new Color(73, 65, 43, 255) : new Color(47, 55, 46, 255), own ? C.line : null);
-        place(row, 0, -top, width, height + 30);
+        const height = Math.max(40, Math.ceil(text.node.getComponent(UITransform).height) + 12);
+        place(bubble, bubbleX, -bubbleTop - height / 2, bubbleWidth, height);
+        const surface = inkSurface(bubble, 'Surface', bubbleWidth, height,
+            own ? new Color(73, 65, 43, 255) : new Color(47, 55, 46, 255), null);
+        const side = own ? 1 : -1, tipX = side * bubbleWidth / 2, tipY = height / 2 - 15;
+        surface.moveTo(tipX, tipY + 5); surface.lineTo(tipX + side * 5, tipY);
+        surface.lineTo(tipX, tipY - 5); surface.close(); surface.fill();
+        const rowHeight = bubbleTop + Math.max(avatarSize, height);
+        place(row, 0, -top, width, rowHeight);
         row.getComponent(UITransform).setAnchorPoint(.5, 1);
-        return height + 30;
+        return rowHeight;
     }
 
     private onScroll(): void {
@@ -335,19 +348,25 @@ export default class ChatLogic extends Component {
     private onLogout(): void { this.drafts.clear(); if (this.input) this.input.string = ''; this.targetId = '0'; this.peerName = ''; this.close(); this.drafts.clear(); }
     public close(): void { this.saveDraft(); this.input?.blur(); this.targetInput?.blur(); this.node.active = false; }
     private edit(parent: Node, name: string, placeholder: string, maxLength: number): EditBox {
-        const node = this.make(name, parent), edit = node.addComponent(EditBox);
-        // EditBox 在激活节点上添加时会自动创建 Label，复用它们，避免残留默认 “label”。
+        const node = this.make(name, parent);
+        // __preload 根据 inputMode 创建原生控件；激活后再设 SINGLE_LINE 会残留 textarea 和滚动条。
+        node.active = false;
+        const edit = node.addComponent(EditBox);
         const text = edit.textLabel || caption(node, 'Text', '', 0, 0, 200, 16, C.text);
         const hint = edit.placeholderLabel || caption(node, 'Placeholder', placeholder, 0, 0, 200, 14, C.muted);
         text.node.layer = hint.node.layer = node.layer;
         edit.textLabel = text; edit.placeholderLabel = hint;
         edit.inputMode = EditBox.InputMode.SINGLE_LINE; edit.inputFlag = EditBox.InputFlag.DEFAULT;
-        edit.maxLength = maxLength; edit.string = ''; edit.placeholder = placeholder; return edit;
+        edit.maxLength = maxLength; edit.string = ''; edit.placeholder = placeholder;
+        node.active = true;
+        return edit;
     }
     private placeEdit(edit: EditBox, x: number, y: number, w: number, h: number): void {
-        place(edit.node, x, y, w, h); inkSurface(edit.node, 'Surface', w, h, new Color(17, 24, 19, 255), C.line);
-        textStyle(edit.textLabel, 0, 0, w - 18, 16, C.text, Label.HorizontalAlign.LEFT, h - 4);
-        textStyle(edit.placeholderLabel, 0, 0, w - 18, 14, C.muted, Label.HorizontalAlign.LEFT, h - 4);
+        // 背景比可编辑区域宽 20px，聚焦时的原生光标也保留相同内边距。
+        const innerWidth = Math.max(1, w - 20);
+        place(edit.node, x, y, innerWidth, h); inkSurface(edit.node, 'Surface', w, h, new Color(17, 24, 19, 255), C.line);
+        textStyle(edit.textLabel, 2, 0, innerWidth, 16, C.text, Label.HorizontalAlign.LEFT, h - 4);
+        textStyle(edit.placeholderLabel, 2, 0, innerWidth, 14, C.muted, Label.HorizontalAlign.LEFT, h - 4);
     }
     private make(name: string, parent: Node): Node {
         const node = new Node(name); node.layer = parent.layer; parent.addChild(node); node.addComponent(UITransform); return node;

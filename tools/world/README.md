@@ -6,7 +6,9 @@
 
 出生州4～6级全部读取 `fixed-birth-resources.json` 的6069个固定点，间距分别受8/28/48格约束，不再生成连续4级带或围绕出生点的高级地圆环。规则和后端导出步骤见 `docs/出生州固定资源配置.md`。`plan-dispersed-birth-resources.py` 仅用于另存离线候选表，构建器不会调用或重新编排它。
 
-山脉通过 `mountain_layout.py` 读取原始PNG透明轮廓，编排连续低山脚与稀疏主峰，不修改源美术。`python tools/tests/mountain-continuity-regression.py` 验证连接段覆盖和关口可点击空间；`mountain-renderer-regression.cjs` 验证客户端空间桶、锚点、翻转与节点复用。`render-mountain-review.cjs` 只渲染离线布局对比，需要本地修改前快照，不代表游戏运行截图。
+山脉美术布局版本5使用连体山脊 `mountain_ridge_connected` 和低山肩 `mountain_shoulder`。`mountain_layout.py` 沿阻挡带估算山脊方向，按PNG透明轮廓合并覆盖，再剔除冗余山体；不再逐格堆叠压扁的谷地。两张素材分别为1024×486、768×390透明PNG，线性采样并开启mipmap；原素材保留。单独重排美术运行 `python tools/world/mountain_layout.py`，只更新地貌中的patches，不改资源、阻挡、水系、关口和服务端配置。`python tools/tests/mountain-continuity-regression.py` 验证连接段覆盖和关口可点击空间；`mountain-renderer-regression.cjs` 验证客户端空间桶、锚点、翻转与节点复用。
+
+新山体由内置imagegen生成，经Cocos Image Core透明裁边、等比例缩放和AssetDB导入。提示词要点：历史中国2:1等距策略地图、连接的宽缓灰绿山脊或低山肩、不等高峰与松林坡面、左上柔光、窄而自然的透明山脚；无尖柱、方形底座、建筑、文字或发光。
 
 ## 素材
 
