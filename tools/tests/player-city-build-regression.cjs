@@ -435,6 +435,28 @@ test('分层连线筛选保留跨类别前置，已完成主城共享当前等�
     assert.ok(developed.nodes.some(n => n.key === '13:4'));
     assert.ok(!developed.nodes.some(n => n.key === '13:3'), '卡片已含当前等级，无需重复自身已完成前一级');
 });
+test('建设路线移除满级孤立卡片，保留升级目标和有效前置', () => {
+    const h = harness(), { buildingProgressionGraph, layoutBuildingGraph } = h.load('map/ui/BuildingProgressionGraph');
+    const configs = h.ui.proxy.getFacilityConfigs();
+    const max = type => configs.find(c => c.type === type).upLevels.length;
+    const levels = new Map([[1, max(1)], [10, max(10)], [11, max(11)]]), before = Array.from(levels);
+    const graph = buildingProgressionGraph(configs, levels, 0, { type: 10, level: max(10) });
+    assert.ok(!graph.nodes.some(n => n.type === 10 || n.type === 11), '选中过的满级农场也不再生成归档卡片');
+    assert.ok(graph.nodes.some(n => n.type === 1 && n.complete), '仍用于解锁后续建筑的主城前置保留');
+    assert.ok(graph.edges.some(e => e.from === `1:${max(1)}`));
+    const keys = new Set(graph.nodes.map(n => n.key));
+    assert.ok(graph.edges.every(e => keys.has(e.from) && keys.has(e.to)), '过滤不能留下悬空连线');
+    assert.ok(!layoutBuildingGraph(graph.nodes, 600).rows.some(row => row.label === '已完成建设'));
+    const upgrading = buildingProgressionGraph(configs, new Map([[1, max(1)], [10, max(10) - 1]]));
+    assert.ok(upgrading.nodes.some(n => n.type === 10 && n.level === max(10) && !n.complete));
+    const allDone = new Map(configs.map(c => [c.type, c.upLevels.length]));
+    for (const category of [0, 1, 2, 3]) {
+        const complete = buildingProgressionGraph(configs, allDone, category);
+        assert.equal(complete.nodes.length, 0); assert.equal(complete.edges.length, 0);
+        assert.equal(layoutBuildingGraph(complete.nodes, 600).rows.length, 0);
+    }
+    assert.deepEqual(Array.from(levels), before, '隐藏卡片不改变实际建筑等级');
+});
 test('分层连线远期目标只允许引导，不越级建造或改变资源', () => {
     const h = harness(), { buildingGoalPresentation } = h.load('map/ui/BuildingPresentation');
     const configs = h.ui.proxy.getFacilityConfigs(), main = configs.find(c => c.type === 1);

@@ -74,7 +74,7 @@ function load(name) {
         path.resolve(path.dirname(file), id)).replace(/\\/g, '/')), mod, mod.exports);
     return mod.exports;
 }
-const tick = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
+const tick = () => new Promise(resolve => setImmediate(resolve));
 const troop = { getSortedHeroes: () => [{ heroIdx: 1, position: 1 }, { heroIdx: 2, position: 2 }, { heroIdx: 3, position: 3 }], getSoldier: () => ({ count: 100 }) };
 const Formation = load('map/entries/MarchFormation').default, Playback = load('world/MarchPlayback').default;
 function create(t = troop) { const host = new Node('Army'), formation = new Formation(host); formation.configure(t, true); return formation; }
@@ -88,7 +88,7 @@ async function main() {
     assert.equal(f.members.length, 7);
     assert.equal(f.members.filter(m => m.lag === 0).length, 1, '多武将部队仍由一个视觉主将领队');
     assert.ok(f.members.every(m => m.sprite.node.active && m.moving && m.sprite.node.scale.x === -1), '资源完成后直接进入当前左行朝向');
-    assert.equal(loads.length, 5, '主将和所有护卫共享资源，修复后的步态图集只加载一次');
+    assert.equal(loads.length, 6, '主将和护卫共享资源，包含同一张驻守图集也只加载一次');
     assert.ok(loads.includes('ui/march/guard_march_cycle/spriteFrame'), '步兵必须使用包含收腿、换脚阶段的新图集');
     for (const kind of ['cavalry', 'infantry']) {
         const set = await load('map/entries/MarchAnimationLibrary').loadMarchAnimations(kind);
@@ -110,7 +110,7 @@ async function main() {
             set.clips[i].frames.forEach(frame => { assert.equal(frame.rect.width, 256); assert.equal(frame.rect.height, 256); });
         }
     }
-    console.log('PASS 五张图集真实尺寸、共享加载、前斜向八帧与侧向十帧、八方向镜像与独立站姿');
+    console.log('PASS 六张图集真实尺寸、共享加载、八方向镜像、独立站姿与驻守姿势');
     const guards = f.members.filter(m => m.lag > 0);
     for (let i = 0; i < 90; i++) {
         update(f, -1, 1, true);

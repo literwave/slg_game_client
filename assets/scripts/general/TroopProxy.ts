@@ -76,6 +76,17 @@ export class TroopData {
         return result;
     }
 
+    /** 拖到有人的位置交换，拖到空位移动；只返回待提交阵容，不改动服务器快照。 */
+    public getRepositionedHeroMap(from: number, to: number): HeroIndexMap | null {
+        if (!toTroopProtocolPosition(from) || !toTroopProtocolPosition(to) || from === to) return null;
+        const source = this.getHeroIdxAt(from), target = this.getHeroIdxAt(to);
+        if (!source) return null;
+        const next = this.getHeroMap();
+        next[String(source)] = to;
+        if (target) next[String(target)] = from;
+        return next;
+    }
+
     public getHeroIdxAt(position: number): number {
         let result = 0;
         this.heroPositions.forEach((heroPosition, heroIdx) => {

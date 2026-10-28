@@ -12,13 +12,16 @@ export interface MarchAnimationSet {
 }
 
 const sets = new Map<MarchUnitKind, Promise<MarchAnimationSet>>();
+const sheets = new Map<string, Promise<SpriteFrame[]>>();
 // 图集五行分别为右、右上、上、右下、下；左侧方向复用对应镜像。
 const DIRECTION_ROWS = [0, 1, 2, 1, 0, 3, 4, 3];
 const MIRRORED = [false, false, false, true, true, true, false, false];
 
 /** 固定画布和落脚点，避免逐帧裁透明边导致抖动；所有部队共享帧资源。 */
 function loadSheet(path: string, columns: number, rows: number): Promise<SpriteFrame[]> {
-    return new Promise((resolve, reject) => {
+    const key = `${path}:${columns}:${rows}`;
+    if (sheets.has(key)) return sheets.get(key);
+    const pending = new Promise<SpriteFrame[]>((resolve, reject) => {
         resources.load(`${path}/spriteFrame`, SpriteFrame, (error, sheet) => {
             if (error) { reject(error); return; }
             if (!(sheet instanceof SpriteFrame) || !sheet.texture) {
@@ -44,6 +47,8 @@ function loadSheet(path: string, columns: number, rows: number): Promise<SpriteF
             resolve(frames);
         });
     });
+    sheets.set(key, pending);
+    return pending;
 }
 
 /** 八方向行走与停驻分开：到达时用双脚/四蹄落地的站姿，不冻结行走的第一帧。 */

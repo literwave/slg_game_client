@@ -1,4 +1,4 @@
-import { _decorator, BlockInputEvents, Camera, Color, Component, Node, Label, ProgressBar, Button, Sprite, Vec2, tween, UIOpacity, UITransform, view } from 'cc';
+import { _decorator, Camera, Color, Component, Node, Label, ProgressBar, Button, Sprite, Vec2, UIOpacity, UITransform, view } from 'cc';
 const { ccclass, property } = _decorator;
 
 import { ArmyCmd } from "../general/ArmyProxy";
@@ -14,14 +14,15 @@ import { LogicEvent } from '../common/LogicEvent';
 import WorldMapArt from './WorldMapArt';
 import WorldCampaign from './WorldCampaign';
 import LoginCommand from '../login/LoginCommand';
-import { playerCityAppearance, playerCityFootprint } from './PlayerCityAppearance';
-import PlayerCityGround from './PlayerCityGround';
+import { playerCityFootprint } from './PlayerCityAppearance';
 import MapUtil from './MapUtil';
 import { isResourceLandCell } from '../world/ResourceLand';
 import WorldCommand, { MarchTargetType } from '../world/WorldCommand';
 import MapMarkCommand from '../world/MapMarkCommand';
 import { hasId, idKey } from '../network/pto/ProtocolCommand';
 import { caption, hideSprite, inkSurface, ManagementColors, panelButton, place, textStyle } from './ui/ManagementStyle';
+import { paintTileSelection } from './TileHighlight';
+import RightInfoNodeLogic from './ui/RightInfoNodeLogic';
 
 @ccclass('MapClickUILogic')
 export default class MapClickUILogic extends Component {
@@ -74,20 +75,28 @@ export default class MapClickUILogic extends Component {
 
     protected _data: any = null;
     protected _pixelPos: Vec2 = null;
-    protected _t = null;
+    private selectionKey = '';
+    private selectionPhase = 0;
+    private selectionPulse: UIOpacity = null;
     private _panel: Node = null;
     private _panelHeight = 200;
     private _camera: Camera = null;
     private _panelWidth = 340;
-    private _iconTop = 100;
-    private _iconHalfWidth = 100;
     private _campaignText = '';
     private _btnRelocate: Button = null;
+    private _dockHost: Node = null;
+    private _secondaryPanel: Node = null;
+    private _closeButton: Button = null;
+    private _occupying = false;
+    private _sidebar: RightInfoNodeLogic = null;
+    private _selectInSidebar = false;
+    private _presentationKey = '';
+    private _progressY = 0;
 
     protected onLoad(): void {
         this._panel = new Node('TileInformation'); this._panel.layer = this.node.layer;
         this.node.addChild(this._panel); this._panel.addComponent(UITransform);
-        this._panel.addComponent(BlockInputEvents);
+        this._panel.active = false;
         const relocate = new Node('RelocateCity'); relocate.layer = this.node.layer;
         this._panel.addChild(relocate); relocate.addComponent(UITransform);
         this._btnRelocate = relocate.addComponent(Button);
@@ -118,6 +127,61 @@ export default class MapClickUILogic extends Component {
             if (this._panel.getComponentsInChildren(Label).indexOf(label) < 0) label.enabled = false;
         }
         this.bgSelect.setSiblingIndex(0);
+        this.setupDock();
+    }
+
+    private setupDock(): void {
+        if (this._secondaryPanel) return;
+        const action = (name: string, text: string, callback: () => void): Button => {
+            const node = new Node(name); node.layer = this._panel.layer; this._panel.addChild(node);
+            node.addComponent(UITransform);
+            const button = node.addComponent(Button);
+            caption(node, 'Caption', text, 0, 0, 80, 16);
+            node.on(Button.EventType.CLICK, callback, this);
+            return button;
+        };
+        this._closeButton = action('CloseTile', '×', this.closeSelection);
+        if (!this.labelPos.node.getComponent(Button)) this.labelPos.node.addComponent(Button);
+        this.labelPos.node.on(Button.EventType.CLICK, this.focusSelection, this);
+        this._secondaryPanel = new Node('SecondaryActions'); this._secondaryPanel.layer = this._panel.layer;
+        this._panel.addChild(this._secondaryPanel); this._secondaryPanel.addComponent(UITransform);
+        for (const button of this.secondaryButtons()) button.node.parent = this._secondaryPanel;
+        this.attachDock();
+    }
+
+    private secondaryButtons(): Button[] {
+        return [this.btnGiveUp, this.btnReclaim, this.btnBuild, this.btnTransfer,
+            this._btnRelocate, this.btnTagAdd, this.btnTagRemove].filter(Boolean);
+    }
+
+    private attachDock(): boolean {
+        if (!this._dockHost?.isValid) {
+            this._dockHost = null;
+            for (let parent = this.node.parent; parent; parent = parent.parent) {
+                const hud = parent.getChildByName('MapUIScene')?.getChildByName('HudRoot');
+                if (hud) { this._dockHost = hud; break; }
+            }
+        }
+        if (!this._dockHost) return false;
+        if (!this._sidebar?.isValid) this._sidebar = this._dockHost.getComponentInChildren(RightInfoNodeLogic);
+        if (!this._sidebar) return false;
+        if (this._panel.layer !== this._dockHost.layer) {
+            const setLayer = (node: Node): void => { node.layer = this._dockHost.layer; node.children.forEach(setLayer); };
+            setLayer(this._panel);
+            this._panel.setScale(1, 1, 1);
+        }
+        return true;
+    }
+
+    private closeSelection(): void {
+        AudioManager.instance.playClick();
+        this.node.parent = null;
+    }
+
+    private focusSelection(): void {
+        if (!this._data) return;
+        AudioManager.instance.playClick();
+        EventMgr.emit(LogicEvent.scrollToMap, this._data.x, this._data.y);
     }
 
     private buttons(): Button[] {
@@ -126,8 +190,10 @@ export default class MapClickUILogic extends Component {
     }
 
     protected onDestroy(): void {
-        // 地面选框挂在地图层；弹窗销毁时仍由本组件负责回收。
+        // 选框和详情分别托管在地图层与侧栏，仍由本组件负责回收。
         if (this.bgSelect?.isValid && this.bgSelect.parent !== this.node) this.bgSelect.destroy();
+        if (this._sidebar?.isValid) this._sidebar.releaseTilePanel(this._panel);
+        if (this._panel?.isValid) this._panel.destroy();
         this._data = null;
         this._pixelPos = null;
     }
@@ -145,19 +211,16 @@ export default class MapClickUILogic extends Component {
         var uiOpacity = this.bgSelect.getComponent(UIOpacity) || this.bgSelect.addComponent(UIOpacity);
         uiOpacity.opacity = 255;
 
-        let t = tween(uiOpacity).to(0.9, { opacity: 150 }).to(0.9, { opacity: 255 });
-        t = t.repeatForever(t);
-        t.start();
-
-        this._t = t;
-
+        this.selectionPhase = 0;
+        if (this._panel) this.attachDock();
     }
 
     protected onDisable(): void {
         EventMgr.emit(LogicEvent.selectPlayerCity, null);
         EventMgr.targetOff(this);
-        this._t?.stop();
         if (this.bgSelect?.isValid) this.bgSelect.active = false;
+        if (this._panel?.isValid) this._panel.active = false;
+        if (this._sidebar?.isValid) this._sidebar.releaseTilePanel(this._panel);
         this.stopCountDown();
     }
 
@@ -166,7 +229,7 @@ export default class MapClickUILogic extends Component {
             && this._data instanceof MapBuildData
             && this._data.x == data.x
             && this._data.y == data.y) {
-            this.setCellData(data, this._pixelPos);
+            this.setCellData(data, this._pixelPos, false);
         }
     }
 
@@ -243,11 +306,12 @@ export default class MapClickUILogic extends Component {
         this.layoutPanel();
     }
 
-    public setCellData(data: any, pixelPos: Vec2): void {
+    public setCellData(data: any, pixelPos: Vec2, select = true): void {
+        this._selectInSidebar = select;
         this.stopCountDown();
         this._data = data;
         this._pixelPos = pixelPos;
-        this._panelWidth = Math.min(340, Math.max(240, view.getVisibleSize().width - 32));
+        this._occupying = false;
         this.labelPos.string = "(" + data.x + ", " + data.y + ")";
         this.leftInfoNode.active = true;
         this.btnMove.node.active = !(data instanceof MapCityData) && (!!data.isEmpty || isResourceLandCell(data));
@@ -299,19 +363,6 @@ export default class MapClickUILogic extends Component {
             const width = WorldMapArt.cityWidth(this._data.level) * 1.2;
             this.bgSelect.getComponent(UITransform).setContentSize(width, width * .5);
         }
-
-        const city = this._data instanceof MapCityData;
-        const appearance = city ? PlayerCityGround.layout(playerCityAppearance(this._data.level,
-            MapUtil.tileSize.width, MapUtil.tileSize.height), MapUtil.tileSize.height * 3) : null;
-        const art = city ? appearance.art : this._data.type === MapResType.SYS_CITY
-            ? this._data.level >= 8 ? 'capital' : this._data.level >= 5 ? 'county' : 'town'
-            : ({ 50: 'fort', 52: 'forest', 53: 'iron', 54: 'quarry', 55: 'grain' }[this._data.type] || 'fort');
-        const frame = WorldMapArt.frame(art);
-        const iconWidth = city ? appearance.width : this._data.type === MapResType.SYS_CITY
-            ? WorldMapArt.cityWidth(this._data.level) : this._data.type === MapResType.SYS_FORTRESS ? 138 : 80 + this._data.level * 5;
-        this._iconTop = (city ? appearance.top : iconWidth * frame.originalSize.height / frame.originalSize.width * .8) + 12;
-        this._iconHalfWidth = (city ? appearance.halfWidth : iconWidth / 2) + 12;
-
 
         if (this.leftInfoNode.active) {
 
@@ -410,12 +461,13 @@ export default class MapClickUILogic extends Component {
         const now = DateUtil.getServerTime() / 1000;
         const countdown = world.occupyCountdownAt(this._data.x, this._data.y, now);
         const occupying = !!countdown;
+        this._occupying = occupying;
         const marching = march?.state === 1;
         const mine = !occupying && entity && hasId(userId) && idKey(entity.ownerId) === idKey(userId);
         const other = entity && hasId(entity.ownerId) && !mine && !occupying;
         this.labelUnion.string = occupying ? '占领中' : other ? '其他玩家领地' : mine ? '己方领地 · 已占领' : '未占领';
         this.labelLunxian.string = '';
-        this.btnOccupy.node.active = !other && !occupying && !marching;
+        this.btnOccupy.node.active = !occupying && !marching;
         if (empty && !mine && !other) {
             this.labelName.string = '空地';
             this.labelYield.string = '无资源产出';
@@ -427,7 +479,8 @@ export default class MapClickUILogic extends Component {
         } else if (mine) this.labelSoldierCnt.string = empty ? '选择部队驻守' : '选择部队采集';
         else if (marching) this.labelSoldierCnt.string = `部队${march.troopIdx} · 出征中`;
         else if (march) this.labelSoldierCnt.string = `部队${march.troopIdx}已到达`;
-        else this.labelSoldierCnt.string = empty ? '选择部队出征占领' : '选择部队出征，战斗胜利后占领';
+        else this.labelSoldierCnt.string = other ? '选择部队出征，击败守军后占领'
+            : empty ? '选择部队出征占领' : '选择部队出征，战斗胜利后占领';
         if (!occupying && this.durableNode) {
             // 资源地点开时耐久条不显示；占领读条复用同一节点。
             if (!(this._data instanceof MapBuildData) && !(this._data instanceof MapCityData)) {
@@ -453,82 +506,154 @@ export default class MapClickUILogic extends Component {
         const left = Math.max(0, countdown.endTime - now);
         const span = Math.max(.001, countdown.endTime - countdown.startTime);
         const who = troopIdx ? `部队${troopIdx} · ` : '';
-        this.labelSoldierCnt.string = `${who}占领倒计时 ${DateUtil.converSecondStr(left * 1000)}`;
+        this.labelSoldierCnt.string = left > 0 ? `${who}占领倒计时 ${DateUtil.converSecondStr(Math.ceil(left) * 1000)}`
+            : `${who}等待服务器确认占领`;
         if (this.durableNode && this.progressBarDurable && this.labelDurable) {
             this.durableNode.active = true;
             this.progressBarDurable.node.active = true;
             this.progressBarDurable.progress = Math.min(1, Math.max(0, (now - countdown.startTime) / span));
-            this.labelDurable.string = DateUtil.converSecondStr(left * 1000);
+            this.labelDurable.string = left > 0 ? DateUtil.converSecondStr(Math.ceil(left) * 1000) : '确认中';
         }
+        this.paintDockProgress();
     }
 
     private layoutPanel(): void {
-        if (!this._panel) return;
+        if (!this._panel || !this._data) return;
+        this.setupDock();
+        if (!this.attachDock()) return;
+        this._panelWidth = this._sidebar.getComponent(UITransform).width - 8;
+        const width = this._panelWidth, contentWidth = width - 24;
         const marks = MapMarkCommand.getInstance();
-        const marking = !!this._data && marks.pendingAt(this._data);
+        const marking = marks.pendingAt(this._data);
         this.btnTagAdd.interactable = this.btnTagRemove.interactable = marks.sessionReady && marks.loaded && !marks.loading && !marks.busy;
-        const yieldLines = this.leftInfoNode.active ? this.labelYield.string.split('\n').length : 0;
-        const buttons = this.buttons().filter(button => button.node.active);
-        const rowCount = Math.ceil(buttons.length / 3);
-        const campaignHeight = this._campaignText ? this._campaignText.split('\n').length * 22 + 8 : 0;
-        this._panelHeight = 104 + campaignHeight + (yieldLines ? yieldLines * 24 + 28 : 0)
-            + (this.durableNode.active ? 28 : 0) + (this.bgMain.active ? 24 : 0) + rowCount * 46;
-        const height = this._panelHeight;
-        const width = this._panelWidth, contentWidth = width - 36;
-        place(this._panel, 0, 0, width, height);
-        inkSurface(this._panel, 'Surface', width, height, new Color(38, 40, 31, 248), ManagementColors.gold);
-        const left = Label.HorizontalAlign.LEFT, right = Label.HorizontalAlign.RIGHT;
-        textStyle(this.labelName, -48, height / 2 - 28, contentWidth - 96, 20);
-        textStyle(this.labelPos, width / 2 - 66, height / 2 - 28, 96, 13, ManagementColors.muted, right);
-        textStyle(this.labelUnion, -30, height / 2 - 58, contentWidth - 60, 14, ManagementColors.muted, left, 24);
-        textStyle(this.labelLunxian, contentWidth / 2 - 28, height / 2 - 58, 56, 14, new Color(205, 135, 107, 255), right, 24);
-        let y = height / 2 - 80;
-        if (campaignHeight) {
-            const label = caption(this._panel, 'CampaignDetail', this._campaignText, 0,
-                y - (campaignHeight - 8) / 2, contentWidth, 13, ManagementColors.gold);
-            textStyle(label, 0, y - (campaignHeight - 8) / 2, contentWidth, 13, ManagementColors.gold, left, campaignHeight - 8);
-            label.enableWrapText = true; label.lineHeight = 22; y -= campaignHeight;
+        const primary = [this.btnEnter, this.btnOccupy, this.btnMove].filter(b => b.node.active);
+        const secondary = this.secondaryButtons().filter(b => b.node.active);
+        const yieldText = this.leftInfoNode.active ? this.labelYield.string.replace(/\n/g, ' · ') : '';
+        const yieldHeight = yieldText ? Math.min(3, Math.max(1, Math.ceil(yieldText.length * 14 / contentWidth))) * 22 : 0;
+        // 常态不重复“选择部队”提示；真正的行军、占领进度才占用一行。
+        const showActivity = this.leftInfoNode.active && /出征中|已到达|倒计时|等待服务器/.test(this.labelSoldierCnt.string);
+        const activityHeight = showActivity ? 36 : 0;
+        const durable = this.durableNode.active, showDurableText = durable && !this._occupying;
+        const regionHeight = this._campaignText ? 40 : 0;
+        const secondaryHeight = Math.ceil(secondary.length / 2) * 44;
+        const detailsHeight = yieldHeight + activityHeight + (showDurableText ? 24 : 0) + (this.bgMain.active ? 24 : 0) + (durable ? 12 : 0);
+        const height = Math.max(184, 70 + detailsHeight + (primary.length ? 48 : 0) + secondaryHeight + regionHeight + 12);
+        this._panelHeight = height;
+        const selected = this._selectInSidebar; this._selectInSidebar = false;
+        const key = JSON.stringify([width, height, this._data.x, this._data.y, this.labelName.string,
+            this.labelUnion.string, this.labelLunxian.string, yieldText, showActivity, showDurableText, this.bgMain.active,
+            this._occupying, this._campaignText, marking, this.buttons().map(b => [b.node.active, b.interactable])]);
+        if (key === this._presentationKey) {
+            this._sidebar.showTilePanel(this._panel, height, selected);
+            return;
         }
-        this.labelYield.node.active = this.labelSoldierCnt.node.active = this.leftInfoNode.active;
-        if (yieldLines) {
-            textStyle(this.labelYield, 0, y - yieldLines * 12, contentWidth, 15, ManagementColors.text, left, yieldLines * 24);
-            this.labelYield.lineHeight = 24; this.labelYield.enableWrapText = true;
-            y -= yieldLines * 24 + 20;
-            textStyle(this.labelSoldierCnt, 0, y, contentWidth, 14, ManagementColors.muted, left, 24); y -= 18;
+        this._presentationKey = key;
+        this._panel.getComponent(UITransform).setContentSize(width, height);
+        // 复用侧栏背景，不再叠加独立的浮窗。
+        const oldSurface = this._panel.getChildByName('Surface'); if (oldSurface) oldSurface.active = false;
+        const left = Label.HorizontalAlign.LEFT, center = Label.HorizontalAlign.CENTER;
+        const top = height / 2;
+        textStyle(this.labelName, -18, top - 20, contentWidth - 36, 17, ManagementColors.text, left, 30);
+        const titleColor = this.labelUnion.string.includes('其他玩家') ? new Color(220, 135, 118)
+            : this.labelUnion.string.includes('己方') ? new Color(139, 195, 174) : ManagementColors.muted;
+        const state = this.labelUnion.string.replace(' · 已占领', '') + (this.labelLunxian.string ? ' · ' + this.labelLunxian.string : '');
+        // 归属和坐标是两个独立文本，长名称也不会挤到操作区。
+        this.labelUnion.node.active = false; this.labelLunxian.node.active = false;
+        const status = caption(this._panel, 'Ownership', state, -56, top - 46, contentWidth - 112, 12, titleColor);
+        status.overflow = Label.Overflow.SHRINK;
+        textStyle(this.labelPos, contentWidth / 2 - 56, top - 46, 112, 12, ManagementColors.gold, Label.HorizontalAlign.RIGHT, 32);
+        // 保留足够点击面积，用轻量图标而非另一个大按钮。
+        place(this._closeButton.node, contentWidth / 2 - 14, top - 20, 32, 32);
+        const oldClose = this._closeButton.node.getChildByName('ManagementButton'); if (oldClose) oldClose.active = false;
+        const closeCaption = this._closeButton.node.getComponentInChildren(Label);
+        closeCaption.node.active = true; closeCaption.string = '×';
+        textStyle(closeCaption, 0, 0, 32, 22, ManagementColors.muted, center, 32);
+        const rule = inkSurface(this._panel, 'TileRule', contentWidth, 1, null, null);
+        rule.node.setPosition(0, top - 64, 0);
+        rule.strokeColor = ManagementColors.line; rule.lineWidth = 1;
+        rule.moveTo(-contentWidth / 2, 0); rule.lineTo(contentWidth / 2, 0); rule.stroke();
+        let y = top - 72;
+        this.labelYield.node.active = !!yieldHeight;
+        if (yieldHeight) {
+            textStyle(this.labelYield, 0, y - yieldHeight / 2, contentWidth, 14, ManagementColors.text, left, yieldHeight);
+            this.labelYield.string = yieldText; this.labelYield.lineHeight = 22; this.labelYield.enableWrapText = true; y -= yieldHeight;
         }
-        this.labelDurable.node.active = this.durableNode.active;
-        if (this.durableNode.active) {
+        this.labelSoldierCnt.node.active = showActivity;
+        if (showActivity) {
+            textStyle(this.labelSoldierCnt, 0, y - activityHeight / 2, contentWidth, 12, ManagementColors.gold, left, activityHeight);
+            this.labelSoldierCnt.enableWrapText = true; this.labelSoldierCnt.lineHeight = 18; y -= activityHeight;
+        }
+        this.labelDurable.node.active = showDurableText;
+        if (showDurableText) {
             if (!this.labelDurable.string.startsWith('耐久')) this.labelDurable.string = '耐久  ' + this.labelDurable.string;
-            textStyle(this.labelDurable, 0, y - 12, contentWidth, 14, ManagementColors.muted, left, 24); y -= 28;
+            textStyle(this.labelDurable, 0, y - 12, contentWidth, 12, ManagementColors.muted, left, 24); y -= 24;
         }
         this.labelMian.node.active = this.bgMain.active;
-        if (this.bgMain.active) { textStyle(this.labelMian, 0, y - 12, contentWidth, 14, ManagementColors.gold, left, 24); y -= 24; }
-        for (let i = 0; i < buttons.length; i++) {
-            const columns = Math.min(3, buttons.length - Math.floor(i / 3) * 3);
-            const width = (contentWidth - (columns - 1) * 8) / columns;
-            const label = buttons[i].getComponentInChildren(Label);
-            const texts = new Map<Button, string>([[this.btnEnter, '进入'], [this.btnOccupy, WorldCampaign.gateAt(this._data.x, this._data.y) ? '攻打关隘' : '占领'],
-                [this.btnMove, '移动'], [this.btnGiveUp, '放弃'], [this.btnReclaim, '屯田'], [this.btnBuild, '建造'],
-                [this._btnRelocate, LoginCommand.getInstance().movingCity ? '迁城中…' : '迁城'],
-                [this.btnTransfer, '调动'], [this.btnTagAdd, marking ? '标记中…' : '标记'], [this.btnTagRemove, marking ? '取消中…' : '取消标记']]);
-            const text = texts.get(buttons[i]) || label?.string || '进入';
-            panelButton(buttons[i].node, text, -contentWidth / 2 + width / 2 + (i % 3) * (width + 8),
-                -height / 2 + 30 + (rowCount - 1 - Math.floor(i / 3)) * 46, width, 36, buttons[i] === this.btnOccupy || buttons[i] === this.btnEnter);
+        if (this.bgMain.active) {
+            textStyle(this.labelMian, 0, y - 12, contentWidth, 12, ManagementColors.gold, left, 24); y -= 24;
         }
+        this._progressY = y - 5;
+        if (durable) y -= 12;
+        const own = this.labelUnion.string.includes('己方');
+        const occupyText = WorldCampaign.gateAt(this._data.x, this._data.y) ? '攻打关隘'
+            : own ? this._data.isEmpty ? '派兵驻守' : '派兵采集'
+                : this.labelUnion.string.includes('其他玩家') ? '攻占领地' : '出征占领';
+        const texts = new Map<Button, string>([[this.btnEnter, '进入城池'], [this.btnOccupy, occupyText],
+            [this.btnMove, '移动部队'], [this.btnGiveUp, '放弃领地'], [this.btnReclaim, '屯田'], [this.btnBuild, '建造'],
+            [this._btnRelocate, LoginCommand.getInstance().movingCity ? '迁城中…' : '迁城至此'],
+            [this.btnTransfer, '调动'], [this.btnTagAdd, marking ? '标记中…' : '添加标记'], [this.btnTagRemove, marking ? '取消中…' : '取消标记']]);
+        const gap = 8, actionWidth = (contentWidth - Math.max(0, primary.length - 1) * gap) / Math.max(1, primary.length);
+        const styleAction = (button: Button, text: string, x: number, py: number, w: number, h: number, main = false): void => {
+            panelButton(button.node, text, x, py, w, h, main);
+            const label = button.node.getComponentInChildren(Label);
+            if (label) { label.fontSize = 14; label.lineHeight = 20; }
+        };
+        if (primary.length) {
+            y -= 8;
+            primary.forEach((button, i) => styleAction(button, texts.get(button),
+                -contentWidth / 2 + actionWidth / 2 + i * (actionWidth + gap), y - 20, actionWidth, 40, i === 0));
+            y -= 40;
+        }
+        this._secondaryPanel.active = secondary.length > 0 || !!this._campaignText;
+        place(this._secondaryPanel, 0, y - (secondaryHeight + regionHeight) / 2, width, secondaryHeight + regionHeight);
+        const oldSecondarySurface = this._secondaryPanel.getChildByName('Surface'); if (oldSecondarySurface) oldSecondarySurface.active = false;
+        const secondaryWidth = secondary.length === 1 ? contentWidth : (contentWidth - gap) / 2;
+        const secondaryTop = (secondaryHeight + regionHeight) / 2;
+        secondary.forEach((button, i) => styleAction(button, texts.get(button),
+            secondary.length === 1 ? 0 : (i % 2 ? 1 : -1) * (secondaryWidth + gap) / 2,
+            secondaryTop - 26 - Math.floor(i / 2) * 44, secondaryWidth, 36));
+        const region = caption(this._secondaryPanel, 'Region', this._campaignText, 0,
+            secondaryTop - secondaryHeight - regionHeight / 2, contentWidth, 12, ManagementColors.muted);
+        region.node.active = !!this._campaignText; region.enableWrapText = true; region.lineHeight = 18;
+        region.getComponent(UITransform).height = regionHeight;
+        const legacy = this._panel.getChildByName('CampaignDetail'); if (legacy) legacy.active = false;
+        this.paintDockProgress();
         hideSprite(this.bgSelect);
-        const ui = this.bgSelect.getComponent(UITransform);
-        const g = inkSurface(this.bgSelect, 'SelectionOutline', ui.width, ui.height, null, null);
-        g.lineWidth = 2; g.strokeColor = new Color(239, 209, 126, 220); g.fillColor = new Color(204, 180, 104, 24);
-        g.moveTo(0, ui.height / 2); g.lineTo(ui.width / 2, 0); g.lineTo(0, -ui.height / 2);
-        g.lineTo(-ui.width / 2, 0); g.close(); g.fill(); g.stroke();
-        // 内外双线在地表形成清晰选中标记，不缩放或裁切建筑本身。
-        g.lineWidth = 1; g.strokeColor = new Color(255, 241, 185, 130);
-        g.moveTo(0, ui.height * .43); g.lineTo(ui.width * .43, 0); g.lineTo(0, -ui.height * .43);
-        g.lineTo(-ui.width * .43, 0); g.close(); g.stroke();
-        this.lateUpdate();
+        this._sidebar.showTilePanel(this._panel, height, selected);
     }
 
-    /** 信息面板留在交互层，地块选框放在部队下方，避免金线穿过人物。 */
+    private paintDockProgress(): void {
+        if (!this._panel || !this._data) return;
+        const exists = this._panel.getChildByName('DockProgress');
+        if (!this.durableNode.active) { if (exists) exists.active = false; return; }
+        const width = this._panelWidth - 24;
+        const g = inkSurface(this._panel, 'DockProgress', width, 4, null, null);
+        g.node.active = true; g.node.setPosition(0, this._progressY, 0);
+        g.fillColor = new Color(72, 75, 60, 230); g.rect(-width / 2, -2, width, 4); g.fill();
+        g.fillColor = ManagementColors.gold;
+        const progress = Math.max(0, Math.min(1, this.progressBarDurable.progress));
+        if (progress > 0) { g.rect(-width / 2, -2, width * progress, 4); g.fill(); }
+    }
+
+    private refreshSelection(zoom = 1): void {
+        const ui = this.bgSelect.getComponent(UITransform);
+        const key = `${ui.width}:${ui.height}:${Math.round(zoom * 40)}`;
+        if (key === this.selectionKey) return;
+        this.selectionKey = key;
+        this.selectionPulse = paintTileSelection(this.bgSelect, ui.width, ui.height, zoom);
+    }
+
+    /** 详情位于右侧栏，地块选框留在部队下方，不穿过人物。 */
     private placeGroundSelection(): void {
         if (!this.bgSelect?.isValid || !this.node.activeInHierarchy) return;
         for (let parent = this.node.parent; parent; parent = parent.parent) {
@@ -545,7 +670,7 @@ export default class MapClickUILogic extends Component {
         }
     }
 
-    protected lateUpdate(): void {
+    protected lateUpdate(dt = 0): void {
         this.placeGroundSelection();
         if (!this._panel || !this._data) return;
         if (!this._camera) for (let p = this.node.parent; p; p = p.parent) {
@@ -553,26 +678,14 @@ export default class MapClickUILogic extends Component {
             if (this._camera) break;
         }
         if (!this._camera) return;
-        const size = view.getVisibleSize(), camera = this._camera.node.position;
+        const size = view.getVisibleSize();
         const scale = this._camera.orthoHeight * 2 / Math.max(1, size.height);
-        const anchor = this._pixelPos;
-        const sx = (anchor.x - camera.x) / scale, sy = (anchor.y - camera.y) / scale;
-        const margin = 18, halfWidth = size.width / 2, halfHeight = size.height / 2;
-        const fit = Math.min(1, (size.height - margin * 2) / this._panelHeight, (size.width - margin * 2) / this._panelWidth);
-        const hw = this._panelWidth * fit / 2, hh = this._panelHeight * fit / 2;
-        const above = sy + this._iconTop / scale + 16 + hh;
-        const rightX = sx + this._iconHalfWidth / scale + 16 + hw;
-        const leftX = sx - this._iconHalfWidth / scale - 16 - hw;
-        let px = sx, py = above;
-        if (above + hh > halfHeight - margin) {
-            if (rightX + hw <= halfWidth - margin) { px = rightX; py = sy; }
-            else if (leftX - hw >= -halfWidth + margin) { px = leftX; py = sy; }
-            else py = sy - this.bgSelect.getComponent(UITransform).height / scale / 2 - 20 - hh;
-        }
-        px = Math.max(-halfWidth + hw + margin, Math.min(halfWidth - hw - margin, px));
-        py = Math.max(-halfHeight + hh + margin, Math.min(halfHeight - hh - margin, py));
-        this._panel.setScale(scale * fit, scale * fit, 1);
-        this._panel.setPosition((px - sx) * scale, (py - sy) * scale, 0);
+        this.refreshSelection(scale);
+        this.selectionPhase += Math.min(dt, .1);
+        if (this.selectionPulse) this.selectionPulse.opacity = 230 + Math.sin(this.selectionPhase * Math.PI) * 20;
+        if (!this.attachDock()) { this._panel.active = false; return; }
+        const width = this._sidebar.getComponent(UITransform).width - 8;
+        if (this._panelWidth !== width) this.layoutPanel();
     }
 
     public countDown() {

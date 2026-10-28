@@ -42,11 +42,13 @@ export default class RightArmyItemLogic extends Component {
     protected _troop: TroopData = null;
     protected _firstGeneral: GeneralData = null;
     protected _qryReturnTime: number = 0;
+    private occupationKey = '';
 
     protected onLoad(): void {
         EventMgr.on(LogicEvent.updateGeneral, this.onUpdateGeneral, this);
         EventMgr.on(LogicEvent.updateTroop, this.onUpdateTroop, this);
         EventMgr.on(LogicEvent.updateMarches, this.onUpdateGeneral, this);
+        EventMgr.on(LogicEvent.updateWorldEntities, this.onOccupationChanged, this);
         EventMgr.on(LogicEvent.protocolRequestChanged, this.onUpdateGeneral, this);
         EventMgr.on(LogicEvent.updateMyRole, this.onUpdateGeneral, this);
         this.bottomNode.active = false;
@@ -66,8 +68,11 @@ export default class RightArmyItemLogic extends Component {
                 this.labelPos.string = this._troop.getHeroCount() ? '主城待命' : '尚未编队';
             } else if (march && this.labelPos) {
                 const left = Math.max(0, march.endTime * 1000 - DateUtil.getServerTime());
-                if (march.targetType === MarchTargetType.OccupyResource && march.state === 2 && left > 0) {
-                    this.labelPos.string = `占领中 ${DateUtil.converSecondStr(left)}`;
+                const occupation = march.targetType === MarchTargetType.OccupyResource && march.state === 2
+                    && world.occupyCountdownAt(march.endPos.x, march.endPos.y, DateUtil.getServerTime() / 1000);
+                if (occupation) {
+                    const remaining = Math.max(0, occupation.endTime - DateUtil.getServerTime() / 1000);
+                    this.labelPos.string = remaining > 0 ? `占领中 ${DateUtil.converSecondStr(Math.ceil(remaining) * 1000)}` : '占领确认中';
                 } else if (march.state === 1) {
                     this.labelPos.string = `${march.targetType === MarchTargetType.ReturnCity ? '回城'
                         : march.targetType === MarchTargetType.Move ? '移动' : '行军'} ${DateUtil.converSecondStr(left)}`;
@@ -99,6 +104,18 @@ export default class RightArmyItemLogic extends Component {
         if (this._troop) {
             this.updateItem();
         }
+    }
+
+    private onOccupationChanged(): void {
+        if (!this._troop) return;
+        const world = WorldCommand.getInstance(), march = world.marches.get(this._troop.troopIdx);
+        const timer = march?.state === 2 && march.targetType === MarchTargetType.OccupyResource && march.endPos
+            ? world.occupyCountdownAt(march.endPos.x, march.endPos.y, DateUtil.getServerTime() / 1000) : null;
+        const key = `${this._troop.troopIdx}:${timer?.startTime || 0}:${timer?.endTime || 0}`;
+        if (key === this.occupationKey) return;
+        this.occupationKey = key;
+        // AOI 的普通移动包不重刷头像和整张队伍卡片。
+        this.refreshHeaderSkin();
     }
 
     protected onUpdateTroop(troop: TroopData): void {
@@ -188,7 +205,7 @@ export default class RightArmyItemLogic extends Component {
         const hasHeroes = this._troop ? this._troop.getSortedHeroes().length > 0 : !!this._firstGeneral;
         const world = WorldCommand.getInstance(), march = this._troop && world.marches.get(this._troop.troopIdx);
         const occupyLeft = march && march.targetType === MarchTargetType.OccupyResource && march.state === 2
-            && march.endTime * 1000 > DateUtil.getServerTime();
+            && world.occupyCountdownAt(march.endPos.x, march.endPos.y, DateUtil.getServerTime() / 1000);
         const troopState = !hasHeroes ? '待配置' : !march || world.isTroopAtHome(this._troop.troopIdx) ? '待命'
             : occupyLeft ? '占领中'
             : march.state === 1 ? (march.targetType === MarchTargetType.ReturnCity ? '回城中' : '行军中') : '驻留';

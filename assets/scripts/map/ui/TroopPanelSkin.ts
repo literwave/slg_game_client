@@ -202,7 +202,8 @@ export function styleTroopPanel(parts: TroopPanelParts): void {
     }
     troopButton(root.getChildByName('btnPrev'), '上一队', cardsX - 112, headerY, 80, 34);
     troopButton(root.getChildByName('btnNext'), '下一队', cardsX + 112, headerY, 80, 34);
-    removeDecoration(root, 'TroopSelectionHint');
+    caption(root, 'TroopSelectionHint', '拖动武将交换阵位 · 点击查看详情', cardsX,
+        bodyTop + 14, cardAreaWidth, 12, C.muted, Label.HorizontalAlign.CENTER);
 
     const info = root.getChildByName('infoNode');
     if (info) {

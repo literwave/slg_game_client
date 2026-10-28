@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Sprite } from 'cc';
+import { _decorator, Color, Component, Node, Label, Sprite, UITransform } from 'cc';
 const { ccclass, property } = _decorator;
 
 import { ArmyCmd, ArmyData } from "../../general/ArmyProxy";
@@ -11,6 +11,8 @@ import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
 import { TroopData } from '../../general/TroopProxy';
+import WorldCommand from '../../world/WorldCommand';
+import { caption, hideSprite, inkSurface, ManagementColors as C, place } from './ManagementStyle';
 
 @ccclass('CityArmyItemLogic')
 export default class CityArmyItemLogic extends Component {
@@ -48,6 +50,8 @@ export default class CityArmyItemLogic extends Component {
     private _usesWorldTroop = false;
     protected _isOpened: boolean = true;
     protected _isOut: boolean = true;
+    private _overviewWidth = 0;
+    private _overviewHeight = 0;
 
     protected onLoad(): void {
         EventMgr.on(LogicEvent.updateArmy, this.onUpdateArmy, this);
@@ -165,6 +169,7 @@ export default class CityArmyItemLogic extends Component {
         this._troop = null;
         this._usesWorldTroop = false;
         this.updateItem();
+        if (this._overviewWidth) this.layoutOverview(this._overviewWidth, this._overviewHeight);
     }
 
     public setTroopData(cityId: number, troop: TroopData): void {
@@ -173,6 +178,52 @@ export default class CityArmyItemLogic extends Component {
         this._troop = troop;
         this._usesWorldTroop = true;
         this.updateItem();
+        if (this._overviewWidth) this.layoutOverview(this._overviewWidth, this._overviewHeight);
+    }
+
+    public layoutOverview(width: number, height: number): void {
+        this._overviewWidth = width; this._overviewHeight = height;
+        this.infoNode.active = false; this.tipNode.active = false;
+        this.maskNode.active = !this._isOpened; hideSprite(this.maskNode);
+        const bg = this.node.getChildByName('bg'); place(bg, 0, 0, width, height); hideSprite(bg);
+        inkSurface(bg, 'CityTroopCard', width, height, new Color(45, 51, 41, 235), new Color(165, 143, 98, 130));
+        const proxy = GeneralCommand.getInstance().proxy;
+        const heroes = this._usesWorldTroop ? [0, 1, 2].map(p => proxy.getMyGeneral(this._troop?.getHeroIdxAt(p) || 0))
+            : this._data ? ArmyCommand.getInstance().getArmyGenerals(this._data) : [];
+        const count = heroes.filter(Boolean).length;
+        const march = WorldCommand.getInstance().marches.get(this.order);
+        const state = !this._isOpened ? '尚未解锁' : !count ? '待编队' : march?.state === 1 ? '行军中'
+            : WorldCommand.getInstance().isTroopAtHome(this.order) ? '驻守主城' : '驻留在外';
+        caption(this.node, 'TroopTitle', `第${this.order}部队`, -width / 2 + 60, height / 2 - 19, 96, 16, C.gold);
+        caption(this.node, 'TroopState', state, width / 2 - 64, height / 2 - 19, 104, 12,
+            count ? new Color(150, 191, 165) : C.muted, Label.HorizontalAlign.RIGHT);
+        const compact = height < 140, portraitHeight = compact ? 44 : 62, portraitWidth = portraitHeight * 350 / 480;
+        for (let i = 0; i < 3; i++) {
+            let slot = this.node.getChildByName('HeroSlot' + i);
+            if (!slot) {
+                slot = new Node('HeroSlot' + i); slot.layer = this.node.layer; this.node.addChild(slot); slot.addComponent(UITransform);
+                const portrait = new Node('Portrait'); portrait.layer = slot.layer; slot.addChild(portrait);
+                portrait.addComponent(UITransform); portrait.addComponent(Sprite).sizeMode = Sprite.SizeMode.CUSTOM;
+                portrait.addComponent(GeneralHeadLogic);
+            }
+            const x = (i - 1) * (width - 24) / 3;
+            place(slot, x, compact ? -1 : 2, (width - 24) / 3, portraitHeight + 24);
+            const portrait = slot.getChildByName('Portrait'); place(portrait, 0, 8, portraitWidth, portraitHeight);
+            portrait.active = !!heroes[i];
+            if (heroes[i]) portrait.getComponent(GeneralHeadLogic).setHeadId(heroes[i].cfgId || heroes[i].hero_type);
+            const name = heroes[i] ? proxy.getGeneralCfg(heroes[i].cfgId || heroes[i].hero_type)?.name || '武将' : '待上阵';
+            caption(slot, 'Name', name, 0, -portraitHeight / 2 - 3, (width - 30) / 3, 12,
+                heroes[i] ? C.text : C.muted, Label.HorizontalAlign.CENTER);
+            const empty = caption(slot, 'Empty', '＋', 0, 8, 40, 24, C.muted, Label.HorizontalAlign.CENTER); empty.node.active = !heroes[i];
+        }
+        let healthy = 0, hurt = 0;
+        if (this._troop) for (const hero of this._troop.getSortedHeroes()) {
+            const soldiers = this._troop.getSoldier(hero.heroIdx); healthy += soldiers.count; hurt += soldiers.hurtCount;
+        }
+        const summary = this._usesWorldTroop ? `兵力 ${healthy}${hurt ? ' · 伤兵 ' + hurt : ''}`
+            : count ? this.labelSoldierCnt.string : '尚未配置武将';
+        caption(this.node, 'TroopSoldiers', summary, -34, -height / 2 + 17, width - 92, 12, C.muted);
+        caption(this.node, 'TroopEdit', '编队  ›', width / 2 - 40, -height / 2 + 17, 56, 12, C.gold, Label.HorizontalAlign.RIGHT);
     }
 
     private updateTroopItem(): void {

@@ -59,6 +59,11 @@ export default class CityGeneralItemLogic extends Component {
     protected _conCnt: number = 0;
     protected _conTime: number = 0;
     protected _isUnlock: boolean = false;
+    private _ignoreClickUntil = 0;
+
+    public get formationHeroId(): number { return this._data ? GeneralData.getHeroId(this._data) : 0; }
+    public get formationUnlocked(): boolean { return this._isUnlock; }
+    public suppressDragClick(): void { this._ignoreClickUntil = Date.now() + 250; }
 
     protected onLoad(): void {
         const size = this.node.getComponent(UITransform);
@@ -86,6 +91,7 @@ export default class CityGeneralItemLogic extends Component {
     }
 
     protected onClickItem(): void {
+        if (Date.now() < this._ignoreClickUntil) return;
         AudioManager.instance.playClick();
         if (this._data) {
             //点击展示武将信息

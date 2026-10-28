@@ -36,7 +36,7 @@ function chamfer(g: Graphics, x: number, y: number, w: number, h: number, cut: n
     g.close();
 }
 
-export function drawCommandPanel(parent: Node, width: number, height: number, selected: number): void {
+export function drawCommandPanel(parent: Node, width: number, height: number, selected: number, tabCount = 3): void {
     const g = surface(parent, width, height);
     if (!g) return;
     const left = -width / 2;
@@ -60,9 +60,10 @@ export function drawCommandPanel(parent: Node, width: number, height: number, se
     g.lineTo(-left - 10, top - 40);
     g.stroke();
     if (selected >= 0) {
-        const x = (selected - 1) * 82;
+        const step = (width - 18) / tabCount;
+        const x = (selected - (tabCount - 1) / 2) * step;
         g.fillColor = new Color(132, 112, 65, 128);
-        g.roundRect(x - 37, top - 34, 74, 28, 3);
+        g.roundRect(x - step / 2 + 4, top - 34, step - 8, 28, 3);
         g.fill();
         g.strokeColor = new Color(193, 166, 106, 190);
         g.moveTo(x - 22, top - 34);

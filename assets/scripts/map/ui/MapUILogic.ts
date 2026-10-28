@@ -1,4 +1,4 @@
-import { _decorator, Component, Prefab, Node, Layout, Label, EditBox, Button, Color, Graphics, instantiate, UITransform, Vec2, Sprite, SpriteFrame, input, Input, EventKeyboard, KeyCode, game, Game, resources } from 'cc';
+import { _decorator, Component, Prefab, Node, Layout, Label, EditBox, Button, Color, Graphics, instantiate, UITransform, Vec2, Sprite, SpriteFrame, input, Input, EventKeyboard, KeyCode, game, Game, resources, assetManager } from 'cc';
 const { ccclass, property } = _decorator;
 
 import LoginCommand from "../../login/LoginCommand";
@@ -17,6 +17,7 @@ import TransformLogic from "./TransformLogic";
 import { Tools } from "../../utils/Tools";
 import GeneralInfoLogic from "./GeneralInfoLogic";
 import BattleReportPanel from './BattleReportPanel';
+import MapCampaignFeedback from './MapCampaignFeedback';
 import DrawRLogic from "./DrawRLogic";
 import { GeneralData } from "../../general/GeneralProxy";
 import SkillLogic from "./SkillLogic";
@@ -234,6 +235,7 @@ export default class MapUILogic extends Component {
         this.initHeadIconEntry();
         this.initTaskTracker();
         this.initChatStrip();
+        this.initCampaignFeedback();
         this.initResourceIcons();
         this.node.on(Node.EventType.SIZE_CHANGED, this.layoutHud, this);
         this.layoutHud();
@@ -358,6 +360,13 @@ export default class MapUILogic extends Component {
         hud.addChild(node); node.setSiblingIndex(1);
         this._chatStrip = node.addComponent(MapChatStrip);
         this._chatStrip.initialize((channel, target, name) => this.openChat(channel, target, name));
+    }
+
+    private initCampaignFeedback(): void {
+        const hud = this.node.getChildByName('HudRoot');
+        if (!hud || hud.getChildByName('CampaignFeedback')) return;
+        const node = new Node('CampaignFeedback'); node.layer = hud.layer; hud.addChild(node);
+        node.addComponent(MapCampaignFeedback).initialize(() => this.openWarReport());
     }
 
     private openServices(section: ServiceSection): void {
@@ -552,7 +561,9 @@ export default class MapUILogic extends Component {
 
     private initInventoryEntry(): void {
         const more = this.node.getChildByPath('HudRoot/MorePanel');
-        if (!more || more.getChildByName('InventoryButton')) return;
+        if (!more) return;
+        const existing = more.getChildByName('InventoryButton');
+        if (existing) { this.loadInventoryIcon(existing); return; }
         const template = more.getChildByName('MailButton') || more.getChildByName('MarketButton');
         if (!template) return;
         const entry = instantiate(template); entry.name = 'InventoryButton'; entry.active = true;
@@ -560,22 +571,40 @@ export default class MapUILogic extends Component {
         const label = entry.getChildByName('Background')?.getComponentInChildren(Label) || entry.getComponentInChildren(Label);
         if (!button || !label) { entry.destroy(); return; }
         button.clickEvents = []; label.string = '背包';
-        const icon = entry.getChildByName('Icon');
-        if (icon) {
-            const sprite = icon.getComponent(Sprite); if (sprite) sprite.enabled = false;
-            // Sprite 和 Graphics 不能挂在同一个节点，单独的绘制节点跟随菜单图标布局。
-            const drawing = new Node('BagGlyph'); drawing.layer = icon.layer;
-            drawing.addComponent(UITransform).setContentSize(48, 48); icon.addChild(drawing);
-            const g = drawing.addComponent(Graphics);
-            g.clear(); g.fillColor = new Color(125, 88, 46); g.strokeColor = new Color(232, 198, 130); g.lineWidth = 1.5;
-            g.roundRect(-13, -15, 26, 28, 5); g.fill(); g.stroke();
-            g.moveTo(-8, 12); g.lineTo(-7, 18); g.lineTo(7, 18); g.lineTo(8, 12); g.stroke();
-            g.fillColor = new Color(176, 132, 67); g.roundRect(-13, 1, 26, 12, 4); g.fill(); g.stroke();
-            g.fillColor = new Color(240, 214, 151); g.roundRect(-3, -3, 6, 9, 1); g.fill();
-            g.moveTo(-8, -6); g.lineTo(-8, -13); g.moveTo(8, -6); g.lineTo(8, -13); g.stroke();
-        }
+        this.loadInventoryIcon(entry);
         more.addChild(entry); entry.setSiblingIndex(0);
         entry.on(Button.EventType.CLICK, this.openInventory, this);
+    }
+
+    /** 进场时加载并复用纹理，展开菜单时不再创建图标或发起加载。 */
+    private loadInventoryIcon(entry: Node): void {
+        const icon = entry.getChildByName('Icon');
+        if (!icon) return;
+        const sprite = icon.getComponent(Sprite) || icon.addComponent(Sprite);
+        const path = 'ui/hud/hud-inventory/spriteFrame';
+        const uuid = 'afa2b4ba-bf7f-495b-a0e2-8023bce98666@f9941';
+        const apply = (frame: SpriteFrame): void => {
+            if (!this.isValid || !sprite.isValid) return;
+            sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+            sprite.trim = false;
+            sprite.spriteFrame = frame;
+            sprite.color = Color.WHITE;
+            sprite.enabled = true;
+            const glyph = icon.getChildByName('BagGlyph');
+            if (glyph) { glyph.removeFromParent(); glyph.destroy(); }
+        };
+        const cached = resources.get(path, SpriteFrame) || assetManager.assets.get(uuid);
+        if (cached instanceof SpriteFrame && cached.isValid) { apply(cached); return; }
+        sprite.enabled = false;
+        const loaded = (error: Error | null, frame: unknown): void => {
+            if (error || !(frame instanceof SpriteFrame)) {
+                console.warn('[HUD] 背包图标加载失败', error); return;
+            }
+            apply(frame);
+        };
+        // 新图导入时，已运行的预览可能尚未更新 resources 路径表。
+        if (resources.getInfoWithPath(path, SpriteFrame)) resources.load(path, SpriteFrame, loaded);
+        else assetManager.loadAny(uuid, loaded);
     }
 
     private ensureSettingsPanel(): Setting {

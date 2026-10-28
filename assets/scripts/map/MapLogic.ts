@@ -9,7 +9,7 @@ import { LogicEvent } from '../common/LogicEvent';
 // 进场展示主城与周边地块；最近缩放和内城视角独立配置。
 const DEFAULT_MAP_HEIGHT = 600;
 const CLOSE_UP_HEIGHT = 192;
-const CITY_VIEW_HEIGHT = 230.4;
+const CITY_VIEW_HEIGHT = 300;
 
 @ccclass('MapLogic')
 export default class MapLogic extends Component {
@@ -23,11 +23,13 @@ export default class MapLogic extends Component {
     private _zooming = false;
     private _zoomAnchor = new Vec2();
     private _cityReturnHeight: number = null;
+    private _cityFocusPoint: Vec2 = null;
 
     // 相机中心限制在四个角格的连线内，边缘地块仍然可以完整查看。
     private _cameraBoundary: Vec2[] = [];
     private _clampedCameraPoint: Vec2 = new Vec2();
     private _activeTouchId: number = null;
+    private _touchOrigin = new Vec2();
     private _inputNode: Node = null;
 
     protected _touchAniNode: Node = null;
@@ -87,18 +89,29 @@ export default class MapLogic extends Component {
 
     protected openCityAbout(data: any): void {
         this._cityReturnHeight = this._mapCamera.orthoHeight;
+        this._cityFocusPoint = new Vec2(data.x, data.y);
         this._zooming = false;
-        this._mapCamera.orthoHeight = CITY_VIEW_HEIGHT;
+        this._mapCamera.orthoHeight = this.cityViewHeight();
         this._targetHeight = this._mapCamera.orthoHeight;
-        this.updateCulling();
+        this.scrollToMapPoint(this._cityFocusPoint);
     }
 
     protected closeCityAbout(): void {
+        const city = this._cityFocusPoint;
+        this._cityFocusPoint = null;
         this._mapCamera.orthoHeight = this._cityReturnHeight ?? this._orthoHeight;
         this._targetHeight = this._mapCamera.orthoHeight;
         this._cityReturnHeight = null;
+        if (city) this.scrollToMapPoint(city);
         this.updateCulling();
         this.syncCenterMapCellPoint();
+    }
+
+    private cityViewHeight(): number {
+        const { width, height } = view.getVisibleSize();
+        const deck = height < 500 ? 176 : 214;
+        return Math.max(CITY_VIEW_HEIGHT, 620 * height / Math.max(1, width - 48) / 2,
+            290 * height / Math.max(1, height - deck - 100) / 2);
     }
 
     protected onMouseWheel(event: EventMouse): void {
@@ -176,6 +189,13 @@ export default class MapLogic extends Component {
     protected onTouchMove(event: EventTouch): void {
         if (this._isTouch && event.getID() === this._activeTouchId) {
             const delta = event.getUIDelta();
+            if (!this._isMove) {
+                const point = event.getUILocation();
+                const dx = point.x - this._touchOrigin.x, dy = point.y - this._touchOrigin.y;
+                // 点击时的小幅手抖不触发行军地图拖动；越过阈值后补齐累计位移。
+                if (dx * dx + dy * dy < 36) return;
+                delta.set(dx, dy);
+            }
             if (delta.x != 0 || delta.y != 0) {
                 this._isMove = true;
                 const scale = this.worldUnitsPerUIUnit();
@@ -191,6 +211,8 @@ export default class MapLogic extends Component {
     protected onTouchBegan(event: EventTouch): void {
         if (this._isTouch) return;
         this._activeTouchId = event.getID();
+        const touch = event.getUILocation();
+        this._touchOrigin.set(touch.x, touch.y);
         this._isTouch = true;
         this._zooming = false;
         this._targetHeight = this._mapCamera.orthoHeight;
@@ -308,6 +330,11 @@ export default class MapLogic extends Component {
         this._zooming = false;
         this._targetHeight = this._mapCamera.orthoHeight;
         let temp = this.toCameraPoint(point);
+        if (this._cityFocusPoint) {
+            const height = view.getVisibleSize().height;
+            const deck = height < 500 ? 176 : 214;
+            temp.y -= (deck - 76) * this._mapCamera.orthoHeight / height;
+        }
         this._mapCamera.node.setPosition(temp.x, temp.y, this._mapCamera.node.position.z);
         // 相机监听尚未绑定时（进图首帧）也要立刻重算一次裁剪区
         this.updateCulling();
@@ -336,6 +363,10 @@ export default class MapLogic extends Component {
     }
 
     private onViewportResize(): void {
+        if (this._cityFocusPoint && this._mapCamera) {
+            this._mapCamera.orthoHeight = this.cityViewHeight();
+            this.scrollToMapPoint(this._cityFocusPoint);
+        }
         this.updateCulling();
         if (!this._tiledMap || !this._mapCamera || !this._cmd) return;
         const position = this._mapCamera.node.position;

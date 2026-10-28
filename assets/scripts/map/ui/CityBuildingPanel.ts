@@ -277,7 +277,9 @@ export default class CityBuildingPanel extends Component {
         const { cardWidth, cardHeight } = this.graphMetrics;
         this.cardWidth = cardWidth;
         this.layerLabels.forEach(label => label.node.active = false);
-        this.graphMetrics.rows.forEach((row, i) => {
+        const rows = this.graphMetrics.rows.length ? this.graphMetrics.rows : [{ y: -64,
+            label: BuildCommand.getInstance().loaded ? '当前分类已全部建成' : '正在读取建筑信息…' }];
+        rows.forEach((row, i) => {
             const label = this.layerLabels[i] || (this.layerLabels[i] = caption(this.content, `Layer_${i}`, '', 0, 0, width - 56, 13, C.muted));
             label.node.active = true;
             label.string = row.label;

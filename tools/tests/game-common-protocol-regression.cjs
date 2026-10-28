@@ -551,6 +551,25 @@ test('邮件模板参数、服务器文本优先及详情超时重试', () => {
     h.receive(h.S.s2c_sync_mail, { mailKind: 3, mailInfo: { mailId: 10, mailUid: big, title: '服务器标题', content: '服务器正文' } });
     assert.equal(h.mail.presentation(3, big).title, '服务器标题'); assert.equal(h.mail.getMail(3, big).isRead, true);
 });
+test('攻占他人领地发送坐标目标，不伪造归属并保留资源校验', () => {
+    const h = harness(); h.authenticate(); h.role.level = 99;
+    const id = h.world.resourceLandEntityId(10, 20);
+    const entity = { entityId: id, entityType: 4, cfgId: 203, ownerId: other, pos: { x: 10, y: 20 } };
+    h.receive(h.S.s2c_aoi_enter, { entities: [entity] });
+    assert.equal(h.world.resourceLandIssue(10, 20, 52, 3), '');
+    assert.ok(h.world.resourceLandIssue(10, 20, 53, 3), '保留资源配置不一致校验');
+    assert.equal(h.world.emptyLandIssue(10, 20), '');
+    assert.ok(h.world.emptyLandIssue(-1, 20));
+    assert.equal(h.world.occupyResourceLand(1, 10, 20), true);
+    assert.deepEqual(plain(h.sent.at(-1).data), {
+        troopIdx: 1, targetType: 3, targetId: id, targetPos: { x: 10, y: 20 },
+    });
+    assert.equal(String(h.world.resourceLandAt(10, 20).ownerId), other);
+    assert.equal(h.world.occupyResourceLand(1, 10, 20), false, '请求进行中不重复出征');
+    h.disconnect();
+    assert.equal(h.world.occupyResourceLand(2, 10, 20), false);
+});
+
 test('资源占领使用AOI实体ID，浮点路径无截断，拒绝错图/自有/离场目标', () => {
     const h = harness(); h.authenticate(); h.role.level = 20;
     assert.equal(h.world.occupyResourceLand(1, 20010), false);

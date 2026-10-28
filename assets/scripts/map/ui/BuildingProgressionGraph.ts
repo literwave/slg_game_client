@@ -65,8 +65,8 @@ export function buildingProgressionGraph(configs: FacilityConfig[], levels: Read
     nodes.forEach(node => rank(node.key));
     const linked = new Set<string>();
     edges.forEach(edge => { linked.add(edge.from); linked.add(edge.to); });
-    const archiveRank = Math.max(0, ...Array.from(nodes.values(), node => node.rank)) + 1;
-    nodes.forEach(node => { if (node.complete && !linked.has(node.key)) node.rank = archiveRank; });
+    // 满级且不再参与后续路线的建筑不单独归档，保留仍有依赖连线的已满足前置。
+    nodes.forEach(node => { if (node.complete && !linked.has(node.key)) nodes.delete(node.key); });
     return { nodes: Array.from(nodes.values()), edges };
 }
 
@@ -80,7 +80,7 @@ export function layoutBuildingGraph(nodes: BuildingGraphNode[], viewportWidth: n
     let top = 12;
     for (const rank of ranks) {
         const group = nodes.filter(node => node.rank === rank).sort((a, b) => a.type - b.type || a.level - b.level);
-        rows.push({ rank, y: -top - 8, label: group.every(node => node.complete) ? '已完成建设'
+        rows.push({ rank, y: -top - 8, label: group.every(node => node.complete) ? '已满足前置'
             : rank === 0 ? '建设起点' : `第 ${rank} 层` });
         top += 32;
         group.forEach((node, i) => {

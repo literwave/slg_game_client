@@ -75,6 +75,10 @@ function harness() {
             layouts.push({ count, type, refreshList });
         } },
         'map/ui/RightHudSkin': {},
+        'map/ui/ManagementStyle': {},
+        'world/WorldCommand': { default: { getInstance: () => ({
+            marches: { get: () => undefined }, isTroopAtHome: () => true,
+        }) } },
         'map/ui/TroopPanelSkin': { styleTroopPanel() {}, styleTroopCard() {} },
     };
     function load(name) {
@@ -232,6 +236,35 @@ test('首尾换位时可用兵和伤兵跟随武将，ACK 和同步推送均正�
     assert.equal(troop.getHeroIdxAt(0), 0);
     assert.equal(troop.getHeroIdxAt(2), 1001);
     assert.deepEqual(plain(troop.getSoldier(1001)), { count: 90, hurtCount: 33 });
+});
+
+test('拖动换位支持互换和空位，兵力跟随武将，回包前不改快照', () => {
+    const h = harness();
+    h.ready([{ troopIdx: 1, posMap: {
+        1: { heroIdx: 1001, soldier: { count: 120, hurtCount: 3 } },
+        3: { heroIdx: 1003, soldier: { count: 440, hurtCount: 5 } },
+    } }]);
+    const troop = h.command.proxy.getTroop(1);
+    for (const [from, to] of [[0, 0], [1, 0], [-1, 0], [0, 3], [0.5, 1]]) {
+        assert.equal(troop.getRepositionedHeroMap(from, to), null);
+    }
+    const swapped = troop.getRepositionedHeroMap(0, 2);
+    assert.deepEqual(plain(swapped), { 1001: 2, 1003: 0 });
+    assert.equal(troop.getHeroIdxAt(0), 1001);
+    assert.equal(h.command.editTroop(1, swapped), true);
+    assert.equal(h.command.editTroop(1, swapped), false, '保存期间不重复提交');
+    assert.deepEqual(plain(h.sent.at(-1).data.troopInfo.posMap), {
+        1: { heroIdx: 1003, soldier: { count: 440, hurtCount: 5 } },
+        3: { heroIdx: 1001, soldier: { count: 120, hurtCount: 3 } },
+    });
+    assert.equal(troop.getHeroIdxAt(0), 1001);
+    h.receive(h.server.s2c_edit_troop, h.sent.at(-1).data);
+    const moved = h.command.proxy.getTroop(1).getRepositionedHeroMap(2, 1);
+    assert.deepEqual(plain(moved), { 1001: 1, 1003: 0 });
+    assert.equal(h.command.editTroop(1, moved), true);
+    assert.deepEqual(plain(h.sent.at(-1).data.troopInfo.posMap[2]), {
+        heroIdx: 1001, soldier: { count: 120, hurtCount: 3 },
+    });
 });
 
 test('配置页上阵、替换和下阵共用协议，空 map 能清空最后一名武将', () => {
@@ -429,6 +462,7 @@ test('主城部队面板读取 World 快照，三队可打开，编队更新和�
     const Card = h.load('map/ui/CityArmyItemLogic').default;
     const city = new City();
     city.initView = () => {};
+    city.layoutOverview = () => {};
     city._armyComps = [1, 2, 3].map(order => {
         const card = new Card(); card.order = order;
         for (const name of ['tipNode', 'infoNode', 'maskNode']) card[name] = { active: true };

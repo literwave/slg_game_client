@@ -18,6 +18,7 @@ import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
 import { styleTroopPanel } from './TroopPanelSkin';
+import TroopDragInteraction from './TroopDragInteraction';
 
 @ccclass('CityArmySettingLogic')
 export default class CityArmySettingLogic extends Component {
@@ -66,9 +67,12 @@ export default class CityArmySettingLogic extends Component {
 
     protected _conTimes: number[] = null;
     protected _conCnts: number[] = null;
+    private _formationDrag: TroopDragInteraction = null;
 
     protected onLoad(): void {
         this.initView();
+        this._formationDrag = new TroopDragInteraction(this.node, this._gengeralLogics,
+            () => this.canReposition(), (from, to) => this.repositionHero(from, to));
         this.additionTipNode.active = false;
         this.additionTouchNode.on(Node.EventType.TOUCH_START, this.onShowAdditionTip, this);
         this.additionTouchNode.on(Node.EventType.TOUCH_END, this.onHideAdditionTip, this);
@@ -77,6 +81,7 @@ export default class CityArmySettingLogic extends Component {
     }
 
     protected onDestroy(): void {
+        this._formationDrag?.destroy();
         this._gengeralLogics.length = 0;
     }
 
@@ -101,6 +106,7 @@ export default class CityArmySettingLogic extends Component {
     }
 
     protected onDisable(): void {
+        this._formationDrag?.cancel();
         EventMgr.targetOff(this);
         view.off('canvas-resize', this.refreshVisualLayout, this);
         view.off('design-resolution-changed', this.refreshVisualLayout, this);
@@ -110,7 +116,21 @@ export default class CityArmySettingLogic extends Component {
     }
 
     public refreshVisualLayout(): void {
+        this._formationDrag?.cancel();
         styleTroopPanel(this);
+    }
+
+    private canReposition(): boolean {
+        const command = TroopCommand.getInstance();
+        return this.node.activeInHierarchy && this._isUnlock && command.listReady
+            && !command.editingTroopIdx && (!this._data || this._data.cmd === ArmyCmd.Idle);
+    }
+
+    private repositionHero(from: number, to: number): void {
+        if (!this.canReposition() || !this._gengeralLogics[to]?.formationUnlocked) return;
+        const command = TroopCommand.getInstance();
+        const next = command.proxy.getTroop(this._order)?.getRepositionedHeroMap(from, to);
+        if (next) { AudioManager.instance.playClick(); command.editTroop(this._order, next); }
     }
 
     protected initView(): void {
@@ -192,6 +212,7 @@ export default class CityArmySettingLogic extends Component {
     }
 
     protected updateView(): void {
+        this._formationDrag?.cancel();
         let comp: CityGeneralItemLogic = null;
         let generalData: GeneralData = null;
         let generalCfg: GeneralConfig = null;
@@ -496,6 +517,7 @@ export default class CityArmySettingLogic extends Component {
     }
 
     public setData(cityId: number, order: number = 1): void {
+        this._formationDrag?.cancel();
         this._curConscripts = [0, 0, 0];
         this.editBoxs.forEach(edit => edit.string = '0');
         this._cityId = cityId;

@@ -128,26 +128,19 @@ export default class WorldCommand extends ProtocolCommand {
     }
     /**
      * 击败守卫后的占领倒计时（Global.Id=19）。
-     * 以资源地 AOI 的 startTime/endTime 为准；行军仍驻留且 state=2 时也可读到。
-     * 行军途中（state=1）不算占领中。
+     * 只读资源地 AOI 的 startTime/endTime；行军时间与占领时间是不同阶段。
+     * 倒计时归零后保留确认态，直到服务器清除计时字段。
      */
     occupyCountdownAt(x: number, y: number, nowSec: number): { startTime: number; endTime: number } | null {
         if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isFinite(nowSec)) return null;
+        // AOI 的时间清零才是占领结束。客户端倒计时归零不能自行认定成功。
         const active = (start: number, end: number) =>
-            Number.isFinite(start) && Number.isFinite(end) && end > start && end > nowSec;
+            Number.isFinite(start) && Number.isFinite(end) && start > 0 && end > start;
         const entity = this.resourceLandAt(x, y);
         if (entity && active(entity.startTime, entity.endTime)) {
             return { startTime: entity.startTime, endTime: entity.endTime };
         }
-        const entityId = this.resourceLandEntityId(x, y);
-        for (const march of this.marches.values()) {
-            if (march.targetType !== MarchTargetType.OccupyResource || march.state !== 2) continue;
-            const sameCell = Math.round(march.endPos?.x) === x && Math.round(march.endPos?.y) === y;
-            if (!sameCell && idKey(march.targetId) !== idKey(entityId)) continue;
-            if (active(march.startTime, march.endTime)) {
-                return { startTime: march.startTime, endTime: march.endTime };
-            }
-        }
+        // p_march_info.startTime/endTime 是行军时间，不能当成占领时间。
         return null;
     }
     resourceLandIssue(x: number, y: number, mapType: number, level: number): string {
@@ -156,22 +149,15 @@ export default class WorldCommand extends ProtocolCommand {
         const entity = this.resourceLandAt(x, y);
         if (entity && entity.cfgId !== cfg.Id) return '地图资源配置与服务器不一致，请更新地图配置';
         const role = LoginCommand.getInstance().proxy.getRoleData();
-        if (entity && hasId(entity.ownerId) && hasId(role?.userId) && idKey(entity.ownerId) !== idKey(role.userId)) return '资源地已被占领';
         if (role && cfg.OpenCond?.level && role.level < cfg.OpenCond.level) return `主公达到${cfg.OpenCond.level}级后可占领`;
         return '';
     }
-    /** 空地没有资源等级。已有别的主人时不能再占。 */
+    /** 已有归属的土地也允许发起攻占，守军、免战和归属变更由服务器判定。 */
     emptyLandIssue(x: number, y: number): string {
-        const entity = this.resourceLandAt(x, y);
-        const role = LoginCommand.getInstance().proxy.getRoleData();
-        if (entity && hasId(entity.ownerId) && hasId(role?.userId) && idKey(entity.ownerId) !== idKey(role.userId)) return '这块空地已被占领';
-        return '';
+        return this.validPos({ x, y }) ? '' : '地块坐标无效，请重新选择';
     }
     occupyResourceLand(troopIdx: number, x: number, y: number): boolean {
-        const entity = this.resourceLandAt(x, y);
-        const role = LoginCommand.getInstance().proxy.getRoleData();
-        if (entity && hasId(entity.ownerId) && hasId(role?.userId) && idKey(entity.ownerId) !== idKey(role.userId)) return false;
-        if (!Number.isInteger(x) || !Number.isInteger(y)) return false;
+        if (!this.validPos({ x, y })) return false;
         return this.march(troopIdx, MarchTargetType.OccupyResource, this.resourceLandEntityId(x, y), { x, y });
     }
     /** 地图格子坐标，250ms 合并拖动上报；不用像素坐标代替格坐标。 */

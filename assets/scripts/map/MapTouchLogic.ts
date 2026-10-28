@@ -1,4 +1,4 @@
-import { _decorator, Camera, Color, Component, Graphics, Label, Prefab, Node, Vec2, instantiate, Vec3, UITransform, view } from 'cc';
+import { _decorator, Camera, Color, Component, Graphics, Label, Prefab, Node, Vec2, instantiate, UITransform, view } from 'cc';
 const { ccclass, property } = _decorator;
 
 import { MapBuildData } from "./MapBuildProxy";
@@ -36,12 +36,11 @@ export default class MapTouchLogic extends Component {
     protected onDestroy(): void {
         EventMgr.targetOff(this);
         this._cmd = null;
+        if (this._clickUINode?.isValid) this._clickUINode.destroy();
         this._clickUINode = null;
     }
 
     protected onTouchMap(mapPoint: Vec2, clickPixelPoint: Vec2, pointerPixelPoint?: Vec2): void {
-        console.log("点击区域 (" + mapPoint.x + "," + mapPoint.y + ")");
-        this.removeClickUINode();
         this.clearBlocked();
         // 关城美术横跨山口，先按实体轮廓命中，再处理后方山体；透明角落仍然属于山脉。
         const campaign = WorldCampaign.config;
@@ -64,7 +63,7 @@ export default class MapTouchLogic extends Component {
         const mountain = pointerPixelPoint && this.node.getComponentInChildren(WorldLandscape)?.blockerAt(pointerPixelPoint);
         if (mountain && MapUtil.isVaildCellPoint(mountain)) { this.showBlocked(mountain, false); return; }
         if (MapUtil.isVaildCellPoint(mapPoint) == false) {
-            console.log("点击到无效区域");
+            this.removeClickUINode();
             return;
         }
 
@@ -73,7 +72,6 @@ export default class MapTouchLogic extends Component {
         if (buildData != null) {
             if(buildData.isSysCity() == false){
                 //代表点击被占领的区域
-                console.log("点击被占领的区域", buildData);
                 this.showClickUINode(buildData, clickPixelPoint);
                 return;
             }
@@ -81,7 +79,7 @@ export default class MapTouchLogic extends Component {
         }
 
         let resData: MapResData = this._cmd.proxy.getResData(cellId);
-        if (!resData) return;
+        if (!resData) { this.removeClickUINode(); return; }
         if (resData.type > 0) {
             var temp = this._cmd.proxy.getSysCityResData(resData.x, resData.y);
             if (temp){
@@ -93,10 +91,8 @@ export default class MapTouchLogic extends Component {
                 }else{
                     this.showClickUINode(temp, clickPixelPoint);
                 }
-                console.log("点击野外城池", temp);
             }else{
                 this.showClickUINode(resData, clickPixelPoint);
-                console.log("点击野外区域", resData);
             }
            
         } else {
@@ -108,6 +104,7 @@ export default class MapTouchLogic extends Component {
     }
 
     private showBlocked(point: Vec2, river: boolean): void {
+        this.removeClickUINode();
         this.clearBlocked();
         const node = new Node('BlockedTerrainFeedback'); node.layer = this.touch.layer;
         this.touch.addChild(node); this._blockedFeedback = node;
@@ -129,7 +126,7 @@ export default class MapTouchLogic extends Component {
     }
 
     protected onMoveMap(): void {
-        this.removeClickUINode();
+        // 拖动与缩放保留当前地块及右侧详情。
         this.clearBlocked();
     }
 
@@ -138,8 +135,8 @@ export default class MapTouchLogic extends Component {
             this._clickUINode = instantiate(this.clickUIPrefab);
 
         }
-        this._clickUINode.parent = this.touch;
-        this._clickUINode.setPosition(new Vec3(pos.x, pos.y, 0));
+        if (this._clickUINode.parent !== this.touch) this._clickUINode.parent = this.touch;
+        this._clickUINode.setPosition(pos.x, pos.y, 0);
         this._clickUINode.getComponent(MapClickUILogic).setCellData(data, pos);
     }
 

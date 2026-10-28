@@ -5,12 +5,13 @@ import type { MarchSample } from '../../world/MarchPath';
 import MapUtil from '../MapUtil';
 import DateUtil from '../../utils/DateUtil';
 import { loadMarchAnimations, MarchAnimationSet, MarchUnitKind } from './MarchAnimationLibrary';
+import { MarchPose, sampleMarchPose } from './MarchPose';
 
 interface Member {
     node: Node; animation: Animation; lag: number; side: number;
     sprite: Sprite; animations?: MarchAnimationSet;
     clip: string; moving: boolean; dustPhase: number; facing: number;
-    guardPose: boolean;
+    guardPose: boolean; kind: MarchUnitKind;
     foot?: Vec2;
     arrivalFoot?: Vec2;
 }
@@ -34,6 +35,9 @@ export default class MarchFormation {
     private dustElapsed = 0;
     private dustVisible = false;
     private guarding = false;
+    private gaitWeight = 0;
+    private guardWeight = 0;
+    private pose: MarchPose = { x: 0, y: 0, angle: 0, stretch: 1 };
 
     constructor(private host: Node) {
         this.root = new Node('MarchFormation');
@@ -70,7 +74,7 @@ export default class MarchFormation {
     setGuarding(on: boolean): void {
         if (this.guarding === on) return;
         this.guarding = on;
-        this.root.setPosition(on ? 22 : 0, on ? -10 : 0, 0);
+        // 阵形位置在 update 中渐移，不能到达时突然横跳到地块侧边。
         for (const member of this.members) this.applyPose(member, member.moving);
     }
 
@@ -92,7 +96,7 @@ export default class MarchFormation {
         const animation = body.addComponent(Animation);
         body.active = false;
         const member: Member = { node, animation, sprite, lag, side, clip: '', moving: false,
-            facing: 7, guardPose: false, dustPhase: this.members.length * .097 };
+            facing: 7, guardPose: false, kind, dustPhase: this.members.length * .097 };
         this.members.push(member);
         const revision = this.revision;
         void loadMarchAnimations(kind).then(animations => {
@@ -108,6 +112,9 @@ export default class MarchFormation {
         const now = DateUtil.monotonicNow();
         const dt = this.lastMono ? Math.min(.1, Math.max(0, (now - this.lastMono) / 1000)) : 0;
         this.lastMono = now;
+        this.gaitWeight += ((sample.moving ? 1 : 0) - this.gaitWeight) * (1 - Math.exp(-dt / .10));
+        this.guardWeight += ((this.guarding ? 1 : 0) - this.guardWeight) * (1 - Math.exp(-dt / .18));
+        this.root.setPosition(this.guardWeight * 22, this.guardWeight * -10, 0);
         // 全队共享步态时钟。到达后共同收完最后半步再站定，避免主将瞬间换姿势、
         // 护卫各自在后面继续踏步；这一小段仅影响显示，不延迟服务端到达状态。
         const justArrived = this.wasMarching && !sample.moving;
@@ -187,6 +194,12 @@ export default class MarchFormation {
             if (!member.clip || Math.abs(difference) > Math.PI / 8 + Math.PI / 60)
                 member.facing = (Math.round(angle / (Math.PI / 4)) + 8) % 8;
             this.applyPose(member, sample.moving || settling);
+            // 方向帧保持清晰，不对相邻图片做半透明混合；重心动作按真实时间连续采样。
+            sampleMarchPose(member.kind, this.gaitTime, this.gaitWeight, this.pose);
+            const mirror = member.animations?.mirrored[member.facing] ? -1 : 1;
+            member.sprite.node.setPosition(this.pose.x * mirror, this.pose.y, 0);
+            member.sprite.node.angle = this.pose.angle * mirror;
+            member.sprite.node.setScale(mirror, this.pose.stretch, 1);
         }
         this.updateDust(dt, now);
         this.members.slice().sort((a, b) => b.node.position.y - a.node.position.y)
