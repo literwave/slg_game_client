@@ -27,6 +27,7 @@ export enum NetNodeType {
 
 export const MAX_RECONNECT_ATTEMPTS = 3;
 export const CONNECTION_TIMEOUT_MS = 10 * 1000;
+export const RECONNECT_DELAYS_MS: readonly number[] = [3000, 6000, 12000];
 
 
 export interface NetConnectOptions {
@@ -56,7 +57,6 @@ export class NetNode {
     protected _manualClose: boolean = false;
     protected _heartTime: number = 10 * 1000;                                 // 心跳间隔
     protected _receiveTime: number = 10 * 1000;                               // 多久没收到数据断开
-    protected _reconnetTimeOut: number = 2 * 1000;                            // 重连间隔
     protected _requests: RequestObject[] = Array<RequestObject>();          // 请求列表
     protected _maxSeqId: number = 1000000;
     protected _seqId: number = 1;
@@ -250,6 +250,8 @@ export class NetNode {
         if (this._manualClose || !this._connectOptions || this._reconnectTimer !== null
             || this._state !== NetNodeState.Closed) return;
         if (this.isAutoReconnect()) {
+            // 快速拒绝连接也要留出恢复网络的时间，后续重试逐步延长等待。
+            const retryDelayMs = RECONNECT_DELAYS_MS[this._reconnectAttempt];
             this._autoReconnect -= 1;
             this._reconnectAttempt += 1;
             this.updateNetTips(NetTipsType.ReConnecting, true);
@@ -257,11 +259,11 @@ export class NetNode {
             this._reconnectTimer = setTimeout(() => {
                 this._reconnectTimer = null;
                 if (!this._manualClose && this._connectOptions) this.openSocket(this._connectOptions);
-            }, this._reconnetTimeOut);
+            }, retryDelayMs);
             EventMgr.emit(NetEvent.ServerReconnecting, {
                 attempt: this._reconnectAttempt,
                 maxAttempts: this._autoReconnectMax,
-                retryDelayMs: this._reconnetTimeOut,
+                retryDelayMs,
             });
         } else {
             const state = { attempt: this._reconnectAttempt, maxAttempts: this._autoReconnectMax };

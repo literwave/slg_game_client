@@ -124,7 +124,7 @@ function fixture() {
 
 test('服务器离线只自动重连三次，耗尽后停止所有连接和定时器', () => {
     const f = fixture(); f.node.connect(f.gate);
-    for (let i = 0; i < 4; i++) { f.sockets.at(-1).fail(); if (i < 3) f.advance(2000); }
+    for (let i = 0; i < 4; i++) { f.sockets.at(-1).fail(); if (i < 3) f.advance(f.retries.at(-1).retryDelayMs); }
     assert.equal(f.sockets.length, 4, '首次连接加三次自动重连');
     assert.deepEqual(f.retries.map(s => s.attempt), [1, 2, 3]);
     assert.equal(f.failures.length, 1); assert.equal(f.timers.size, 0);
@@ -132,14 +132,32 @@ test('服务器离线只自动重连三次，耗尽后停止所有连接和定�
     assert.equal(f.sockets.length, 4); assert.equal(f.failures.length, 1);
 });
 
+test('快速拒绝连接也按三六十二秒重试，重复断线回调不提前耗尽次数', () => {
+    const f = fixture(); f.node.connect(f.gate); f.sockets[0].fail();
+    for (const [index, delay] of [3000, 6000, 12000].entries()) {
+        assert.equal(f.retries.length, index + 1);
+        assert.equal(f.retries.at(-1).retryDelayMs, delay);
+        for (let i = 0; i < 5; i++) { f.node.onError({}); f.node.onClosed({}); f.node.tryConnet(); }
+        f.advance(delay - 1);
+        assert.equal(f.sockets.length, index + 1, '等待完整间隔后才发起实际连接');
+        assert.equal(f.failures.length, 0);
+        f.advance(1);
+        assert.equal(f.sockets.length, index + 2);
+        f.sockets.at(-1).fail();
+    }
+    assert.equal(f.failures.length, 1); assert.equal(f.timers.size, 0);
+});
+
 test('连接一直处于 CONNECTING 也在十秒超时，不能无限等待', () => {
-    const f = fixture(); f.node.connect(f.gate); f.advance(46000);
+    const f = fixture(); f.node.connect(f.gate); f.advance(60999);
+    assert.equal(f.failures.length, 0, '最后一次连接保留完整十秒验证时间');
+    f.advance(1);
     assert.equal(f.sockets.length, 4); assert.equal(f.failures.length, 1); assert.equal(f.timers.size, 0);
 });
 
 test('WebSocket 打开但无登录验证回包不会重置重试预算', () => {
     const f = fixture(); f.node.connect(f.gate);
-    for (let i = 0; i < 4; i++) { f.sockets.at(-1).open(); f.advance(10000); if (i < 3) f.advance(2000); }
+    for (let i = 0; i < 4; i++) { f.sockets.at(-1).open(); f.advance(10000); if (i < 3) f.advance(f.retries.at(-1).retryDelayMs); }
     assert.equal(f.sockets.length, 4); assert.equal(f.failures.length, 1); assert.equal(f.timers.size, 0);
 });
 
@@ -147,7 +165,7 @@ test('只有 login_ok 没有基础信息仍然超时；完整恢复后下一次�
     const f = fixture(); f.node.connect(f.gate); f.sockets[0].open();
     f.EventMgr.emit(f.S.s2c_user_login_ok, {}); f.advance(10000);
     assert.equal(f.retries.length, 1);
-    f.advance(2000); f.sockets.at(-1).open();
+    f.advance(3000); f.sockets.at(-1).open();
     let success = 0; f.EventMgr.on(f.NetEvent.ServerReconnectSuccess, () => success++, {});
     f.ready(); assert.equal(success, 1); assert.equal(f.timers.size, 0);
     f.advance(60000); assert.equal(f.failures.length, 0);
@@ -174,13 +192,13 @@ test('返回登录会取消等待中的重试，迟到回调不能干扰新的�
 test('连接失败后清除待发请求，不跨连接重放旧写请求', () => {
     const f = fixture(); f.node.connect(f.gate);
     f.node.send({ name: 'Mutation', msg: new Uint8Array([1]) }); f.sockets[0].fail();
-    f.advance(2000); const sent = [];
+    f.advance(3000); const sent = [];
     f.node._socket.packAndSend = data => sent.push(data.name); f.sockets.at(-1).open();
     assert.deepEqual(sent, [f.S.c2s_verify_login]);
 });
 
 test('配置不能启用永久重连，显式关闭自动重试时仅连接一次', () => {
-    const f = fixture(); f.node.connect({ ...f.gate, autoReconnect: -1 }); f.advance(46000);
+    const f = fixture(); f.node.connect({ ...f.gate, autoReconnect: -1 }); f.advance(61000);
     assert.equal(f.sockets.length, 4); assert.equal(f.failures.length, 1);
     f.node.connect({ ...f.gate, autoReconnect: 0 }); f.sockets.at(-1).fail(); f.advance(60000);
     assert.equal(f.sockets.length, 5); assert.equal(f.failures.length, 2);
@@ -213,11 +231,31 @@ test('加载页显示真实重试次数；三次失败直接切回登录并停�
     f.EventMgr.on(f.NetEvent.ServerReconnectFailed, main.onServerReconnectFailed, main);
     f.EventMgr.on(f.LogicEvent.enterLogin, () => { loginEntries++; p.backToLogin(); }, {});
     p.beginEnterWorld(); f.advance(500);
-    for (let i = 0; i < 4; i++) { f.sockets.at(-1).fail(); if (i < 3) f.advance(2000); }
+    for (let i = 0; i < 4; i++) { f.sockets.at(-1).fail(); if (i < 3) f.advance(f.retries.at(-1).retryDelayMs); }
     assert.equal(loginEntries, 1); assert.match(toast, /返回登录/);
     assert.ok(stages.some(s => s.includes('1/3'))); assert.ok(stages.some(s => s.includes('3/3')));
     assert.equal(p.enterStarted, false); f.advance(60000);
     assert.equal(f.sockets.length, 4); assert.equal(f.timers.size, 0);
+});
+
+test('地图内重连耗尽也自动返回登录，不显示等待点击的失败弹窗', () => {
+    const f = fixture(), p = f.page();
+    const Main = f.load('assets/scripts/Main.ts', {
+        './utils/EventMgr': { EventMgr: f.EventMgr }, './common/LogicEvent': { LogicEvent: f.LogicEvent },
+    }, () => ({ default: class {} })).default;
+    const main = new Main(); let loginEntries = 0, toast = '';
+    main._mapScene = {}; main._mapUIScene = {};
+    main.ensureReconnectLogic = () => { throw Error('不应打开手动确认弹窗'); };
+    main.showTopToast = message => { toast = message; };
+    f.EventMgr.on(f.NetEvent.ServerReconnectFailed, main.onServerReconnectFailed, main);
+    f.EventMgr.on(f.LogicEvent.enterLogin, () => { loginEntries++; p.backToLogin(); }, {});
+    f.node.connect(f.gate); f.sockets[0].open(); f.ready();
+    f.sockets[0].remoteClose();
+    for (const delay of [3000, 6000, 12000]) { f.advance(delay); f.sockets.at(-1).fail(); }
+    assert.equal(loginEntries, 1); assert.match(toast, /已返回登录/);
+    assert.equal(f.command._reconnecting, false); assert.equal(f.timers.size, 0);
+    f.advance(120000); f.node.send({ name: 'Old.request' }); f.node.dropConnection();
+    assert.equal(loginEntries, 1); assert.equal(f.sockets.length, 4);
 });
 
 console.log(`通过 ${passed} 项重连回归`);

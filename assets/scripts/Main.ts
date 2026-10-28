@@ -207,17 +207,9 @@ export default class Main extends Component {
     }
 
     private onServerReconnectFailed(): void {
-        if (!this._mapScene && !this._mapUIScene) {
-            this.enterLogin();
-            return;
-        }
-        const logic = this.ensureReconnectLogic();
-        if (!logic) {
-            this.enterLogin();
-            return;
-        }
-        this._reconnectNode.setSiblingIndex(this.topLayer() + 20);
-        logic.showFailed();
+        // 加载页和战场使用同一退出流程，清掉旧会话后直接回登录，无需再点确认。
+        EventMgr.emit(LogicEvent.enterLogin);
+        this.showTopToast('连接未能恢复，已返回登录，请检查网络后重试');
     }
 
     private ensureReconnectLogic(): ReconnectLogic | null {
