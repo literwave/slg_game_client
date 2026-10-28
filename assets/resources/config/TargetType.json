@@ -1,30 +1,34 @@
-[
-  {
+{
+  "1": {
     "Id": 1,
     "Name": "回城",
     "Enum": "RETURN_CITY",
     "Desc": "行军返回主城",
-    "Speed": 0.4
+    "Speed": 1.0,
+    "note": ""
   },
-  {
+  "2": {
     "Id": 2,
     "Name": "打怪",
     "Enum": "ATTACK_MONSTER",
     "Desc": "行军攻击怪物组",
-    "Speed": 0.2
+    "Speed": 0.6,
+    "note": ""
   },
-  {
+  "3": {
     "Id": 3,
     "Name": "占领资源地",
     "Enum": "OCCUPY_RES_LAND",
     "Desc": "行军占领资源地（击败守卫后进入占领倒计时，时长见 Global.Id=19）",
-    "Speed": 0.2
+    "Speed": 0.6,
+    "note": ""
   },
-  {
+  "4": {
     "Id": 4,
     "Name": "移动",
     "Enum": "MOVE",
     "Desc": "行军移动到目标坐标（无战斗）",
-    "Speed": 0.2
+    "Speed": 0.6,
+    "note": ""
   }
-]
+}
