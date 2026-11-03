@@ -37,8 +37,6 @@ export class Role {
 	build_limit: number = 0;		 //野外建筑上限
 	recovery_time: number = 0;
 	decree_limit: number = 0;        //令牌上限
-	collect_times_limit: number = 0; //每日征收次数上限
-	collect_interval: number = 0;    //征收间隔
 	pos_tag_limit: number = 0;       //位置标签上限
 }
 

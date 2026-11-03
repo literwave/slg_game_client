@@ -14,7 +14,8 @@ import GeneralHeadLogic from "./GeneralHeadLogic";
 import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
-import { drawCommandDetail, drawCommandRow, setCommandLabel, styleCommandAction } from './RightHudSkin';
+import { commandAction, commandStat } from './RightSidebarView';
+import { troopSidebarCard, troopSidebarDetail } from './TroopSidebarCard';
 
 @ccclass('RightArmyItemLogic')
 export default class RightArmyItemLogic extends Component {
@@ -43,6 +44,8 @@ export default class RightArmyItemLogic extends Component {
     protected _firstGeneral: GeneralData = null;
     protected _qryReturnTime: number = 0;
     private occupationKey = '';
+    private portraitButton: Button = null;
+    private detailButton: Button = null;
 
     protected onLoad(): void {
         EventMgr.on(LogicEvent.updateGeneral, this.onUpdateGeneral, this);
@@ -51,28 +54,35 @@ export default class RightArmyItemLogic extends Component {
         EventMgr.on(LogicEvent.updateWorldEntities, this.onOccupationChanged, this);
         EventMgr.on(LogicEvent.protocolRequestChanged, this.onUpdateGeneral, this);
         EventMgr.on(LogicEvent.updateMyRole, this.onUpdateGeneral, this);
+        this.bindPortraitAction();
         this.bottomNode.active = false;
         this.layoutItem();
     }
 
     protected onDestroy(): void {
         EventMgr.targetOff(this);
+        this.headIcon?.node.off(Button.EventType.CLICK, this.onClickPortrait, this);
+        this.detailButton?.node.off(Button.EventType.CLICK, this.onClickPortrait, this);
         this._data = null;
         this._troop = null;
     }
 
     protected update(): void {
         if (this._troop) {
+            // 到时即更新队伍徽标，不必等待下一条 AOI 推送才结束“占领中”。
+            this.onOccupationChanged();
             const world = WorldCommand.getInstance(), march = world.marches.get(this._troop.troopIdx);
             if (this.labelPos && world.isTroopAtHome(this._troop.troopIdx)) {
-                this.labelPos.string = this._troop.getHeroCount() ? '主城待命' : '尚未编队';
+                this.labelPos.string = this._troop.getHeroIdxAt(0) > 0 ? '主城待命'
+                    : this._troop.getHeroCount() ? '主将未上阵' : '尚未编队';
             } else if (march && this.labelPos) {
                 const left = Math.max(0, march.endTime * 1000 - DateUtil.getServerTime());
                 const occupation = march.targetType === MarchTargetType.OccupyResource && march.state === 2
                     && world.occupyCountdownAt(march.endPos.x, march.endPos.y, DateUtil.getServerTime() / 1000);
                 if (occupation) {
                     const remaining = Math.max(0, occupation.endTime - DateUtil.getServerTime() / 1000);
-                    this.labelPos.string = remaining > 0 ? `占领中 ${DateUtil.converSecondStr(Math.ceil(remaining) * 1000)}` : '占领确认中';
+                    this.labelPos.string = remaining > 0 ? `占领中 ${DateUtil.converSecondStr(Math.ceil(remaining) * 1000)}`
+                        : `驻留 (${march.endPos.x}, ${march.endPos.y})`;
                 } else if (march.state === 1) {
                     this.labelPos.string = `${march.targetType === MarchTargetType.ReturnCity ? '回城'
                         : march.targetType === MarchTargetType.Move ? '移动' : '行军'} ${DateUtil.converSecondStr(left)}`;
@@ -126,9 +136,46 @@ export default class RightArmyItemLogic extends Component {
     }
 
     protected onClickTop(): void {
+        if (this._troop && !this._troop.getHeroCount() && this.btnSetting?.active
+            && this.btnSetting.getComponent(Button)?.interactable !== false) {
+            this.onClickSetting();
+            return;
+        }
         AudioManager.instance.playClick();
         this.bottomNode.active = !this.bottomNode.active;
         this.layoutItem();
+    }
+
+    private bindPortraitAction(): void {
+        const portrait = this.headIcon?.node;
+        if (!portrait) return;
+        this.portraitButton = portrait.getComponent(Button) || portrait.addComponent(Button);
+        this.portraitButton.target = portrait;
+        this.portraitButton.transition = Button.Transition.SCALE;
+        this.portraitButton.zoomScale = .96;
+        this.portraitButton.duration = .08;
+        portrait.off(Button.EventType.CLICK, this.onClickPortrait, this);
+        portrait.on(Button.EventType.CLICK, this.onClickPortrait, this);
+
+        if (!this.bottomNode) return;
+        let entry = this.bottomNode.getChildByName('ArmyEditArea');
+        if (!entry) {
+            entry = new Node('ArmyEditArea'); entry.layer = this.bottomNode.layer;
+            entry.addComponent(UITransform); this.bottomNode.addChild(entry);
+        }
+        // 属性区与头像一起直达编队；放在原有按钮下层，保留回城等独立操作。
+        entry.setSiblingIndex(1);
+        this.detailButton = entry.getComponent(Button) || entry.addComponent(Button);
+        this.detailButton.target = entry;
+        this.detailButton.transition = Button.Transition.NONE;
+        entry.off(Button.EventType.CLICK, this.onClickPortrait, this);
+        entry.on(Button.EventType.CLICK, this.onClickPortrait, this);
+    }
+
+    private onClickPortrait(): void {
+        // 与下方调整编队入口使用同一可用状态，行军、占领等状态不能绕过限制。
+        if (!this.btnSetting?.activeInHierarchy || this.btnSetting.getComponent(Button)?.interactable === false) return;
+        this.onClickSetting();
     }
 
     private layoutItem(): void {
@@ -137,6 +184,8 @@ export default class RightArmyItemLogic extends Component {
         const bottomUi = this.bottomNode?.getComponent(UITransform);
         const rootUi = this.node.getComponent(UITransform);
         if (!top || !topUi || !bottomUi || !rootUi) return;
+        const hasHeroes = this._troop ? this._troop.getHeroCount() > 0 : !!this._firstGeneral;
+        topUi.height = hasHeroes ? 100 : 66;
         this.refreshDetailSkin();
         const detailHeight = this.bottomNode.active ? bottomUi.height : 0;
         rootUi.height = topUi.height + detailHeight;
@@ -149,18 +198,23 @@ export default class RightArmyItemLogic extends Component {
     private refreshDetailSkin(): void {
         const ui = this.bottomNode?.getComponent(UITransform);
         if (!ui) return;
-        ui.height = 112;
+        const showSetting = !!this.btnSetting?.active;
+        const showBack = !!this.btnBack?.active;
+        const padding = 8, statHeight = 30, actionHeight = 34, actionGap = 6;
+        ui.height = padding * 2 + statHeight + (showSetting || showBack ? actionGap + actionHeight : 0);
+        const statY = ui.height / 2 - padding - statHeight / 2;
+        const actionY = -ui.height / 2 + padding + actionHeight / 2;
         const background = this.bottomNode.getComponent(Sprite);
         if (background) background.enabled = false;
         const hasHeroes = this._troop ? this._troop.getSortedHeroes().length > 0 : !!this._firstGeneral;
+        const hasLeader = this._troop ? this._troop.getHeroIdxAt(0) > 0 : !!this._firstGeneral;
         const emptyTroop = !!this._troop && !hasHeroes;
-        drawCommandDetail(this.bottomNode, hasHeroes);
 
         const portraitUi = this.headIcon?.getComponent(UITransform);
         if (portraitUi) {
-            this.headIcon.node.active = hasHeroes;
+            this.headIcon.node.active = false;
             this.headIcon.sizeMode = Sprite.SizeMode.CUSTOM;
-            portraitUi.setContentSize(42, 58);
+            portraitUi.setContentSize(44, 58);
             this.headIcon.node.setPosition(-ui.width / 2 + 35, 18, 0);
         }
         const textX = -ui.width / 2 + 68;
@@ -170,16 +224,41 @@ export default class RightArmyItemLogic extends Component {
         this.styleDetailLabel(this.labelMorale, textX, -5, textWidth, 11, true);
         if (this.labelMorale) this.labelMorale.node.active = !emptyTroop;
 
-        const showSetting = !!this.btnSetting?.active;
-        const showBack = !!this.btnBack?.active;
+        // 主将与副将已在卡片上展示，展开区仅保留属性与真实可用的操作。
+        for (const name of ['SoldierStat', 'SpeedStat', 'AttackStat']) {
+            const stat = this.bottomNode.getChildByName(name); if (stat) stat.active = hasHeroes;
+        }
+        this.labelSoldierCnt.node.active = !hasHeroes;
+        this.labelStrength.node.active = false;
+        this.labelMorale.node.active = false;
+        if (hasHeroes) {
+            const hurt = this._troop ? this._troop.getSortedHeroes().reduce((sum, hero) => sum + this._troop.getSoldier(hero.heroIdx).hurtCount, 0) : 0;
+            const cell = (ui.width - 28) / 3;
+            commandStat(this.bottomNode, 'SoldierStat', String(hurt), 'wounded', -cell - 6, statY, cell);
+            commandStat(this.bottomNode, 'SpeedStat', this.labelStrength.string.replace(/^(速度|体力)\s*/, ''),
+                'speed', 0, statY, cell, !hasLeader);
+            commandStat(this.bottomNode, 'AttackStat', this.labelMorale.string.replace(/^攻击\s*/, ''), 'attack', cell + 6, statY, cell);
+        } else {
+            this.styleDetailLabel(this.labelSoldierCnt, -ui.width / 2 + 12, statY, ui.width - 24, 13, true);
+        }
+
+        const canEdit = showSetting && this.btnSetting.getComponent(Button)?.interactable !== false;
+        if (this.portraitButton) this.portraitButton.interactable = canEdit;
+        if (this.detailButton) {
+            this.detailButton.interactable = canEdit;
+            this.detailButton.node.getComponent(UITransform).setContentSize(ui.width - 16, statHeight);
+            this.detailButton.node.setPosition(0, statY, 0);
+        }
         const twoActions = showSetting && showBack;
         const width = twoActions ? (ui.width - 32) / 2 : ui.width - 24;
         const offset = twoActions ? (width + 8) / 2 : 0;
-        if (showSetting) styleCommandAction(this.btnSetting, hasHeroes ? '调整编队' : '配置武将', -offset, width, true);
+        if (showSetting) commandAction(this.btnSetting, hasHeroes ? '编队 / 补兵' : '配置武将', 'edit', -offset, actionY, width, actionHeight, true);
         if (showBack) {
             const pending = this._troop && WorldCommand.getInstance().requestInFlight(`march:${this._troop.troopIdx}`);
-            styleCommandAction(this.btnBack, pending ? '请求中…' : '返回主城', offset, width, !showSetting);
+            commandAction(this.btnBack, pending ? '请求中…' : '回城', 'home', offset, actionY, width, actionHeight, !showSetting);
         }
+        // 属性节点首次创建时也会插到首位，全部创建后再把整块底板压到最底层。
+        troopSidebarDetail(this.bottomNode);
     }
 
     private styleDetailLabel(label: Label, x: number, y: number, width: number, fontSize: number, muted: boolean): void {
@@ -202,17 +281,22 @@ export default class RightArmyItemLogic extends Component {
         const top = this.node.getChildByName('topNode');
         if (!top) return;
         const order = this.order || this._data?.order || 0;
-        const hasHeroes = this._troop ? this._troop.getSortedHeroes().length > 0 : !!this._firstGeneral;
+        const leaderIdx = this._troop ? this._troop.getHeroIdxAt(0) : this._firstGeneral?.cfgId || 0;
         const world = WorldCommand.getInstance(), march = this._troop && world.marches.get(this._troop.troopIdx);
         const occupyLeft = march && march.targetType === MarchTargetType.OccupyResource && march.state === 2
             && world.occupyCountdownAt(march.endPos.x, march.endPos.y, DateUtil.getServerTime() / 1000);
-        const troopState = !hasHeroes ? '待配置' : !march || world.isTroopAtHome(this._troop.troopIdx) ? '待命'
+        const troopState = leaderIdx <= 0 ? '待配置' : !march || world.isTroopAtHome(this._troop.troopIdx) ? '待命'
             : occupyLeft ? '占领中'
             : march.state === 1 ? (march.targetType === MarchTargetType.ReturnCity ? '回城中' : '行军中') : '驻留';
         const state = this._data ? ArmyCommand.getInstance().getArmyStateDes(this._data).replace(/[\[\]【】]/g, '') : troopState;
-        drawCommandRow(top, !!this.bottomNode?.active, true);
-        setCommandLabel(top, 'OrderBadge', order > 0 ? String(order).padStart(2, '0') : '军', -102, 1, 28, 13);
-        setCommandLabel(top, 'StateBadge', state, 93, 12, 44, 10, !hasHeroes);
+        const heroes = this._troop ? [0, 1, 2].map(slot => this._troop.getHeroIdxAt(slot))
+            : (this._data?.generals || []).map(id => GeneralCommand.getInstance().proxy.getMyGeneral(id)?.cfgId || 0);
+        const soldiers = this._troop ? this._troop.getSortedHeroes().reduce((sum, hero) => sum + this._troop.getSoldier(hero.heroIdx).count, 0)
+            : (this._data?.soldiers || []).reduce((sum, value) => sum + value, 0);
+        troopSidebarCard(top, this.labelInfo, this.labelPos, {
+            order, heroes, soldiers, state, expanded: !!this.bottomNode?.active,
+            canEdit: !!this.btnSetting?.active && this.btnSetting.getComponent(Button)?.interactable !== false,
+        });
     }
 
     protected onClickBack(): void {
@@ -300,7 +384,7 @@ export default class RightArmyItemLogic extends Component {
     protected updateTroopItem(): void {
         this.node.active = true;
         const heroes = this._troop.getSortedHeroes();
-        const firstHeroIdx = heroes.length > 0 ? heroes[0].heroIdx : 0;
+        const firstHeroIdx = this._troop.getHeroIdxAt(0);
         this._firstGeneral = firstHeroIdx > 0 ? GeneralCommand.getInstance().proxy.getMyGeneral(firstHeroIdx) : null;
         const firstCfg: GeneralConfig = this._firstGeneral ? (this._firstGeneral.config || GeneralCommand.getInstance().proxy.getGeneralCfg(firstHeroIdx)) : null;
         const teamName = firstCfg && firstCfg.name ? firstCfg.name : "未编队";
@@ -313,12 +397,14 @@ export default class RightArmyItemLogic extends Component {
             }
         }
         if (this.labelInfo) this.labelInfo.string = firstCfg ? teamName + "队" : "第" + this.order + "部队";
-        if (this.labelPos) this.labelPos.string = "武将 " + heroes.length + "/3";
+        if (this.labelPos) this.labelPos.string = firstHeroIdx > 0 ? "武将 " + heroes.length + "/3"
+            : heroes.length > 0 ? "主将未上阵" : "尚未编队";
         const count = heroes.reduce((sum, hero) => sum + this._troop.getSoldier(hero.heroIdx).count, 0);
         const hurt = heroes.reduce((sum, hero) => sum + this._troop.getSoldier(hero.heroIdx).hurtCount, 0);
         if (this.labelSoldierCnt) this.labelSoldierCnt.string = heroes.length > 0 ? `兵力 ${count} / 伤兵 ${hurt}` : "尚未配置武将";
         if (this.labelStrength) {
-            this.labelStrength.string = heroes.length > 0 ? "速度 " + (firstCfg?.speed || 0) : "选择武将，组建你的部队";
+            this.labelStrength.string = firstHeroIdx > 0 ? "速度 " + (firstCfg?.speed || 0)
+                : heroes.length > 0 ? "主将未上阵" : "选择武将，组建你的部队";
         }
         if (this.labelMorale) {
             let attack: number = 0;

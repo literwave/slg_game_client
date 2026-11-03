@@ -1,4 +1,4 @@
-import { _decorator, Node, Vec2, Vec3 } from 'cc';
+import { _decorator, Camera, Node, Vec2, Vec3, view } from 'cc';
 const { ccclass } = _decorator;
 
 import BuildTagLogic from "./entries/BuildTagLogic";
@@ -10,6 +10,9 @@ import { LogicEvent } from '../common/LogicEvent';
 
 @ccclass('MapBuildTagLogic')
 export default class MapBuildTagLogic extends MapBaseLayerLogic {
+
+    private tagCamera: Camera = null;
+    private tagZoom = -1;
 
     protected onLoad(): void {
         super.onLoad();
@@ -44,6 +47,19 @@ export default class MapBuildTagLogic extends MapBaseLayerLogic {
         let resData: MapResData = data as MapResData;
         let position: Vec2 = MapUtil.mapCellToPixelPoint(new Vec2(resData.x, resData.y));
         item.setPosition(new Vec3(position.x, position.y, 0));
-        item.getComponent(BuildTagLogic).setResourceData(resData);
+        const tag = item.getComponent(BuildTagLogic);
+        tag.setResourceData(resData);
+        tag.setZoom(this.tagZoom > 0 ? this.tagZoom : 1);
+    }
+
+    protected lateUpdate(): void {
+        if (!this.tagCamera) this.tagCamera = this.node.parent?.getChildByName('Map Camera')?.getComponent(Camera);
+        if (!this.tagCamera) return;
+        const zoom = this.tagCamera.orthoHeight * 2 / Math.max(1, view.getVisibleSize().height);
+        if (zoom === this.tagZoom) return;
+        this.tagZoom = zoom;
+        for (const areas of [this._itemMap, this._retiredItems]) for (const items of areas.values()) {
+            for (const item of items.values()) item.getComponent(BuildTagLogic).setZoom(zoom);
+        }
     }
 }

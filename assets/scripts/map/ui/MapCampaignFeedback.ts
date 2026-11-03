@@ -1,28 +1,34 @@
-import { _decorator, BlockInputEvents, Button, Color, Component, Graphics, Label, Node, UITransform } from 'cc';
-import CampaignFeedback, { CampaignCue, CaptureActivity } from '../../world/CampaignFeedback';
-import WorldCommand from '../../world/WorldCommand';
+import { _decorator, Camera, Color, Component, Label, Node, UIOpacity, UITransform, Vec2, Vec3 } from 'cc';
+import CampaignFeedback, { CampaignCue } from '../../world/CampaignFeedback';
+import WorldCommand, { WorldPosition } from '../../world/WorldCommand';
 import LoginCommand from '../../login/LoginCommand';
 import BattleCommand from '../../battle/BattleCommand';
 import DateUtil from '../../utils/DateUtil';
 import { EventMgr } from '../../utils/EventMgr';
 import { LogicEvent as E } from '../../common/LogicEvent';
 import { NetEvent } from '../../network/socket/NetInterface';
-import { caption, inkSurface, ManagementColors as C, place } from './ManagementStyle';
+import MapArmyLogic from '../MapArmyLogic';
+import MapUtil from '../MapUtil';
+import { caption, ManagementColors as C } from './ManagementStyle';
 const { ccclass } = _decorator;
-const TONES = { gold: C.gold, green: new Color(141, 199, 172), red: new Color(227, 138, 120) };
+const TONES = { gold: C.gold, green: new Color(231, 224, 159), red: new Color(239, 166, 148) };
+interface FloatingCue {
+    node: Node; opacity: UIOpacity; pos: WorldPosition; elapsed: number; offset: number;
+}
 
-/** 不依赖地块选中、资源显隐或地图缩放的战况提示。只在有新战况/占领任务时出现。 */
+/** 战况仅在战场位置飘字；占领倒计时留在地块上，所有表现均不接收输入。 */
 @ccclass('MapCampaignFeedback')
 export default class MapCampaignFeedback extends Component {
     readonly state = new CampaignFeedback();
-    private rows: Node[] = [];
-    private keys: string[] = [];
-    private visible: Array<CampaignCue | CaptureActivity> = [];
-    private openReport: () => void;
-    private elapsed = 0;
-    initialize(openReport: () => void): void { this.openReport = openReport; }
+    private flights: FloatingCue[] = [];
+    private played = new Set<string>();
+    private army: MapArmyLogic = null;
+    private camera: Camera = null;
+    private worldPoint = new Vec3();
+    private uiPoint = new Vec3();
+
     onLoad(): void {
-        this.node.addComponent(UITransform);
+        if (!this.node.getComponent(UITransform)) this.node.addComponent(UITransform);
         EventMgr.on(E.battleStarted, this.battleStart, this);
         EventMgr.on(E.battleFinished, this.battleResult, this);
         EventMgr.on(E.updateWorldEntities, this.sync, this);
@@ -32,8 +38,12 @@ export default class MapCampaignFeedback extends Component {
         EventMgr.on(NetEvent.ServerDisconnected, this.clear, this);
         this.sync();
     }
-    onDestroy(): void { EventMgr.targetOff(this); }
-    private clear(): void { this.state.clear(); this.render(); }
+    onDestroy(): void { EventMgr.targetOff(this); this.clear(); }
+    private clear(): void {
+        this.state.clear(); this.played.clear();
+        this.flights.forEach(cue => cue.node.destroy()); this.flights = [];
+        this.army = null; this.camera = null;
+    }
     private sync(): void {
         const world = WorldCommand.getInstance();
         this.state.sync(Array.from(world.entities.values()), world.marches.values(),
@@ -46,74 +56,52 @@ export default class MapCampaignFeedback extends Component {
             DateUtil.getServerTime() / 1000);
         this.render();
     }
-    update(dt: number): void {
-        this.elapsed += dt; if (this.elapsed < .1) return;
-        this.elapsed = 0; this.render();
-    }
-    private action(parent: Node, name: string, callback: () => void): Node {
-        const node = new Node(name); node.layer = parent.layer; parent.addChild(node);
-        node.addComponent(UITransform); node.addComponent(Button);
-        node.on(Button.EventType.CLICK, callback, this); return node;
-    }
-    private row(index: number): Node {
-        if (this.rows[index]) return this.rows[index];
-        const node = new Node(`Activity_${index}`); node.layer = this.node.layer; this.node.addChild(node);
-        node.addComponent(UITransform); node.addComponent(BlockInputEvents);
-        this.action(node, 'Coordinate', () => {
-            const pos = this.visible[index]?.pos;
-            if (pos) EventMgr.emit(E.scrollToMap, pos.x, pos.y);
-        });
-        this.action(node, 'Report', () => this.openReport?.());
-        this.action(node, 'Dismiss', () => {
-            const cue = this.visible[index] as CampaignCue;
-            if (cue?.id) { this.state.dismiss(cue.id); this.render(); }
-        });
-        const bar = new Node('Progress'); bar.layer = node.layer; node.addChild(bar);
-        bar.addComponent(UITransform); bar.addComponent(Graphics);
-        this.rows.push(node); return node;
-    }
     private render(): void {
+        for (const cue of this.state.notices(DateUtil.getServerTime() / 1000)) {
+            // 同一场战斗的开始和结果分别播一次；重复包或地图刷新不重播。
+            const key = `${cue.id}:${cue.title}`;
+            if (this.played.has(key)) continue;
+            this.played.add(key);
+            if (this.played.size > 200) this.played.delete(this.played.values().next().value);
+            if (cue.pos && Number.isFinite(cue.pos.x) && Number.isFinite(cue.pos.y)) this.float(cue);
+        }
+    }
+    private float(cue: CampaignCue): void {
+        // 结果到达时，撤掉同一地点尚未消失的“交锋中”，不让旧状态盖住结果。
+        if (cue.title !== '两军交锋') {
+            this.flights = this.flights.filter(flight => {
+                if (flight.node.name !== '两军交锋' || flight.pos.x !== cue.pos.x || flight.pos.y !== cue.pos.y) return true;
+                flight.node.destroy(); return false;
+            });
+        }
+        if (this.flights.length >= 4) this.flights.shift().node.destroy();
+        const offset = this.flights.filter(flight => flight.pos.x === cue.pos.x && flight.pos.y === cue.pos.y).length * 23;
+        const label = caption(this.node, cue.id, cue.title, 0, 0, 148, 19, TONES[cue.tone], Label.HorizontalAlign.CENTER);
+        label.node.name = cue.title; label.isBold = true;
+        label.enableOutline = true; label.outlineWidth = 2; label.outlineColor = new Color(36, 38, 29, 230);
+        const opacity = label.node.addComponent(UIOpacity); opacity.opacity = 0;
+        this.flights.push({ node: label.node, opacity, pos: { ...cue.pos }, elapsed: 0, offset });
+    }
+    update(dt: number): void {
+        if (!this.flights.length) return;
+        if (!this.army?.isValid) this.army = this.node.scene?.getComponentInChildren(MapArmyLogic);
+        if (!this.camera?.isValid) this.camera = this.army?.node.parent?.getChildByName('Map Camera')?.getComponent(Camera);
+        const layer = this.army?.parentLayer?.getComponent(UITransform);
         const parent = this.node.parent?.getComponent(UITransform);
-        if (!parent) return;
-        const now = DateUtil.getServerTime() / 1000;
-        this.visible = [...this.state.notices(now), ...Array.from(this.state.captures.values())];
-        const width = Math.max(240, Math.min(414, parent.width - 32));
-        // 底部中央留白处向上排列，避开上方地块菜单、两侧任务/队列及底部导航。
-        place(this.node, 0, -parent.height / 2 + 160, width, 1);
-        this.visible.forEach((data, index) => {
-            const row = this.row(index), capture = 'endTime' in data ? data : null;
-            const cue = !capture ? data as CampaignCue : null;
-            const left = capture ? Math.max(0, Math.ceil(capture.endTime - now)) : 0;
-            const title = capture ? `部队${capture.troopIdx} · ${left ? '占领中' : '占领确认中'}` : cue.title;
-            const detail = capture ? left ? `还需 ${DateUtil.converSecondStr(left * 1000)}` : '等待服务器确认归属' : cue.detail;
-            const color = TONES[cue?.tone || 'gold'];
-            const key = `${width}:${title}:${detail}:${JSON.stringify(data.pos)}:${cue?.reportId || ''}`;
-            row.active = true; place(row, 0, index * 66, width, 60);
-            if (this.keys[index] !== key) {
-                this.keys[index] = key;
-                inkSurface(row, 'Surface', width, 60, new Color(29, 34, 29, 232), new Color(color.r, color.g, color.b, 115));
-                caption(row, 'Title', title, -54, 13, width - 136, 16, color);
-                caption(row, 'Detail', detail, -13, -12, width - 56, 12, C.text);
-                const coord = row.getChildByName('Coordinate');
-                coord.active = !!data.pos;
-                place(coord, width / 2 - 78, 13, 102, 28);
-                caption(coord, 'Text', data.pos ? `(${data.pos.x}, ${data.pos.y})` : '', 0, 0, 102, 13, C.gold, Label.HorizontalAlign.RIGHT);
-                const close = row.getChildByName('Dismiss'); close.active = !!cue;
-                place(close, width / 2 - 16, 14, 28, 28);
-                caption(close, 'Text', '×', 0, 0, 28, 18, C.muted, Label.HorizontalAlign.CENTER);
-                const report = row.getChildByName('Report'); report.active = !!cue?.reportId;
-                place(report, width / 2 - 56, -12, 78, 28);
-                caption(report, 'Text', '查看战报 ›', 0, 0, 78, 12, C.gold, Label.HorizontalAlign.CENTER);
-                if (report.active) caption(row, 'Detail', '战报已生成', -55, -12, width - 140, 12, C.text);
-            }
-            const bar = row.getChildByName('Progress'); bar.active = !!capture;
-            if (capture) {
-                const ratio = Math.min(1, Math.max(0, (now - capture.startTime) / Math.max(.001, capture.endTime - capture.startTime)));
-                const g = bar.getComponent(Graphics); g.clear();
-                g.fillColor = new Color(77, 74, 52, 190); g.rect(-width / 2 + 10, -27, width - 20, 2); g.fill();
-                g.fillColor = C.gold; g.rect(-width / 2 + 10, -27, (width - 20) * ratio, 2); g.fill();
-            }
-        });
-        this.rows.forEach((row, i) => { row.active = i < this.visible.length; });
+        for (let i = this.flights.length - 1; i >= 0; i--) {
+            const cue = this.flights[i]; cue.elapsed += Math.max(0, dt);
+            if (cue.elapsed >= 1.9) { cue.node.destroy(); this.flights.splice(i, 1); continue; }
+            if (!layer || !this.camera || !parent || !MapUtil.areaCellSize) { cue.node.active = false; continue; }
+            const p = MapUtil.mapCellToPixelPoint(new Vec2(cue.pos.x, cue.pos.y));
+            // 落脚点加上主将高度，再转成 UI 坐标；平移/缩放地图时始终跟随战场。
+            this.worldPoint.set(p.x, p.y + 78, 0);
+            layer.convertToWorldSpaceAR(this.worldPoint, this.worldPoint);
+            this.camera.convertToUINode(this.worldPoint, this.node, this.uiPoint);
+            const rise = 20 * (1 - Math.pow(1 - cue.elapsed / 1.9, 2));
+            const x = this.uiPoint.x, y = this.uiPoint.y + 10 + rise + cue.offset;
+            cue.node.active = Math.abs(x) < parent.width / 2 + 74 && Math.abs(y) < parent.height / 2 + 24;
+            cue.node.setPosition(x, y, 0);
+            cue.opacity.opacity = Math.round(255 * Math.min(1, cue.elapsed / .12, (1.9 - cue.elapsed) / .65));
+        }
     }
 }

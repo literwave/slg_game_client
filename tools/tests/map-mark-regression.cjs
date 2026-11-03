@@ -58,7 +58,7 @@ test('新协议 ID 与共享协议一致，进入游戏自动读取且重复请�
 test('添加和删除仅发送坐标，服务端确认前保留旧状态，连点不重复发送', () => {
     const h = harness(); h.login(); h.snapshot(); const pos = { x: 0, y: 999 };
     assert.equal(h.cmd.add(pos), true); assert.equal(h.cmd.add(pos), false); assert.equal(h.cmd.add({x:2,y:2}), false);
-    assert.deepEqual(h.sent.at(-1), { name: h.S.c2s_add_mark, data: { pos } });
+    assert.deepEqual(h.sent.at(-1), { name: h.S.c2s_add_mark, data: { pos, name: '' } });
     assert.equal(h.cmd.has(pos), false); assert.equal(h.cmd.busy, true);
     h.receive(h.S.s2c_add_mark, { markInfo: { pos } });
     h.receive(h.S.s2c_add_mark, { markInfo: { pos } });

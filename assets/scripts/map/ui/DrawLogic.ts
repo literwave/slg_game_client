@@ -88,7 +88,7 @@ export default class DrawLogic extends Component {
     }
     protected onDisable(): void { EventMgr.targetOff(this); }
     protected onDestroy(): void {
-        this.skip?.dispose(); EventMgr.targetOff(this);
+        EventMgr.targetOff(this); this.skip?.dispose();
     }
 
     private buildHeroCards(): void {

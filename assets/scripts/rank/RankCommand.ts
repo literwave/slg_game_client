@@ -23,9 +23,11 @@ export default class RankCommand extends ProtocolCommand {
     requestRank(rankType: number, start = 1, count = 0): boolean {
         if ([1, 2].indexOf(rankType) < 0 || !uint(start, true) || !uint(count, true) || this.isPending(`rank:${rankType}`)) return false;
         start = Math.max(1, start);
-        this.requestedPages.set(rankType, { start, count });
-        const sent = this.request(S.c2s_req_rank_list, { rankType, start, count }, `rank:${rankType}`, () => this.requestedPages.delete(rankType));
-        if (!sent) this.requestedPages.delete(rankType);
-        return sent;
+        return this.query(`rank:${rankType}`, () => {
+            this.requestedPages.set(rankType, { start, count });
+            const sent = this.request(S.c2s_req_rank_list, { rankType, start, count }, `rank:${rankType}`, () => this.requestedPages.delete(rankType));
+            if (!sent) this.requestedPages.delete(rankType);
+            return sent;
+        });
     }
 }

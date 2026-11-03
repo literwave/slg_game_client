@@ -97,18 +97,23 @@ export default class MailCommand extends ProtocolCommand {
     requestList(mailKind: number): boolean {
         const key = `mail-list:${mailKind}`;
         if (!this.validKind(mailKind) || this.isPending(key)) return false;
-        const store = this.store(mailKind); store.begin();
-        const sent = this.request(S.c2s_req_mail_list, { mailKind }, key, () => store.cancel());
-        if (!sent) store.cancel();
-        return sent;
+        return this.query(key, () => {
+            const store = this.store(mailKind); store.begin();
+            const sent = this.request(S.c2s_req_mail_list, { mailKind }, key, () => store.cancel());
+            if (!sent) store.cancel();
+            return sent;
+        });
     }
     requestDetail(mailKind: number, mailUid: number | string): boolean {
         const key = idKey(mailUid);
         if (!this.getMail(mailKind, key) || this.isPending(`mail-detail:${key}`)) return false;
-        this.detailKinds.set(key, mailKind);
-        const sent = this.request(S.c2s_req_mail_detail, { mailKind, mailUid }, `mail-detail:${key}`, () => this.detailKinds.delete(key));
-        if (!sent) this.detailKinds.delete(key);
-        return sent;
+        return this.query(`mail-detail:${key}`, () => {
+            if (!this.getMail(mailKind, key)) { this.finish(`mail-detail:${key}`); return false; }
+            this.detailKinds.set(key, mailKind);
+            const sent = this.request(S.c2s_req_mail_detail, { mailKind, mailUid }, `mail-detail:${key}`, () => this.detailKinds.delete(key));
+            if (!sent) this.detailKinds.delete(key);
+            return sent;
+        });
     }
     setLock(mailKind: number, mailUid: number | string, isLock: boolean): boolean {
         if (!this.getMail(mailKind, mailUid) || typeof isLock !== 'boolean') return false;

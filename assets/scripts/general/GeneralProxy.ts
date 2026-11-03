@@ -2,6 +2,7 @@
 import { SpriteFrame, resources, isValid } from "cc";
 import GeneralCommand from "./GeneralCommand";
 import { GENERAL_PORTRAIT_DIRECTORY, getGeneralPortraitPath } from './GeneralPortrait';
+import ConfigManager from '../core/ConfigManager';
 
 /**武将(配置)*/
 export class GeneralConfig {
@@ -304,6 +305,7 @@ export default class GeneralProxy {
     }
 
     public getGeneralLevelCfg(level: number): GenaralLevelConfig {
+        this.ensureLevelConfigs();
         if (level > 0 && level <= this._levelConfigs.length) {
             return this._levelConfigs[level - 1];
         }
@@ -311,7 +313,33 @@ export default class GeneralProxy {
     }
 
     public getMaxLevel(): number {
+        this.ensureLevelConfigs();
         return this._levelConfigs.length || 50; // 默认最大50级
+    }
+
+    private ensureLevelConfigs(): void {
+        if (this._levelConfigs.length) return;
+        const rows = ConfigManager.getInstance().getConfig('HeroLv');
+        if (!Array.isArray(rows)) return;
+        this._levelConfigs = rows.map(row => ({ level: Number(row.Lv), exp: Number(row.Exp), soldiers: Number(row.Soldier) }))
+            .filter(row => Number.isInteger(row.level) && row.level > 0 && Number.isFinite(row.exp) && row.exp >= 0)
+            .sort((a, b) => a.level - b.level);
+    }
+
+    /** 服务端 exp 是本级经验；档案展示累计经验 / 升满级所需的累计经验。 */
+    public getExperienceProgress(level: number, exp: number): { current: number; maximum: number } | null {
+        this.ensureLevelConfigs();
+        if (!this._levelConfigs.length) return null;
+        const maxLevel = this.getMaxLevel();
+        let completed = 0, maximum = 0;
+        for (const cfg of this._levelConfigs) {
+            if (cfg.level >= maxLevel) continue;
+            maximum += cfg.exp;
+            if (cfg.level < level) completed += cfg.exp;
+        }
+        if (maximum <= 0) return null;
+        const withinLevel = Number.isFinite(exp) ? Math.max(0, Math.floor(exp)) : 0;
+        return { current: level >= maxLevel ? maximum : Math.min(maximum, completed + withinLevel), maximum };
     }
 
     public getGeneralAllCfg(): Map<string, GeneralConfig> {

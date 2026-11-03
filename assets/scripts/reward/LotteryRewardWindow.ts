@@ -1,6 +1,6 @@
 import { _decorator, BlockInputEvents, Button, Canvas, Color, Component, EditBox, Graphics,
     Label, Layers, Mask, Node, SafeArea, Sprite, SpriteFrame, UIOpacity, UITransform, Widget,
-    director, resources, view } from 'cc';
+    director, isValid, resources, view } from 'cc';
 import LotteryCommand, { LotteryResult } from '../general/LotteryCommand';
 import LoginCommand from '../login/LoginCommand';
 import ConfigManager from '../core/ConfigManager';
@@ -27,7 +27,9 @@ export default class LotteryRewardWindow extends Component {
 
     public static show(result: LotteryResult): void {
         if (!result?.rewards?.length) return;
-        if (this.current?.isValid) { this.current.acceptResult(result); return; }
+        if (this.current?.isValid && !this.current.disposed && isValid(this.current.node, true)) {
+            this.current.acceptResult(result); return;
+        }
         const scene = director.getScene(), canvas = scene?.getComponentInChildren(Canvas);
         if (!canvas) return;
         for (const box of scene.getComponentsInChildren(EditBox)) if (box.isFocused()) box.blur();
@@ -50,6 +52,7 @@ export default class LotteryRewardWindow extends Component {
     private generation = 0;
     private page = 0;
     private layoutQueued = false;
+    private disposed = false;
     private metrics = lotteryResultLayout(1280, 720);
     private safe: Node;
     private panel: Node;
@@ -151,6 +154,7 @@ export default class LotteryRewardWindow extends Component {
     }
 
     private acceptResult(result: LotteryResult): void {
+        if (this.disposed) return;
         if (this.continuation?.count === result.count && this.continuation.total === result.lotteryTimes) {
             this.showResult(result);
         } else {
@@ -160,6 +164,7 @@ export default class LotteryRewardWindow extends Component {
     }
 
     private showResult(result: LotteryResult): void {
+        if (this.disposed) return;
         this.continuation = null;
         this.gridToken++; this.requestedGridSignature = ''; this.gridLoading = false;
         this.generation++;
@@ -188,7 +193,7 @@ export default class LotteryRewardWindow extends Component {
         this.heroName.string = entry.hero.name;
         this.heroInfo.string = [entry.hero.Camp, entry.hero.Class].filter(Boolean).join(' · ');
         const path = getGeneralPortraitPath(entry.hero.Icon);
-        const current = () => this.isValid && token === this.generation && this.phase === 'hero';
+        const current = () => !this.disposed && this.isValid && token === this.generation && this.phase === 'hero';
         const ready = () => { if (current()) { this.fitPortrait(); this.heroReady = true; this.clock = 0; } };
         this.requestFrame(path, frame => {
             if (!current()) return;
@@ -201,13 +206,14 @@ export default class LotteryRewardWindow extends Component {
 
     /** 跳过只切到本次全部结果，后到的贴图不会重启演出。 */
     public skipAnimation(): void {
-        if (this.phase !== 'hero') return;
+        if (this.disposed || this.phase !== 'hero') return;
         this.generation++; this.phase = 'results'; this.clock = 10;
         this.portraitMotion?.reset();
         this.layout();
     }
 
     protected update(dt: number): void {
+        if (this.disposed) return;
         const step = Math.min(dt, .1);
         if (this.phase === 'hero' && !this.heroReady) {
             this.heroLoadClock += step;
@@ -270,13 +276,13 @@ export default class LotteryRewardWindow extends Component {
     }
 
     private queueLayout(): void {
-        if (this.layoutQueued) return;
+        if (this.disposed || !this.isValid || this.layoutQueued) return;
         this.layoutQueued = true;
-        this.scheduleOnce(() => { this.layoutQueued = false; if (this.result) this.layout(); }, 0);
+        this.scheduleOnce(() => { this.layoutQueued = false; if (!this.disposed && this.isValid && this.result) this.layout(); }, 0);
     }
 
     private layout(): void {
-        if (!this.result) return;
+        if (this.disposed || !this.isValid || !this.result) return;
         this.node.getComponent(Widget).updateAlignment();
         this.safe.getComponent(Widget).updateAlignment(); this.safe.getComponent(SafeArea).updateArea();
         const root = this.node.getComponent(UITransform), safe = this.safe.getComponent(UITransform);
@@ -385,7 +391,7 @@ export default class LotteryRewardWindow extends Component {
         const frames: Array<SpriteFrame | null> = new Array(list.length);
         let remaining = list.length;
         const commit = () => {
-            if (!this.isValid || token !== this.gridToken || this.phase !== 'results') return;
+            if (this.disposed || !this.isValid || token !== this.gridToken || this.phase !== 'results') return;
             const reveal = !this.gridVisible;
             this.displayedEntries = list; this.displayedFrames = frames; this.displayedStart = start;
             this.gridSignature = signature; this.requestedGridSignature = ''; this.gridLoading = false;
@@ -471,7 +477,7 @@ export default class LotteryRewardWindow extends Component {
     private canRepeat(count: number): boolean {
         const cmd = LotteryCommand.getInstance(), bag = LoginCommand.getInstance().proxy;
         const option = cmd.options.find(option => option.count === count);
-        return this.phase === 'results' && !this.gridLoading && !this.queue.length && cmd.canDraw && !!option
+        return !this.disposed && this.phase === 'results' && !this.gridLoading && !this.queue.length && cmd.canDraw && !!option
             && option.costs.every(cost => bag.getItemCount(cost.itemId) >= cost.count);
     }
 
@@ -485,7 +491,7 @@ export default class LotteryRewardWindow extends Component {
     }
 
     private refreshActions(): void {
-        if (!this.repeatStatus || !this.result || !this.isValid) return;
+        if (this.disposed || !this.repeatStatus || !this.result || !this.isValid) return;
         const cmd = LotteryCommand.getInstance(), bag = LoginCommand.getInstance().proxy;
         const hero = this.phase === 'hero', options = cmd.options;
         for (const action of this.repeatActions) {
@@ -522,17 +528,24 @@ export default class LotteryRewardWindow extends Component {
     }
     private close(): void { this.dispose(); }
     private dispose(): void {
-        this.generation++; this.gridToken++; this.queue.length = 0;
-        this.portraitMotion?.reset();
-        if (LotteryRewardWindow.current === this) LotteryRewardWindow.current = null;
-        this.node.active = false; this.node.destroy();
+        if (this.disposed || !this.isValid) return;
+        this.release();
+        // destroy 延迟到帧末；此时 isValid 仍可能为 true，关闭必须立即退订并只执行一次。
+        if (isValid(this.node, true)) { this.node.active = false; this.node.destroy(); }
     }
     protected onDestroy(): void {
-        this.generation++; this.gridToken++; this.frames.clear(); this.frameLoads.clear();
-        this.portraitMotion?.reset();
+        this.release();
+    }
+    private release(): void {
+        if (this.disposed) return;
+        this.disposed = true;
+        this.generation++; this.gridToken++; this.queue.length = 0;
+        this.continuation = null; this.layoutQueued = false;
+        this.frames.clear(); this.frameLoads.clear();
         this.unscheduleAllCallbacks(); EventMgr.targetOff(this);
         view.off('canvas-resize', this.queueLayout, this); view.off('design-resolution-changed', this.queueLayout, this);
         if (LotteryRewardWindow.current === this) LotteryRewardWindow.current = null;
+        this.portraitMotion?.reset();
     }
     private make(name: string, parent: Node): Node {
         const node = new Node(name); node.layer = parent.layer; node.addComponent(UITransform); node.addComponent(UIOpacity); parent.addChild(node); return node;
@@ -550,11 +563,12 @@ export default class LotteryRewardWindow extends Component {
     private load(sprite: Sprite, path: string, complete?: () => boolean, token?: number): void {
         if (!path) return;
         this.requestFrame(path, frame => {
-            if (!frame || !this.isValid || !sprite.isValid || (token !== undefined && token !== this.generation)) return;
+            if (!frame || this.disposed || !this.isValid || !isValid(sprite, true) || (token !== undefined && token !== this.generation)) return;
             sprite.spriteFrame = frame; complete?.();
         });
     }
     private requestFrame(path: string, done: (frame: SpriteFrame | null) => void): void {
+        if (this.disposed || !this.isValid) return;
         if (!path) { done(null); return; }
         if (this.frames.has(path)) { done(this.frames.get(path)); return; }
         const waiting = this.frameLoads.get(path);
@@ -562,12 +576,15 @@ export default class LotteryRewardWindow extends Component {
         this.frameLoads.set(path, [done]);
         resources.load(path, SpriteFrame, (error, frame) => {
             // Creator 销毁组件后会清空字段，迟到的资源回调必须先退出。
-            if (!this.isValid || !this.frameLoads || !this.frames) return;
+            if (this.disposed || !this.isValid || !this.frameLoads || !this.frames) return;
             const callbacks = this.frameLoads.get(path) || [];
             this.frameLoads.delete(path);
             const resolved = !error && frame ? frame : null;
             this.frames.set(path, resolved);
-            callbacks.forEach(callback => callback(resolved));
+            for (const callback of callbacks) {
+                if (this.disposed || !this.isValid) break;
+                callback(resolved);
+            }
         });
     }
     private stretch(node: Node): void {

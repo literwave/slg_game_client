@@ -34,16 +34,19 @@ import TroopCommand from '../../general/TroopCommand';
 import { CoreEvent } from '../../core/CoreEvent';
 import HeadIconPanel from './HeadIconPanel';
 import SystemOpenCommand from '../../systemopen/SystemOpenCommand';
-import { arrangeHudEntries, styleBottomNavigation, styleMoreMenu, styleWarReportShortcut } from './HudMenuSkin';
+import { arrangeHudEntries, styleBottomNavigation, styleMoreMenu, styleHeaderShortcut, styleWarReportShortcut } from './HudMenuSkin';
 import { Setting } from './Setting';
 import MapTaskTracker from './MapTaskTracker';
 import PlayerServicesPanel, { ServiceSection } from './PlayerServicesPanel';
+import { addServiceEntries } from './ServiceMenuEntries';
 import { CityPosition } from '../../login/LoginCommand';
 import { itemIconPath } from '../../common/ItemPresentation';
 import InventoryPanel from './InventoryPanel';
 import ChatLogic from '../../chat/ChatLogic';
 import MapChatStrip from '../../chat/MapChatStrip';
-import { chatDockLayout } from '../../chat/ChatPresentation';
+import { chatDockLayout, validChatTarget } from '../../chat/ChatPresentation';
+import { idKey } from '../../network/pto/ProtocolCommand';
+import ChatCommand from '../../chat/ChatCommand';
 import { CloudAni } from '../../cloud/CloudAni';
 import { panelButton } from './ManagementStyle';
 
@@ -58,9 +61,6 @@ export default class MapUILogic extends Component {
 
     @property(SpriteFrame)
     warReportIcon: SpriteFrame = null;
-
-    @property(SpriteFrame)
-    chatMenuIcon: SpriteFrame = null;
 
     @property(SpriteFrame)
     skillMenuIcon: SpriteFrame = null;
@@ -78,8 +78,6 @@ export default class MapUILogic extends Component {
     @property(Node)
     contentNode: Node = null;
 
-    @property(Prefab)
-    facilityPrefab: Prefab = null;
     protected _facilityNode: Node = null;
 
     @property(Prefab)
@@ -102,8 +100,6 @@ export default class MapUILogic extends Component {
     cityAboutPrefab: Prefab = null;
     protected _cityAboutNode: Node = null;
 
-    @property(Prefab)
-    warReportPrefab: Prefab = null;
     protected _warReportNode: Node = null;
     @property(Prefab)
     armySelectPrefab: Prefab = null;
@@ -121,13 +117,7 @@ export default class MapUILogic extends Component {
     unionPrefab: Prefab = null;
     protected _unionNode: Node = null;
 
-    @property(Prefab)
-    chatPrefab: Prefab = null;
     protected _chatNode: Node = null;
-
-    @property(Prefab)
-    collectPrefab: Prefab = null;
-    protected _collectNode: Node = null;
 
 
     @property(Prefab)
@@ -264,6 +254,9 @@ export default class MapUILogic extends Component {
         EventMgr.on(LogicEvent.openCityAbout, this.openCityAbout, this);
         EventMgr.on(LogicEvent.closeCityAbout, this.closeCityAbout, this);
         EventMgr.on(LogicEvent.openFacility, this.openFacility, this);
+        EventMgr.on(LogicEvent.openPrivateChat, this.onOpenPrivateChat, this);
+        EventMgr.on(LogicEvent.openChatPlayerRank, this.onOpenChatPlayerRank, this);
+        EventMgr.on(LogicEvent.openChatAlliance, this.openUnion, this);
         EventMgr.on(LogicEvent.openArmySetting, this.openArmySetting, this);
         EventMgr.on(LogicEvent.upateMyRoleRes, this.updateRoleRes, this);
         EventMgr.on(LogicEvent.updateMyRole, this.updateRole, this);
@@ -271,7 +264,6 @@ export default class MapUILogic extends Component {
         EventMgr.on(LogicEvent.openGeneralChoose, this.openGeneralChoose, this);
         EventMgr.on(LogicEvent.openArmySelectUi, this.onOpenArmySelectUI, this);
         EventMgr.on(LogicEvent.openDrawResult, this.openDrawR, this);
-        EventMgr.on(LogicEvent.interiorCollect, this.onCollection, this);
         EventMgr.on(LogicEvent.openGeneralConvert, this.onOpenGeneralConvert, this);
         EventMgr.on(LogicEvent.openGeneralRoster, this.onOpenGeneralRoster, this);
         EventMgr.on(LogicEvent.openGeneral, this.openGeneral, this);
@@ -366,7 +358,7 @@ export default class MapUILogic extends Component {
         const hud = this.node.getChildByName('HudRoot');
         if (!hud || hud.getChildByName('CampaignFeedback')) return;
         const node = new Node('CampaignFeedback'); node.layer = hud.layer; hud.addChild(node);
-        node.addComponent(MapCampaignFeedback).initialize(() => this.openWarReport());
+        node.addComponent(MapCampaignFeedback);
     }
 
     private openServices(section: ServiceSection): void {
@@ -446,6 +438,9 @@ export default class MapUILogic extends Component {
             player.getComponent(UITransform)?.setContentSize(playerWidth, 60);
             player.setPosition(-width * 0.5 + margin + playerWidth * 0.5, top - margin - 30, 0);
         }
+        const headerShortcutY = top - margin - 60 - 12 - 22;
+        styleHeaderShortcut(hud.getChildByName('ActivityButton'), -width * 0.5 + margin + 22, headerShortcutY, '活');
+        styleHeaderShortcut(hud.getChildByName('RankButton'), -width * 0.5 + margin + 78, headerShortcutY, '排');
         const resources = this.node.getChildByName("ResourceBar");
         const resourcesUi = resources ? resources.getComponent(UITransform) : null;
         if (resources && resourcesUi) {
@@ -473,15 +468,10 @@ export default class MapUILogic extends Component {
                 }
             });
         }
-        const dock = hud.getChildByName("BottomNavBar");
         const navigation = hud.getChildByName("BottomNav");
         const more = hud.getChildByName("MorePanel");
         const dockWidth = Math.min(400, width - margin * 2);
         const dockX = width * 0.5 - margin - dockWidth * 0.5;
-        if (dock) {
-            dock.getComponent(UITransform)?.setContentSize(dockWidth, 80);
-            dock.setPosition(dockX, bottom + 40, 0);
-        }
         if (navigation) {
             navigation.getComponent(UITransform)?.setContentSize(dockWidth, 80);
             navigation.setPosition(dockX, bottom + 40, 0);
@@ -498,10 +488,15 @@ export default class MapUILogic extends Component {
         styleWarReportShortcut(hud.getChildByName('WarReportButton'), shortcutX, shortcutY, shortcutWidth);
         const menuRight = shortcutX - shortcutWidth * 0.5 - shortcutGap;
         if (more) {
-            styleMoreMenu(more, Math.min(320, menuRight + width * 0.5 - margin));
+            const availableWidth = menuRight + width * 0.5 - margin;
+            // 五项始终排成一行；极窄屏改放到战报上方，保留至少 44 的点击宽度。
+            const besideReport = availableWidth >= 256;
+            const right = besideReport ? menuRight : width * 0.5 - margin;
+            styleMoreMenu(more, Math.min(320, besideReport ? availableWidth : width - margin * 2));
             const moreUi = more.getComponent(UITransform);
             const moreWidth = moreUi ? moreUi.width : dockWidth;
-            more.setPosition(menuRight - moreWidth * 0.5, shortcutY, 0);
+            const moreBottom = besideReport ? bottom + 80 + margin : shortcutY + 40 + margin;
+            more.setPosition(right - moreWidth * 0.5, moreBottom + (moreUi?.height ?? 76) * 0.5, 0);
         }
     }
 
@@ -538,6 +533,7 @@ export default class MapUILogic extends Component {
         this._morePanel = hudRoot.getChildByName("MorePanel");
         this._moreMask = hudRoot.getChildByName("MoreMask");
         this._moreIndicator = hudRoot.getChildByPath("BottomNav/MoreButton/MoreIndicator");
+        addServiceEntries(this._morePanel, hudRoot, section => this.openServices(section));
 
         if (this._moreMask) {
             this._moreMask.on(Node.EventType.TOUCH_END, this.closeMoreMenu, this);
@@ -745,6 +741,33 @@ export default class MapUILogic extends Component {
     protected onClickGeneral() {
         AudioManager.instance.playClick();
         this.openGeneral([]);
+    }
+
+    /** 每个常用窗口单独提交一帧，首点时复用结构；不触发业务操作。 */
+    public *prepareCommonPanels(): Generator<void, void, unknown> {
+        yield* this.prepareGeneralPanels();
+        if (!this.contentNode) return;
+        if (!this._facilityNode) {
+            this._facilityNode = new Node('CityBuildingPanel'); this._facilityNode.layer = this.node.layer;
+            this.contentNode.addChild(this._facilityNode); this._facilityNode.addComponent(CityBuildingPanel);
+        }
+        this._facilityNode.getComponent(CityBuildingPanel).prepareView();
+        yield;
+        this._facilityNode.active = false;
+        if (!this._warReportNode) {
+            this._warReportNode = new Node('BattleReports'); this._warReportNode.layer = this.node.layer;
+            this.contentNode.addChild(this._warReportNode); this._warReportNode.addComponent(BattleReportPanel);
+        }
+        this._warReportNode.getComponent(BattleReportPanel).prepareView();
+        yield;
+        this._warReportNode.active = false;
+        if (!this._chatNode) {
+            this._chatNode = new Node('ChatPanel'); this._chatNode.layer = this.node.layer;
+            this.contentNode.addChild(this._chatNode); this._chatNode.addComponent(ChatLogic);
+        }
+        this._chatNode.getComponent(ChatLogic).prepareView();
+        yield;
+        this._chatNode.active = false;
     }
 
     /** 进场遮罩下分帧准备常用武将页，不发送编队或武将操作请求。 */
@@ -981,6 +1004,14 @@ export default class MapUILogic extends Component {
         this._chatNode.getComponent(ChatLogic).show(channel, targetId, name);
     }
 
+    private onOpenPrivateChat(peer: { id: any; name?: string; headIcon?: number }): void {
+        if (!peer || !validChatTarget(peer.id) || idKey(peer.id) === idKey(LoginCommand.getInstance().proxy.getRoleData()?.userId)) return;
+        ChatCommand.getInstance().proxy.rememberPeer(peer.id, peer.name, peer.headIcon);
+        this.openChat(3, idKey(peer.id), peer.name || '主公');
+    }
+
+    private onOpenChatPlayerRank(): void { this.openServices('rank'); }
+
 
 
     protected openTr(): void {
@@ -1061,11 +1092,6 @@ export default class MapUILogic extends Component {
     }
 
 
-    //征收
-    protected onCollection(msg: any): void {
-        this.showTip("成功征收到 " + msg.gold + " 金币", null);
-    }
-
     protected updateRole(): void {
         if (!this.isValid) return;
         var roleData = LoginCommand.getInstance().proxy.getRoleData();
@@ -1119,18 +1145,6 @@ export default class MapUILogic extends Component {
         }
         this._headPanel.node.setSiblingIndex(this.topLayer());
         this._headPanel.show();
-    }
-
-    protected onClickCollection(): void {
-        AudioManager.instance.playClick();
-
-        if (this._collectNode == null) {
-            this._collectNode = instantiate(this.collectPrefab);
-            this._collectNode.parent = this.contentNode;
-        }
-        this._collectNode.active = true;
-        this._collectNode.setSiblingIndex(this.topLayer());
-
     }
 
     protected onEnable(): void {

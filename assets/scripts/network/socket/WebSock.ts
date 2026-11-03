@@ -124,7 +124,7 @@ export class WebSock implements ISocket {
      * 格式: [包长(2字节)] + [随机数(2字节)] + [Protobuf数据]
      * @param send_data Uint8Array
      */
-    public packAndSend(send_data: any) {
+    public packAndSend(send_data: any): boolean {
         let protoData: Uint8Array | null = null;
         let msgName: string = "";
 
@@ -137,7 +137,7 @@ export class WebSock implements ISocket {
 
         if (!protoData) {
             console.error("packAndSend: Expected Uint8Array or {msg: Uint8Array}, got", send_data);
-            return;
+            return false;
         }
 
         const protoLen = protoData.length;
@@ -176,6 +176,6 @@ export class WebSock implements ISocket {
             console.debug(`[Network] 发送 ${msgName}，${totalLen} 字节`);
         }
         // 发送
-        this.send(buffer);
+        return this.send(buffer);
     }
 }

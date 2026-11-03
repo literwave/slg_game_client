@@ -2,7 +2,7 @@ import { _decorator, Color, Component, Sprite, UITransform } from 'cc';
 import { MapResData, MapResType } from '../MapProxy';
 import WorldMapArt from '../WorldMapArt';
 import WorldCampaign from '../WorldCampaign';
-import { gateWidth, gateMirrored, GATE_ANCHOR_Y, GATE_ART } from '../GateGeometry';
+import { gateWidth, gateMirrored, GATE_ANCHOR_X, GATE_ANCHOR_Y, GATE_ART, BRIDGE_ART, BRIDGE_ANCHOR_X, BRIDGE_ANCHOR_Y, BRIDGE_HEIGHT_SCALE } from '../GateGeometry';
 import MapUtil from '../MapUtil';
 import { resourceFootprint } from '../ResourceFootprint';
 const { ccclass, property } = _decorator;
@@ -16,12 +16,13 @@ export default class ResLogic extends Component {
     public setResourceData(data: MapResData): void {
         this._data = data;
         const gate = data.type === MapResType.SYS_FORTRESS && WorldCampaign.gateAt(data.x, data.y);
-        const art = gate ? GATE_ART : { [MapResType.WOOD]: 'forest', [MapResType.IRON]: 'iron',
+        const bridge = gate && gate.crossing === 'bridge';
+        const art = gate ? (bridge ? BRIDGE_ART : GATE_ART) : { [MapResType.WOOD]: 'forest', [MapResType.IRON]: 'iron',
             [MapResType.STONE]: 'quarry', [MapResType.GRAIN]: 'grain', [MapResType.SYS_FORTRESS]: 'fort' }[data.type];
         if (!art) { this.spr.spriteFrame = null; return; }
         const level = Math.min(10, Math.max(1, Math.floor(data.level) || 1));
         const resource = data.type >= MapResType.WOOD && data.type <= MapResType.GRAIN;
-        const width = gate ? gateWidth(gate.level) : data.type === MapResType.SYS_FORTRESS ? 138 : 100;
+        const width = gate ? gateWidth(gate.level, gate) : data.type === MapResType.SYS_FORTRESS ? 138 : 100;
         WorldMapArt.apply(this.spr, resource ? `${art}_lv${level}` : art, width);
         this.spr.color = Color.WHITE;
         if (data.type >= MapResType.WOOD && data.type <= MapResType.GRAIN) {
@@ -40,11 +41,12 @@ export default class ResLogic extends Component {
                 const old = this.node.getChildByName(name); if (old) old.active = false;
             }
             this.spr.trim = !gate;
-            this.spr.node.getComponent(UITransform).setAnchorPoint(.5, gate ? GATE_ANCHOR_Y : .25);
+            this.spr.node.getComponent(UITransform).setAnchorPoint(bridge ? BRIDGE_ANCHOR_X : gate ? GATE_ANCHOR_X : .5,
+                bridge ? BRIDGE_ANCHOR_Y : gate ? GATE_ANCHOR_Y : .25);
             this.spr.node.setPosition(0, gate ? 0 : -3, 0);
             const config = WorldCampaign.config;
-            const mirror = gate && config && gateMirrored(gate.x, gate.y, config.width, config.height);
-            this.spr.node.setScale(mirror ? -1 : 1, 1, 1);
+            const mirror = gate && config && gateMirrored(gate.x, gate.y, config.width, config.height, gate);
+            this.spr.node.setScale(mirror ? -1 : 1, bridge ? BRIDGE_HEIGHT_SCALE : 1, 1);
             if (gate) this.spr.color = Color.WHITE;
         }
         const title = this.node.getChildByName('CampaignGateName');

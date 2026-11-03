@@ -4,8 +4,9 @@ import json
 import math
 
 
-def apply_inner_resources(root, resources, empty, blocked, region_at):
-    fixed = json.loads((root / 'tools/world/fixed-inner-resources.json').read_text(encoding='utf8'))
+def apply_inner_resources(root, resources, empty, blocked, region_at, fixed=None):
+    if fixed is None:
+        fixed = json.loads((root / 'tools/world/fixed-inner-resources.json').read_text(encoding='utf8'))
     assert fixed['schemaVersion'] == 1 and fixed['width'] == fixed['height'] == 1000
     ids, names, buckets = set(), set(), collections.defaultdict(list)
     for p in fixed['points']:

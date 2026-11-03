@@ -9,11 +9,13 @@ const table = name => JSON.parse(fs.readFileSync(path.join(root, 'assets/resourc
 let passed = 0;
 function test(name, run) { run(); passed++; console.log('PASS ' + name); }
 function harness() {
-    const modules = new Map(), timers = new Map(), sent = [], results = [], generic = [], images = [];
+    const modules = new Map(), timers = new Map(), sent = [], results = [], generic = [], images = [], errors = [];
     let serial = 0, proto;
     const storage = new Map();
     const proxy = { hasItemCount: () => true, getItemCount: () => 1000 };
-    const cc = { Component: class { isValid = true; }, Color: class {}, JsonAsset: class {},
+    const cc = { Component: class { isValid = true; node = { isValid: true }; unscheduleAllCallbacks() {} }, Color: class {}, JsonAsset: class {},
+        isValid: (value, strict) => !!value && value.isValid !== false && !(strict && value.destroyQueued),
+        view: { off() {} },
         sys: { localStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) } },
         _decorator: { ccclass: () => t => t, property: () => () => {} },
         resources: { load: (path, type, cb) => images.push(cb) } };
@@ -31,7 +33,7 @@ function harness() {
         const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: {
             target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, experimentalDecorators: true,
         } }).outputText;
-        vm.runInNewContext(code, { module: mod, exports: mod.exports, protobuf, console: { log() {}, warn() {}, error() {} },
+        vm.runInNewContext(code, { module: mod, exports: mod.exports, protobuf, console: { log() {}, warn() {}, error(...args) { errors.push(args); } },
             setTimeout: fn => { timers.set(++serial, fn); return serial; }, clearTimeout: id => timers.delete(id),
             require: name => name === 'cc' ? cc : load(path.relative(scripts, path.resolve(path.dirname(file), name))),
         }, { filename: file });
@@ -50,7 +52,7 @@ function harness() {
     events.on(E.lotteryResult, r => results.push(plain(r)), results); events.on(E.showReward, r => generic.push(plain(r)), generic);
     const receive = (name, data = {}) => events.emit(name, proto.decode(name, proto.encode(name, data)));
     const login = () => { receive(S.s2c_user_login_ok); receive(S.s2c_client_load_ok); receive(S.s2c_req_user_lottery_info, { lotteryTimes: 0 }); };
-    return { cmd, S, E, events, results, generic, sent, timers, receive, login, proxy, load, images, proto, storage, modules };
+    return { cmd, S, E, events, results, generic, sent, timers, receive, login, proxy, load, images, proto, storage, modules, errors };
 }
 const rewards = [{ rewardType: 3, itemId: 1001, itemCount: 1 }, { rewardType: 1, itemId: 11001, itemCount: 15 }, { rewardType: 1, itemId: 1, itemCount: 300 }];
 test('新协议 rewardList 无损进入专属结果，不等待通用奖励推送', () => {
@@ -357,6 +359,82 @@ test('窗口销毁并被 Creator 清空字段后，迟到贴图回调直接退�
     ui.isValid = false; ui.frameLoads = null; ui.frames = null;
     assert.doesNotThrow(() => h.images[0](null, { name: 'late' }));
     assert.equal(applied, false);
+});
+
+test('关闭与退出在同帧发生时只销毁一次，立即退订且资源回调不再访问界面', () => {
+    const h = harness(), Window = h.load('reward/LotteryRewardWindow').default, ui = new Window();
+    let destroys = 0, resets = 0, callbacks = 0;
+    ui.node = { active: true, isValid: true, destroy() { this.destroyQueued = true; destroys++; } };
+    ui.portraitMotion = { reset() { resets++; } }; Window.current = ui;
+    h.events.on(h.E.enterLogin, ui.dispose, ui);
+    h.events.on(h.E.lotteryChanged, () => { throw new Error('已经关闭的窗口仍在刷新'); }, ui);
+    ui.requestFrame('same-frame-close', () => callbacks++);
+    ui.close(); ui.close(); h.events.emit(h.E.enterLogin); h.events.emit(h.E.lotteryChanged);
+    h.images[0](null, {}); ui.onDestroy();
+    assert.equal(destroys, 1); assert.equal(resets, 1); assert.equal(callbacks, 0);
+    assert.equal(h.events.targetInName.has(ui), false); assert.equal(h.errors.length, 0);
+    assert.equal(Window.current, null); assert.equal(ui.node.active, false);
+});
+
+test('一个资源回调关闭窗口后，同批后续资源订阅者不再执行', () => {
+    const h = harness(), Window = h.load('reward/LotteryRewardWindow').default, ui = new Window();
+    ui.node = { destroy() {} }; let afterClose = false;
+    ui.requestFrame('shared', () => ui.close());
+    ui.requestFrame('shared', () => { afterClose = true; });
+    h.images[0](null, {});
+    assert.equal(afterClose, false);
+});
+
+test('界面监听器报错不阻断点将回包，等待状态解除并允许下一次点将', () => {
+    const h = harness(); h.login();
+    h.events.on(h.E.lotteryChanged, () => { if (!h.cmd.pending) throw new Error('模拟另一个界面刷新异常'); }, {});
+    const ui = footerWindow(h);
+    h.events.on(h.E.lotteryChanged, ui.refreshActions, ui);
+    ui.repeatDraw(10); for (let i = 0; i < 4; i++) ui.update(.1);
+    assert.match(ui.repeatStatus.string, /正在点将/);
+    assert.doesNotThrow(() => h.receive(h.S.s2c_user_lottery, { useLotteryTimes: 10, lotteryTimes: 10, rewardList: [rewards[1]] }));
+    assert.equal(h.cmd.pending, false); assert.equal(h.timers.size, 0);
+    assert.equal(ui.repeatStatus.string, ''); assert.equal(ui.canRepeat(10), true);
+    assert.equal(h.results.length, 1); assert.equal(h.errors.length, 1, '必须保留异常日志供定位');
+});
+
+test('超时核对不被其它界面异常阻断，不重发扣费且收到迟到回包后恢复', () => {
+    const h = harness(); h.login(); const ui = footerWindow(h);
+    h.events.on(h.E.lotteryChanged, () => { throw new Error('模拟失效窗口'); }, {});
+    h.events.on(h.E.lotteryChanged, ui.refreshActions, ui);
+    ui.repeatDraw(1);
+    const [id, timeout] = h.timers.entries().next().value; h.timers.delete(id); timeout();
+    assert.equal(h.cmd.pending, false); assert.equal(h.cmd.loading, true);
+    assert.equal(h.sent.at(-1).name, h.S.c2s_req_user_lottery_info);
+    h.receive(h.S.s2c_req_user_lottery_info, { lotteryTimes: 1 });
+    h.receive(h.S.s2c_user_lottery, { useLotteryTimes: 1, lotteryTimes: 1, rewardList: [rewards[1]] });
+    assert.equal(ui.canRepeat(1), true); assert.equal(h.results.length, 1);
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_user_lottery).length, 1);
+});
+
+test('事件中退订不会跳过后续窗口，新增订阅下次生效，已销毁目标自动退订', () => {
+    const h = harness(), calls = [], first = {}, removed = {}, later = {}, stale = { isValid: false };
+    h.events.on('lifecycle', () => {
+        calls.push('first'); h.events.targetOff(first); h.events.targetOff(removed);
+        h.events.on('lifecycle', () => calls.push('new'), later);
+    }, first);
+    h.events.on('lifecycle', () => calls.push('removed'), removed);
+    h.events.on('lifecycle', () => calls.push('healthy'), {});
+    h.events.on('lifecycle', () => calls.push('stale'), stale);
+    h.events.emit('lifecycle');
+    assert.deepEqual(calls, ['first', 'healthy']);
+    assert.equal(h.events.targetInName.has(stale), false);
+    h.events.emit('lifecycle');
+    assert.deepEqual(calls, ['first', 'healthy', 'healthy', 'new']);
+});
+
+test('跳过动画控件的子节点先销毁时仍能安全退订', () => {
+    const h = harness(), Control = h.load('reward/LotterySkipControl').default;
+    const control = Object.create(Control.prototype); let unwatches = 0;
+    control.node = { isValid: false, off() { throw new Error('不能操作已销毁节点'); } };
+    control.unwatch = () => unwatches++;
+    assert.doesNotThrow(() => { control.dispose(); control.dispose(); control.render(true); });
+    assert.equal(unwatches, 1);
 });
 
 console.log(passed + ' groups passed');

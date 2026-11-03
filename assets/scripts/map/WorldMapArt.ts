@@ -1,64 +1,102 @@
 import { Color, EffectAsset, Graphics, JsonAsset, Node, resources, Sprite, SpriteFrame, UITransform } from 'cc';
-import { cityFootprintRadius } from './CityFootprint';
-import { GATE_ART } from './GateGeometry';
+import { cityArtAsset, cityArtWidth, cityOverviewAsset, CityArtIdentity, SYSTEM_CITY_ARTS } from './CityFootprint';
+import { GATE_ART, BRIDGE_ART } from './GateGeometry';
 import { PLAYER_CITY_MAX_LEVEL } from './PlayerCityAppearance';
 import PlayerCityGround from './PlayerCityGround';
+
+const CITY_ASSETS = [...new Set([...[4, 7, 10].map(level => cityArtAsset(level)),
+    ...[4, 7, 10].map(level => cityOverviewAsset(level)), ...SYSTEM_CITY_ARTS.flatMap(city => [city.near, city.far])])];
+
+export const MAP_BOOKMARK_ART = 'map-bookmark-v2';
+
+/** 显式列出运行中的素材，保留在目录里的历史原画不会进入首屏解码和显存。 */
+export function worldArtNames(): string[] {
+    const names = ['plains', 'water', 'mountain_ridge_connected', 'mountain_shoulder', 'mountain_massif_natural', 'mountain_saddle_natural',
+        'town', 'county', 'fort', GATE_ART, BRIDGE_ART, MAP_BOOKMARK_ART, 'forest', 'iron', 'quarry', 'grain',
+        'wild_forest', 'wild_iron', 'wild_quarry', 'wild_grain', ...CITY_ASSETS];
+    for (const resource of ['forest', 'iron', 'quarry', 'grain']) {
+        for (let level = 1; level <= 10; level++) names.push(`${resource}_lv${level}`);
+    }
+    for (let level = 1; level <= PLAYER_CITY_MAX_LEVEL; level++) names.push(`player_city_lv${level}`);
+    return [...new Set(names)];
+}
 
 /** 地图专用原创素材；入图时一次准备，地块复用时不再发起异步加载。 */
 export default class WorldMapArt {
     private static pending: Promise<void> = null;
+    private static progress = 0;
     private static frames = new Map<string, SpriteFrame>();
     static effect: EffectAsset = null;
     static landscape: any = null;
     static campaign: any = null;
 
+    static get preparationProgress(): number { return this.progress; }
+
     static cityWidth(level: number): number {
-        return (cityFootprintRadius(level) * 2 + 1) * 200 * .74;
+        return cityArtWidth(level);
     }
     static cityArt(level: number): string { return level >= 8 ? 'capital' : level >= 5 ? 'county' : 'town'; }
 
+    /** 系统城池按身份选用独立原画；旧 county 仍供玩家城缺省等级的贴地材质使用。 */
+    static citySprite(level: number, city?: CityArtIdentity): string { return cityArtAsset(level, city); }
+
+    static cityOverviewSprite(level: number, city?: CityArtIdentity): string { return cityOverviewAsset(level, city); }
+
     static prepare(): Promise<void> {
         if (this.pending) return this.pending;
+        let imageProgress = 0, metadataDone = 0, active = true;
+        const report = () => { if (active) this.progress = Math.min(.99, imageProgress * .9 + metadataDone / 4 * .1); };
+        const metadataReady = () => { metadataDone++; report(); };
         this.pending = Promise.all([
-            PlayerCityGround.prepare(),
-            new Promise<void>((resolve, reject) => resources.loadDir('ui/world', SpriteFrame, (error, frames) => {
-                if (error) return reject(error);
-                frames.forEach(frame => {
-                    if (frame.name === 'county' || frame.name.startsWith('player_city_lv')
-                        || frame.name === 'mountain_ridge_connected' || frame.name === 'mountain_shoulder') frame.packable = false;
-                    this.frames.set(frame.name, frame);
-                });
-                resolve();
-            })),
+            PlayerCityGround.prepare().then(metadataReady),
+            new Promise<void>((resolve, reject) => resources.load(
+                worldArtNames().map(name => `ui/world/${name}/spriteFrame`), SpriteFrame,
+                (finished, total) => { imageProgress = Math.max(imageProgress, total > 0 ? Math.min(1, finished / total) : 0); report(); },
+                (error, frames) => {
+                    if (error) return reject(error);
+                    frames.forEach(frame => {
+                        if (frame.name === 'county' || CITY_ASSETS.includes(frame.name) || frame.name.startsWith('player_city_lv')
+                            || frame.name.startsWith('mountain_') || frame.name === BRIDGE_ART) frame.packable = false;
+                        this.frames.set(frame.name, frame);
+                    });
+                    imageProgress = 1; report();
+                    resolve();
+                })),
             new Promise<void>((resolve, reject) => resources.load('effects/world-landscape', EffectAsset, (error, effect) => {
                 if (error) return reject(error);
                 this.effect = effect;
+                metadataReady();
                 resolve();
             })),
             new Promise<void>((resolve, reject) => resources.load('world/original-landscape', JsonAsset, (error, config) => {
                 if (error) return reject(error);
                 this.landscape = config.json;
+                metadataReady();
                 resolve();
             })),
             new Promise<void>((resolve, reject) => resources.load('world/campaign-map', JsonAsset, (error, config) => {
                 if (error) return reject(error);
                 this.campaign = config.json;
+                metadataReady();
                 resolve();
             })),
         ]).then(() => {
-            for (const name of ['plains', 'water', 'mountain_ridge_connected', 'mountain_shoulder',
-                'town', 'county', 'capital', 'fort', GATE_ART, 'forest', 'iron', 'quarry', 'grain',
+            for (const name of ['plains', 'water', 'mountain_ridge_connected', 'mountain_shoulder', 'mountain_massif_natural', 'mountain_saddle_natural',
+                'town', 'county', 'capital', 'fort', GATE_ART, BRIDGE_ART, MAP_BOOKMARK_ART, 'forest', 'iron', 'quarry', 'grain',
                 'wild_forest', 'wild_iron', 'wild_quarry', 'wild_grain']) this.frame(name);
+            for (const name of CITY_ASSETS) this.frame(name);
             for (const resource of ['forest', 'iron', 'quarry', 'grain']) {
                 for (let level = 1; level <= 10; level++) this.frame(`${resource}_lv${level}`);
             }
             for (let level = 1; level <= PLAYER_CITY_MAX_LEVEL; level++) this.frame(`player_city_lv${level}`);
-        }).catch(error => { this.pending = null; throw error; });
+            active = false; this.progress = 1;
+        }).catch(error => { active = false; this.pending = null; this.progress = 0; throw error; });
         return this.pending;
     }
 
     static frame(name: string): SpriteFrame {
-        const frame = this.frames.get(name);
+        // 配置里的 capital 是城池类别，贴图版本独立演进，不修改地图或服务端占地数据。
+        const frame = this.frames.get(name === 'capital' ? cityArtAsset(10) : name);
         if (!frame) throw new Error(`原创地图素材缺失：${name}`);
         return frame;
     }

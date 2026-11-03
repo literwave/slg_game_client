@@ -83,10 +83,11 @@ export class LogicEvent {
     public static openGeneralChoose:string = "open_general_choose";
     public static openArmySelectUi:string = "open_army_select_ui";
     public static openDrawResult:string = "open_draw_result";
-    public static interiorCollect:string = "interior_collect";
-    public static interiorOpenCollect:string = "interior_openCollect";
     public static chatReadChanged = 'chat_read_changed';
     public static chatSendResult = 'chat_send_result';
+    public static openPrivateChat = 'open_private_chat';
+    public static openChatPlayerRank = 'open_chat_player_rank';
+    public static openChatAlliance = 'open_chat_alliance';
     public static openGeneralConvert:string = "open_general_convert";
     public static openGeneralRoster:string = "open_general_roster";
     public static openGeneral:string = "open_general";

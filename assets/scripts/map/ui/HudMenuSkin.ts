@@ -1,5 +1,5 @@
-import { BlockInputEvents, Button, Color, Label, Node, Sprite, SpriteFrame } from 'cc';
-import { hideSprite, inkSurface, ManagementColors as C, manualLayout, place, textStyle } from './ManagementStyle';
+import { BlockInputEvents, Button, Color, Graphics, Label, Node, Sprite, SpriteFrame } from 'cc';
+import { caption, hideSprite, inkSurface, ManagementColors as C, manualLayout, place, textStyle } from './ManagementStyle';
 
 interface HudMenuIcons {
     recruit: SpriteFrame;
@@ -42,22 +42,19 @@ export function arrangeHudEntries(hud: Node, icons: HudMenuIcons): void {
     const more = hud?.getChildByName('MorePanel');
     if (!navigation || !more) throw new Error('[HUD] 导航容器缺失');
     const recruit = more.getChildByName('DrawButton') || navigation.getChildByName('DrawButton');
-    const collection = navigation.getChildByName('btnCollection') || more.getChildByName('btnCollection');
     const market = findAction(navigation, 'openTr') || more.getChildByName('MarketButton');
     const general = findAction(navigation, 'onClickGeneral');
     const union = findAction(navigation, 'openUnion');
     const innerCity = navigation.getChildByName('InnerCityButton');
     const moreButton = navigation.getChildByName('MoreButton');
     const report = hud.getChildByName('WarReportButton') || more.getChildByName('WarReportButton');
-    const chat = more.getChildByName('ChatButton');
     const skill = more.getChildByName('SkillButton');
     const settings = more.getChildByName('SettingButton');
-    if (![recruit, collection, market, general, union, innerCity, moreButton, report, skill, settings].every(Boolean)
+    if (![recruit, market, general, union, innerCity, moreButton, report, skill, settings].every(Boolean)
         || ![icons.recruit, icons.warReport, icons.skill, icons.settings].every(Boolean) || !menuLabel(recruit)) {
         throw new Error('[HUD] 菜单入口或图标引用不完整');
     }
 
-    collection.parent = more;
     market.name = 'MarketButton';
     market.parent = more;
     recruit.parent = navigation;
@@ -69,7 +66,6 @@ export function arrangeHudEntries(hud: Node, icons: HudMenuIcons): void {
     report.setSiblingIndex(moreIndex + (report.getSiblingIndex() > moreIndex ? 1 : 0));
     replaceIcon(recruit, icons.recruit);
     replaceIcon(report, icons.warReport);
-    if (chat) chat.active = false;
     replaceIcon(skill, icons.skill);
     settings.active = true;
     replaceIcon(settings, icons.settings);
@@ -125,16 +121,40 @@ export function styleBottomNavigation(navigation: Node, width: number): void {
     });
 }
 
+/** 头像下方的活动、排行使用清晰的单字图标。 */
+export function styleHeaderShortcut(button: Node | null, x: number, y: number, glyph: string): void {
+    if (!button) return;
+    place(button, x, y, 44, 44);
+    const background = button.getChildByName('Background');
+    if (background) background.active = false;
+    const icon = button.getChildByName('Icon');
+    if (icon) {
+        place(icon, 0, 0, 44, 44);
+        hideSprite(icon);
+        const oldIcon = icon.getComponent(Graphics);
+        if (oldIcon) oldIcon.enabled = false;
+        const ring = inkSurface(icon, 'GlyphSurface', 44, 44, null, null);
+        ring.fillColor = new Color(38, 35, 24, 238);
+        ring.strokeColor = C.gold;
+        ring.lineWidth = 1.5;
+        ring.circle(0, 0, 21);
+        ring.fill(); ring.stroke();
+        caption(icon, 'Glyph', glyph, 0, 0, 38, 24, C.gold, Label.HorizontalAlign.CENTER);
+    }
+    const component = button.getComponent(Button);
+    if (component) {
+        component.target = button;
+        component.transition = Button.Transition.SCALE;
+        component.zoomScale = .96;
+    }
+}
+
 export function styleMoreMenu(panel: Node | null, width: number): void {
     if (!panel) return;
     manualLayout(panel);
-    const entries = ['InventoryButton', 'MailButton', 'RankButton', 'btnCollection',
-        'SkillButton', 'MarketButton', 'SettingButton']
+    const entries = ['InventoryButton', 'MailButton', 'SkillButton', 'MarketButton', 'SettingButton']
         .map(name => panel.getChildByName(name)).filter(node => node?.active);
-    const columns = Math.max(1, Math.min(5, Math.floor((width - 16) / 56)));
-    const rows = Math.max(1, Math.ceil(entries.length / columns));
-    const height = rows * 76;
-    place(panel, panel.position.x, panel.position.y, width, height);
+    place(panel, panel.position.x, panel.position.y, width, 76);
     hideSprite(panel);
     if (!panel.getComponent(BlockInputEvents)) panel.addComponent(BlockInputEvents);
     // 图标直接浮在地图上，仅保留透明的菜单点击区域。
@@ -144,11 +164,9 @@ export function styleMoreMenu(panel: Node | null, width: number): void {
     if (oldTitle) { oldTitle.removeFromParent(); oldTitle.destroy(); }
     const oldRule = panel.getChildByName('ManagementHeaderRule');
     if (oldRule) { oldRule.removeFromParent(); oldRule.destroy(); }
-    const step = (width - 16) / Math.min(columns, Math.max(1, entries.length));
+    const step = (width - 16) / Math.max(1, entries.length);
     entries.forEach((button, index) => {
-        const col = index % columns, row = Math.floor(index / columns);
-        place(button, (col - (Math.min(columns, entries.length) - 1) / 2) * step,
-            (rows - 1) * 38 - row * 76, step - 4, 68);
+        place(button, (index - (entries.length - 1) / 2) * step, 0, step - 4, 68);
         const background = button.getChildByName('Background');
         if (background) {
             place(background, 0, 0, step - 4, 68);

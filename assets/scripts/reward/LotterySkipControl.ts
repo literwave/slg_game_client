@@ -1,4 +1,4 @@
-import { Button, Color, Graphics, Label, Node, Toggle, UITransform } from 'cc';
+import { Button, Color, Graphics, Label, Node, Toggle, UITransform, isValid } from 'cc';
 import { caption, ManagementColors as C, place } from '../map/ui/ManagementStyle';
 import { setSkipLotteryAnimation, skipsLotteryAnimation, watchLotteryAnimation } from './LotteryAnimationSettings';
 
@@ -9,6 +9,7 @@ export default class LotterySkipControl {
     private readonly box: Graphics;
     private readonly label: Label;
     private readonly unwatch: () => void;
+    private disposed = false;
 
     constructor(parent: Node, onChange?: (skip: boolean) => void) {
         this.node = new Node('LotterySkipAnimation');
@@ -28,6 +29,7 @@ export default class LotterySkipControl {
     private changed(): void { setSkipLotteryAnimation(this.toggle.isChecked); }
 
     private render(checked: boolean): void {
+        if (this.disposed || !isValid(this.node, true)) return;
         this.toggle.setIsCheckedWithoutNotify(checked);
         const g = this.box, gold = new Color(232, 195, 121);
         g.clear(); g.lineWidth = 1.5;
@@ -42,7 +44,9 @@ export default class LotterySkipControl {
     }
 
     dispose(): void {
+        if (this.disposed) return;
+        this.disposed = true;
         this.unwatch();
-        this.node.off(Toggle.EventType.TOGGLE, this.changed, this);
+        if (isValid(this.node, true)) this.node.off(Toggle.EventType.TOGGLE, this.changed, this);
     }
 }

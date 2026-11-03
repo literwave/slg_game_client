@@ -1,8 +1,94 @@
-import { Button, Color, EditBox, Label, Node, ScrollView, UITransform } from 'cc';
+import { Button, Color, EditBox, Graphics, Label, Node, ScrollView, UITransform } from 'cc';
 import { caption, headerRule, hideSprite, inkSurface, ManagementColors as C, manualLayout,
     modalBackdrop, panelButton, place, textStyle } from '../map/ui/ManagementStyle';
 import ListLogic from '../utils/ListLogic';
 import UnionCommand from './UnionCommand';
+import { gameCloseButton, taskWindowTrim } from '../map/ui/TaskBoardView';
+
+function decoration(parent: Node, name: string): Node {
+    let node = parent.getChildByName(name);
+    if (!node) { node = new Node(name); node.layer = parent.layer; node.addComponent(UITransform); parent.addChild(node); }
+    return node;
+}
+
+/** 盟旗仅作通用联盟装饰，不伪造服务端未提供的徽记或等级。 */
+function standard(parent: Node, name: string, x: number, y: number, scale: number, glyph = '盟', muted = false): Node {
+    const node = decoration(parent, name); place(node, x, y, 144, 210); node.setScale(scale, scale, 1);
+    const g = node.getComponent(Graphics) || node.addComponent(Graphics); g.clear();
+    const edge = muted ? new Color(121, 119, 89) : C.gold;
+    g.strokeColor = muted ? C.line : new Color(142, 118, 72); g.lineWidth = 3;
+    for (const side of [-1, 1]) {
+        g.moveTo(side * 48, -100); g.lineTo(side * 58, 90); g.stroke();
+        g.fillColor = edge; g.moveTo(side * 58, 102); g.lineTo(side * 53, 86);
+        g.lineTo(side * 63, 86); g.lineTo(side * 58, 102); g.fill();
+    }
+    g.fillColor = muted ? new Color(57, 61, 48) : new Color(94, 46, 36);
+    g.moveTo(-45, 76); g.lineTo(45, 76); g.lineTo(41, -56); g.lineTo(0, -83);
+    g.lineTo(-41, -56); g.lineTo(-45, 76); g.fill();
+    g.fillColor = muted ? new Color(65, 69, 54) : new Color(112, 56, 40);
+    g.moveTo(-43, 74); g.lineTo(-8, 74); g.lineTo(-8, -74); g.lineTo(-40, -54); g.lineTo(-43, 74); g.fill();
+    g.strokeColor = edge; g.lineWidth = 2;
+    g.moveTo(-39, 69); g.lineTo(39, 69); g.lineTo(35, -52); g.lineTo(0, -75); g.lineTo(-35, -52); g.lineTo(-39, 69); g.stroke();
+    g.lineWidth = 4; g.moveTo(-55, 80); g.lineTo(55, 80); g.stroke();
+    g.lineWidth = 1; g.circle(0, 10, 29); g.stroke();
+    g.moveTo(-22, -36); g.lineTo(0, -49); g.lineTo(22, -36); g.stroke();
+    const letter = caption(node, 'Glyph', glyph, 0, 11, 52, 32, edge, Label.HorizontalAlign.CENTER);
+    letter.isBold = true;
+    return node;
+}
+
+export function unionLobbyLayout(width: number, height: number) {
+    const narrow = width < 620, foundingWidth = narrow ? width : 240;
+    const foundingHeight = narrow ? 136 : height;
+    const listWidth = narrow ? width : width - foundingWidth - 20;
+    const listHeight = narrow ? height - foundingHeight - 12 : height;
+    return { narrow, foundingWidth, foundingHeight, listWidth, listHeight,
+        foundingX: narrow ? 0 : -width / 2 + foundingWidth / 2,
+        foundingY: height / 2 - foundingHeight / 2,
+        listX: narrow ? 0 : width / 2 - listWidth / 2,
+        listY: narrow ? -height / 2 + listHeight / 2 : 0 };
+}
+
+function lobbyPage(page: Node, width: number, height: number): void {
+    const m = unionLobbyLayout(width, height), count = UnionCommand.getInstance().proxy.getUnionList().length;
+    const legacyTitle = page.getChildByName('New Label'); if (legacyTitle) legacyTitle.active = false;
+    const founding = decoration(page, 'FoundingCard');
+    card(founding, m.foundingX, m.foundingY, m.foundingWidth, m.foundingHeight);
+    inkSurface(founding, 'UnionCard', m.foundingWidth, m.foundingHeight, new Color(46, 40, 30), C.line);
+    const fw = m.foundingWidth, fh = m.foundingHeight;
+    standard(founding, 'AllianceStandard', m.narrow ? -fw / 2 + 53 : 0,
+        m.narrow ? 0 : fh / 2 - 120, m.narrow ? .5 : .94);
+    const tx = m.narrow ? 44 : 0, tw = m.narrow ? fw - 126 : fw - 24;
+    caption(founding, 'FoundingTitle', '聚义立盟', tx, m.narrow ? 38 : fh / 2 - 238, tw, 24, C.gold,
+        m.narrow ? Label.HorizontalAlign.LEFT : Label.HorizontalAlign.CENTER).overflow = Label.Overflow.SHRINK;
+    caption(founding, 'FoundingHint', '同盟一心，共守山河', tx, m.narrow ? 8 : fh / 2 - 271, tw, 13, C.muted,
+        m.narrow ? Label.HorizontalAlign.LEFT : Label.HorizontalAlign.CENTER).overflow = Label.Overflow.SHRINK;
+    panelButton(button(page, 'openCreate'), '创建联盟', m.narrow ? width / 2 - 86 : m.foundingX,
+        m.foundingY - fh / 2 + (m.narrow ? 30 : 40), m.narrow ? 132 : 164, 44, true);
+
+    const surface = decoration(page, 'AllianceListSurface');
+    card(surface, m.listX, m.listY, m.listWidth, m.listHeight); surface.setSiblingIndex(0);
+    inkSurface(surface, 'UnionCard', m.listWidth, m.listHeight, C.inset, C.line);
+    const listTop = m.listY + m.listHeight / 2;
+    caption(page, 'SectionTitle', '寻找联盟', m.listX - m.listWidth / 2 + 90, listTop - 27, 144, 20, C.text);
+    caption(page, 'SectionCount', `${count} 个联盟`, m.listX + m.listWidth / 2 - 62, listTop - 27, 88, 12, C.gold, Label.HorizontalAlign.RIGHT);
+    rule(surface, m.listWidth - 32, m.listHeight / 2 - 52);
+    const scroll = page.getComponentInChildren(ScrollView), list = scroll.node.getComponent(ListLogic);
+    const listWidth = m.listWidth - 24, listHeight = m.listHeight - 72, listY = m.listY - 28;
+    hideSprite(scroll.node); place(scroll.node, m.listX, listY, listWidth, listHeight);
+    place(scroll.content.parent, 0, 0, listWidth, listHeight);
+    scroll.horizontal = false; scroll.vertical = true;
+    if (scroll.verticalScrollBar) scroll.verticalScrollBar.node.active = false;
+    list.spaceRow = 10; list.spaceColumn = 0; list.columnCount = 1; list.scale = 1;
+    row(list.itemNode, listWidth, 'lobby');
+    if (list.enabledInHierarchy) { scroll.content.children.forEach(n => row(n, listWidth, 'lobby')); list.refreshLayout(); }
+    const art = standard(page, 'EmptyAllianceStandard', m.listX, listY + 24, m.narrow ? .34 : .48, '盟', true);
+    art.active = count === 0;
+    const empty = caption(page, 'EmptyState', '暂无可加入的联盟', m.listX, listY - 44, listWidth - 16, 17, C.text, Label.HorizontalAlign.CENTER);
+    const hint = caption(page, 'EmptyHint', '可以先创建自己的联盟', m.listX, listY - 71, listWidth - 16, 12, C.muted, Label.HorizontalAlign.CENTER);
+    empty.node.active = hint.node.active = count === 0;
+    button(page, 'openCreate')?.setSiblingIndex(page.children.length - 1);
+}
 
 function button(root: Node, handler: string, data?: string): Node | null {
     return root.getComponentsInChildren(Button).find(b => b.clickEvents.some(e => e.handler === handler
@@ -54,16 +140,18 @@ function mainPage(page: Node, width: number, height: number): void {
         caption(info, 'MemberCount', union ? `${union.cnt || 0}/${union.memberMax || '—'} 人` : '—',
             infoW / 2 - 56, -38, 80, 14, C.gold, Label.HorizontalAlign.RIGHT);
     } else {
-        rule(info, textW, infoH / 2 - 94);
-        caption(info, 'LeaderCaption', '盟主', left + textW / 2, infoH / 2 - 122, textW, 13, C.muted);
-        label(info, 'mengzhu', left + textW / 2, infoH / 2 - 154, textW, 21);
+        standard(info, 'AllianceStandard', 0, infoH / 2 - 84, .48, Array.from(union?.name || '盟')[0]);
+        const name = label(info, 'name', 0, infoH / 2 - 148, textW, 26); if (name) name.horizontalAlign = Label.HorizontalAlign.CENTER;
+        rule(info, textW, infoH / 2 - 176);
+        caption(info, 'LeaderCaption', '盟主', left + textW / 2, infoH / 2 - 199, textW, 13, C.muted);
+        label(info, 'mengzhu', left + textW / 2, infoH / 2 - 226, textW, 21);
         caption(info, 'MemberCaption', '联盟成员', left + textW / 2, -infoH / 2 + 104, textW, 13, C.muted);
         caption(info, 'MemberCount', union ? `${union.cnt || 0} / ${union.memberMax || '—'}` : '—',
             left + textW / 2, -infoH / 2 + 72, textW, 24, C.text);
         caption(info, 'MyRole', `我的身份 · ${proxy.myPos === 1 ? '盟主' : proxy.myPos === 2 ? '官员' : '成员'}`,
             left + textW / 2, -infoH / 2 + 28, textW, 13, C.gold);
     }
-    for (const name of ['ManagementHeaderRule', 'MemberCaption', 'MyRole']) {
+    for (const name of ['ManagementHeaderRule', 'MemberCaption', 'MyRole', 'AllianceStandard']) {
         const node = info.getChildByName(name); if (node) node.active = !narrow;
     }
 
@@ -95,7 +183,7 @@ function mainPage(page: Node, width: number, height: number): void {
 }
 
 function row(node: Node, width: number, kind: string): void {
-    const pos = node.position.clone(), h = kind === 'log' ? 78 : 72;
+    const pos = node.position.clone(), h = kind === 'log' ? 78 : kind === 'lobby' ? 88 : 72;
     card(node, pos.x, pos.y, width, h);
     if (kind === 'member') {
         label(node, 'title', -width / 2 + 50, 0, 68, 13, C.gold);
@@ -110,12 +198,23 @@ function row(node: Node, width: number, kind: string): void {
         label(node, 'desLab', 0, 14, width - 32, 16);
         label(node, 'timeLab', 0, -17, width - 32, 12, C.muted);
     } else {
-        label(node, 'name', -52, 0, width - 140, 19);
-        panelButton(button(node, 'join'), '申请加入', width / 2 - 66, 0, 108, 40, true);
+        const union = (node.getComponent('UnionItemLogic') as any)?._unionData;
+        const name = node.getChildByName('name')?.getComponent(Label)?.string || '盟';
+        standard(node, 'AllianceStandard', -width / 2 + 30, 0, .27, Array.from(name)[0]);
+        const textWidth = Math.max(40, width - 188), textX = -width / 2 + 62 + textWidth / 2;
+        label(node, 'name', textX, 13, textWidth, 19);
+        caption(node, 'Members', union ? `成员 ${union.cnt || 0} / ${union.memberMax || '—'}` : '', textX, -16, textWidth, 12, C.muted);
+        panelButton(button(node, 'join'), '申请加入', width / 2 - 66, 0, 108, 44, true);
     }
 }
 
+/** 列表复用条目时同步盟旗文字与成员数，不能保留上一条联盟的展示。 */
+export function styleUnionLobbyRow(node: Node): void {
+    row(node, node.getComponent(UITransform).width, 'lobby');
+}
+
 function listPage(page: Node, width: number, height: number, kind: string): void {
+    if (kind === 'lobby') { lobbyPage(page, width, height); return; }
     const titles = { member: '联盟成员', apply: '入盟申请', log: '联盟日志', lobby: '寻找联盟' };
     const title = page.getChildByName('New Label'); if (title) title.active = false;
     caption(page, 'SectionTitle', titles[kind], -width / 2 + 110, height / 2 - 20, 220, 23, C.text);
@@ -156,14 +255,16 @@ function createPage(page: Node, width: number, height: number): void {
     const mask = page.getChildByName('mask'); hideSprite(mask);
     place(mask, 0, 0, width, height); inkSurface(mask, 'UnionShade', width, height, new Color(10, 16, 12, 220), null);
     const panel = page.getChildByName('New Node'), w = Math.min(420, width - 32);
-    card(panel, 0, 0, w, 270);
+    card(panel, 0, 0, w, 300);
     for (const name of ['diban1_23', 'tipsbiaoti']) panel.getChildByName(name).active = false;
-    caption(panel, 'Heading', '创建联盟', 0, 94, w - 40, 24, C.text);
+    standard(panel, 'AllianceStandard', -w / 2 + 40, 90, .25);
+    caption(panel, 'Heading', '创建联盟', 16, 94, w - 104, 24, C.gold);
     caption(panel, 'InputCaption', '联盟名称', 0, 44, w - 40, 13, C.muted);
     const edit = panel.getComponentInChildren(EditBox); editBox(edit, w - 40, 46); edit.placeholder = '为联盟取一个名字';
     panelButton(button(panel, 'onRandomName'), '换个名字', -w / 4 + 4, -84, (w - 52) / 2, 44);
     panelButton(button(panel, 'onCreate'), '创建联盟', w / 4 - 4, -84, (w - 52) / 2, 44, true);
-    panelButton(page.getChildByName('closeBtn'), '', w / 2 - 26, 108, 36, 36, false, true);
+    panelButton(page.getChildByName('closeBtn'), '', w / 2 - 28, 122, 44, 44, false, true);
+    gameCloseButton(page.getChildByName('closeBtn'), w / 2 - 28, 122);
 }
 
 /** 只整理原节点的视觉和布局，按钮仍使用 prefab 中的协议回调。 */
@@ -176,17 +277,20 @@ export function styleUnion(root: Node): void {
         const nodes = root.children.filter(n => n.name !== 'bg'); root.addChild(frame);
         nodes.forEach(n => n.setParent(frame));
     }
-    const w = Math.max(340, Math.min(1000, screen.width - 40)), h = Math.max(560, Math.min(620, screen.height - 40));
+    const joined = UnionCommand.getInstance().proxy.isMeInUnion();
+    const w = Math.max(340, Math.min(900, screen.width - 40));
+    const h = joined ? Math.max(600, Math.min(620, screen.height - 40)) : Math.max(500, Math.min(520, screen.height - 40));
     const scale = Math.min(1, (screen.width - 24) / w, (screen.height - 24) / h);
     place(frame, 0, 0, w, h); frame.setScale(scale, scale, 1);
     inkSurface(frame, 'UnionSurface', w, h, C.ink, C.gold);
-    label(frame, 'labelTitle', -w / 2 + 110, h / 2 - 34, 172, 28);
-    caption(frame, 'Subtitle', '同盟一心，共守山河', -w / 2 + 160, h / 2 - 66, 272, 13, C.muted);
-    panelButton(frame.getChildByName('btnClose'), '', w / 2 - 38, h / 2 - 36, 44, 44, false, true);
-    rule(frame, w - 48, h / 2 - 90);
-    const width = w - 48, height = h - 132;
+    for (const name of ['labelTitle', 'Subtitle', 'ManagementHeaderRule']) { const old = frame.getChildByName(name); if (old) old.active = false; }
+    caption(frame, 'Title', '联盟', 0, h / 2 - 32, w - 180, 28, C.text, Label.HorizontalAlign.CENTER);
+    taskWindowTrim(frame, w, h);
+    panelButton(frame.getChildByName('btnClose'), '', w / 2 - 32, h / 2 - 32, 44, 44, false, true);
+    gameCloseButton(frame.getChildByName('btnClose'), w / 2 - 32, h / 2 - 32);
+    const width = w - 48, height = h - 104;
     for (const name of ['main', 'member', 'apply', 'log', 'lobby']) {
-        const page = frame.getChildByName(name); place(page, 0, -24, width, height);
+        const page = frame.getChildByName(name); place(page, 0, -28, width, height);
         if (name === 'main') mainPage(page, width, height);
         else listPage(page, width, height, name);
     }

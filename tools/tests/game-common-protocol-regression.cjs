@@ -14,16 +14,18 @@ let passed = 0;
 
 function harness(lazyMapModules = false) {
     const modules = new Map(), timers = new Map(), sent = [], notices = [];
-    let timerId = 0;
+    let timerId = 0, sendAvailable = true;
     const role = { userId: big, allianceId: 0, cityPos: { x: 12, y: 20 } };
     const login = { proxy: { getRoleData: () => role, setAllianceId: id => role.allianceId = id } };
     const cc = { _decorator: { ccclass: () => v => v, property: () => () => {} }, JsonAsset: class {} };
     const stubs = {
         'login/LoginCommand': { default: { getInstance: () => login } },
         'network/socket/NetManager': { NetManager: { getInstance: () => ({ send(packet) {
+            if (!sendAvailable) return false;
             assert.ok(packet.msg instanceof Uint8Array, '所有新请求必须经过 protobuf 编码');
             assert.ok(proto.getIdByMsgType(packet.name) > 0, '不能发送 ID=0 的旧消息');
             sent.push({ name: packet.name, data: proto.decode(packet.name, packet.msg) });
+            return true;
         } }) } },
         'general/GeneralCommand': { default: { getInstance: () => ({ proxy: { getMyGeneral: id => [1001, 1002].includes(id) ? { heroType: id } : null } }) } },
         'map/ui/MapUICommand': { default: { getInstance: () => ({ proxy: {} }) } },
@@ -66,7 +68,7 @@ function harness(lazyMapModules = false) {
         progress: lazyMapModules ? null : load('progression/ProgressionCommand').default.getInstance(),
         battle: lazyMapModules ? null : load('battle/BattleCommand').default.getInstance(), rank: load('rank/RankCommand').default.getInstance(),
         build: lazyMapModules ? null : load('build/BuildCommand').default.getInstance(), troop: load('general/TroopCommand').default.getInstance(),
-        mail: load('mail/MailCommand').default.getInstance(),
+        mail: lazyMapModules ? null : load('mail/MailCommand').default.getInstance(),
     };
     const receive = (name, data = {}) => {
         const bytes = proto.encode(name, data); assert.ok(bytes, 'fixture 编码失败 ' + name);
@@ -74,6 +76,7 @@ function harness(lazyMapModules = false) {
     };
     for (const key of ['showToast', 'battleStarted', 'battleFinished', 'updateCityBuilds']) events.on(E[key], d => notices.push([key, d]), notices);
     return { ...commands, proto, events, S, E, net, sent, notices, role, timers, load, receive,
+        setSendAvailable: value => sendAvailable = value,
         authenticate: () => receive(S.s2c_user_login_ok),
         loaded: () => receive(S.s2c_client_load_ok),
         disconnect: () => events.emit(net.ServerDisconnected),
@@ -85,9 +88,10 @@ function test(name, run) { if (filter && !filter.test(name)) return; run(); pass
 const info = (id = 17) => ({ brief: { allianceId: id, name: '长安', flag: 4, joinType: 2, notice: '一起出关', memberCount: 3, memberMax: 40, level: 1 }, leaderId: big, manifesto: '守望相助', createTime: 1 });
 const message = (msgId, channel = 1, senderId = big, targetId = 0) => ({ msgId, channel, senderId, targetId, senderName: '玩家', content: '消息', time: Number(msgId) || 1 });
 
-test('Main 登录前初始化任务、地图与战报，加载确认后请求，不再漏接会话', () => {
+test('Main 登录前初始化任务、邮件、地图与战报，加载确认后请求，不再漏接会话', () => {
     const h = harness(true);
     assert.equal(h.events.events.has(h.S.s2c_req_task_list), false, '复现首次打开地图才创建任务模块');
+    assert.equal(h.events.events.has(h.S.s2c_req_mail_list), false, '邮件不能等首次打开界面才注册');
     const engine = { Component: class {}, Node: class { static EventType = { SIZE_CHANGED: 'size' }; },
         assert: value => assert.ok(value), view: { on() {} },
         _decorator: { ccclass: () => v => v, property: () => () => {} } };
@@ -100,6 +104,7 @@ test('Main 登录前初始化任务、地图与战报，加载确认后请求，
         './network/pto/ProtoManager': { ProtoManager: { getInstance: () => ({ init: () => ({ then() {} }) }) } },
         './world/WorldCommand': h.load('world/WorldCommand'),
         './progression/ProgressionCommand': h.load('progression/ProgressionCommand'),
+        './mail/MailCommand': h.load('mail/MailCommand'),
         './build/BuildCommand': h.load('build/BuildCommand'),
         './battle/BattleCommand': h.load('battle/BattleCommand'),
     };
@@ -109,25 +114,34 @@ test('Main 登录前初始化任务、地图与战报，加载确认后请求，
         || { default: { getInstance: () => ({}) } }, mod, mod.exports);
     const main = new mod.exports.default(); main.node = { on() {} }; main.getComponent = () => ({}); main.alignUiCamera = () => {};
     main.onLoad();
+    assert.equal(h.events.events.has(h.S.s2c_req_mail_list), true, 'Main 必须在登录前注册邮件模块');
     const progress = h.load('progression/ProgressionCommand').default.getInstance();
+    const mail = h.load('mail/MailCommand').default.getInstance();
     const world = h.load('world/WorldCommand').default.getInstance();
     const battle = h.load('battle/BattleCommand').default.getInstance();
     assert.equal(progress.sessionReady, false);
     h.authenticate(); assert.equal(progress.sessionReady, true); assert.equal(world.sessionReady, true);
     assert.equal(battle.sessionReady, true);
+    assert.equal(mail.sessionReady, true);
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_mail_list).length, 0, '地图加载完成前不拉邮件');
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_report_list).length, 0);
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_task_list).length, 0, '加载阶段不抢跑任务请求');
     h.loaded();
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_report_list).length, 1);
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_task_list).length, 1);
+    assert.deepEqual(h.sent.filter(p => p.name === h.S.c2s_req_mail_list).map(p => p.data.mailKind), [1, 2, 3]);
+    h.receive(h.S.s2c_req_mail_list, { mailKind: 1, mailInfoList: [{ mailUid: big, mailId: 1, title: '登录后邮件' }] });
+    assert.equal(mail.listLoaded(1), true); assert.equal(mail.getList(1).length, 1);
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_march_list).length, 1);
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_activity_list).length, 0);
     h.receive(h.S.s2c_req_task_list, { taskList: [{ taskId: 1001, taskType: 1, state: 1, progress: 1 }] });
     assert.equal(progress.tasksLoaded, true); assert.equal(progress.getTasks()[0].taskId, 1001);
     assert.equal(progress.claimTask(1001), true);
     h.disconnect(); assert.equal(progress.sessionReady, false); assert.equal(progress.tasksLoaded, false);
+    assert.equal(mail.sessionReady, false); assert.equal(mail.listLoaded(1), false); assert.equal(mail.getList(1).length, 0);
     assert.equal(progress.getTasks().length, 0); assert.equal(world.marches.values().length, 0);
     h.authenticate(); h.loaded();
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_mail_list).length, 6, '重连后自动恢复三个邮件分类');
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_task_list).length, 2);
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_get_task_reward).length, 1, '重连不重发领奖');
     h.receive(h.S.s2c_req_task_list, { taskList: [{ taskId: 1002, taskType: 1, state: 0, progress: 0 }] });
@@ -138,7 +152,7 @@ test('MOVE 按坐标无实体移动，确认后同步位置；忙碌、重复、
     const h = harness();
     const config = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/TargetType.json'), 'utf8'));
     const type = h.load('world/WorldCommand').MarchTargetType.Move;
-    assert.equal(type, config.find(c => c.Enum === 'MOVE').Id);
+    assert.equal(type, Object.values(config).find(c => c.Enum === 'MOVE').Id);
     assert.equal(h.world.moveTroop(1, { x: 0, y: 999 }), false);
     h.authenticate();
     assert.equal(h.world.moveTroop(1, { x: 0, y: 999 }), true);
@@ -601,5 +615,157 @@ test('石料补配置即可占领，按STONE枚举查找，不假定类型/模�
     assert.equal(land.Id, 7303); assert.equal(land.OutputItem, 9);
     h.receive(h.S.s2c_aoi_enter, { entities: [{ entityId: other, entityType: 4, cfgId: 7303, pos: { x: 10, y: 20 } }] });
     assert.equal(h.world.resourceLandIssue(10, 20, 54, 3), ''); assert.equal(h.world.occupyResourceLand(1, other), true);
+});
+test('任务查询自动退避重试，合并推送，成功后停止重试', () => {
+    const h = harness(); h.authenticate();
+    assert.equal(h.progress.requestTasks(), true);
+    assert.equal(h.progress.requestTasks(), false, '同一查询不能并发');
+    h.tick(8000); assert.equal(h.sent.length, 1, '超时不立即忙重试');
+    assert.equal(h.notices.filter(([name]) => name === 'showToast').length, 0, '自动查询不弹手动重试提示');
+    h.tick(2000); assert.equal(h.sent.length, 2);
+    h.tick(8000); h.tick(2000); assert.equal(h.sent.length, 2, '第二次等待延长至四秒');
+    h.tick(4000); assert.equal(h.sent.length, 3);
+    h.receive(h.S.s2c_sync_task, { taskInfo: { taskId: 1002, taskType: 1, progress: 1, state: 0 } });
+    h.receive(h.S.s2c_req_task_list, { taskList: [] });
+    assert.equal(h.progress.tasks.get(1002).progress, 1, '自动补拉期间的推送不丢失');
+    assert.equal(h.progress.tasksLoaded, true);
+    assert.equal(h.timers.size, 0, '成功确认后取消所有重试');
+});
+
+test('邮件列表和附件自动补拉，退避期间的迟到回包取消重试', () => {
+    const h = harness(); h.authenticate();
+    h.mail.requestList(1); h.tick(8000); h.tick(2000);
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_mail_list).length, 2);
+    h.receive(h.S.s2c_req_mail_list, { mailKind: 1, mailInfoList: [{ mailId: 1, mailUid: big }] });
+    h.mail.requestDetail(1, big); h.tick(8000); h.tick(2000);
+    assert.equal(h.sent.at(-1).data.mailUid, big);
+    h.receive(h.S.s2c_req_mail_detail, { mailUid: big, rewardList: [{ rewardType: 1, itemId: 4, itemCount: 200 }] });
+    assert.equal(h.mail.getDetail(big).rewardList[0].itemCount, 200);
+    h.mail.requestList(2); h.tick(8000);
+    const count = h.sent.length;
+    h.receive(h.S.s2c_req_mail_list, { mailKind: 2, mailInfoList: [] });
+    h.tick(2000);
+    assert.equal(h.sent.length, count, '空列表是成功结果，不再轮询');
+    assert.equal(h.mail.listLoaded(2), true); assert.equal(h.timers.size, 0);
+});
+
+test('排行自动重试保留页码，新查询替换旧的待重试页', () => {
+    const h = harness(); h.authenticate();
+    h.rank.requestRank(1, 21, 20); h.tick(8000); h.tick(2000);
+    assert.deepEqual(plain(h.sent.at(-1).data), { rankType: 1, start: 21, count: 20 });
+    h.tick(8000); h.rank.requestRank(1, 41, 20);
+    const count = h.sent.length; h.tick(4000);
+    assert.equal(h.sent.length, count, '旧页的退避定时器已取消');
+    h.receive(h.S.s2c_req_rank_list, { rankType: 1, rankList: [] });
+    assert.ok(h.rank.pages.has('1:41:20')); assert.equal(h.timers.size, 0);
+});
+
+test('建筑异常快照自动恢复，查询发送失败退避且断线取消，写操作不重放', () => {
+    const h = harness(); h.authenticate();
+    h.build.requestBuildings();
+    h.receive(h.S.s2c_req_build, { buildList: [{ bid: 0, level: 1 }] });
+    assert.equal(h.build.loaded, false); h.tick(2000);
+    h.receive(h.S.s2c_sync_build, { bid: 1, level: 3 });
+    h.receive(h.S.s2c_req_build, { buildList: [{ bid: 1, level: 2 }] });
+    assert.equal(h.build.levels.get(1), 3); assert.equal(h.build.loaded, true);
+    assert.equal(h.build.loadError, ''); assert.equal(h.timers.size, 0);
+    h.build.upgrade(1); h.tick(8000); h.tick(2000); h.tick(30000);
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_up_build).length, 1, '升级不能自动重复发送');
+    h.proto._isReady = false;
+    assert.equal(h.progress.requestTasks(), false); assert.equal(h.timers.size, 1);
+    h.tick(2000); assert.equal(h.timers.size, 1, '发送失败也只有一个退避定时器');
+    h.disconnect(); const count = h.sent.length;
+    for (const delay of [2000, 4000, 8000, 16000, 30000]) h.tick(delay);
+    assert.equal(h.timers.size, 0); assert.equal(h.sent.length, count);
+});
+test('请求发送被拒绝不留下超时锁，恢复后可重新提交', () => {
+    const h = harness(); h.authenticate(); h.setSendAvailable(false);
+    assert.equal(h.world.moveTroop(1, { x: 30, y: 40 }), false);
+    assert.equal(h.world.requestInFlight('march:1'), false);
+    assert.equal(h.sent.length, 0); assert.equal(h.timers.size, 0);
+    h.tick(8000); assert.equal(h.notices.length, 0);
+    h.setSendAvailable(true);
+    assert.equal(h.world.moveTroop(1, { x: 30, y: 40 }), true);
+});
+
+test('行军拦截后回读服务器状态，不再追加超时或重发出征', () => {
+    const h = harness(); h.authenticate();
+    const reasons = ['目标不存在', '此处不能占领', '城池范围内不能占领', '等级不足', '不能攻打同盟领地',
+        '资源尚未恢复', '已有部队在占领', '已有部队驻守', '已有部队在采集', '目标无法到达'];
+    for (const reason of reasons) {
+        assert.equal(h.world.occupyResourceLand(1, 30, 40), true);
+        const oldTimer = [...h.timers.values()].find(t => t.delay === 8000).fn;
+        h.receive(h.S.s2c_tell_me, { msg: reason });
+        assert.equal(h.sent.at(-1).name, h.S.c2s_req_march_list);
+        assert.equal(h.world.requestInFlight('march:1'), true, '回读完成前不能假装请求已经结束');
+        h.receive(h.S.s2c_req_march_list, { marchList: [] });
+        assert.equal(h.world.requestInFlight('march:1'), false);
+        oldTimer(); h.tick(8000);
+        assert.equal(h.notices.length, 0); assert.equal(h.timers.size, 0);
+    }
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_march).length, reasons.length, '不自动重放写操作');
+    assert.equal(h.world.marches.values().length, 0, '被拒绝不伪造成功的行军');
+});
+
+test('拦截前已发出的旧快照与旧超时不能清掉后来的同队指令', () => {
+    const h = harness(); h.authenticate();
+    h.world.requestMarches();
+    h.world.moveTroop(1, { x: 30, y: 40 });
+    const oldTimeout = [...h.timers.values()].at(-1).fn;
+    h.receive(h.S.s2c_tell_me, { msg: '目标无法到达' });
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_march_list).length, 1);
+    h.receive(h.S.s2c_req_march_list, { marchList: [] });
+    assert.equal(h.world.requestInFlight('march:1'), true, '旧快照不证明后发指令已处理');
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_march_list).length, 2, '等待旧查询结束后再回读');
+    h.receive(h.S.s2c_march, { marchInfo: { troopIdx: 1, state: 2, endPos: { x: 30, y: 40 } } });
+    h.world.moveTroop(1, { x: 50, y: 60 });
+    h.receive(h.S.s2c_req_march_list, { marchList: [] });
+    oldTimeout();
+    assert.equal(h.world.requestInFlight('march:1'), true, '同名新请求保留独立超时锁');
+    assert.equal(h.notices.length, 0);
+});
+
+test('无关提示不清请求，真实无响应仍提示超时且断线旧计时器失效', () => {
+    const h = harness(); h.authenticate(); h.world.moveTroop(1, { x: 30, y: 40 });
+    for (const msg of ['指令使用成功', '标记已达上限', '资源不足']) h.receive(h.S.s2c_tell_me, { msg });
+    assert.equal(h.sent.length, 1); assert.equal(h.world.requestInFlight('march:1'), true);
+    h.tick(8000);
+    assert.deepEqual(plain(h.notices), [['showToast', '服务器响应超时，请重试']]);
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_march).length, 1);
+    const callbacks = [...h.timers.values()].map(t => t.fn);
+    h.disconnect(); h.authenticate();
+    h.world.moveTroop(1, { x: 50, y: 60 });
+    const count = h.sent.length;
+    callbacks.forEach(fn => fn());
+    assert.equal(h.sent.length, count); assert.equal(h.world.requestInFlight('march:1'), true);
+    assert.equal(h.notices.filter(([name]) => name === 'showToast').length, 1);
+});
+
+test('建造拦截后刷新建筑快照解锁，等级和其他模块请求保持正确', () => {
+    const h = harness(); h.authenticate();
+    h.build.requestBuildings(); h.receive(h.S.s2c_req_build, { buildList: [{ bid: 1, level: 3 }] });
+    h.world.moveTroop(1, { x: 30, y: 40 });
+    h.build.upgrade(1);
+    h.receive(h.S.s2c_tell_me, { msg: '前置建筑不足' });
+    assert.equal(h.sent.at(-1).name, h.S.c2s_req_build);
+    h.receive(h.S.s2c_req_build, { buildList: [{ bid: 1, level: 3 }] });
+    assert.equal(h.build.requestInFlight('build:1'), false); assert.equal(h.build.levels.get(1), 3);
+    assert.equal(h.world.requestInFlight('march:1'), true, '不能清掉另一个模块的正常请求');
+    h.receive(h.S.s2c_march, { marchInfo: { troopIdx: 1, state: 1 } });
+    h.tick(8000); assert.equal(h.notices.filter(([n]) => n === 'showToast').length, 0);
+});
+
+test('标记服务端上限拦截后同步真实列表，不追加成功或超时提示', () => {
+    const h = harness(), marks = h.load('world/MapMarkCommand').default.getInstance();
+    h.load('core/ConfigManager').default.getInstance().loadConfigs([{ name: 'Global', json: [{ Id: 18, value1: 10 }] }]);
+    h.authenticate(); marks.requestList(); h.receive(h.S.s2c_req_mark_list, { markList: [] });
+    assert.equal(marks.add({ x: 30, y: 40 }), true);
+    h.receive(h.S.s2c_tell_me, { msg: '标记已达上限' });
+    assert.equal(h.sent.at(-1).name, h.S.c2s_req_mark_list); assert.equal(marks.busy, true);
+    h.receive(h.S.s2c_req_mark_list, { markList: [{ pos: { x: 20, y: 20 } }] });
+    assert.equal(marks.busy, false); assert.equal(marks.has({ x: 30, y: 40 }), false);
+    assert.equal(marks.has({ x: 20, y: 20 }), true);
+    h.tick(8000); assert.equal(h.notices.length, 0);
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_add_mark).length, 1);
 });
 console.log(`通过 ${passed} 项 game_common 新协议回归`);

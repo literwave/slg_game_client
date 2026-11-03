@@ -3,6 +3,8 @@ const { ccclass, property } = _decorator;
 
 import MapBaseLayerLogic from "./MapBaseLayerLogic";
 import MapUtil from "./MapUtil";
+import MapDepthLayer from './MapDepthLayer';
+import { cityFootprintRadius } from './CityFootprint';
 import SysCityLogic from "./entries/SysCityLogic";
 import { MapBuildData } from "./MapBuildProxy";
 import { EventMgr } from '../utils/EventMgr';
@@ -56,6 +58,9 @@ export default class MapSysCityLogic extends MapBaseLayerLogic {
         let position: Vec2 = MapUtil.mapCellToPixelPoint(new Vec2(cityData.x, cityData.y));
         item.setPosition(new Vec3(position.x, position.y, 0));
         item.getComponent(SysCityLogic).setCityData(cityData);
+        const span = cityFootprintRadius(cityData.level) * 2 + 1;
+        MapDepthLayer.forLayer(this.parentLayer)?.building(item,
+            MapUtil.tileSize.width * span, MapUtil.tileSize.height * span);
     }
 
     public getIdByData(data: any): number {

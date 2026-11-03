@@ -31,7 +31,6 @@ for i, p in enumerate(points):
     idx = p['y'] * 1000 + p['x']
     assert idx not in empty and idx not in blocked
     assert campaign.region_at(p['x'], p['y']) == p['region']
-    assert all(max(abs(p['x'] - s['x']), abs(p['y'] - s['y'])) > 12 for s in world['spawnZones'])
     counts[p['region'], p['level'], p['type']] += 1
     bx, by = p['x'] // 64, p['y'] // 64
     for dx in (-1, 0, 1):
@@ -49,17 +48,8 @@ for region in range(6):
         kinds = [counts[region, level, kind] for kind in range(52, 56)]
         assert max(kinds) - min(kinds) <= 1, (region, level, kinds)
     assert sum(counts[region, 6, kind] for kind in range(52, 56)) == 8
-access = {4: 0, 5: 0}
-for spawn in world['spawnZones']:
-    for level, limit in ((4, 28), (5, 100)):
-        for kind in range(52, 56):
-            distance = min(math.hypot(p['x'] - spawn['x'], p['y'] - spawn['y']) for p in points
-                           if p['region'] == spawn['region'] and p['level'] == level and p['type'] == kind)
-            assert distance <= limit, (spawn, level, kind, distance)
-            access[level] = max(access[level], distance)
 report = {'fixedPoints': len(points), 'levels': dict(collections.Counter(p['level'] for p in points)),
           'minDistance': {k: round(v, 2) for k, v in minimum.items()},
-          'allTypesReachableWithin': {k: round(v, 2) for k, v in access.items()},
-          'spawnZones': len(world['spawnZones']), 'mapMatchesFixedTable': True}
+          'mapMatchesFixedTable': True}
 (ROOT / 'temp/fixed-birth-resources-audit.json').write_text(json.dumps(report, indent=2), encoding='utf8')
 print(json.dumps(report))

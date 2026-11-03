@@ -29,14 +29,23 @@ const cc = { Component, Node, UITransform, Graphics, Label, Color, Camera, Vec2,
     NodePool: class { clear() {} }, view: { getVisibleSize: () => ({ width: 1280, height: 720 }) },
     _decorator: { ccclass: () => c => c, property: () => () => {} } };
 let now = 1000, mine = '9007199254740993', refreshes = 0;
-const world = { entities: new Map(), marches: { values: () => marches }, occupyCountdownAt(x, y, t) {
-    return [...this.entities.values()].find(e => e.pos?.x === x && e.pos?.y === y && e.startTime > 0 && e.endTime > e.startTime) || null;
+const world = { entities: new Map(), marches: { values: () => marches }, resourceLandAt(x, y) {
+    return [...this.entities.values()].find(e => e.entityType === 4 && e.pos?.x === x && e.pos?.y === y);
 }, refreshView() { refreshes++; } };
+// 查询使用实际 WorldCommand 代码，不能在桩中复制旧规则掩盖过期计时。
+const worldFile = path.join(scripts, 'world/WorldCommand.ts');
+const ast = ts.createSourceFile(worldFile, fs.readFileSync(worldFile, 'utf8'), ts.ScriptTarget.Latest, true);
+const method = ast.statements.find(ts.isClassDeclaration).members.find(m => m.name?.getText(ast) === 'occupyCountdownAt');
+const timerModule = { exports: {} };
+new Function('module', ts.transpileModule('module.exports=class Timer {' + method.getText(ast) + '}',
+    { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText)(timerModule);
+world.occupyCountdownAt = timerModule.exports.prototype.occupyCountdownAt;
 let marches = [];
 const util = { areaCellSize: {}, mapSize: { width: 1000, height: 1000 }, tileSize: { width: 200, height: 100 },
     getIdByCellPoint: (x, y) => y * 1000 + x,
     mapCellToPixelPoint: p => new Vec2((p.x - p.y) * 100, (20 - p.x - p.y) * 50) };
 const stubs = {
+    'map/WorldCampaign': { default: { gateAt: () => null } },
     'map/MapUtil': { default: util }, 'map/MapCommand': { default: { getInstance: () => ({ proxy: { getResData: () => ({ type: 52 }) } }) } },
     'map/MapProxy': { MapResType: { SYS_FORTRESS: 50, WOOD: 52, GRAIN: 55 } },
     'map/entries/ResLogic': { default: class {} },
@@ -74,6 +83,13 @@ assert.equal(res.territoryLayer.parent, map); assert.ok(res.territoryLayer.getSi
 const other = res.claimViews.get(10011); assert.ok(other.node.activeInHierarchy);
 assert.equal(other.node.children.length, 1, '已占领地块仅有轻薄边界，不创建旗帜');
 res.refreshOverview(true); resources.active = false;
+const refreshOwnership = res.refreshOwnership;
+let repeatedRefreshes = 0;
+res.refreshOwnership = function () { repeatedRefreshes++; return refreshOwnership.call(this); };
+for (let i = 0; i < 120; i++) res.refreshOverview(true);
+assert.equal(repeatedRefreshes, 0, '平移跨区不重建同一批领地；归属更新保留独立入口');
+res.refreshOverview(false); assert.equal(repeatedRefreshes, 1, '真实档位切换仍刷新');
+res.refreshOverview(true); res.refreshOwnership = refreshOwnership;
 assert.ok(other.node.activeInHierarchy, '缩远隐藏资源节点后，领地保持显示');
 camera.orthoHeight = 900; res.lateUpdate(); assert.ok(other.node.activeInHierarchy);
 cameraNode.setPosition(10000, 10000); res.lateUpdate(); assert.equal(other.node.active, false);
@@ -87,15 +103,32 @@ marches = [{ targetType: 3, state: 2, endPos: { x: 9, y: 9 }, startTime: 995, en
 res.refreshOwnership(); assert.equal(res.landClaims.get(10009).owner, 'pending');
 assert.equal(res.landClaims.get(9009).owner, 'pending'); assert.equal(res.landClaims.has(8008), false, '在路上不画占领完成/占领中');
 assert.ok(res.claimViews.get(9009).node.getChildByName('OccupyBar').active, '无资源的占领中空地也有读条');
-now = 1011; res.tickOccupyProgress();
-assert.equal(res.landClaims.get(10009).owner, 'pending'); assert.equal(res.landClaims.get(9009).owner, 'pending');
-assert.match(res.claimViews.get(9009).node.getChildByName('OccupyPending').getComponent(Label).string, /等待占领确认/);
-res.tickOccupyProgress(); assert.equal(refreshes, 2, '每个过期计时仅触发一次视野校准，不每帧发包');
+const pending = res.claimViews.get(9009), timerData = { ...world.entities.get(7) };
+now = 1009; res.tickOccupyProgress();
+assert.match(pending.node.getChildByName('OccupyPending').getComponent(Label).string, /占领中 1秒/);
+// 绘制层即使还拿着旧 timer，也不能生成永久“等待确认”字样。
+pending.setProgress(timerData, 1010);
+assert.equal(pending.node.getChildByName('OccupyPending').active, false);
+assert.equal(pending.node.getChildByName('OccupyBar').active, false);
+now = 1010; res.tickOccupyProgress();
+assert.equal(res.landClaims.get(10009).owner, 'other', '过期后仍按服务端的他人归属显示，不能直接变绿');
+assert.equal(res.landClaims.has(9009), false, '未确认归属的空地恢复普通地块');
+assert.ok(pending.node.destroyed && !pending.node.active, '文字和进度条随过期标记回收');
+assert.equal(res.claimViews.get(10009).node.getChildByName('OccupyBar').active, false);
+assert.deepEqual(world.entities.get(7), timerData, '不能在显示层改写 ownerId 或清零服务器时间');
+res.tickOccupyProgress(); assert.equal(refreshes, 1, '同帧结束合并刷新，之后不持续发包');
+now = 1200; res.refreshOwnership(); res.tickOccupyProgress();
+assert.equal(res.landClaims.get(10009).owner, 'other'); assert.equal(res.landClaims.has(9009), false);
+assert.equal(refreshes, 1, '重新进入视野或收到重复过期数据都不会复活确认态');
 entity(6, 9, 10, '9007199254740994', { startTime: 0, endTime: 0 });
 entity(7, 9, 9, mine, { startTime: 0, endTime: 0 });
 res.refreshOwnership();
 assert.equal(res.landClaims.get(10009).owner, 'other'); assert.equal(res.landClaims.get(9009).owner, 'mine');
 assert.equal(res.claimViews.get(10009).node.getChildByName('OccupyBar').active, false, '服务器确认后清理读条');
+entity(7, 9, 9, mine, { startTime: 1199, endTime: 1210 }); res.refreshOwnership();
+assert.equal(res.landClaims.get(9009).owner, 'pending', '同一格的新占领周期仍正常显示');
+now = 1210; res.tickOccupyProgress();
+assert.equal(res.landClaims.get(9009).owner, 'mine'); assert.equal(refreshes, 2);
 entity(2, 11, 10, 0); res.refreshOwnership(); assert.ok(other.node.destroyed, '释放归属清理旧标记');
 world.entities.clear(); marches = []; res.refreshOwnership(); assert.equal(res.claimViews.size, 0, '离开 AOI/断线清理');
 const layer = res.territoryLayer; res.onDestroy(); assert.ok(layer.destroyed);

@@ -1,6 +1,7 @@
 
-import { _decorator, Component, Label, Button, Node, tween, Vec3 } from 'cc';
+import { _decorator, Component, Label, Button } from 'cc';
 import { AudioManager } from '../../common/AudioManager';
+import DialogView from './DialogView';
 const {ccclass, property} = _decorator;
 
 export class DialogType {
@@ -24,30 +25,33 @@ export default class Dialog extends Component {
     protected closeCB: Function = null;
     protected confirmCB: Function = null;
     protected cancelCB: Function = null;
+    private dialogView: DialogView = null;
 
+    protected onLoad(): void {
+        this.prepare();
+    }
+
+    protected onEnable(): void {
+        this.dialogView?.refreshSize();
+    }
+
+    protected onDestroy(): void {
+        this.dialogView?.dispose();
+        this.closeCB = this.confirmCB = this.cancelCB = null;
+    }
+
+    private prepare(): void {
+        if (!this.dialogView) this.dialogView = new DialogView(this.node, this.text, this.confirmBtn, this.cancelBtn);
+    }
 
     protected close(): void {
-        if (this.closeCB){
-            this.closeCB()
-        }
+        if (this.closeCB) this.closeCB();
         this.node.active = false;
     }
 
     public show(text: string, type: number): void {
-
-        
-
-       this.text.string = text;
-       if(type == DialogType.Default){
-            this.confirmBtn.node.active = true;
-            this.cancelBtn.node.active = true;
-       }else if(type == DialogType.OnlyCancel){
-            this.confirmBtn.node.active = false;
-            this.cancelBtn.node.active = true;
-       }else if(type == DialogType.OnlyConfirm){
-            this.confirmBtn.node.active = true;
-            this.cancelBtn.node.active = false;
-        }
+        this.prepare();
+        this.dialogView.show(text, type !== DialogType.OnlyCancel, type === DialogType.Default || type === DialogType.OnlyCancel);
     }
 
     public setClose(cb :Function){

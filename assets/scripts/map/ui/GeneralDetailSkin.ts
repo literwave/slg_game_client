@@ -125,7 +125,7 @@ function attribute(label: Label, title: string, x: number, y: number, width: num
     const legacyRule = row.getChildByName('AttributeRule');
     if (legacyRule) legacyRule.active = false;
     inkSurface(row, 'AttributeSurface', width, height, filled ? FIELD : null, null);
-    const titleWidth = title === '等级' ? 36 : 66;
+    const titleWidth = title === '等级' || title === '经验' ? 36 : 66;
     const pad = filled ? 12 : 0;
     detailCaption(row, 'AttributeTitle', title, -width / 2 + pad + titleWidth / 2, 0, titleWidth,
         titleSize, SOFT, Label.HorizontalAlign.LEFT, Math.min(32, height - 4));
@@ -185,9 +185,12 @@ export function styleGeneralDetail(parts: GeneralDetailParts): void {
     if (grid) {
         manualLayout(grid);
         place(grid, rightX, centerY, rightWidth, bodyHeight);
-        attribute(parts.lvLabel, '等级', innerWidth / 2 - 60, half - nameTop, 120, compact ? 30 : 34, 18);
-        attribute(parts.expLabel, '经验', 0, half - expOffset,
-            innerWidth, expHeight, compact ? 16 : 17, false, compact ? 14 : 16);
+        const experienceWidth = Math.min(innerWidth, compact ? 228 : 240);
+        attribute(parts.lvLabel, '等级', (innerWidth - experienceWidth) / 2, half - nameTop,
+            experienceWidth, compact ? 30 : 34, compact ? 16 : 17, false, compact ? 14 : 16);
+        attribute(parts.expLabel, '经验', (innerWidth - experienceWidth) / 2, half - expOffset,
+            experienceWidth, expHeight, compact ? 16 : 17, false, compact ? 14 : 16);
+        if (parts.expLabel) parts.expLabel.overflow = Label.Overflow.SHRINK;
         detailCaption(grid, 'AttributesSection', '基础属性', 0, half - sectionTop - sectionHeight / 2,
             innerWidth, 14, C.gold, Label.HorizontalAlign.LEFT, sectionHeight);
         const fields: Array<[Label, string]> = [
@@ -244,15 +247,14 @@ export function styleGeneralDetail(parts: GeneralDetailParts): void {
             const label = parts.skillNameLab[index];
             const textWidth = narrow ? cellWidth - 12 : cellWidth - iconSize - 38;
             const textX = narrow ? 0 : cellWidth / 2 - 12 - textWidth / 2;
-            detailText(label, textX, narrow ? (tight ? -26 : compact ? -31 : -37) : 12,
+            detailText(label, textX, narrow ? (tight ? -26 : compact ? -31 : -37) : 0,
                 textWidth, tight ? 15 : compact ? 16 : narrow ? 17 : 18,
                 empty ? SOFT : C.text, narrow ? Label.HorizontalAlign.CENTER : Label.HorizontalAlign.LEFT,
                 tight ? 24 : compact ? 28 : 32);
             if (label && empty) label.string = '选择技能';
             if (label) label.overflow = Label.Overflow.SHRINK;
-            const hint = detailCaption(cell, 'SkillSlotType', index === 0 ? '自带技能' : '学习技能',
-                textX, -18, textWidth, 13, SOFT);
-            hint.node.active = !narrow;
+            const hint = cell.getChildByName('SkillSlotType');
+            if (hint) hint.active = false;
             detailText(icon.getChildByName('lvLab')?.getComponent(Label), 0, -iconSize / 2 + 9,
                 iconSize, tight ? 10 : compact ? 11 : 12, C.text, Label.HorizontalAlign.CENTER, compact ? 16 : 18);
             // 整格沿用原图标回调，并关闭图标按钮，避免父子重复触发。

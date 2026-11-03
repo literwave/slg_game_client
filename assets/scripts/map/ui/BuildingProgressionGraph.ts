@@ -75,14 +75,14 @@ export function layoutBuildingGraph(nodes: BuildingGraphNode[], viewportWidth: n
     const width = Math.max(240, viewportWidth), gap = 36, padding = 28;
     const columns = Math.max(1, Math.min(3, Math.floor((width - padding * 2 + gap) / (160 + gap))));
     const cardWidth = Math.min(208, (width - padding * 2 - (columns - 1) * gap) / columns);
-    const cardHeight = 100, rowGap = 50, rows: Array<{ rank: number; y: number; label: string }> = [];
+    const cardHeight = 174, rowGap = 36, rows: Array<{ rank: number; y: number; label: string }> = [];
     const ranks = Array.from(new Set(nodes.map(node => node.rank))).sort((a, b) => a - b);
     let top = 12;
     for (const rank of ranks) {
         const group = nodes.filter(node => node.rank === rank).sort((a, b) => a.type - b.type || a.level - b.level);
         rows.push({ rank, y: -top - 8, label: group.every(node => node.complete) ? '已满足前置'
             : rank === 0 ? '建设起点' : `第 ${rank} 层` });
-        top += 32;
+        top += 20;
         group.forEach((node, i) => {
             const row = Math.floor(i / columns), inRow = Math.min(columns, group.length - row * columns);
             node.x = (i % columns - (inRow - 1) / 2) * (cardWidth + gap);

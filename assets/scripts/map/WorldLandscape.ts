@@ -41,7 +41,7 @@ export default class WorldLandscape extends Component {
         this.groundFrame.texture = source.original?._texture || source.texture;
         this.groundFrame.packable = false; sprite.spriteFrame = this.groundFrame;
         const bytes = new Uint8Array(size.width * size.height * 4);
-        for (const id of config.riverCells) { bytes[id * 4] = 255; bytes[id * 4 + 3] = 255; }
+        for (const id of [...config.riverCells, ...(config.bridgeWaterCells || [])]) { bytes[id * 4] = 255; bytes[id * 4 + 3] = 255; }
         for (const id of config.mountainCells || []) { bytes[id * 4 + 1] = 255; bytes[id * 4 + 3] = 255; }
         this.riverImage = new ImageAsset({ _data: bytes, width: size.width, height: size.height,
             format: Texture2D.PixelFormat.RGBA8888, _compressed: false });
@@ -113,8 +113,10 @@ export default class WorldLandscape extends Component {
                 }
             }
         }
+        let membershipChanged = false;
         for (const [id, node] of this.activePatches) if (!wanted.has(id)) {
             node.active = false; this.pool.push(node); this.activePatches.delete(id);
+            membershipChanged = true;
         }
         for (const id of wanted) {
             if (this.activePatches.has(id)) continue;
@@ -130,9 +132,11 @@ export default class WorldLandscape extends Component {
             node.getComponent(UITransform).setAnchorPoint(.5, patch.anchorY ?? .22);
             node.setScale(patch.flipX ? -1 : 1, patch.heightScale || 1, 1);
             node.setPosition(patch.px, patch.py, 0); node.active = true; this.activePatches.set(id, node);
+            membershipChanged = true;
         }
-        [...this.activePatches.values()].sort((a, b) => b.position.y - a.position.y)
-            .forEach((node, index) => node.setSiblingIndex(index));
+        // 山体相对位置不随相机变化；仅在出入视野时重排，避免平移持续打散渲染批次。
+        if (membershipChanged) [...this.activePatches.values()].sort((a, b) => b.position.y - a.position.y)
+            .forEach((node, index) => { if (node.getSiblingIndex() !== index) node.setSiblingIndex(index); });
     }
 
     protected onDestroy(): void {

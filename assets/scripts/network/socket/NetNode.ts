@@ -131,24 +131,9 @@ export class NetNode {
         this._socket.onUnpackMessage = (typeName, msg) => { this.onMessage(typeName, msg) };
         this._socket.onError = (event) => { this.onError(event) };
         this._socket.onClosed = (event) => { this.onClosed(event) };
-        this._socket.onGetKey = () => { this.onGetKey() };
 
         EventMgr.on(NetEvent.ServerHandShake, this.onChecked, this);
         EventMgr.on(NetEvent.ServerSessionReady, this.onSessionReady, this);
-    }
-
-
-    protected onGetKey() {
-        this._state = NetNodeState.Working;
-
-        // if(this._connectOptions.type == NetNodeType.BaseServer){
-
-        // }else{
-        //     this.onChecked();
-        // }
-
-        // EventMgr.emit(NetEvent.ServerCheckLogin);
-
     }
 
 
@@ -171,37 +156,36 @@ export class NetNode {
     protected onConnected(event) {
         if (this._manualClose || this._state !== NetNodeState.Connecting) return;
 
-        // 链路已可发送验证包；业务会话仍需等待 ServerSessionReady。
-        this._state = NetNodeState.Working;
+        // WebSocket 打开不代表登录成功；网关验证期间只允许恢复会话的请求。
+        this._state = this._connectOptions?.type === NetNodeType.GateServer
+            ? NetNodeState.Checking : NetNodeState.Working;
 
         // 网关必须等身份验证和基础信息完成，不能仅因 WebSocket 打开就重置重试次数。
         if (this._connectOptions?.type !== NetNodeType.GateServer) this.clearConnectTimer();
         console.log("websocket onConnected:", event);
-        this.onGetKey()
-
-        // 直接调用 onChecked 处理队列中的请求
-        this.onChecked();
-
         if (this._relogin) {
             this._relogin = false;
             EventMgr.emit(NetEvent.ServerCheckLogin);
         }
+        this.onChecked();
     }
 
     // 连接验证成功，进入工作状态
     protected onChecked() {
-        if (this._manualClose || this._state !== NetNodeState.Working) return;
-        console.log("NetNode onChecked!")
+        if (this._manualClose || (this._state !== NetNodeState.Working
+            && this._state !== NetNodeState.Checking)) return;
 
         // 关闭连接或重连中的状态显示
-        this.updateNetTips(NetTipsType.Connecting, false);
-        this.updateNetTips(NetTipsType.ReConnecting, false);
+        if (this._state === NetNodeState.Working) {
+            this.updateNetTips(NetTipsType.Connecting, false);
+            this.updateNetTips(NetTipsType.ReConnecting, false);
+        }
 
         if (this._requests.length > 0) {
             const requests = this._requests.splice(0);
             for (let req of requests) {
                 if (req.sended == false) {
-                    this.socketSend(req);
+                    this.sendPack(req, req.beforeSessionReady);
                 }
 
             }
@@ -210,16 +194,19 @@ export class NetNode {
     }
 
     protected onSessionReady(): void {
-        if (this._manualClose || this._state !== NetNodeState.Working
+        if (this._manualClose || (this._state !== NetNodeState.Checking && this._state !== NetNodeState.Working)
             || this._connectOptions?.type !== NetNodeType.GateServer) return;
         this.clearConnectTimer();
         this._autoReconnect = this._autoReconnectMax;
         this._reconnectAttempt = 0;
+        this._state = NetNodeState.Working;
+        this.onChecked();
     }
 
     // 接收到一个完整的消息包
     protected onMessage(typeName: string, msg): void {
-        if (!this._manualClose && this._state === NetNodeState.Working && msg) {
+        if (!this._manualClose && (this._state === NetNodeState.Working
+            || this._state === NetNodeState.Checking) && msg) {
             EventMgr.emit(typeName, msg);
         }
     }
@@ -302,29 +289,32 @@ export class NetNode {
 
 
 
-    public send(send_data: any, force: boolean = false): void {
+    public send(send_data: any, force: boolean = false): boolean {
 
         let requestIns = this.createInvoke();
         requestIns.dat = send_data;
         requestIns.name = send_data.name;
         // 回包由 onMessage 按协议名分发给 Command；没有通用的请求应答匹配事件。
-        this.sendPack(requestIns, force);
+        return this.sendPack(requestIns, force);
     }
 
     // 正在建连时暂存请求；连接失败即丢弃，重连只重新发起登录验证。
     public sendPack(obj: RequestObject, force: boolean = false): boolean {
         // 登录页、重连间隔和已耗尽重试时，旧请求不能偷偷重新打开连接。
         if (this._manualClose || this._state === NetNodeState.Closed) return false;
+        obj.beforeSessionReady = force;
         if (!this.isHeartbeat(obj && obj.name)) {
             console.log("this._state", this._state);
         }
-        if (this._state == NetNodeState.Working || force) {
-            this.socketSend(obj);
+        // force 只允许跳过会话等待，不能跳过 WebSocket 建连。
+        if (this._state == NetNodeState.Working || (this._state == NetNodeState.Checking && force)) {
+            return this.socketSend(obj);
         }
 
         else if (this._state == NetNodeState.Checking ||
             this._state == NetNodeState.Connecting) {
             this._requests.push(obj);
+            return true;
         }
 
         else {
@@ -338,11 +328,12 @@ export class NetNode {
      * 打包发送
      * @param obj 
      */
-    public socketSend(obj: RequestObject) {
-        obj.startTime = new Date().getTime()
-        this._socket.packAndSend(obj.dat);
+    public socketSend(obj: RequestObject): boolean {
+        if (!this._socket.packAndSend(obj.dat)) return false;
+        obj.startTime = new Date().getTime();
         this._seqId += 1;
         obj.sended = true;
+        return true;
     }
 
 

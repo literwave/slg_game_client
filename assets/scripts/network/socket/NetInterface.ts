@@ -8,6 +8,7 @@ export class RequestObject {
     public autoReconnect: number = 0;  // -1 永久重连，0不自动重连，其他正整数为自动重试次数
     public seq: number = 0;             // 消息的序号
     public sended: boolean = false;        // 是否发送
+    public beforeSessionReady: boolean = false; // 登录验证及会话恢复请求可在验证阶段发送
     public otherData: any = {};
     public startTime: number = 0
 
@@ -17,6 +18,7 @@ export class RequestObject {
         this.autoReconnect = 0;
         this.seq = 0;
         this.sended = false;
+        this.beforeSessionReady = false;
         this.otherData = {};
         this.startTime = 0;
     }

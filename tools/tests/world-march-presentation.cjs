@@ -7,10 +7,10 @@ class Vec2 { constructor(x = 0, y = 0) { this.x = x; this.y = y; } }
 class Vec3 extends Vec2 {}
 class UITransform { height = 1; }
 class Sprite { enabled = true; }
-class Graphics { clear() { this.points = []; } moveTo(x, y) { this.points.push([x, y]); } lineTo(x, y) { this.points.push([x, y]); } stroke() {} }
+class Graphics { clear() { this.points = []; } moveTo(x, y) { this.points.push([x, y]); } lineTo(x, y) { this.points.push([x, y]); } stroke() {} ellipse() {} fill() {} }
 class Animation { play(name) { this.name = name; this.paused = false; } pause() { this.paused = true; } }
 class Node {
-    constructor(name = '') { this.name = name; this.children = []; this.components = new Map(); this.active = true; }
+    constructor(name = '') { this.name = name; this.children = []; this.components = new Map(); this.active = true; this.isValid = true; }
     get parent() { return this._parent; }
     set parent(value) { if (this._parent) this._parent.children.splice(this._parent.children.indexOf(this), 1); this._parent = value; if (value) value.children.push(this); }
     addChild(n) { n.parent = this; }
@@ -20,17 +20,26 @@ class Node {
     setPosition(x, y) { this.position = { x, y }; }
     setSiblingIndex(index) { const a = this.parent.children; a.splice(a.indexOf(this), 1); a.splice(index, 0, this); }
     setScale() {}
+    removeFromParent() { this.parent = null; }
 }
 class NodePool { items = []; size() { return this.items.length; } get() { return this.items.pop(); } put(n) { n.parent = null; this.items.push(n); } clear() { this.items = []; } }
-const cc = { Component, Vec2, Vec3, UITransform, Node, NodePool, Sprite, Graphics, Animation, Color: class {},
+const cc = { Component, Vec2, Vec3, UITransform, Node, NodePool, Sprite, Graphics, Animation, Color: class {}, isValid: n => !!n?.isValid,
     _decorator: { ccclass: () => c => c, property: () => () => {} }, Prefab: class {} };
 let now = 100000, marches = [];
+const entities = new Map(), ownerId = '9007199254740995';
 const util = { areaCellSize: { width: 10, height: 10 }, mapCellToPixelPoint: p => new Vec2((p.x - p.y) * 100, -(p.x + p.y) * 50) };
 const stubs = {
-    'map/MapUtil': { default: util }, 'map/MapCommand': {}, 'utils/DateUtil': { default: { getServerTime: () => now } },
+    'map/MapUtil': { default: util }, 'map/MapCommand': {},
+    'utils/DateUtil': { default: { getServerTime: () => now, monotonicNow: () => now } },
     'general/ArmyCommand': { default: { getInstance: () => ({ proxy: { getAllArmys: () => [] } }) } },
     'general/ArmyProxy': { ArmyCmd: { Idle: 0, Conscript: 5 } },
-    'world/WorldCommand': { default: { getInstance: () => ({ marches: { values: () => marches } }) }, MarchTargetType: { ReturnCity: 1, Move: 4 } },
+    'world/WorldCommand': { default: { getInstance: () => ({ entities,
+        marches: { values: () => marches, get: idx => marches.find(m => m.troopIdx === idx) }, occupyCountdownAt: () => null }) },
+        MarchTargetType: { ReturnCity: 1, Move: 4 } },
+    'login/LoginCommand': { default: { getInstance: () => ({ proxy: { getRoleData: () => ({ userId: ownerId }) } }) } },
+    'general/TroopCommand': { default: { getInstance: () => ({ proxy: { getTroop: () => null } }) } },
+    'network/pto/ProtocolCommand': { idKey: id => String(id ?? 0), hasId: id => id !== undefined && id !== null && String(id) !== '0' },
+    'map/entries/MarchFormation': { default: class { configure() {} setGuarding() {} update() {} destroy() {} } },
 };
 function load(name) {
     if (stubs[name]) return stubs[name]; if (cache.has(name)) return cache.get(name).exports;
@@ -59,21 +68,33 @@ const events = load('utils/EventMgr').EventMgr, E = load('common/LogicEvent').Lo
 const Layer = load('map/MapArmyLogic').default, layer = new Layer(); layer.parentLayer = new Node('ArmyLayer');
 layer.createArmy = () => { if (layer._armyPool.size()) return layer._armyPool.get(); const n = new Node('Army'); n.addComponent(Animation); return n; };
 layer.createArrow = () => { if (layer._arrowPool.size()) return layer._arrowPool.get(); const n = new Node('Arrow'); n.addComponent(UITransform); n.addComponent(Sprite); return n; };
-layer.onLoad(); assert.equal(layer.worldArmies.size, 0);
-marches = [march]; events.emit(E.updateMarches); assert.equal(layer.worldArmies.size, 1);
-const logic = layer.worldArmies.get(1), soldier = logic.aniNode;
-now = 101000; layer.update(); assert.deepEqual(soldier.position, { x: -1075, y: -1562.5 });
+layer.onLoad(); assert.equal(layer.aoiArmies.size, 0);
+const id = '9007199254740997';
+marches = [march]; events.emit(E.updateMarches);
+assert.equal(layer.aoiArmies.size, 0, '行军列表不能凭空生成未进入 AOI 的地图实体');
+entities.set(id, { entityId: id, entityType: 2, ownerId, pos: march.startPos,
+    path: march.path, startTime: march.startTime, endTime: march.endTime });
+events.emit(E.updateWorldEntities); assert.equal(layer.aoiArmies.size, 1);
+const logic = layer.aoiArmies.get(id), soldier = logic.aniNode;
+const advance = target => { while (now < target) { now = Math.min(target, now + 100); layer.update(); } };
+const positionIs = (x, y) => assert.ok(Math.hypot(soldier.position.x - x, soldier.position.y - y) < .00001);
+advance(101000); positionIs(-1075, -1562.5);
 const g = logic.arrowNode.getChildByName('WorldMarchRoute').getComponent(Graphics);
 assert.equal(g.points.length, 3, '折线保留服务端拐点'); assert.equal(logic.arrowNode.getComponent(Sprite).enabled, false);
-now = 103000; layer.update(); assert.deepEqual(soldier.position, { x: -1075, y: -1662.5 });
-assert.equal(soldier.getComponent(Animation).paused, false);
-now = 105000; layer.update(); assert.equal(soldier.getComponent(Animation).paused, true); assert.equal(march.state, 1);
-marches = [{ ...march, state: 2 }]; events.emit(E.updateMarches);
-assert.equal(layer.worldArmies.size, 1, 'MOVE 到达后保持驻留显示'); assert.equal(logic.arrowNode.active, false);
-marches = [{ ...march, targetType: 1, state: 2 }]; events.emit(E.updateMarches);
-assert.equal(layer.worldArmies.size, 0, '回城确认后回收'); assert.equal(layer._armyPool.size(), 1);
-marches = [{ ...march, troopIdx: 2 }]; now = 101000; events.emit(E.updateMarches);
-assert.equal(layer.worldArmies.get(2).aniNode, soldier, '复用既有行军预制体');
-assert.equal(soldier.getComponent(Animation).paused, false);
-marches = []; events.emit(E.updateMarches); assert.equal(layer.worldArmies.size, 0, '断线清除地图上的旧行军');
-layer.onDestroy(); console.log('PASS World 行军接入实际地图层、路线与动画、驻留、回城、对象池复用和清理');
+advance(103000); positionIs(-1075, -1662.5);
+advance(105000); assert.equal(logic.marching, false); assert.equal(march.state, 1);
+marches = [{ ...march, state: 2 }];
+entities.set(id, { ...entities.get(id), pos: march.endPos, path: [], startTime: 0, endTime: 0 });
+events.emit(E.updateWorldEntities);
+assert.equal(layer.aoiArmies.size, 1, 'AOI 到达后保持驻留显示'); assert.equal(logic.arrowNode.active, false);
+marches = []; events.emit(E.updateMarches);
+assert.equal(layer.aoiArmies.size, 1, '地图实体只由 AOI 移除，不因本人行军列表消失而提前回收');
+entities.clear(); events.emit(E.updateWorldEntities);
+assert.equal(layer.aoiArmies.size, 0); assert.equal(layer._armyPool.size(), 1);
+entities.set(id, { entityId: id, entityType: 2, ownerId, pos: march.startPos,
+    path: march.path, startTime: 105, endTime: 109 });
+events.emit(E.updateWorldEntities);
+assert.equal(layer.aoiArmies.get(id).aniNode, soldier, '复用既有行军预制体');
+assert.deepEqual(layer.aoiArmies.get(id).marchPath.points, march.path);
+entities.clear(); events.emit(E.updateWorldEntities); assert.equal(layer.aoiArmies.size, 0, '断线清除旧 AOI 部队');
+layer.onDestroy(); console.log('PASS AOI 行军接入实际地图层、后端路线、驻留、对象池复用和清理');

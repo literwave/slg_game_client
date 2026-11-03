@@ -10,6 +10,7 @@ function test(name, run) { run(); passed++; console.log('PASS ' + name); }
 function fixture() {
     let now = 0, serial = 0;
     const timers = new Map(), sockets = [], packets = [], retries = [], failures = [];
+    const encoded = [], sent = [], cachedLogins = [];
     const timeout = (fn, delay = 0, interval = 0) => {
         const id = ++serial; timers.set(id, { fn, at: now + delay, interval }); return id;
     };
@@ -76,7 +77,8 @@ function fixture() {
     const { LogicEvent } = load('assets/scripts/common/LogicEvent.ts');
     const { ServerConfig: S } = load('assets/scripts/config/ServerConfig.ts');
     const proto = { ProtoManager: { getInstance: () => ({
-        encode: () => new Uint8Array([1]), getIdByMsgType: () => 1, getMsgTypeById: () => 'Test.message', decode: () => ({ ok: true }),
+        encode: (name, payload) => { encoded.push({ name, payload }); return new Uint8Array([encoded.length]); },
+        getIdByMsgType: () => 1, getMsgTypeById: () => 'Test.message', decode: () => ({ ok: true }),
     }) } };
     const web = load('assets/scripts/network/socket/WebSock.ts', {
         '../../libs/crypto/crypto': {}, '../pto/ProtoManager': proto, '../../config/GameConfig': { GameConfig: {} },
@@ -86,15 +88,21 @@ function fixture() {
         '../../utils/EventMgr': { EventMgr },
     });
     const node = new nodeModule.NetNode(); node.init();
+    const packAndSend = node._socket.packAndSend.bind(node._socket);
+    node._socket.packAndSend = data => {
+        sent.push({ name: data.name, payload: encoded[data.msg?.[0] - 1]?.payload });
+        return packAndSend(data);
+    };
     const manager = { connect: options => node.connect(options), close: () => node.closeSocket(),
-        dropConnection: () => node.dropConnection(), send: data => node.send(data) };
+        dropConnection: () => node.dropConnection(), send: (data, force) => node.send(data, force) };
     EventMgr.on(NetEvent.ServerReconnecting, s => retries.push(s), retries);
     EventMgr.on(NetEvent.ServerReconnectFailed, s => failures.push(s), failures);
-    const loginData = { userId: 1, token: 'test-token', account: 'test', gateAddr: 'ws://gate.test' };
+    const loginData = { userId: 1, token: 'test-token', passwd: 'test-digest', account: 'test', gateAddr: 'ws://gate.test' };
     const Command = load('assets/scripts/login/LoginCommand.ts', {
         '../config/ServerConfig': { ServerConfig: S }, '../network/socket/NetManager': { NetManager: { getInstance: () => manager } },
         '../utils/Tools': { Tools: {} }, './LoginProxy': load('assets/scripts/login/LoginProxy.ts'),
-        '../network/socket/NetInterface': iface, '../utils/LocalCache': { LocalCache: { setLoginValidation() {} } },
+        '../network/socket/NetInterface': iface,
+        '../utils/LocalCache': { LocalCache: { setLoginValidation(data) { cachedLogins.push({ ...data }); } } },
         '../utils/DateUtil': { default: { monotonicNow: () => now } }, '../utils/EventMgr': { EventMgr },
         '../libs/crypto/md5': { Md5: { encrypt: value => value } }, '../common/LogicEvent': { LogicEvent },
         '../network/pto/ProtoManager': proto, './HeadIconProxy': { default: class { clear() {} } },
@@ -116,11 +124,83 @@ function fixture() {
         p.editName = { string: 'test' }; p.editPass = { string: '' }; p.loadEnterPrefab = () => {};
         p.onLoad(); return p;
     }
-    return { node, sockets, timers, packets, retries, failures, advance, EventMgr, NetEvent, LogicEvent,
+    const reply = (name, data) => node.onMessage(name, data);
+    return { node, sockets, timers, packets, retries, failures, sent, cachedLogins, reply, advance, EventMgr, NetEvent, LogicEvent,
         S, command, page, load, gate: { url: 'ws://gate.test', type: nodeModule.NetNodeType.GateServer },
-        ready(name = '主公') { EventMgr.emit(S.s2c_user_login_ok, {}); EventMgr.emit(S.s2c_user_base_info, { name }); },
+        ready(name = '主公') {
+            reply(S.s2c_user_login_ok, { userId: 1, serverId: 120 });
+            reply(S.s2c_user_base_info, { name });
+        },
     };
 }
+
+test('each reconnect verifies with the latest gateway token and preserves login fields', () => {
+    const f = fixture(); f.node.connect(f.gate); f.sockets[0].open();
+    f.reply(f.S.s2c_verify_login, { token: 'gateway-token-1' }); f.ready();
+    assert.equal(f.command.proxy.getLoginData().token, 'gateway-token-1');
+    assert.equal(f.cachedLogins.at(-1).passwd, 'test-digest');
+    assert.equal(f.cachedLogins.at(-1).gateAddr, 'ws://gate.test');
+    for (let round = 1; round <= 2; round++) {
+        f.sockets.at(-1).remoteClose(); f.advance(3000); f.sockets.at(-1).open();
+        const verify = f.sent.filter(p => p.name === f.S.c2s_verify_login).at(-1);
+        assert.equal(verify.payload.token, `gateway-token-${round}`);
+        assert.equal(String(verify.payload.userId), '1');
+        assert.equal(verify.payload.passwd, 'test-digest');
+        f.reply(f.S.s2c_verify_login, { token: `gateway-token-${round + 1}` }); f.ready();
+        f.reply(f.S.s2c_verify_login, {});
+        f.reply(f.S.s2c_verify_login, { token: '' });
+        assert.equal(f.command.proxy.getLoginData().token, `gateway-token-${round + 1}`);
+        assert.equal(f.cachedLogins.at(-1).token, `gateway-token-${round + 1}`);
+        assert.equal(f.timers.size, 0);
+    }
+    assert.equal(f.failures.length, 0);
+});
+
+test('initial gateway requests wait for verification and restored base info', () => {
+    const f = fixture(); f.node.connect(f.gate);
+    f.node.send({ name: 'Query.beforeLogin', msg: new Uint8Array([1]) });
+    f.command.role_enterServer(f.command.proxy.getLoginData());
+    assert.equal(f.sent.length, 0, 'even handshake packets must wait for socket open');
+    f.sockets[0].open();
+    assert.deepEqual(f.sent.map(p => p.name), [f.S.c2s_verify_login]);
+    f.reply(f.S.s2c_user_login_ok, { userId: 1, serverId: 120 });
+    assert.deepEqual(f.sent.map(p => p.name), [f.S.c2s_verify_login, f.S.c2s_user_base_info]);
+    f.reply(f.S.s2c_user_base_info, { name: 'ready' });
+    assert.deepEqual(f.sent.map(p => p.name), [f.S.c2s_verify_login, f.S.c2s_user_base_info, 'Query.beforeLogin']);
+    assert.equal(f.timers.size, 0);
+});
+
+test('automatic queries during reconnect cannot overtake gateway authentication', () => {
+    const f = fixture(); f.node.connect(f.gate); f.sockets[0].open(); f.ready('old');
+    f.sockets[0].remoteClose(); f.advance(3000); f.sent.length = 0;
+    f.node.send({ name: 'Query.duringConnect', msg: new Uint8Array([1]) });
+    f.sockets.at(-1).open();
+    assert.deepEqual(f.sent.map(p => p.name), [f.S.c2s_verify_login]);
+    f.node.send({ name: 'Query.duringVerify', msg: new Uint8Array([1]) });
+    f.reply(f.S.s2c_verify_login, { token: 'new-token' });
+    assert.equal(f.sent.length, 1, 'token alone does not make a session ready');
+    let success = 0;
+    f.EventMgr.on(f.NetEvent.ServerReconnectSuccess, () => {
+        success++;
+        assert.equal(f.command.proxy.getRoleData().name, 'restored');
+        assert.equal(f.command._baseInfoReady, true);
+    }, {});
+    f.ready('restored');
+    assert.equal(success, 1);
+    assert.deepEqual(f.sent.map(p => p.name), [f.S.c2s_verify_login, f.S.c2s_user_base_info,
+        'Query.duringConnect', 'Query.duringVerify']);
+});
+
+test('missing credentials stop reconnect without releasing unauthenticated requests', () => {
+    const f = fixture(); f.node.connect(f.gate); f.sockets[0].fail();
+    f.command.proxy.clear(); f.advance(3000);
+    f.node.send({ name: 'Query.noCredentials', msg: new Uint8Array([1]) });
+    f.sockets.at(-1).open();
+    assert.equal(f.sent.length, 0);
+    assert.equal(f.failures.length, 1);
+    assert.equal(f.timers.size, 0);
+    f.advance(60000); assert.equal(f.sockets.length, 2);
+});
 
 test('服务器离线只自动重连三次，耗尽后停止所有连接和定时器', () => {
     const f = fixture(); f.node.connect(f.gate);
@@ -256,6 +336,21 @@ test('地图内重连耗尽也自动返回登录，不显示等待点击的失�
     assert.equal(f.command._reconnecting, false); assert.equal(f.timers.size, 0);
     f.advance(120000); f.node.send({ name: 'Old.request' }); f.node.dropConnection();
     assert.equal(loginEntries, 1); assert.equal(f.sockets.length, 4);
+});
+
+test('发送结果逐层返回，关闭或失效的套接字不能报告已发送', () => {
+    const f = fixture(), packet = { name: 'Test.request', msg: new Uint8Array([1]) };
+    assert.equal(f.node.send(packet), false);
+    f.node.connect(f.gate);
+    assert.equal(f.node.send(packet), true, '建连期可进入现有发送队列');
+    f.sockets[0].open(); f.ready();
+    assert.equal(f.node.send(packet), true);
+    const seq = f.node._seqId, count = f.packets.length;
+    f.sockets[0].readyState = 3;
+    assert.equal(f.node.send(packet), false, '关闭事件尚未到达时也必须返回发送失败');
+    assert.equal(f.node._seqId, seq); assert.equal(f.packets.length, count);
+    assert.equal(f.node._socket.packAndSend({ name: 'Invalid.request' }), false);
+    f.node.closeSocket(); assert.equal(f.node.send(packet), false);
 });
 
 console.log(`通过 ${passed} 项重连回归`);

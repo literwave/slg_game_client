@@ -19,8 +19,8 @@ export class NetManager {
         this._netNode.connect(options);
     }
 
-    public send(send_data: any, force: boolean = false): void {
-        this._netNode.send(send_data, force);
+    public send(send_data: any, force: boolean = false): boolean {
+        return this._netNode.send(send_data, force);
     }
 
     public close(code?: number, reason?: string): void {

@@ -11,6 +11,7 @@ export default class BuildCommand extends ProtocolCommand {
     loaded = false;
     loadError = '';
     private changes: Map<number, number> | null = null;
+    private reconcileSnapshot: (() => void) | null = null;
     get loading(): boolean { return this.requestInFlight(S.c2s_req_build); }
     constructor() {
         super();
@@ -18,8 +19,8 @@ export default class BuildCommand extends ProtocolCommand {
             if (!this.loading) return;
             if (!Array.isArray(d.buildList) || !d.buildList.every(row => this.valid(row))) {
                 this.changes = null;
-                this.loadError = '建筑信息读取失败，请重试';
-                this.finish(S.c2s_req_build);
+                this.loadError = '建筑信息同步中';
+                this.retryQuery(S.c2s_req_build);
                 EventMgr.emit(E.updateCityBuilds);
                 return;
             }
@@ -30,7 +31,10 @@ export default class BuildCommand extends ProtocolCommand {
             this.changes = null;
             this.loaded = true;
             this.loadError = '';
+            const reconcile = this.reconcileSnapshot;
+            this.reconcileSnapshot = null;
             this.finish(S.c2s_req_build);
+            reconcile?.();
             EventMgr.emit(E.updateCityBuilds);
         });
         this.listen(S.s2c_sync_build, d => {
@@ -40,10 +44,13 @@ export default class BuildCommand extends ProtocolCommand {
             this.finish(`build:${d.bid}`);
             EventMgr.emit(E.updateCityBuilds, d);
         });
+        this.reconcileOnNotice(['没有这个建筑', '建筑已存在', '前置建筑不足', '资源不足', '已满级'],
+            'build:', () => this.requestBuildings());
     }
     protected onSessionReady(): void { this.requestBuildings(); }
     protected reset(): void {
         this.levels.clear(); this.changes = null; this.loaded = false; this.loadError = '';
+        this.reconcileSnapshot = null;
         EventMgr.emit(E.updateCityBuilds);
     }
     private valid(row: any): boolean {
@@ -52,15 +59,18 @@ export default class BuildCommand extends ProtocolCommand {
     }
     requestBuildings(): boolean {
         if (!this.sessionReady || this.loading) return false;
-        this.changes = new Map(); this.loadError = '';
-        const sent = this.request(S.c2s_req_build, {}, S.c2s_req_build, () => {
-            this.changes = null;
-            this.loadError = '建筑信息读取超时，请重试';
+        return this.query(S.c2s_req_build, () => {
+            this.reconcileSnapshot = this.capturePending('build:');
+            this.changes = new Map(); this.loadError = '';
+            const sent = this.request(S.c2s_req_build, {}, S.c2s_req_build, () => {
+                this.changes = null;
+                this.loadError = '建筑信息同步中';
+                EventMgr.emit(E.updateCityBuilds);
+            });
+            if (!sent) { this.changes = null; this.loadError = '建筑信息同步中'; }
             EventMgr.emit(E.updateCityBuilds);
+            return sent;
         });
-        if (!sent) { this.changes = null; this.loadError = '建筑信息请求未发送，请重试'; }
-        EventMgr.emit(E.updateCityBuilds);
-        return sent;
     }
     create(bid: number): boolean { return this.change(S.c2s_create_build, bid); }
     upgrade(bid: number): boolean { return this.change(S.c2s_up_build, bid); }

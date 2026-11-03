@@ -32,10 +32,15 @@ export default class WorldCommand extends ProtocolCommand {
     private focusPos: WorldPosition | null = null;
     private lastFocus = '';
     private focusTimer: ReturnType<typeof setTimeout> | null = null;
+    private reconcileSnapshot: (() => void) | null = null;
     constructor() {
         super();
         this.listen(S.s2c_req_march_list, d => {
-            this.finish(S.c2s_req_march_list); this.marches.replace(d.marchList || []); this.notifyMarches();
+            if (!Array.isArray(d.marchList) || !d.marchList.every(row => row && uint(row.troopIdx))) return;
+            const reconcile = this.reconcileSnapshot;
+            this.reconcileSnapshot = null;
+            this.finish(S.c2s_req_march_list); this.marches.replace(d.marchList || []);
+            reconcile?.(); this.notifyMarches();
         });
         [S.s2c_march, S.s2c_sync_march].forEach(name => this.listen(name, d => {
             if (!d.marchInfo || !uint(d.marchInfo.troopIdx)) return;
@@ -58,11 +63,15 @@ export default class WorldCommand extends ProtocolCommand {
         });
         EventMgr.on(E.updateCityPosition, this.focus, this);
         EventMgr.on(E.mapEenterChange, this.focus, this);
+        this.reconcileOnNotice(['目标不存在', '此处不能占领', '城池范围内不能占领', '等级不足',
+            '不能攻打同盟领地', '资源尚未恢复', '已有部队在占领', '已有部队驻守', '已有部队在采集',
+            '目标无法到达'], 'march:', () => this.requestMarches());
     }
     protected reset(): void {
         this.marches.clear(); this.entities.clear(); this.focusPos = null; this.lastFocus = '';
         if (this.focusTimer !== null) clearTimeout(this.focusTimer);
         this.focusTimer = null;
+        this.reconcileSnapshot = null;
         this.notifyMarches();
         this.notifyEntities();
     }
@@ -73,10 +82,13 @@ export default class WorldCommand extends ProtocolCommand {
     private notifyMarches(): void { EventMgr.emit(E.updateMarches, this.marches.values()); }
     private notifyEntities(): void { EventMgr.emit(E.updateWorldEntities, Array.from(this.entities.values())); }
     requestMarches(): boolean {
-        if (this.isPending(S.c2s_req_march_list)) return false;
+        if (!this.sessionReady || this.isPending(S.c2s_req_march_list)) return false;
+        this.reconcileSnapshot = this.capturePending('march:');
         this.marches.begin();
-        const sent = this.request(S.c2s_req_march_list, {}, S.c2s_req_march_list, () => this.marches.cancel());
-        if (!sent) this.marches.cancel();
+        const sent = this.request(S.c2s_req_march_list, {}, S.c2s_req_march_list, () => {
+            this.reconcileSnapshot = null; this.marches.cancel();
+        });
+        if (!sent) { this.reconcileSnapshot = null; this.marches.cancel(); }
         return sent;
     }
     march(troopIdx: number, targetType: number, targetId: number | string, targetPos: WorldPosition): boolean {
@@ -129,13 +141,13 @@ export default class WorldCommand extends ProtocolCommand {
     /**
      * 击败守卫后的占领倒计时（Global.Id=19）。
      * 只读资源地 AOI 的 startTime/endTime；行军时间与占领时间是不同阶段。
-     * 倒计时归零后保留确认态，直到服务器清除计时字段。
+     * 只返回尚未结束的计时；显示归零不等于占领成功，归属始终读取 AOI ownerId。
      */
     occupyCountdownAt(x: number, y: number, nowSec: number): { startTime: number; endTime: number } | null {
         if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isFinite(nowSec)) return null;
-        // AOI 的时间清零才是占领结束。客户端倒计时归零不能自行认定成功。
+        // 旧 AOI 可能保留过期时间，不能据此永久显示“占领中”或阻挡地块操作。
         const active = (start: number, end: number) =>
-            Number.isFinite(start) && Number.isFinite(end) && start > 0 && end > start;
+            Number.isFinite(start) && Number.isFinite(end) && start > 0 && end > start && nowSec < end;
         const entity = this.resourceLandAt(x, y);
         if (entity && active(entity.startTime, entity.endTime)) {
             return { startTime: entity.startTime, endTime: entity.endTime };

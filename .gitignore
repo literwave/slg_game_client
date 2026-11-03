@@ -9,6 +9,7 @@ build/
 profiles/
 native
 debug.log
+docs/
 
 # leftover Cocos folder under assets (directory meta with no matching folder)
 assets/temp/

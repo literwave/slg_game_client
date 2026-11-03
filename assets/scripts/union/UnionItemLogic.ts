@@ -5,6 +5,7 @@ import { Union } from "./UnionProxy";
 import { EventMgr } from '../utils/EventMgr';
 import { AudioManager } from '../common/AudioManager';
 import { LogicEvent } from '../common/LogicEvent';
+import { styleUnionLobbyRow } from './UnionSkin';
 
 @ccclass('UnionItemLogic')
 export default class UnionItemLogic extends Component {
@@ -20,8 +21,7 @@ export default class UnionItemLogic extends Component {
         this._unionData = data;
         this.nameLabel.string = this._unionData.name;
         this.joinButtonNode.active = this.isCanJoin();
-
-
+        styleUnionLobbyRow(this.node);
     }
     protected isCanJoin():boolean{
         const proxy = UnionCommand.getInstance().proxy;

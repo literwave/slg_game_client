@@ -58,6 +58,7 @@ const { ServerConfig } = load('assets/scripts/config/ServerConfig.ts');
 const portraitPaths = load('assets/scripts/general/GeneralPortrait.ts');
 const heroConfig = Object.values(JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/Hero.json'), 'utf8')));
 const itemConfig = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/Item.json'), 'utf8'));
+const heroLevelConfig = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/HeroLv.json'), 'utf8'));
 const flush = async () => { for (let i = 0; i < 16; i++) await Promise.resolve(); };
 function fixture() {
     const { EventMgr } = load('assets/scripts/utils/EventMgr.ts');
@@ -69,6 +70,7 @@ function fixture() {
     let command;
     const Proxy = load('assets/scripts/general/GeneralProxy.ts', {
         './GeneralCommand': asDefault({ getInstance: () => command }), './GeneralPortrait': portraitPaths,
+        '../core/ConfigManager': asDefault({ getInstance: () => ({ getConfig: () => heroLevelConfig }) }),
     }, engine, clock).default;
     const imports = {
         '../utils/EventMgr': { EventMgr }, '../common/LogicEvent': { LogicEvent },
@@ -85,6 +87,26 @@ function fixture() {
 }
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
+
+test('experience totals stay continuous across levels and cap correctly', () => {
+    const proxy = fixture().command.proxy;
+    assert.equal(proxy.getMaxLevel(), 50);
+    assert.equal(proxy.getGeneralLevelCfg(1).exp, 100);
+    assert.equal(proxy.getGeneralLevelCfg(49).exp, 240100);
+    assert.equal(proxy.getGeneralLevelCfg(50).exp, 0);
+    assert.deepEqual(proxy.getExperienceProgress(1, 0), { current: 0, maximum: 4042500 });
+    let completed = 0;
+    for (let level = 1; level < 50; level++) {
+        const cost = heroLevelConfig[level - 1].Exp;
+        assert.equal(proxy.getExperienceProgress(level, cost - 1).current, completed + cost - 1);
+        assert.equal(proxy.getExperienceProgress(level + 1, 0).current, completed + cost);
+        completed += cost;
+    }
+    assert.deepEqual(proxy.getExperienceProgress(50, 0), { current: 4042500, maximum: 4042500 });
+    assert.deepEqual(proxy.getExperienceProgress(50, 99999), { current: 4042500, maximum: 4042500 });
+    assert.equal(proxy.getExperienceProgress(2, -10).current, 100);
+    assert.equal(proxy.getExperienceProgress(2, NaN).current, 100);
+});
 
 test('early response and sync survive late config; UI refresh is coalesced; reopen uses cache', async () => {
     const f = fixture();
@@ -243,7 +265,7 @@ test('HUD subscribes after loading, pulls latest cached values and never registe
     }, { ...cc, input: { on: key => keys.push(key), off() {} }, Input: { EventType: { KEY_DOWN: 'down', KEY_UP: 'up' } } }, f.clock, true).default;
     const ui = new UI();
     ui.node = new Node();
-    for (const method of ['initHudNavigation', 'initMoreMenu', 'initHeadIconEntry', 'initTaskTracker', 'initChatStrip', 'initResourceIcons', 'layoutHud', 'updateRole', 'clearAllNode']) ui[method] = () => {};
+    for (const method of ['initHudNavigation', 'initMoreMenu', 'initHeadIconEntry', 'initTaskTracker', 'initChatStrip', 'initCampaignFeedback', 'initResourceIcons', 'layoutHud', 'updateRole', 'clearAllNode']) ui[method] = () => {};
     ui.updateRoleRes = () => updates++;
     ui.onLoad();
     for (let i = 0; i < 100; i++) f.EventMgr.emit(LogicEvent.upateMyRoleRes);
@@ -296,7 +318,7 @@ test('武将属性数据照常更新，仅尺寸或技能空槽变化时重画�
     const Detail = load('assets/scripts/map/ui/GeneralDesLogic.ts', {
         './GeneralDetailSkin': { styleGeneralDetail: () => layouts++ },
         '../../general/GeneralCommand': asDefault({ getInstance: () => ({ proxy: {
-            getGeneralLevelCfg: () => ({ exp: 100 }), getMaxLevel: () => 50,
+            getExperienceProgress: (_level, exp) => ({ current: exp, maximum: 100 }), getMaxLevel: () => 50,
         } }) }),
         '../../skill/SkillCommand': asDefault({ getInstance: () => ({ proxy: {
             getSkillCfg: id => id ? { name: '技能' + id } : null,
@@ -316,14 +338,14 @@ test('武将属性数据照常更新，仅尺寸或技能空槽变化时重画�
     assert.equal(layouts, 1);
     detail.setData({ ...cfg, attack: 18 }, { level: 2, exp: 7, skills: [] });
     assert.equal(layouts, 1); assert.equal(detail.foreLabel.string, '18');
-    assert.equal(detail.lvLabel.string, '2/50'); assert.equal(detail.expLabel.string, '7/100');
+    assert.equal(detail.lvLabel.string, '2/50'); assert.equal(detail.expLabel.string, '7 / 100');
     assert.equal(detail.skillNameLab[1].string, '选择技能');
     detail.setData(cfg, { level: 2, exp: 7, skills: [{ cfgId: 1 }, { cfgId: 2 }] });
     assert.equal(layouts, 2); assert.equal(detail.skillNameLab[1].string, '技能2');
     size.height = 480; detail.refreshVisualLayout(); assert.equal(layouts, 3);
 });
 
-function mainFixture(inventoryWarmup = Promise.resolve()) {
+function mainFixture(inventoryWarmup = Promise.resolve(), chatWarmup = Promise.resolve(), worldWarmup = Promise.resolve()) {
     const f = fixture();
     const scheduled = [];
     const drawListeners = [];
@@ -342,6 +364,8 @@ function mainFixture(inventoryWarmup = Promise.resolve()) {
     const buildings = { loaded: true, loadError: '' };
     const configs = new Map();
     const inventoryCalls = [];
+    const worldArt = { preparationProgress: 0, calls: 0,
+        prepare() { this.calls++; return worldWarmup.then(() => { this.preparationProgress = 1; }); } };
     const Main = load('assets/scripts/Main.ts', {
         './utils/EventMgr': { EventMgr: f.EventMgr }, './common/LogicEvent': { LogicEvent }, './core/CoreEvent': { CoreEvent },
         './general/GeneralCommand': asDefault({ getInstance: () => f.command }),
@@ -351,6 +375,7 @@ function mainFixture(inventoryWarmup = Promise.resolve()) {
             getConfig: name => configs.get(name), getConfigItem: () => null,
         }) }),
         './map/MapCommand': asDefault({ getInstance: () => ({ proxy: { *initMapResConfigBatched() { yield 0.5; yield 1; } } }) }),
+        './map/WorldMapArt': asDefault(worldArt),
         './map/ui/MapUICommand': asDefault({ getInstance: () => ({ proxy: { setBasic() {}, setAllFacilityCfg() {} } }) }),
         './login/LoginCommand': asDefault({ getInstance: () => ({
             beginMapLoading() {}, notifyClientLoaded() { loadNotices++; },
@@ -360,6 +385,7 @@ function mainFixture(inventoryWarmup = Promise.resolve()) {
             inventoryCalls.push({ ids, isCurrent });
             return inventoryWarmup;
         } }),
+        './chat/ChatIconCache': asDefault({ prepare: () => chatWarmup }),
         './skill/SkillCommand': asDefault({ getInstance: () => ({
             proxy: { initSkillConfig() {}, preloadSkillIcons: async () => {} },
         }) }),
@@ -369,7 +395,7 @@ function mainFixture(inventoryWarmup = Promise.resolve()) {
         './reward/RewardWindowLogic': asDefault({ init() {} }), './systemopen/SystemUnlockWindow': asDefault({ init() {} }),
     }, { ...cc, director, Director: { EVENT_AFTER_DRAW: 'after-draw' }, instantiate: () => {
         const node = new Node();
-        node.getComponent = () => ({ *prepareGeneralPanels() { uiWarmups++; yield; yield; yield; } });
+        node.getComponent = () => ({ *prepareCommonPanels() { uiWarmups++; yield; yield; yield; } });
         return node;
     } }, f.clock, true).default;
     const main = new Main();
@@ -382,7 +408,7 @@ function mainFixture(inventoryWarmup = Promise.resolve()) {
     main.clearAllScene = () => {};
     f.EventMgr.on(CoreEvent.gameReady, () => uiReady++, {});
     f.EventMgr.on(LogicEvent.updateCityBuilds, main.onCityBuildsChanged, main);
-    return { ...f, main, buildings, scheduled, renderFrame, drawListeners, inventoryCalls, get uiWarmups() { return uiWarmups; }, get loadNotices() { return loadNotices; }, completeResources: () => resourceComplete(null, [], [{}, [
+    return { ...f, main, worldArt, buildings, scheduled, renderFrame, drawListeners, inventoryCalls, get uiWarmups() { return uiWarmups; }, get loadNotices() { return loadNotices; }, completeResources: () => resourceComplete(null, [], [{}, [
         { name: 'Hero', json: Object.fromEntries(heroConfig.map(hero => [hero.Id, hero])) },
         { name: 'Item', json: itemConfig },
         { name: 'Global', json: {} }, { name: 'mapRes_0', json: {} },
@@ -393,6 +419,29 @@ async function settleMap(f) {
     await flush();
     for (let i = 0; i < 16; i++) { f.main.update(); await flush(); }
 }
+
+test('world artwork starts alongside configs and map creation waits for real readiness', async () => {
+    let ready;
+    const f = mainFixture(Promise.resolve(), Promise.resolve(), new Promise(resolve => ready = resolve));
+    f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
+    assert.equal(f.worldArt.calls, 1, '配置尚未完成时已经准备地图美术');
+    f.snapshot([]); f.completeResources();
+    await settleMap(f);
+    assert.equal(f.main._mapScene, null, '美术未完成时不能显示缺图地图');
+    assert.equal(f.finishes, 0);
+    ready(); await settleMap(f);
+    assert.ok(f.main._mapScene); f.main.onMapReady(); await settleMap(f);
+    assert.equal(f.finishes, 1); f.command.clearData();
+});
+
+test('late world artwork failure cannot interrupt an abandoned entry', async () => {
+    let rejectArt, failures = 0;
+    const f = mainFixture(Promise.resolve(), Promise.resolve(), new Promise((_, reject) => rejectArt = reject));
+    f.main.failMapLoading = () => failures++;
+    f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
+    f.main.disposeLoadingNow(); rejectArt(new Error('old image request')); await flush();
+    assert.equal(failures, 0); assert.equal(f.finishes, 0); f.command.clearData();
+});
 
 test('entry requests heroes before resource load and finishes only after warmup and loading fade', async () => {
     const f = mainFixture();
@@ -484,6 +533,29 @@ test('退出进场后迟到的物品图片回调不能激活地图；加载失�
         assert.equal(f.clock.timers.size, 0);
         f.command.clearData();
     }
+});
+
+test('聊天频道图标就绪前保留加载页，不允许先进入地图再补图', async () => {
+    let resolveIcons;
+    const f = mainFixture(Promise.resolve(), new Promise(resolve => resolveIcons = resolve));
+    f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
+    f.snapshot([]); f.completeResources();
+    for (let i = 0; i < 10; i++) f.main.update();
+    f.main.onMapReady(); await settleMap(f);
+    assert.equal(f.main._chatAssetsReady, false); assert.equal(f.finishes, 0); assert.equal(f.loadNotices, 0);
+    resolveIcons(); await settleMap(f);
+    assert.equal(f.main._chatAssetsReady, true); assert.equal(f.finishes, 1); assert.equal(f.loadNotices, 1);
+    f.finishFade(); assert.equal(f.uiReady, 1); f.command.clearData();
+});
+
+test('取消进图后聊天图标回调不能重新开启界面', async () => {
+    let resolveIcons;
+    const f = mainFixture(Promise.resolve(), new Promise(resolve => resolveIcons = resolve));
+    f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()(); f.snapshot([]); f.completeResources();
+    for (let i = 0; i < 10; i++) f.main.update();
+    f.main.disposeLoadingNow(); resolveIcons(); await flush();
+    assert.equal(f.main._chatAssetsReady, false); assert.equal(f.finishes, 0); assert.equal(f.uiReady, 0);
+    f.command.clearData();
 });
 
 function inventoryArtFixture() {

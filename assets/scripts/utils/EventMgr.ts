@@ -74,10 +74,21 @@ class mgr {
             return;
         }
 
-        var events = this.events.get(name);
-        for (let i = 0; i < events.length; i++) {
-            const eh:EventHandler = events[i];
-            eh.handler.apply(eh.target, args);
+        // 回调可以关闭窗口、退订或创建新窗口，不能直接遍历正在变动的数组。
+        const events = this.events.get(name).slice();
+        for (const eh of events) {
+            const current = this.events.get(name);
+            if (!current || current.indexOf(eh) < 0) continue;
+            if (eh.target && (eh.target as { isValid?: boolean }).isValid === false) {
+                this.targetOff(eh.target);
+                continue;
+            }
+            try {
+                eh.handler.apply(eh.target, args);
+            } catch (error) {
+                // 保留错误堆栈，但不能让失效界面吞掉网络回包或其它界面的解锁通知。
+                console.error('事件回调执行失败:', name, error);
+            }
         }
     }
 

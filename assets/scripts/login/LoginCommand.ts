@@ -75,6 +75,7 @@ export default class LoginCommand {
         EventMgr.on(NetEvent.ServerReconnectFailed, this.onReconnectFailed, this);
         EventMgr.on(LogicEvent.enterLogin, this.onEnterLogin, this);
         EventMgr.on(ServerConfig.s2c_user_login, this.onAccountLogin, this);
+        EventMgr.on(ServerConfig.s2c_verify_login, this.onVerifyLogin, this);
         EventMgr.on(ServerConfig.s2c_heart_beat, this.setServerTime, this);
         EventMgr.on(ServerConfig.s2c_user_login_ok, this.onEnterServer, this);
         EventMgr.on(ServerConfig.s2c_user_base_info, this.onGetUserBaseInfo, this);
@@ -309,6 +310,12 @@ export default class LoginCommand {
     /**玩家基础信息*/
     private onGetUserBaseInfo(data: any): void {
         if (!data || !this._serverReady) return;
+        this._baseInfoReady = !!data.name;
+        if (this._baseInfoReady) {
+            data.userId = this._proxy.getLoginData().userId;
+            this._proxy.saveEnterData(data);
+        }
+        // 先恢复角色快照，再放行待发请求和通知界面，避免使用断线前的数据。
         EventMgr.emit(NetEvent.ServerSessionReady);
         if (this._reconnecting) {
             this._reconnecting = false;
@@ -320,9 +327,6 @@ export default class LoginCommand {
             return;
         }
         else {
-            data.userId = this._proxy.getLoginData().userId;
-            this._proxy.saveEnterData(data);
-            this._baseInfoReady = true;
             EventMgr.emit(LogicEvent.updateMyRole);
             EventMgr.emit(LogicEvent.enterMap);
             // 重连时保留已加载地图，基础信息同步后重新通知服务端。
@@ -393,12 +397,25 @@ export default class LoginCommand {
 
     /**登录回调*/
     private onAccountLogin(data: any): void {
-        console.log("LoginProxy  login:", data);
+        console.info('[Login] 账号验证完成');
 
         this._proxy.saveLoginData(data);
         LocalCache.setLoginValidation(data);
 
         EventMgr.emit(LogicEvent.loginComplete, data.code);
+    }
+
+    /** 网关会返回后续重连使用的凭证，不能一直沿用账号登录时的旧值。 */
+    private onVerifyLogin(data: any): void {
+        const loginData = this._proxy.getLoginData();
+        if (!loginData || typeof data?.token !== 'string' || !data.token.trim()) return;
+        this._proxy.saveLoginData({ ...loginData, token: data.token });
+        try {
+            LocalCache.setLoginValidation(this._proxy.getLoginData());
+        } catch {
+            // 本地缓存不可写时仍使用内存中的新凭证，不能中断当前登录。
+            console.warn('[Login] 登录凭证未能写入本地缓存');
+        }
     }
 
     /** 心跳回包。heartBeatTime 是服务器 unix 秒，倒计时在这之上加单调钟 */
@@ -444,12 +461,13 @@ export default class LoginCommand {
         NetManager.getInstance().send({
             name: msgName,
             msg: protoData,
-        });
+        }, true);
     }
 
     /**进入服务器回调*/
     private onEnterServer(data: any): void {
-        console.log("LoginProxy  enter:", data);
+        if (!data || !this._proxy.getLoginData()) return;
+        console.info('[Login] 网关身份验证完成');
         // MapCommand.getInstance()
         // EventMgr.emit(LogicEvent.enterMap);
         this._proxy.setLoginDataUserAndServerId(data);
@@ -474,21 +492,19 @@ export default class LoginCommand {
             name: msgName,
             msg: protoData, // 这里直接传 Uint8Array
         };
-        NetManager.getInstance().send(sendData);
+        NetManager.getInstance().send(sendData, true);
         this.startHeartbeat();
     }
 
     /** 网关重连成功后重新验证，不走旧的 account.reLogin */
     private onServerConneted(): void {
         const loginData = this._proxy.getLoginData();
-        console.log("LoginProxy  conneted:", loginData);
+        console.info('[Login] 正在恢复网关会话');
 
-        if (loginData && loginData.token) {
-            this.role_enterServer(loginData);
-            return;
-        }
+        if (this.role_enterServer(loginData)) return;
         this._reconnecting = false;
-        EventMgr.emit(NetEvent.ServerHandShake);
+        NetManager.getInstance().close();
+        EventMgr.emit(NetEvent.ServerReconnectFailed);
     }
 
     private onReconnectFailed(): void {
@@ -568,7 +584,6 @@ export default class LoginCommand {
             msg: protoData, // 这里直接传 Uint8Array
         };
 
-        console.log("accountLogin:", send_data);
         NetManager.getInstance().send(send_data);
     }
 
@@ -597,7 +612,9 @@ export default class LoginCommand {
     }
 
 
-    public role_enterServer(loginData) {
+    public role_enterServer(loginData): boolean {
+        if (!loginData || typeof loginData.token !== 'string' || !loginData.token.trim()
+            || toProtoId(loginData.userId) === '0') return false;
         var msgName = ServerConfig.c2s_verify_login;
 
         // 使用 ProtoManager 编码
@@ -608,11 +625,13 @@ export default class LoginCommand {
             passwd: loginData.passwd,
             token: loginData.token, // 根据 proto 定义补充字段
         });
+        if (!protoData) return false;
         var send_data = {
             name: msgName,
             msg: protoData, // 这里直接传 Uint8Array
         };
-        NetManager.getInstance().send(send_data);
+        NetManager.getInstance().send(send_data, true);
+        return true;
     }
 
     /**

@@ -29,6 +29,7 @@ class Node extends Events {
     active = true;
     isValid = true;
     children = [];
+    getChildByName(name) { return this.children.find(node => node.name === name); }
     setSiblingIndex(index) { this.siblingIndex = index; }
 }
 class Component {
@@ -104,9 +105,12 @@ const imports = {
 };
 // UI classes unrelated to GM are imported, but never instantiated in these tests.
 for (const name of ['../../login/LoginCommand', './ArmySelectNodeLogic', './CityArmySettingLogic',
-    './FacilityListLogic', './Dialog', '../../union/UnionCommand', './CityAboutLogic', './GeneralListLogic',
-    './TransformLogic', './GeneralInfoLogic', './WarReportLogic', './DrawRLogic', './SkillLogic',
-    './SkillInfoLogic', './HeadIconPanel', './Setting', './MapTaskTracker', './PlayerServicesPanel', '../../systemopen/SystemOpenCommand']) {
+    './CityBuildingPanel', './Dialog', '../../union/UnionCommand', './CityAboutLogic', './GeneralListLogic',
+    './TransformLogic', './GeneralInfoLogic', './DrawRLogic', './SkillLogic',
+    './SkillInfoLogic', './HeadIconPanel', './Setting', './MapTaskTracker', './PlayerServicesPanel', '../../systemopen/SystemOpenCommand',
+    '../../general/GeneralCommand', './BattleReportPanel', './MapCampaignFeedback', './ServiceMenuEntries',
+    '../../common/ItemPresentation', './InventoryPanel', '../../chat/ChatLogic', '../../chat/MapChatStrip',
+    '../../chat/ChatPresentation', '../../network/pto/ProtocolCommand', '../../chat/ChatCommand', '../../cloud/CloudAni', './ManagementStyle']) {
     imports[name] = { default: class {} };
 }
 const file = 'assets/scripts/map/ui/MapUILogic.ts';
@@ -124,7 +128,8 @@ function create(Type = MapUI) {
     ui.gmEditBoxY = new EditBox();
     ui.gmCoordLabel = { string: '' };
     ui.gmTipLabel = { string: '' };
-    for (const method of ['initHudNavigation', 'initTaskTracker', 'initMoreMenu', 'initHeadIconEntry', 'layoutHud', 'updateRoleRes', 'updateRole']) ui[method] = () => {};
+    for (const method of ['initGMShortcuts', 'initHudNavigation', 'initTaskTracker', 'initMoreMenu', 'initHeadIconEntry',
+        'initChatStrip', 'initCampaignFeedback', 'initResourceIcons', 'layoutHud', 'updateRoleRes', 'updateRole']) ui[method] = () => {};
     ui.onLoad();
     ui.onEnable();
     return ui;
@@ -146,7 +151,7 @@ try {
     test('内城图标使用 UI 目录下的真实 SpriteFrame 资源', () => {
         const prefab = JSON.parse(fs.readFileSync(path.join(root, 'assets/scenes/MapUIScene.prefab'), 'utf8'));
         const component = prefab.find(item => item.gmPanel);
-        const meta = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/ui/hud/hud-inner-city.png.meta'), 'utf8'));
+        const meta = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/ui/hud/hud-inner-city-front.png.meta'), 'utf8'));
         const frame = Object.values(meta.subMetas).find(item => item.importer === 'sprite-frame');
         assert.ok(properties.has('innerCityIcon'));
         assert.equal(component.innerCityIcon.__uuid__, frame.uuid);

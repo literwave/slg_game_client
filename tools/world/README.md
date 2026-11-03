@@ -1,12 +1,18 @@
 # 原创地图美术与布局
 
+地图脚本只维护静态地形、资源、州域、关口和系统城池，不生成或导出玩家出生位置。`campaign-map.json` 与服务端 Lua 均不再包含 `spawnZones`；出生位置和玩家分配由服务端管理。`fixed-birth-resources.json` 是出生州的资源坐标表，不是玩家出生点表。
+
+2026-10-29：六处跨河关隘已改为宽桥关城，桥面与河岸配套生成，桥下水面和通行阻挡分别保存；默认视角地块放大约33%。当前山河、关口坐标、预览证据与攻城接口待接范围以 [自然山河地图](../../docs/自然山河地图.md) 为准。
+
 布局版本3：四种资源的类型和等级逐格混排，四方向无连续三格同类型/同等级；资源州和王畿新增 `fixed-inner-resources.json` 的658个固定高级点。城池占地为3×3、5×5、9×9，使用三种既有城池立绘。配比、构建、导出与新资源地协议（含石料待补配置）见 `docs/资源混排与协议接入.md`。整图混排检查运行 `python tools/tests/mixed-resource-layout-regression.py`。
 
 当前地图为 **1000×1000 格**，单格 200×100；采用“六出生州 → 三资源州 → 王畿洛阳”的关隘推进布局。玩法、服务端接入边界和完整关口表见 `docs/千里山河地图设计.md`。下文的旧地图迁移过程保留作美术来源记录，不再代表当前玩法坐标。
 
 出生州4～6级全部读取 `fixed-birth-resources.json` 的6069个固定点，间距分别受8/28/48格约束，不再生成连续4级带或围绕出生点的高级地圆环。规则和后端导出步骤见 `docs/出生州固定资源配置.md`。`plan-dispersed-birth-resources.py` 仅用于另存离线候选表，构建器不会调用或重新编排它。
 
-山脉美术布局版本5使用连体山脊 `mountain_ridge_connected` 和低山肩 `mountain_shoulder`。`mountain_layout.py` 沿阻挡带估算山脊方向，按PNG透明轮廓合并覆盖，再剔除冗余山体；不再逐格堆叠压扁的谷地。两张素材分别为1024×486、768×390透明PNG，线性采样并开启mipmap；原素材保留。单独重排美术运行 `python tools/world/mountain_layout.py`，只更新地貌中的patches，不改资源、阻挡、水系、关口和服务端配置。`python tools/tests/mountain-continuity-regression.py` 验证连接段覆盖和关口可点击空间；`mountain-renderer-regression.cjs` 验证客户端空间桶、锚点、翻转与节点复用。
+当前地形版本2、美术布局版本6：`natural_terrain.py` 以平原盆地生成不规则州域，采用曲折山带、16条余脉、干流和10条支流；外围改为水岸。取消同心圆州界、直线放射山脉和外围方形山墙。关口沿新州界重新定位，仍保持18关与10州的通行关系。州域查询和远景轮廓均读取同一份生成数据，不再套用半径公式。数据约定与联机同步见 [自然山河地图](../../docs/自然山河地图.md)。
+
+山体使用连体山脊、低山肩和新增的 `mountain_massif_natural`、`mountain_saddle_natural` 四种轮廓。连续地段共享高低起伏趋势，主峰、鞍部与缓坡交错，实际PNG透明轮廓验证连续覆盖。线性采样并开启mipmap。`python tools/world/mountain_layout.py` 只重排美术；`python tools/world/build-campaign-map.py` 重建整张地形和资源，生成器先检查孤立区域及关口连接，再写出数据；TMX须由AssetDB保存。验证使用 `campaign-map-regression.py`、`natural-terrain-regression.py`、`mountain-continuity-regression.py` 和 `mountain-renderer-regression.cjs`。
 
 新山体由内置imagegen生成，经Cocos Image Core透明裁边、等比例缩放和AssetDB导入。提示词要点：历史中国2:1等距策略地图、连接的宽缓灰绿山脊或低山肩、不等高峰与松林坡面、左上柔光、窄而自然的透明山脚；无尖柱、方形底座、建筑、文字或发光。
 

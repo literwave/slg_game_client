@@ -1,0 +1,16 @@
+总览城池 v4：正面、水平、对称的城门轮廓。
+制作：内置 image_gen 编辑 v3 图集，Cocos Image Core 按透明间隔裁成三帧。
+近景军政都城仍使用 county-commandery-v3；这里只替换总览的三档标识。
+原图 2172×724；横向裁剪 [0,685)、[685,1425)、[1425,2172)；alpha 裁边阈值 16；bicubic 等比缩进 240×240；四边 8 px 透明留白；线性过滤、mipmap、clamp。
+最终资源：
+- assets/resources/ui/world/city-overview-town-v4.png：256×119，透明 PNG。
+- assets/resources/ui/world/city-overview-county-v4.png：256×132，透明 PNG。
+- assets/resources/ui/world/city-overview-capital-v4.png：256×181，透明 PNG。
+
+Prompt:
+Use case: precise-object-edit. Edit the attached 3-city overview sprite sheet. Keep three separate icons in one horizontal row, equal invisible cells, generous transparent gutters, transparent PNG alpha, same realistic warm-grey stone / blue-slate roof / restrained red-timber painted game style. ONLY change their projection and simplify for tiny world-map use.
+Critical correction: ALL THREE must be perfectly UPRIGHT, LEVEL and BILATERALLY SYMMETRICAL FRONT ELEVATIONS. Camera looks exactly straight at the front gates, zero yaw, zero roll, no left or right side walls receding, no isometric diamond, no tilted roofs, no diagonal foundation. Every main roof ridge and stone foundation baseline is horizontal, every gate center and main tower center is vertical on the same central axis. Left and right halves have balanced equal visual mass. At 42-64px display size the icon must feel solid, planted, clean and centered, not skewed. No enclosing badge, circle, banner or UI frame.
+LEFT: small county city gate, one modest blue-roof central gate tower and two short equal flanking wall sections, three clear masses.
+MIDDLE: regional commandery, a broad sturdy two-eaved blue-roof central gatehouse with two matching square blue-roof watchtowers flanking it and a continuous level stone front wall, wider and stronger than left, only three roof masses, no extra hall offset to one side.
+RIGHT: imperial capital, one tall centered warm ochre-gold imperial roof above the grand central gatehouse with two equal blue-roof companion towers and level front wall; majestic tall hierarchy but no extra busy buildings.
+Clean large roof planes with extremely subdued tile texture, broad continuous wall faces with sparse masonry texture. One centered arched entrance on each. Tiny attached warm-earth strip at the baseline only, no grass islands. No people, trees, detached shadows, flags, labels, text, numbers, watermark, background scene. Match the baseline of all three; all artwork fully inside its cell. Keep all pixels outside each icon fully transparent. The desired output is an icon sheet ready to crop, not a comparison layout.

@@ -1,5 +1,4 @@
 import BuildCommand from '../../build/BuildCommand';
-import BattleCommand from '../../battle/BattleCommand';
 import { _decorator } from 'cc';
 import { ServerConfig } from "../../config/ServerConfig";
 import LoginCommand from "../../login/LoginCommand";
@@ -38,9 +37,6 @@ export default class MapUICommand {
         EventMgr.on(ServerConfig.role_myRoleRes, this.onRoleMyRoleRes, this);
 
 
-
-        EventMgr.on(ServerConfig.interior_collect, this.onCollect, this);
-        EventMgr.on(ServerConfig.interior_openCollect, this.onOpenCollect, this);
 
         EventMgr.on(ServerConfig.roleRes_push, this.updataRoleRes, this);
         
@@ -104,52 +100,6 @@ export default class MapUICommand {
         }
     }
 
-
-    protected onUpdataWarReports(data: any): void {
-        console.log("onUpdataWarReport :", data);
-        if (data.code == 0) {
-            this._proxy.updateWarReports(data.msg);
-            EventMgr.emit(LogicEvent.upateWarReport);
-        }
-    }
-
-
-
-    protected onUpdataWarReport(data: any): void {
-        console.log("onUpdataWarReport :", data);
-        if (data.code == 0) {
-            this._proxy.updateWarReport(data.msg);
-            EventMgr.emit(LogicEvent.upateWarReport);
-        }
-    }
-
-    protected onUpdataWarRead(data: any): void {
-        console.log("onUpdataWarRead :", data);
-        if (data.code == 0) {
-            var id = data.msg.id;
-            if (id == 0) {
-                this._proxy.updateAllWarRead(true);
-            }else{
-                this._proxy.updateWarRead(id, true);
-            }
-           
-            EventMgr.emit(LogicEvent.upateWarReport);
-        }
-    }
-
-    protected onCollect(data:any):void {
-        console.log("onCollect :", data);
-        if (data.code == 0) {
-            EventMgr.emit(LogicEvent.interiorCollect, data.msg);
-        }
-    }
-
-    protected onOpenCollect(data:any):void{
-        console.log("onOpenCollect :", data);
-        if (data.code == 0) {
-            EventMgr.emit(LogicEvent.interiorOpenCollect, data.msg);
-        }
-    }
 
     public onDestory(): void {
         EventMgr.targetOff(this);
@@ -221,40 +171,6 @@ export default class MapUICommand {
 
 
 
-    /**
-     * 战报查询
-     */
-    public qryWarReport(): void {
-        BattleCommand.getInstance().requestReports();
-    }
-
-
-
-    /**
-     * 读取
-     */
-    public warRead(id: number | string = 0): void {
-        BattleCommand.getInstance().readReports(String(id) === '0' ? [] : [id]);
-    }
-
-    public interiorCollect(): void {
-        let sendData: any = {
-            name: ServerConfig.interior_collect,
-            msg: {
-            }
-        };
-        NetManager.getInstance().send(sendData);
-    }
-
-    public interiorOpenCollect(): void {
-        let sendData: any = {
-            name: ServerConfig.interior_openCollect,
-            msg: {
-            }
-        };
-        NetManager.getInstance().send(sendData);
-    }
-    
     public interiorTransform(from:number[],to:number[]): void {
         let sendData: any = {
             name: ServerConfig.interior_transform,

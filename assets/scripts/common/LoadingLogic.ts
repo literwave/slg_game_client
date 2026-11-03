@@ -11,6 +11,8 @@ const RUNNER_SLASH_HEIGHT = 170;
 const RUNNER_FPS = 12;
 const SLASH_FRAME_TIMES = [0.10, 0.13, 0.06, 0.07, 0.11, 0.09, 0.09, 0.10];
 const RESOURCE_PROGRESS_WEIGHT = 0.7;
+const FINISH_PROGRESS_SECONDS = 0.15;
+const FINISH_FADE_SECONDS = 0.12;
 /** runnerFrames 前 8 帧是奔跑循环，其后是举刀、劈斩、收刀动作帧 */
 const RUNNER_RIDE_FRAMES = 8;
 
@@ -53,6 +55,8 @@ export default class LoadingLogic extends Component {
     private runnerReady = false;
     private stageLabel: Label | null = null;
     private finishing = false;
+    private finishElapsed = 0;
+    private finishStartProgress = 0;
     private fading = false;
     private displayedPercent = -1;
     private finishCallback: (() => void) | null = null;
@@ -98,6 +102,8 @@ export default class LoadingLogic extends Component {
         this.actionPlaying = false;
         this.actionTimer = 0.25;
         this.finishing = false;
+        this.finishElapsed = 0;
+        this.finishStartProgress = 0;
         this.fading = false;
         this.finishCallback = null;
         this.displayedPercent = -1;
@@ -144,7 +150,12 @@ export default class LoadingLogic extends Component {
         this.advanceRunner(step);
 
         const diff = this.targetProgress - this.visualProgress;
-        if (diff > 0) {
+        if (this.finishing) {
+            // 真正就绪后限时收尾，避免平滑追赶进度额外占用一两秒。
+            this.finishElapsed += Math.max(0, dt);
+            const ratio = Math.min(1, this.finishElapsed / FINISH_PROGRESS_SECONDS);
+            this.visualProgress = this.finishStartProgress + (1 - this.finishStartProgress) * ratio;
+        } else if (diff > 0) {
             const eased = diff * (1 - Math.exp(-step / 0.28));
             const distance = Math.min(diff, 0.65 * step, Math.max(0.04 * step, eased));
             this.visualProgress = Math.min(this.targetProgress, this.visualProgress + distance);
@@ -345,6 +356,8 @@ export default class LoadingLogic extends Component {
             return;
         }
         this.finishing = true;
+        this.finishElapsed = 0;
+        this.finishStartProgress = this.visualProgress;
         this.targetProgress = 1;
         this.finishCallback = onFinished || null;
         if (this.stageLabel) {
@@ -355,7 +368,7 @@ export default class LoadingLogic extends Component {
     private fadeOut(): void {
         this.fading = true;
         const opacity = this.node.getComponent(UIOpacity) || this.node.addComponent(UIOpacity);
-        tween(opacity).to(0.35, { opacity: 0 }, { easing: 'quadOut' }).call(() => {
+        tween(opacity).to(FINISH_FADE_SECONDS, { opacity: 0 }, { easing: 'quadOut' }).call(() => {
             if (this.node && this.node.isValid) {
                 this.node.destroy();
             }

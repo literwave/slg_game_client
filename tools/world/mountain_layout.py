@@ -8,7 +8,7 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-MOUNTAIN_ART = ('mountain_ridge_connected', 'mountain_shoulder')
+MOUNTAIN_ART = ('mountain_ridge_connected', 'mountain_shoulder', 'mountain_massif_natural', 'mountain_saddle_natural')
 
 
 def read_alpha(name):
@@ -136,7 +136,8 @@ def build_mountain_patches(mountains, gates, blocked, noise):
             for bx in range(math.floor(left / 256), math.floor((left + p['width']) / 256) + 1):
                 for i in point_buckets[bx, by]:
                     sx, sy = points[i]
-                    u, v = (sx - left) / p['width'], 1 - (sy - bottom) / h
+                    # 与运行时/覆盖回归使用同一逆变换，避免边缘像素的浮点舍入分歧。
+                    u, v = (sx - px) / p['width'] + .5, 1 - p['anchorY'] - (sy - py) / h
                     if p['flipX']:
                         u = 1 - u
                     if 0 <= u < 1 and 0 <= v < 1 and alpha[int(v * height) * width + int(u * width)] >= 160:
@@ -158,13 +159,21 @@ def build_mountain_patches(mountains, gates, blocked, noise):
         x, y = idx % 1000, idx // 1000
         h, angle = noise(x, y), direction(x, y)
         distance = min(max(abs(x - g['x']), abs(y - g['y'])) for g in gates)
-        shoulder = abs(angle) > .95 or abs(angle) < .16 or distance < 5
-        art = MOUNTAIN_ART[1 if shoulder else 0]
-        width = (720 if shoulder else 1000) + h % 120
+        # 连续地段共享起伏趋势：主峰成组抬升，经过低鞍部再转入下一组山势。
+        relief = .5 + .27 * math.sin((x+y)/23+.7) + .23 * math.sin((x-y)/37-1.2)
+        if distance < 5:
+            art = MOUNTAIN_ART[1]
+        elif relief > .62:
+            art = MOUNTAIN_ART[0 if h % 5 == 0 else 2]
+        elif relief < .38:
+            art = MOUNTAIN_ART[3]
+        else:
+            art = MOUNTAIN_ART[1 if h % 3 == 0 else 3 if h % 3 == 1 else 2]
+        width = round(660 + relief*300 + h % 190)
         if distance < 5:
             width = 180 + distance * 75
-        p = dict(x=x, y=y, art=art, width=width, heightScale=round(.94 + (h % 11) / 100, 2),
-                 anchorY=.38, role='range', flipX=angle > 0)
+        p = dict(x=x, y=y, art=art, width=width, heightScale=round(.8 + relief*.32 + (h % 7)/100, 2),
+                 anchorY=round(.34 + (h % 9)/100,2), role='range', flipX=angle > 0)
         if not clear_pass(p):
             continue
         covered = covered_points(p)
@@ -206,7 +215,9 @@ def build_mountain_patches(mountains, gates, blocked, noise):
         x, y = row + px / 200, row - px / 200
         if not any(max(abs(x - g['x']), abs(y - g['y'])) <= 5 for g in gates):
             raise ValueError(f'山脊未覆盖: {(x, y)}')
-    return patches
+    # 关口仍保留真实通路，用低矮山脚填上原先整片避让留下的露底。
+    from gate_shoulders import build_gate_shoulders
+    return build_gate_shoulders(patches, mountains, gates, blocked, cover, pixel)
 
 
 if __name__ == '__main__':
@@ -222,6 +233,6 @@ if __name__ == '__main__':
     for idx in landscape['mountainCells'] + landscape['riverCells']:
         blocked[idx] = 1
     landscape['patches'] = build_mountain_patches(set(landscape['mountainCells']), world['gates'], blocked, campaign.noise)
-    landscape['version'] = 5
+    landscape['version'] = 6
     target.write_text(json.dumps(landscape, separators=(',', ':')), encoding='utf8')
     print(json.dumps(dict(patches=len(landscape['patches']), art=dict(collections.Counter(p['art'] for p in landscape['patches'])))))

@@ -3,14 +3,19 @@ import type { MarchInfo, WorldEntity, WorldPosition } from './WorldCommand';
 /** 仅用于显示；AOI 实体没有 troopIdx，不伪造本人的行军数据。 */
 export type MarchMotion = Pick<MarchInfo, 'startPos' | 'endPos' | 'startTime' | 'endTime' | 'state' | 'path'>;
 
-export interface MarchPath { points: WorldPosition[]; distances: number[]; length: number; }
+export interface MarchPath {
+    points: WorldPosition[]; distances: number[]; length: number;
+}
 export interface MarchSample { position: WorldPosition; towards: WorldPosition; moving: boolean; }
-const valid = (p: WorldPosition): boolean => !!p && Number.isFinite(p.x) && Number.isFinite(p.y);
+const num = (v: unknown): number => typeof v === 'number' ? v : Number(v);
+const valid = (p: WorldPosition): boolean => !!p && Number.isFinite(num(p.x)) && Number.isFinite(num(p.y));
+const point = (p: WorldPosition): WorldPosition => ({ x: num(p.x), y: num(p.y) });
 
 /** 使用服务端折线路径的格坐标长度插值，不把浮点拐点取整，也不直线穿越山体。 */
 export function buildMarchPath(march: MarchMotion): MarchPath {
-    const source = march.path?.length >= 2 && march.path.every(valid) ? march.path : [march.startPos, march.endPos];
-    const points = source.filter(valid).map(p => ({ x: p.x, y: p.y }));
+    const source = Array.isArray(march.path) && march.path.length >= 2 && march.path.every(valid)
+        ? march.path : [march.startPos, march.endPos];
+    const points = source.filter(valid).map(point);
     const distances = [0];
     for (let i = 1; i < points.length; i++) {
         distances.push(distances[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
@@ -49,7 +54,7 @@ export function projectMarchDistance(path: MarchPath, position: WorldPosition): 
         if (!length2) continue;
         const t = Math.max(0, Math.min(1, ((position.x - a.x) * dx + (position.y - a.y) * dy) / length2));
         const error = Math.hypot(position.x - a.x - t * dx, position.y - a.y - t * dy);
-        if (error < best.error) best = { error, distance: path.distances[i - 1] + Math.sqrt(length2) * t };
+        if (error < best.error) best = { error, distance: path.distances[i - 1] + (path.distances[i] - path.distances[i - 1]) * t };
     }
     return best;
 }

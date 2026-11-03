@@ -46,13 +46,16 @@ class Node {
     setScale(x, y) { this.scale = { x, y }; }
     setSiblingIndex(i) { const list = this.parent.children; list.splice(list.indexOf(this), 1); list.splice(i, 0, this); }
     removeFromParent() { if (this.parent) { const list = this.parent.children; list.splice(list.indexOf(this), 1); this.parent = null; } }
-    destroy() { this.destroyed = true; this.children.forEach(n => n.destroy()); }
+    destroy() {
+        assert.ok(!this.destroyed, '不能重复销毁同一个节点');
+        this.destroyed = true; this.children.forEach(n => n.destroy()); this.components = null;
+    }
 }
 const cc = { Vec2, UITransform, Sprite, SpriteFrame, Graphics, AnimationClip, Animation, Node,
     Rect: class { constructor(x, y, width, height) { Object.assign(this, { x, y, width, height }); } },
     Size: class { constructor(width, height) { Object.assign(this, { width, height }); } },
     Color: class { constructor(r, g, b, a) { Object.assign(this, { r, g, b, a }); } },
-    isValid: n => !n.destroyed,
+    isValid: n => !!n && !n.destroyed,
     resources: { load(name, Type, callback) {
         loads.push(name);
         const png = fs.readFileSync(path.join(root, 'assets/resources', name.replace('/spriteFrame', '.png')));
@@ -81,6 +84,32 @@ function create(t = troop) { const host = new Node('Army'), formation = new Form
 const emptyPath = { path: { length: 0 } };
 function update(f, dx = 1, dy = 0, moving = false) { now += 16; f.update(emptyPath, { position: { x: 10, y: 10 }, towards: { x: 10 + dx, y: 10 + dy }, moving }); }
 async function main() {
+    const renderLayer = new Node('WorldDepthActors'), host = new Node('Army');
+    renderLayer.addChild(host); host.setPosition(project({ x: 10, y: 10 }));
+    const detached = new Formation(host, renderLayer); detached.configure(troop, true);
+    update(detached, 1, 0, true);
+    const detachedNodes = detached.members.map(m => m.node);
+    assert.equal(detachedNodes.length, 7);
+    for (const member of detached.members) {
+        assert.equal(member.node.parent, renderLayer, '每个兵要和建筑独立排序');
+        assert.deepEqual(member.node.position, member.foot, '独立排序使用地图落脚点，不能再次叠加整队偏移');
+    }
+    detached.configure(null, false);
+    assert.ok(detachedNodes.every(n => n.destroyed && !n.parent), '更换编队回收原来的独立渲染节点');
+    detached.destroy();
+    assert.deepEqual(renderLayer.children, [host], '驻留结束/对象池回收不能留下独立士兵');
+    await tick();
+    assert.deepEqual(renderLayer.children, [host], '晚到资源不能复活已经回收的士兵');
+    console.log('PASS 主将与小兵独立遮挡、地图坐标、更换编队和异步回收');
+    const destroyedLayer = new Node('DestroyedMapLayer'), destroyedHost = new Node('DestroyedArmy');
+    destroyedLayer.addChild(destroyedHost);
+    const destroyedFormation = new Formation(destroyedHost, destroyedLayer);
+    destroyedFormation.configure(troop, true);
+    destroyedLayer.destroy();
+    assert.doesNotThrow(() => { destroyedFormation.destroy(); destroyedFormation.destroy(); });
+    await tick();
+    assert.equal(destroyedFormation.members.length, 0);
+    console.log('PASS 地图先销毁宿主和士兵时清理安全，重复释放及迟到加载不报错');
     const f = create();
     update(f, -1, 1, true);
     assert.ok(f.members.every(m => !m.sprite.node.active), '加载前不露出旧头像或整张图集');
@@ -94,6 +123,11 @@ async function main() {
         const set = await load('map/entries/MarchAnimationLibrary').loadMarchAnimations(kind);
         assert.equal(set.clips.length, 8); assert.equal(set.idleFrames.length, 8);
         assert.deepEqual(set.mirrored, [false, false, false, true, true, true, false, false]);
+        for (const [i, index] of [0, 1, 2, 1, 0, 7, 6, 7].entries()) {
+            assert.equal(set.guardFrames[i].rect.x, index % 4 * 256, '哨兵朝向必须使用对应的侧/斜/正视列');
+            assert.equal(set.guardFrames[i].rect.y, (Math.floor(index / 4) + (kind === 'cavalry' ? 0 : 2)) * 256,
+                '前后防区不能都误用正面图');
+        }
         for (const [i, row] of [0, 1, 2, 1, 0, 3, 4, 3].entries()) {
             const repairedFront = kind === 'cavalry' && (i === 5 || i === 7);
             const repairedSide = kind === 'cavalry' && (i === 0 || i === 4);
@@ -166,6 +200,27 @@ async function main() {
         compact.destroy();
     }
     console.log('PASS 低速、高速、不同帧率及改道坐标校正均保持阵位，不随速度拉散');
+    const exiting = create(); await tick();
+    const center = { x: 10, y: 10 };
+    const cityMotion = { state: 1, startTime: 1, endTime: 13, path: [center, { x: 4, y: 10 }], startPos: center, endPos: { x: 4, y: 10 } };
+    const exitPlayback = new Playback();
+    exitPlayback.setMotion(cityMotion, 1000, now); exiting.resetTrail();
+    exiting.update(exitPlayback, exitPlayback.sample(now));
+    assert.equal(exiting.members.filter(m => m.node.active).length, 7, '城内起步时整队正常显示');
+    assert.deepEqual(exitPlayback.path.points, cityMotion.path, '编队不能使用额外的绕墙路径');
+    for (let i = 0; i < 300; i++) {
+        now += 16; exiting.update(exitPlayback, exitPlayback.sample(now));
+        for (const member of exiting.members) {
+            assert.equal(member.node.active, true, '在城内和城墙处均不能隐藏士兵');
+            const x = member.foot.x / 256 - member.foot.y / 128, y = -member.foot.x / 256 - member.foot.y / 128;
+            assert.ok(Math.abs(x - (10 - exitPlayback.distance + member.lag)) < .00001);
+            assert.ok(Math.abs(y - (10 - member.side)) < .00001, '整队保持阵位沿服务端直线前进');
+            assert.equal(member.sprite.color, undefined, '正常行走不额外使用透明度渐变');
+        }
+    }
+    assert.equal(exiting.members.filter(m => m.node.active).length, 7);
+    exiting.destroy();
+    console.log('PASS 主将和六名护卫从城内直接沿后端路线行走，全程可见且无虚化');
     const halt = create(); await tick();
     for (let i = 0; i < 40; i++) update(halt, 1, 0, true);
     update(halt, 1, 0, false);
@@ -194,6 +249,45 @@ async function main() {
     angle(Math.atan(.5) * 180 / Math.PI);
     assert.equal(jitter.members[0].facing, 1, '等距地图右上行军必须能从水平朝向转入');
     console.log('PASS 折线转弯、到达收队、停驻稳定、扬尘停止、朝向边界防抖');
+    for (const data of [troop, null]) {
+        const defense = create(data); await tick();
+        for (let i = 0; i < 20; i++) update(defense, 1, 0, true);
+        const center = project({ x: 10, y: 10 });
+        defense.setGuarding(true);
+        for (let i = 0; i < 100; i++) {
+            const feet = defense.members.map(m => m.foot.clone());
+            update(defense, 1, 0, false);
+            assert.equal(defense.root.position.x, 0); assert.equal(defense.root.position.y, 0);
+            assert.ok(Vec2.distance(defense.members[0].foot, center) < .001, '主将始终居中，不能为读条横移整队');
+            defense.members.forEach((m, index) => assert.ok(Vec2.distance(feet[index], m.foot) < 16, '阵形展开不能瞬移'));
+        }
+        const escorts = defense.members.slice(1);
+        assert.equal(new Set(escorts.map(m => m.facing)).size, 4, '四面哨兵各自朝外，不全员同向');
+        for (const m of escorts) {
+            const post = m.guardPost;
+            assert.ok(Math.abs(post.x) < .5 && Math.abs(post.y) < .5, '警戒哨位不能跨入邻格');
+            assert.ok(Vec2.distance(m.foot, project({ x: 10 + post.x, y: 10 + post.y })) < .001);
+            const d = project({ x: post.dx, y: post.dy }), a = m.facing * Math.PI / 4;
+            assert.ok(d.x * Math.cos(a) + d.y * Math.sin(a) > 0, '武器朝向防区外侧');
+        }
+        assert.ok(defense.members.every(m => !m.moving && m.guardPose && m.sprite.spriteFrame === m.animations.guardFrames[m.facing]));
+        assert.equal(defense.dustVisible, false, '驻守不持续扬尘');
+        const feet = defense.members.map(m => [m.foot.x, m.foot.y]);
+        const breath = defense.members[0].sprite.node.position.y;
+        for (let i = 0; i < 15; i++) update(defense, 1, 0, false);
+        assert.deepEqual(defense.members.map(m => [m.foot.x, m.foot.y]), feet, '待机动作不能造成脚底漂移');
+        assert.notEqual(defense.members[0].sprite.node.position.y, breath, '驻守保留细微呼吸');
+        defense.setGuarding(false);
+        for (let i = 0; i < 100; i++) update(defense, 1, 0, false);
+        assert.ok(defense.members.every(m => !m.guardPose && !m.moving), '结束占领后收拢并恢复站姿');
+        for (const m of escorts) assert.ok(Vec2.distance(m.foot, project({ x: 10 - m.lag, y: 10 + m.side })) < .001);
+        defense.setGuarding(true);
+        for (let i = 0; i < 30; i++) update(defense, 1, 0, true);
+        assert.equal(defense.guardWeight, 0, '行军期间不能展开守备阵形');
+        assert.ok(defense.members.every(m => m.moving && !m.guardPose));
+        defense.destroy();
+    }
+    console.log('PASS 四/六护卫居中防御、四面朝外、格内哨位、平滑展开、原地待机和撤离收队');
     const zero = create({ ...troop, getSoldier: () => ({ count: 0 }) }); assert.equal(zero.members.length, 1);
     const unknown = create(null); assert.equal(unknown.members.length, 5);
     const disposed = create(), bodies = disposed.members.map(m => m.sprite.node); disposed.destroy(); await tick();

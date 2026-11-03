@@ -19,7 +19,11 @@ query.marches = { values: () => [{ state: 2, targetType: 3, startTime: 90, endTi
 assert.equal(query.occupyCountdownAt(10,20,100),null,'已到达的行军时间不能冒充占领倒计时');
 land = { startTime: 101, endTime: 121 };
 assert.deepEqual(query.occupyCountdownAt(10,20,110),land);
-assert.deepEqual(query.occupyCountdownAt(10,20,122),land,'0秒须等待 AOI 时间清零确认');
+assert.equal(query.occupyCountdownAt(10,20,121),null,'到时立即结束计时表现，不依赖 AOI 时间清零');
+assert.equal(query.occupyCountdownAt(10,20,122),null,'过期字段不再把地块永久判为占领中');
+assert.deepEqual(land,{startTime:101,endTime:121},'显示到时不修改服务器数据');
+assert.equal(query.occupyCountdownAt(10,20,NaN),null);
+assert.equal(query.occupyCountdownAt(10.5,20,110),null);
 land = { startTime: 0, endTime: 0 }; assert.equal(query.occupyCountdownAt(10,20,122),null);
 land = { startTime: NaN, endTime: Infinity }; assert.equal(query.occupyCountdownAt(10,20,122),null);
 
@@ -53,7 +57,7 @@ assert.equal(model.notices(114).length,0);
 model.battleResult({battleId:8,result:2,reportId:9},null,115);
 assert.equal(model.notices(115)[0].title,'战斗失利');
 model.clear(); assert.equal(model.notices(116).length,0); assert.equal(model.captures.size,0);
-console.log('PASS 占领权威计时、确认后成功、离屏跟踪、撤回清理、战斗提示和去重、断线清理');
+console.log('PASS 占领计时到时收起、归属确认后才报成功、离屏跟踪、撤回清理、战斗提示去重、断线清理');
 
 const motion = load('map/entries/MarchPose'), out = {};
 for (const kind of ['cavalry','infantry']) {

@@ -63,7 +63,8 @@ function load(file, imports = {}, clock = Date, engine = cc) {
         if (Object.hasOwn(imports, id)) return imports[id];
         throw new Error(`Unmocked dependency ${file}: ${id}`);
     };
-    new Function('require', 'module', 'exports', 'Date', result.outputText)(localRequire, mod, mod.exports, clock);
+    new Function('require', 'module', 'exports', 'Date', 'performance', result.outputText)
+        (localRequire, mod, mod.exports, clock, { now: () => clock.now() });
     return mod.exports;
 }
 const asDefault = value => ({ default: value });
@@ -130,7 +131,7 @@ test('portrait clears the old image and ignores out-of-order loads, including ca
 });
 
 test('every configured hero resolves to a distinct imported UI portrait', () => {
-    const heroes = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/Hero.json'), 'utf8'));
+    const heroes = Object.values(JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/Hero.json'), 'utf8')));
     const paths = new Set();
     const uuids = new Set();
     for (const hero of heroes) {
@@ -232,6 +233,8 @@ test('area visibility stays within map boundaries and old areas leave on far jum
 
 const BuildTag = load('assets/scripts/map/entries/BuildTagLogic.ts', {
     '../MapCommand': asDefault(MapCommand),
+    '../MapUtil': asDefault(MapUtil),
+    '../WorldMapArt': { default: {}, MAP_BOOKMARK_ART: 'map-bookmark-v2' },
 }).default;
 const TagLayer = load('assets/scripts/map/MapBuildTagLogic.ts', {
     ...shared, './entries/BuildTagLogic': asDefault(BuildTag), './MapBaseLayerLogic': asDefault(BaseLayer),
@@ -286,6 +289,55 @@ test('all map layers share a bounded recycle budget and still populate cells', (
     assert.ok(cells > 0 && cells <= 16, 'creation must not be starved');
     assert.ok(now < 4.21, 'budget may overrun by only the current unit of work');
     assert.equal(scene._failed, false);
+});
+test('initial viewport uses spare frame time without skipping or duplicating cells', () => {
+    const scene = new MapScene();
+    scene._cmd = { proxy: { overview: false } };
+    scene._initialCellTotal = 1600;
+    scene._pendingAreas = Array.from({ length: 16 }, (_, id) =>
+        ({ id, x: 0, y: 0, startY: 0, endX: 10, endY: 10 }));
+    const cells = new Set();
+    scene.addMapCell = (id, x, y) => {
+        const key = `${id}:${x}:${y}`;
+        assert.ok(!cells.has(key), 'each cell must be visited once');
+        cells.add(key);
+        now += 0.01;
+    };
+    let frames = 0;
+    while (scene._pendingAreas.length && frames < 100) {
+        const started = now;
+        scene.update();
+        assert.ok(now - started <= 4.02, 'initial loading must also respect the time budget');
+        frames++;
+    }
+    assert.ok(frames < 20, 'cheap initial cells must not be throttled to 24 per frame');
+    assert.equal(cells.size, 1600);
+    assert.equal(scene._initialCellDone, 1600);
+    assert.equal(scene._ready, false, 'cell creation alone cannot bypass camera/render readiness');
+});
+test('expensive initial cells yield after the frame budget', () => {
+    const scene = new MapScene();
+    scene._cmd = { proxy: { overview: false } };
+    scene._pendingAreas = [{ id: 1, x: 0, y: 0, startY: 0, endX: 10, endY: 10 }];
+    let cells = 0;
+    scene.addMapCell = () => { cells++; now += 1.5; };
+    const started = now;
+    scene.update();
+    assert.equal(cells, 3);
+    assert.ok(now - started < 5.5, 'overrun is bounded by one cell');
+    assert.equal(scene._pendingAreas.length, 1);
+    assert.equal(scene._ready, false);
+});
+test('interactive empty-cell streaming uses spare frame budget instead of delaying visible content', () => {
+    const scene = new MapScene();
+    scene._ready = true;
+    scene._cmd = { proxy: { overview: false } };
+    scene._pendingAreas = [{ id: 1, x: 0, y: 0, startY: 0, endX: 10, endY: 10 }];
+    let cells = 0;
+    scene.addMapCell = () => { cells++; now += 0.01; };
+    scene.update();
+    assert.equal(cells, 100);
+    assert.equal(scene._pendingAreas.length, 0);
 });
 test('empty cells create no invisible resource/tag nodes while cities and real resources remain', () => {
     const scene = new MapScene();

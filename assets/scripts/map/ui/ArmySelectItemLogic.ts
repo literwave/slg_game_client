@@ -187,14 +187,14 @@ export default class ArmySelectItemLogic extends Component {
         const reason = this.troopIssue(troop);
         this.tipNode.active = !!reason;
         this.labelTip.string = reason;
-        this.labelState.string = reason ? '' : action === 'move' ? '点击移动  ›' : '点击出征  ›';
+        this.labelState.string = reason ? '' : action === 'move' ? '移动  ›' : '出征  ›';
         this.labelName.string = `部队${troop.troopIdx}${name(0) ? ' · ' + name(0) : ''}`;
-        this.labelLv.string = heroes[0] ? String(heroes[0].level) : '';
+        this.labelLv.string = heroes[0] ? `Lv.${heroes[0].level}` : '';
         this.headIcon.node.active = !!heroes[0];
         if (heroes[0]) this.headIcon.getComponent(GeneralHeadLogic).setHeadId(heroes[0].cfgId);
         this.labelVice1.string = name(1); this.labelVice2.string = name(2);
         this.labelMorale.string = `伤兵 ${hurt}`;
-        this.labelSoldierCnt.string = `${count} 可用`;
+        this.labelSoldierCnt.string = `兵力 ${count}`;
         this.progressSoldier.progress = count + hurt > 0 ? count / (count + hurt) : 0;
     }
 
@@ -215,7 +215,7 @@ export default class ArmySelectItemLogic extends Component {
         return troop.getSoldier(leader).count > 0 ? '' : '主将兵力不足，请先配兵';
     }
 
-    /** 沿用预制体的头像、文字和点击回调，排成可滚动的完整队伍卡片。 */
+    /** 紧凑纵向队列：主将、兵力、副将和状态在同一行卡片内读完。 */
     public layoutRow(width: number, height: number): void {
         place(this.node, 0, 0, width, height);
         const bg = this.node.getChildByName('bg');
@@ -231,18 +231,20 @@ export default class ArmySelectItemLogic extends Component {
             label.font = null; label.useSystemFont = true; label.fontFamily = 'Microsoft YaHei';
         }
         this.headIcon.sizeMode = Sprite.SizeMode.CUSTOM;
-        place(this.headIcon.node, -width / 2 + 46, 18, 64, 64);
-        textStyle(this.labelLv, -width / 2 + 46, -28, 68, 13, C.muted, Label.HorizontalAlign.CENTER);
-        const textWidth = width - 112, center = 40;
-        textStyle(this.labelName, center, 46, textWidth, 19);
-        textStyle(this.labelSoldierCnt, center - textWidth / 4, 18, textWidth / 2, 15);
-        textStyle(this.labelMorale, center + textWidth / 4, 18, textWidth / 2, 14, C.muted);
-        textStyle(this.labelVice1, center - textWidth / 4, -10, textWidth / 2, 14, C.muted);
-        textStyle(this.labelVice2, center + textWidth / 4, -10, textWidth / 2, 14, C.muted);
+        place(this.headIcon.node, -width / 2 + 36, 10, 52, 52);
+        textStyle(this.labelLv, -width / 2 + 36, -28, 56, 11, C.muted, Label.HorizontalAlign.CENTER, 18);
+        const textWidth = width - 84, center = 32;
+        textStyle(this.labelName, center, 29, textWidth, 16, this.tipNode.active ? C.muted : C.text, Label.HorizontalAlign.LEFT, 22);
+        this.labelName.overflow = Label.Overflow.SHRINK;
+        textStyle(this.labelSoldierCnt, center - textWidth / 4, 7, textWidth / 2, 13, C.text, Label.HorizontalAlign.LEFT, 20);
+        textStyle(this.labelMorale, center + textWidth / 4, 7, textWidth / 2, 12, C.muted, Label.HorizontalAlign.LEFT, 20);
+        textStyle(this.labelVice1, center - textWidth / 4, -14, textWidth / 2, 12, C.muted, Label.HorizontalAlign.LEFT, 20);
+        textStyle(this.labelVice2, center + textWidth / 4, -14, textWidth / 2, 12, C.muted, Label.HorizontalAlign.LEFT, 20);
         this.progressSoldier.node.active = false;
-        place(this.tipNode, 0, -48, width - 32, 28);
-        textStyle(this.labelTip, 0, 0, width - 32, 14, C.muted, Label.HorizontalAlign.RIGHT);
+        place(this.tipNode, center, -34, textWidth, 20);
+        textStyle(this.labelTip, 0, 0, textWidth, 12, C.muted, Label.HorizontalAlign.RIGHT, 20);
+        this.labelTip.overflow = Label.Overflow.SHRINK;
         this.labelState.node.active = !this.tipNode.active;
-        textStyle(this.labelState, width / 2 - 76, -48, 120, 15, C.gold, Label.HorizontalAlign.RIGHT);
+        textStyle(this.labelState, width / 2 - 48, -33, 76, 13, C.gold, Label.HorizontalAlign.RIGHT, 22);
     }
 }

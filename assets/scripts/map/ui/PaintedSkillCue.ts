@@ -29,3 +29,22 @@ export function skillEnvelope(time:number,start:number,attack:number,hold:number
     if(age<attack+hold)return 1;
     const t=skillProgress(age,attack+hold,release);return 1-t*t*(3-2*t);
 }
+
+/** 飞行贴图与粒子共用轨迹，结束点与同一次命中严格对齐。 */
+export function skillFlight(time:number,impactAt:number,source:{leaderX:number;leaderY:number},
+    target:{x:number;y:number},scale:number) {
+    const progress=skillProgress(time,impactAt-.48,.48);
+    const x0=source.leaderX,y0=source.leaderY+52*scale,x1=target.x,y1=target.y+28*scale;
+    const arc=Math.min(68*scale,Math.hypot(x1-x0,y1-y0)*.17);
+    return {x:x0+(x1-x0)*progress,y:y0+(y1-y0)*progress+Math.sin(progress*Math.PI)*arc,
+        angle:Math.atan2(y1-y0+Math.cos(progress*Math.PI)*Math.PI*arc,x1-x0)*180/Math.PI,
+        alpha:skillEnvelope(time,impactAt-.48,.06,.32,.10),progress};
+}
+export function skillTargetFamily(cue:PaintedSkillCue,target:PaintedSkillTarget):string {
+    if(cue.kind==='restore')return 'restore';
+    if(target.key.split(':')[0]===cue.source.split(':')[0]&&(!cue.style||cue.style.intent==='attack'))return 'rally';
+    return cue.style?.family||(cue.kind==='ward'?'shield':'cleave');
+}
+export function skillTargetSupport(cue:PaintedSkillCue,target:PaintedSkillTarget):boolean {
+    return cue.kind==='restore'||cue.style?.intent==='buff'||target.key.split(':')[0]===cue.source.split(':')[0];
+}

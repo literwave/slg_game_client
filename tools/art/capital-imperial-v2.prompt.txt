@@ -1,0 +1,18 @@
+洛阳都城美术 v2
+生成方式：内置 image_gen，透明 PNG。
+接入资源：assets/resources/ui/world/capital-imperial-v2.png
+处理：透明边缘裁剪（阈值 8），四边补 12 px 透明留白；最终 1560×956。
+地图表现：capital 类别使用新版贴图；宽度按占地×1.12，地面锚点 (0.5, 0.52)。
+参考构图：公开《三国志·战略版》洛阳截图的外城、街坊、宫城层次，未使用原游戏贴图。
+参考来源：https://www.sohu.com/picture/343824919
+
+Final generation prompt:
+
+Use case: historical-scene / game environment sprite.
+Create one original production-ready transparent sprite of LUOYANG, a majestic imperial metropolis for a serious realistic Three Kingdoms SLG world map. This is a huge CAPITAL CITY, visibly an entire metropolis, not a military camp or tiny castle.
+Canvas: landscape, high resolution 1536 x 1024 or larger, genuine transparent background, entire city visible with small transparent safety margins. No backdrop, sky, UI, words, labels, logo or watermark.
+Camera: orthographic 2.5D isometric, looking down from the south corner at 30 degrees above the ground. Square city ground projects to a broad symmetric 2:1 diamond: horizontal corner-to-corner span twice the ground depth. Straight parallel streets, no perspective vanishing points. Nearest city corner at bottom center, side corners at left and right. ALL ground and building bases obey this exact shared projection.
+Composition: a sprawling continuous quadrangular outer stone city wall enclosing MANY neighborhoods (roughly 80-120 small courtyard houses in dense coherent blocks), a wide processional avenue, smaller intersecting streets, inner imperial enclosure, and a grand central palace complex on layered stone terraces. Three clear architectural scales: small slate-roofed residential wards; medium mansions and gate complexes; dominant ornate Han imperial hall and flanking towers. Central palace occupies about one fifth of the city width, highest structure in the image, with broad ceremonious stairs and axial courtyards. Large monumental outer gates on the two visible front wall runs and substantial corner bastions. Outer walls are long and formidable, but NOT absurdly tall relative to the whole city. Many small buildings establish metropolitan scale. Sparse trees, small garden pools and crimson banners accent the streets. Rich architecture but readable silhouette at 450 pixels wide.
+Material: believable worn pale warm-grey stone, rammed earth ochre sections, grey-blue tiled residential roofs, restrained bronze-gold imperial roof ridge accents, dark vermilion structural timber, muted olive trees. Historically inspired Chinese Han/Three Kingdoms architecture, mature painterly-realistic game render, crisp precise structural detail and subtle surface wear. Soft warm daylight from upper left, short soft contact shadows attached to walls and buildings; no heavy black blob underneath.
+Ground integration: city rests DIRECTLY on a flat ground plane. A very thin irregular dusty earth/grass transition immediately outside the walls, short gate road approaches fade cleanly into alpha. No solid plinth, no vertical sliced earth edge, no raised island, no rocks piled as a pedestal, no white halo, no painted oval shadow. Natural ground contact, grounded and immense.
+Avoid: toy-like, chibi, mobile casual cartoon, glossy plastic, isolated tall little fortress with a dozen houses, repetitive giant towers, fantasy European castle, oversaturated gold, enormous empty courtyard, mountains/backdrop, tilted camera, floating island, base slab, decorative frame. This must feel like the imperial center of a large historical campaign, with breadth, urban density, and a clearly dominant palace.

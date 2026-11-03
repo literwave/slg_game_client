@@ -5,6 +5,8 @@ export const MARCH_DIRECTIONS = ['r', 'ru', 'u', 'lu', 'l', 'ld', 'd', 'rd'];
 
 export interface MarchAnimationSet {
     clips: AnimationClip[];
+    /** 回放按自己的时间轴采样，与大地图共用图集而不启动独立动画时钟。 */
+    walkFrames: SpriteFrame[][];
     idleFrames: SpriteFrame[];
     /** 占领驻守时的举武器姿势；没有则退回 idleFrames。 */
     guardFrames?: SpriteFrame[];
@@ -72,9 +74,12 @@ export function loadMarchAnimations(kind: MarchUnitKind): Promise<MarchAnimation
             const first = DIRECTION_ROWS[index] * 7;
             return frames.slice(first, first + 7);
         });
+        const walkFrames = MARCH_DIRECTIONS.map((_, index) =>
+            sideWalkFrames && (index === 0 || index === 4) ? sideWalkFrames
+                : frontWalkFrames && (index === 5 || index === 7) ? frontWalkFrames : directionalFrames[index].slice(0, 6)
+        );
         const clips = MARCH_DIRECTIONS.map((direction, index) => {
-            const walk = sideWalkFrames && (index === 0 || index === 4) ? sideWalkFrames
-                : frontWalkFrames && (index === 5 || index === 7) ? frontWalkFrames : directionalFrames[index].slice(0, 6);
+            const walk = walkFrames[index];
             // 骑将与护卫共用 0.75 秒周期；不同帧数、转向切片不会改变整队的步态相位。
             const clip = AnimationClip.createWithSpriteFrames(walk, walk.length / .75);
             clip.name = `${kind}_walk_${direction}`;
@@ -83,7 +88,7 @@ export function loadMarchAnimations(kind: MarchUnitKind): Promise<MarchAnimation
             return clip;
         });
         // 每行最后一格是同一套装备的站姿；画布均为 256²，落脚线统一在距底边 18px。
-        return { clips, idleFrames: directionalFrames.map(row => row[6]), mirrored: MIRRORED.slice() };
+        return { clips, walkFrames, idleFrames: directionalFrames.map(row => row[6]), mirrored: MIRRORED.slice() };
     }).then((set: MarchAnimationSet) => loadGuardFrames(kind).then(guardFrames => {
         set.guardFrames = guardFrames;
         return set;
@@ -98,9 +103,9 @@ export function loadMarchAnimations(kind: MarchUnitKind): Promise<MarchAnimation
 function loadGuardFrames(kind: MarchUnitKind): Promise<SpriteFrame[]> {
     return loadSheet('ui/march/formation_idle_sheet', 4, 4).then(frames => {
         const base = kind === 'cavalry' ? 0 : 8;
-        // 列约：侧、斜、正、斜；左侧方向走镜像。前半球用第二行。
-        const cols = [3, 2, 1, 2, 3, 2, 1, 2];
-        const front = [false, false, false, false, false, true, true, true];
-        return MARCH_DIRECTIONS.map((_, index) => frames[base + (front[index] ? 4 : 0) + cols[index]]);
+        // 每种兵的八格依次是右、右后、背、左后、左、左前、正、右前。
+        // 与行走共用镜像规则，左侧必须选择对应的右侧原帧再翻转。
+        const indices = [0, 1, 2, 1, 0, 7, 6, 7];
+        return indices.map(index => frames[base + index]);
     });
 }

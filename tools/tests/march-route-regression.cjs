@@ -27,7 +27,8 @@ const project = p => ({ x: (p.x - p.y) * 100, y: -(p.x + p.y) * 50 });
 const stubs = {
     'utils/DateUtil': { default: { getServerTime: () => serverStart + mono, monotonicNow: () => mono } },
     'map/MapUtil': { default: { mapCellToPixelPoint: project } },
-    'map/entries/MarchFormation': { default: class { configure() {} update() {} destroy() {} } },
+    'map/entries/MarchFormation': { default: class { configure() {} setGuarding() {} resetTrail() {} update() {} destroy() {} } },
+    'world/WorldCommand': { default: { getInstance: () => ({ occupyCountdownAt: () => null }) } },
 };
 function load(name) {
     if (stubs[name]) return stubs[name];
@@ -95,3 +96,35 @@ midway.logic.setWorldEntity({ ...entity([{ x: -2, y: 0 }, { x: -2, y: 2 }], 2), 
     true, midway.army, midway.arrow);
 routeIs(midway, [{ x: -2, y: 0 }, { x: -2, y: 2 }]);
 console.log('PASS 改道替换前方路线，到达清除，对象池复用不留下旧线');
+
+const { aoiTroopMotion, buildMarchPath, sampleMarchPath } = load('world/MarchPath');
+const center = { x: 10, y: 10 };
+for (const [dx, dy] of [[6, 0], [6, 6], [0, 6], [-6, 6], [-6, 0], [-6, -6], [0, -6], [6, -6]]) {
+    const data = entity([center, { x: 10 + dx, y: 10 + dy }], 12), motion = aoiTroopMotion(data);
+    const before = JSON.stringify(data), original = buildMarchPath(motion), h = setup(data);
+    routeIs(h, data.path);
+    assert.deepEqual(h.logic.marchPath.points, data.path, '不能补城门或绕墙拐点');
+    for (let i = 1; i <= 120; i++) {
+        advance(h, 100);
+        const expected = project(sampleMarchPath(motion, original, 100000 + i * 100).position);
+        assert.ok(Math.hypot(h.army.position.x - expected.x, h.army.position.y - expected.y) < .00001,
+            '出城全过程的位置和速度必须符合后端原始路线');
+    }
+    assert.equal(JSON.stringify(data), before, '不能修改服务器路线或行军时间');
+}
+console.log('PASS 八方向从后端起点直接出发，城内外均不改道、不补点、不改速度');
+
+const outbound = entity([center, { x: 4, y: 10 }, { x: 4, y: 16 }], 12);
+const depart = setup(outbound);
+assert.deepEqual(depart.army.position, project(center));
+assert.deepEqual(depart.graphics.points[0], depart.army.position);
+advance(depart, 500); const footBefore = { ...depart.army.position };
+depart.logic.setWorldEntity(outbound, true, depart.army, depart.arrow);
+assert.deepEqual(depart.army.position, footBefore, '重复 AOI 不重新出城');
+const late = setup(outbound, 9000);
+routeIs(late, [{ x: 4, y: 13 }, { x: 4, y: 16 }]);
+const playback = new (load('world/MarchPlayback').default)();
+playback.setMotion({ state: 2, path: [], startPos: center, endPos: center, startTime: 0, endTime: 0 }, 100000, 0);
+playback.setMotion(aoiTroopMotion(outbound), 100000, 0);
+assert.deepEqual(playback.sample(0).position, center, '城内待命直接沿后端起点起步');
+console.log('PASS 出城折线、重复推送和中途进视野保持服务器路线，城内待命不跳城门');

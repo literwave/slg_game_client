@@ -36,6 +36,9 @@ const cc = { _decorator: { ccclass: () => Type => Type, property: () => () => {}
     Component: class {}, Sprite: class {}, UITransform, Node: TestNode, Graphics: TestGraphics,
     Color: class { constructor(r, g, b, a) { Object.assign(this, { r, g, b, a }); } }, Label: { HorizontalAlign: { CENTER: 1 } } };
 const footprint = load('assets/scripts/map/ResourceFootprint.ts');
+const geometry = load('assets/scripts/map/GateGeometry.ts', { './BridgeSilhouette': load('assets/scripts/map/BridgeSilhouette.ts', {}) });
+let currentGate = null;
+const campaign = { config: { width:1000, height:1000 }, gateAt: () => currentGate };
 const artNames = [], artHashes = new Set();
 const logicType = load('assets/scripts/map/entries/ResLogic.ts', {
     cc, '../MapProxy': { MapResType: { WOOD: 52, IRON: 53, STONE: 54, GRAIN: 55, SYS_FORTRESS: 50 } },
@@ -45,8 +48,8 @@ const logicType = load('assets/scripts/map/entries/ResLogic.ts', {
         if (name.includes('_lv')) artHashes.add(require('node:crypto').createHash('sha256').update(png).digest('hex'));
         sprite.spriteFrame = { originalSize: { width: png.readUInt32BE(16), height: png.readUInt32BE(20) } };
     } } },
-    '../WorldCampaign': { default: { gateAt: () => null } },
-    '../GateGeometry': load('assets/scripts/map/GateGeometry.ts'),
+    '../WorldCampaign': { default: campaign },
+    '../GateGeometry': geometry,
     '../MapUtil': { default: { tileSize: { width: 200, height: 100 } } },
     '../ResourceFootprint': footprint, '../ui/ManagementStyle': { caption(parent, name, text, x, y) {
         let node = parent.getChildByName(name);
@@ -78,3 +81,26 @@ logic.setResourceData({ type: 50, level: 5, x: 1, y: 1 });
 assert.equal(logic.spr.trim, true); assert.equal(transform.anchorY, .25);
 assert.equal(logic.node.getChildByName('ResourceGrade'), undefined);
 console.log(`PASS ${checked} real resource/level combinations fit inside the tile; pooled anchors, position, scale and trim reset`);
+for (const axis of ['x','y']) {
+    currentGate = { x:40,y:50,level:8,axis,crossing:'bridge',bridgeSpan:12 };
+    logic.setResourceData({type:50,...currentGate});
+    assert.equal(artNames.at(-1),'river_pass_citadel');
+    assert.equal(transform.anchorX,geometry.BRIDGE_ANCHOR_X);
+    assert.equal(transform.anchorY,geometry.BRIDGE_ANCHOR_Y);
+    assert.equal(spriteNode.sx,axis==='x'?-1:1);
+    assert.equal(spriteNode.sy,geometry.BRIDGE_HEIGHT_SCALE);
+    assert.equal(logic.spr.trim,false);
+    const mirror=axis==='x', width=geometry.gateWidth(8,currentGate);
+    const hit=(x,y)=>geometry.gateHit((x-geometry.BRIDGE_ANCHOR_X)*width*(mirror?-1:1),
+        (1-y-geometry.BRIDGE_ANCHOR_Y)*width*geometry.BRIDGE_ASPECT,8,mirror,currentGate);
+    assert.ok(hit(.45,.45),'central gate must be clickable');
+    assert.ok(hit(.27,.72),'foreground bridge deck must be clickable');
+    assert.ok(hit(.85,.19),'far approach must be clickable');
+    assert.equal(hit(.12,.12),false,'transparent river corner must not intercept clicks');
+    assert.equal(hit(.88,.86),false,'transparent water below bridge must not intercept clicks');
+    currentGate=null;
+    logic.setResourceData({type:52,level:3,x:40,y:50});
+    assert.equal(spriteNode.sx,1); assert.equal(spriteNode.sy,1);
+    assert.equal(transform.anchorX,.5); assert.equal(transform.anchorY,.5);
+}
+console.log('PASS wide fortified bridge hits both axes, ignores transparent water, and resets pooled resource scale');

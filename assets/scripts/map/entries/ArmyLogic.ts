@@ -1,7 +1,7 @@
 import { ArmyData } from "../../general/ArmyProxy";
 import DateUtil from "../../utils/DateUtil";
 import MapUtil from "../MapUtil";
-import { Vec2, Node, Animation, Vec3, UITransform, Color, Graphics, Sprite } from "cc";
+import { Vec2, Node, Animation, Vec3, UITransform, Color, Graphics, Sprite, isValid } from "cc";
 import WorldCommand, { type MarchInfo, type WorldEntity } from '../../world/WorldCommand';
 import { aoiTroopMotion, MarchMotion, MarchPath } from '../../world/MarchPath';
 import MarchPlayback from '../../world/MarchPlayback';
@@ -27,6 +27,8 @@ export default class ArmyLogic {
     private marching = false;
     private playback: MarchPlayback = null;
     private formation: MarchFormation = null;
+    private formationLayer: Node = null;
+    public setFormationLayer(layer: Node): void { this.formationLayer = layer; }
 
     public clear() {
         this.formation?.destroy(); this.formation = null; this.playback = null;
@@ -39,8 +41,8 @@ export default class ArmyLogic {
     }
 
     public destroy(): void {
-        this.aniNode.parent = null;
-        this.arrowNode.parent = null;
+        if (isValid(this.aniNode, true)) this.aniNode.removeFromParent();
+        if (isValid(this.arrowNode, true)) this.arrowNode.removeFromParent();
         this.clear();
     }
 
@@ -153,7 +155,7 @@ export default class ArmyLogic {
         if (!motion) { aniNode.active = arrowNode.active = false; return; }
         // 其他玩家不一定是敌方，只用不同颜色区别于本人，不推断同盟/敌对关系。
         const color = own ? new Color(111, 190, 233, 230) : new Color(237, 188, 98, 230);
-        if (!this.formation) this.formation = new MarchFormation(aniNode);
+        if (!this.formation) this.formation = new MarchFormation(aniNode, this.formationLayer);
         this.formation.configure(troop, own);
         this.setMotion(motion, aniNode, arrowNode, color);
         let marker = aniNode.getChildByName('WorldTroopMarker');
@@ -215,11 +217,11 @@ export default class ArmyLogic {
         this.arrowNode.active = sample.moving;
         this.drawRemainingMarchRoute(pixel);
         if (this.formation) {
-            this.formation.update(this.playback, sample);
             const cellX = Math.round(sample.position.x), cellY = Math.round(sample.position.y);
             const occupying = !sample.moving && !!WorldCommand.getInstance()
                 .occupyCountdownAt(cellX, cellY, DateUtil.getServerTime() / 1000);
             this.formation.setGuarding(occupying);
+            this.formation.update(this.playback, sample);
             this.marching = sample.moving;
             return point;
         }

@@ -1,4 +1,7 @@
 import { idKey } from '../network/pto/ProtocolCommand';
+import { validChatTarget } from './ChatPresentation';
+export interface ChatPeer { id: string; name: string; headIcon: number; }
+export interface ChatContact extends ChatPeer { source: string; }
 export class ChatMsg {
     msgId: number | string = 0;
     rid: number | string = 0;
@@ -15,7 +18,7 @@ export default class ChatProxy {
     private histories = new Map<string, ChatMsg[]>();
     private receiving = new Map<string, ChatMsg[]>();
     private unread = new Map<string, Set<string>>();
-    private peers = new Map<string, { id: string; name: string; headIcon: number }>();
+    private peers = new Map<string, ChatPeer>();
     limit = 100;
     key(channel: number, targetId: any = 0): string { return channel === 3 ? `3:${idKey(targetId)}` : String(channel); }
     clearData(): void { this.histories.clear(); this.receiving.clear(); this.unread.clear(); this.peers.clear(); }
@@ -80,11 +83,25 @@ export default class ChatProxy {
             .slice(-limit);
     }
     rememberPeer(id: any, name = '', headIcon = 0): void {
+        if (!validChatTarget(id)) return;
         const key = idKey(id), previous = this.peers.get(key);
-        this.peers.set(key, { id: key, name: name || previous?.name || key, headIcon: headIcon || previous?.headIcon || 0 });
+        this.peers.set(key, { id: key, name: name || previous?.name || '主公', headIcon: headIcon || previous?.headIcon || 0 });
     }
-    conversations(): { id: string; name: string; headIcon: number }[] {
+    conversations(): ChatPeer[] {
         return Array.from(this.peers.values()).sort((a, b) =>
             (this.getHistory(3, b.id).slice(-1)[0]?.time || 0) - (this.getHistory(3, a.id).slice(-1)[0]?.time || 0));
+    }
+    /** 从已接触的真实玩家中选择，不要求玩家查找或手输账号 ID。 */
+    contacts(myUid: any, members: readonly { rid: any; name: string; headIcon: number }[] = []): ChatContact[] {
+        const contacts = new Map<string, ChatContact>();
+        const add = (id: any, name: string, headIcon: number, source: string) => {
+            if (!validChatTarget(id) || idKey(id) === idKey(myUid) || contacts.has(idKey(id))) return;
+            contacts.set(idKey(id), { id: idKey(id), name: name || '主公', headIcon, source });
+        };
+        this.conversations().forEach(p => add(p.id, p.name, p.headIcon, '最近会话'));
+        members.forEach(p => add(p.rid, p.name, p.headIcon, '联盟成员'));
+        [...this.getHistory(1), ...this.getHistory(2)].sort((a, b) => b.time - a.time)
+            .forEach(p => add(p.rid, p.nick_name, p.headIcon, p.channel === 2 ? '联盟频道' : '世界频道'));
+        return Array.from(contacts.values());
     }
 }

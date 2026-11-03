@@ -27,6 +27,7 @@ class Node {
     addComponent(Type) { const c = new Type(); c.node = this; this.components.set(Type, c); return c; }
     getComponent(Type) { return this.components.get(Type) || null; }
     setPosition() {}
+    setSiblingIndex() {}
     removeAllChildren() { this.children = []; }
 }
 class Label extends Component { string = ''; }
@@ -46,14 +47,15 @@ function harness(loadFacilities = true) {
     const cache = new Map(), sent = [], timers = new Map(); let tid = 0;
     const role = { userId: uid, name: '长安', cityPos: { x: 12, y: 20 }, allianceId: otherUid };
     const balances = { resList: [1, 2, 3, 4, 100].map(k => ({ k, v: k === 100 ? 123 : 1000000 })) };
-    const login = { proxy: { getRoleData: () => role, getRoleResData: () => balances, hasItemCount: () => false } };
+    const login = { proxy: { getRoleData: () => role, getRoleResData: () => balances, hasItemCount: () => false,
+        getItemCount: id => Number(balances.resList.find(row => row.k === id)?.v || 0) } };
     class EmptyProxy { initData() {} clearData() {} updateMapPosTags() {} isPosTag() { return false; } }
     const actual = new Set(['utils/EventMgr', 'common/LogicEvent', 'config/ServerConfig', 'config/Basci',
         'network/pto/ProtoManager', 'network/pto/ProtocolCommand', 'network/pto/SnapshotStore', 'network/socket/NetInterface',
-        'core/ConfigManager', 'world/WorldCommand', 'world/ResourceLand', 'build/BuildCommand', 'map/ui/BuildingPresentation',
+        'core/ConfigManager', 'common/ItemPresentation', 'utils/ConfigIcon', 'world/WorldCommand', 'world/ResourceLand', 'build/BuildCommand', 'map/ui/BuildingPresentation',
         'map/MapCityProxy', 'map/MapCommand', 'map/MapCityLogic', 'map/MapBaseLayerLogic', 'map/PlayerCityAppearance', 'map/entries/FacilityBuildLogic',
-        'map/ui/MapUIProxy', 'map/ui/MapUICommand', 'map/ui/BuildingProgressionGraph', 'map/ui/FacilityDesLogic', 'map/ui/FacilityListLogic',
-        'map/ui/FacilityItemLogic', 'map/ui/MapUILogic', 'scene/MapScene']);
+        'map/ui/MapUIProxy', 'map/ui/MapUICommand', 'map/ui/BuildingProgressionGraph', 'map/ui/CityBuildingPanel',
+        'map/ui/MapUILogic', 'scene/MapScene']);
     const stubs = {
         'login/LoginCommand': { default: { getInstance: () => login } },
         'world/MapMarkCommand': { default: { getInstance: () => ({ marks: { values: () => [] } }) } },
@@ -114,7 +116,7 @@ test('首次进图实际加载流程初始化建筑表，提前到达的 Build �
     const module = { exports: {} };
     new Function('require', 'module', 'exports', code)(id => id === 'cc' ? cc : imports[id] || {}, module, module.exports);
     const main = new module.exports.default();
-    main.prepareSkillAssets = main.prepareHeadIcons = main.prepareHeroAssets = () => {};
+    main.prepareSkillAssets = main.prepareHeadIcons = main.prepareHeroAssets = main.prepareInventoryAssets = () => {};
     const assets = ['BuildingDetail', 'BuildingLv'].map(name => ({ name, json: table(name) }));
     main.prepareMap({}, assets).next();
     h.ui.qryCityFacilities(1);
@@ -123,37 +125,21 @@ test('首次进图实际加载流程初始化建筑表，提前到达的 Build �
     assert.equal(h.ui.proxy.getMyFacilityByType(1, 10).level, 0, '未建建筑仍可进入列表');
 });
 
-test('内城先于配置打开后可恢复全部建筑，复用不重复挂组件且收起多余空行', () => {
-    const h = harness(false), serialized = JSON.parse(fs.readFileSync(path.join(root, 'assets/prefab/CityFacilityNode.prefab'), 'utf8'));
-    const make = id => {
-        const row = serialized[id], node = new Node(row._name); node.active = row._active;
-        for (const c of row._components) {
-            const component = serialized[c.__id__];
-            if (component.__type__ === 'cc.Label') node.addComponent(Label).string = component._string;
-        }
-        row._children.forEach(child => node.addChild(make(child.__id__)));
-        return node;
-    };
-    const rootNode = make(1), content = rootNode.getChildByName('facilityNode').getChildByName('listNode')
-        .getChildByName('New ScrollView').getChildByName('view').getChildByName('content');
-    const view = new (h.load('map/ui/FacilityListLogic').default)();
-    view.node = rootNode; view.scrollView = { content, scrollToTop() {} }; view.updateDesView = () => {};
-    view.onLoad(); assert.equal(view._itemLogics.size, 0);
-    h.ui.proxy.setAllFacilityCfg(['BuildingDetail', 'BuildingLv'].map(name => ({ name, json: table(name) })));
-    view.setData({ cityId: 1 });
-    assert.equal(view._itemLogics.size, 16);
-    for (const [bid, item] of view._itemLogics) {
-        assert.equal(item.node.active, true);
-        assert.equal(item.labelName.string, table('BuildingDetail').find(row => row.Id === bid).Name);
-        assert.ok(item.node.getChildByName('bg').getChildByName('BuildingIcon'), '空图标配置也创建建筑显示节点');
-    }
-    const original = view._itemLogics.get(1);
-    view.setData({ cityId: 1 }); assert.equal(view._itemLogics.get(1), original);
-    assert.ok(content.children.some(row => !row.active));
-    h.receive(h.S.s2c_sync_build, { bid: 1, level: 5 });
-    assert.equal(original.data.level, 5);
-    const maxConfiguredLevel = Math.max(...table('BuildingLv').filter(row => row.BuildingType === 1).map(row => row.Lv));
-    assert.equal(original.labelRate.string, `5/${maxConfiguredLevel}`);
+test('内城入口创建新版面板，重复打开复用同一窗口', () => {
+    const h = harness(), Panel = h.load('map/ui/CityBuildingPanel').default;
+    const logic = new (h.load('map/ui/MapUILogic').default)();
+    logic.node = new Node(); logic.contentNode = new Node();
+    const shown = [], show = Panel.prototype.show;
+    Panel.prototype.show = function(cityId) { shown.push(cityId); };
+    try {
+        logic.openFacility({ cityId: 1 });
+        const window = logic._facilityNode;
+        assert.ok(window.getComponent(Panel));
+        assert.equal(window.parent, logic.contentNode);
+        logic.openFacility({ cityId: 1 });
+        assert.equal(logic._facilityNode, window);
+        assert.deepEqual(shown, [1, 1]);
+    } finally { Panel.prototype.show = show; }
 });
 
 test('野外建筑倒计时完成通过真实 World protobuf 刷新，回收后不再发包', () => {
@@ -290,29 +276,29 @@ test('拒绝非法 World 坐标和非城市实体，无坐标时不伪造主城'
     const before = h.sent.length; h.ui.upFacility(1, 1); assert.equal(h.sent.length, before);
 });
 function detail(h, bid) {
-    const view = new (h.load('map/ui/FacilityDesLogic').default)();
-    for (const key of ['labelTitle', 'labelDes', 'labelConditions', 'labelNeed', 'labelUp', 'labelNeedTime']) {
-        const parent = new Node(); parent.addComponent(UITransform); const node = new Node(); node.addComponent(UITransform); parent.addChild(node);
-        view[key] = node.addComponent(Label);
-    }
-    view.btnUp = { node: { active: true }, interactable: false }; view.additionNode = new Node(); view.onLoad();
-    const refresh = () => view.setData(1, h.ui.proxy.getMyFacilityByType(1, bid), h.ui.proxy.getFacilityCfgByType(bid));
-    h.events.on(h.E.updateMyFacilities, refresh, view); h.ui.qryCityFacilities(1); return view;
+    const view = new (h.load('map/ui/CityBuildingPanel').default)();
+    view.cityId = 1; view.selected = bid; view.selectedLevel = view.nextLevel(bid);
+    view.layout = view.focusSelected = () => {};
+    view.detailScroll = { scrollToTop() {} };
+    h.ui.qryCityFacilities(1);
+    return view;
 }
-test('Build 按实际 bid 建造/升级，回包前不涨级；内城列表、主城和按钮同步', () => {
+test('新版内城按实际 bid 建造/升级，回包前不涨级，重复点击不重复发送', () => {
     const h = harness(); h.build.requestBuildings(); h.receive(h.S.s2c_req_build, { buildList: [{ bid: 1, level: 1 }] });
-    const view = detail(h, 10); assert.equal(view.labelUp.string, '建造'); assert.equal(view.btnUp.interactable, true);
-    view.onClickUp(); assert.equal(h.sent.at(-1).name, h.S.c2s_create_build); assert.deepEqual(plain(h.sent.at(-1).data), { bid: 10 });
-    assert.equal(h.ui.proxy.getMyFacilityByType(1, 10).level, 0); assert.equal(view.labelUp.string, '等待确认');
-    const n = h.sent.length; view.onClickUp(); assert.equal(h.sent.length, n);
+    const view = detail(h, 10);
+    view.onAction(); assert.equal(h.sent.at(-1).name, h.S.c2s_create_build); assert.deepEqual(plain(h.sent.at(-1).data), { bid: 10 });
+    assert.equal(h.ui.proxy.getMyFacilityByType(1, 10).level, 0);
+    const n = h.sent.length; view.onAction(); assert.equal(h.sent.length, n);
     h.receive(h.S.s2c_sync_build, { bid: 10, level: 1 }); assert.equal(h.ui.proxy.getMyFacilityByType(1, 10).level, 1);
-    assert.equal(view.labelUp.string, '未解锁');
+    view.selectBuilding(10, 2); view.onAction();
+    assert.equal(h.sent.length, n, '前置不足不能发送升级');
+    assert.equal(view.selected, 1, '未满足前置时跳转到主城目标');
     h.receive(h.S.s2c_sync_build, { bid: 1, level: 2 });
-    assert.equal(view.labelUp.string, '升级'); view.onClickUp(); assert.equal(h.sent.at(-1).name, h.S.c2s_up_build);
+    view.selectBuilding(10, 2); view.onAction(); assert.equal(h.sent.at(-1).name, h.S.c2s_up_build);
     assert.equal(h.ui.proxy.getMyFacilityByType(1, 10).level, 1);
     h.receive(h.S.s2c_sync_build, { bid: 10, level: 2 }); assert.equal(h.ui.proxy.getMyFacilityByType(1, 10).level, 2);
     h.receive(h.S.s2c_sync_build, { bid: 1, level: 20 }); assert.equal(h.map.cityProxy.getMyMainCity().level, 20);
-    h.build.clearData(); assert.equal(view.btnUp.interactable, false); assert.equal(view.labelUp.string, '连接中');
+    h.build.clearData(); const count = h.sent.length; view.onAction(); assert.equal(h.sent.length, count, '断线后禁止发送');
 });
 test('所有建筑等级保留石料成本，余额不足阻止升级，满足条件后可发送', () => {
     const h = harness();
@@ -320,10 +306,14 @@ test('所有建筑等级保留石料成本，余额不足阻止升级，满足�
     for (const row of table('BuildingLv')) assert.equal(h.ui.proxy.getFacilityCfgByType(row.BuildingType).upLevels[row.Lv - 1].stone, row.CostStone);
     for (const [bid, level] of [[1, 2], [13, 1], [16, 1]]) h.receive(h.S.s2c_sync_build, { bid, level });
     h.balances.resList.find(r => r.k === 4).v = 149;
-    const view = detail(h, 1); assert.equal(view.btnUp.interactable, false); assert.match(view.labelNeed.string, /150\/149/);
-    const n = h.sent.length; view.onClickUp(); assert.equal(h.sent.length, n);
+    const view = detail(h, 1);
+    const state = h.load('map/ui/BuildingPresentation').buildingGoalPresentation(h.ui.proxy.getFacilityCfgByType(1),
+        view.selectedLevel, h.build.levels, h.ui.proxy.getFacilityConfigs(), view.resourceBalances());
+    assert.equal(state.canAct, false);
+    assert.equal(state.costs.find(cost => cost.id === 4).need, 150);
+    const n = h.sent.length; view.onAction(); assert.equal(h.sent.length, n);
     h.balances.resList.find(r => r.k === 4).v = 150; h.ui.qryCityFacilities(1);
-    assert.equal(view.btnUp.interactable, true); view.onClickUp(); assert.equal(h.sent.at(-1).name, h.S.c2s_up_build);
+    view.onAction(); assert.equal(h.sent.at(-1).name, h.S.c2s_up_build);
 });
 
 test('登录前建筑推送不作为空地，加载完成主动查询并恢复真实等级', () => {
@@ -332,7 +322,7 @@ test('登录前建筑推送不作为空地，加载完成主动查询并恢复�
     h.receive(h.S.s2c_user_login_ok);
     const view = detail(h, 1);
     assert.equal(h.ui.proxy.getMyFacilityByType(1, 1).synced, false);
-    assert.equal(view.btnUp.interactable, false);
+    const before = h.sent.length; view.onAction(); assert.equal(h.sent.length, before);
     assert.equal(h.build.create(1), false);
     h.receive(h.S.s2c_client_load_ok);
     assert.equal(h.sent.at(-1).name, h.S.c2s_req_build);
@@ -360,10 +350,10 @@ test('建筑全量覆盖旧缓存但保留查询途中的新推送，空列表�
     assert.equal(h.build.create(1), true);
 });
 
-test('建筑查询超时可手动重试，断线清空快照且迟到回包不能恢复旧账号数据', () => {
+test('建筑查询超时后可重新同步，断线清空快照且迟到回包不能恢复旧账号数据', () => {
     const h = harness(); h.build.requestBuildings();
     const timer = [...h.timers.values()].find(t => t.delay === 8000); timer.fn();
-    assert.match(h.build.loadError, /超时/); assert.equal(h.build.create(1), false);
+    assert.equal(h.build.loadError, '建筑信息同步中'); assert.equal(h.build.loading, false); assert.equal(h.build.create(1), false);
     assert.equal(h.build.requestBuildings(), true);
     h.receive(h.S.s2c_req_build, { buildList: [{ bid: 1, level: 4 }] });
     assert.equal(h.build.loadError, '');
@@ -500,21 +490,24 @@ test('资源栏粮木铁石四项图标/数量对应且不显示令牌', () => {
     const prefab = JSON.parse(fs.readFileSync(path.join(root, 'assets/scenes/MapUIScene.prefab'), 'utf8'));
     const slots = prefab.find(o => o.__type__ === 'cc.Node' && o._name === 'ResourceBar')._children.map(r => prefab[r.__id__]);
     assert.equal(slots.length, 4);
-    const bar = new Node();
+    const bar = new Node('ResourceBar');
     for (const entry of slots) {
-        const slot = new Node(), dot = new Node('Dot'), text = new Node('New Label');
+        const slot = new Node(entry._name), dot = new Node('Dot'), text = new Node('New Label');
         const children = entry._children.map(r => prefab[r.__id__]);
         const sprite = children.find(n => n._name === 'Dot')._components.map(r => prefab[r.__id__]).find(c => c.__type__ === 'cc.Sprite');
         dot.addComponent(Sprite).spriteFrame = { uuid: sprite._spriteFrame.__uuid__ };
         text.addComponent(Label); slot.addChild(dot); slot.addChild(text); bar.addChild(slot);
     }
     h.balances.resList = [1, 2, 3, 4, 100].map(k => ({ k, v: k * 100 }));
-    hud.srollLayout = { node: bar }; hud.updateRoleRes();
+    hud.node = new Node(); hud.node.addChild(bar);
+    hud.srollLayout = { node: bar }; hud.initResourceIcons(); hud.updateRoleRes();
     [1, 2, 3, 4].forEach((id, index) => {
-        const icon = table('Item').find(r => r.Id === id).Icon;
+        const resourcePath = h.load('common/ItemPresentation').itemIconPath(id);
+        const icon = resourcePath.replace(/\/spriteFrame$/, '');
         const meta = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources', icon + '.png.meta'), 'utf8'));
         const frame = Object.values(meta.subMetas).find(s => s.importer === 'sprite-frame');
-        assert.equal(bar.children[index].getChildByName('Dot').getComponent(Sprite).spriteFrame.uuid, frame.uuid);
+        assert.ok(frame.uuid);
+        assert.equal(bar.children[index].getChildByName('Dot').getComponent(Sprite).spriteFrame.name, resourcePath);
         assert.ok(!bar.children[index].getChildByName('New Label').getComponent(Label).string.includes('令牌'));
         assert.equal(bar.children[index].getChildByName('New Label').getComponent(Label).string, ['粮', '木', '铁', '石'][index] + ' ' + id * 100);
     });

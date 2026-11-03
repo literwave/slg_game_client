@@ -79,10 +79,11 @@ CCProgram landscape-fs %{
     float shore = 1.0 - smoothstep(-.16, .52, d);
     float bank = max(smoothstep(.08, .25, river) * (1.0 - inlandWater), (1.0 - smoothstep(.5, 1.0, d)) * (1.0 - shore));
     vec3 ground = mix(grass, vec3(.57, .53, .37), bank * .48);
-    // 连续岩质山脊底色连接重叠山体，阻挡不再表现为零散的装饰物。
+    // 山脚仍使用连续草石纹理；不能用大块纯色暴露逻辑山带边界。
     float mountain = smoothstep(.18, .68, texture(riverTexture, clamp(dataUV, vec2(0.0), vec2(1.0))).g);
-    float ridgeShade = .96 + .04 * sin(cell.x * .23 + cell.y * .17);
-    ground = mix(ground, vec3(.43, .44, .34) * ridgeShade, mountain * .65);
+    float ridgeShade = .98 + .02 * sin(cell.x * .23 + cell.y * .17);
+    vec3 foothill = mix(grass, variation, .35) * vec3(.96, .97, .89) * ridgeShade;
+    ground = mix(ground, foothill, mountain * .55);
     vec3 col = mix(ground, water, max(inlandWater, shore));
     float shallows = max(shore * (1.0 - smoothstep(.4, 1.6, -d)), inlandWater * (1.0 - smoothstep(.60, .9, river)));
     col = mix(col, vec3(.57, .64, .52), shallows * .28);

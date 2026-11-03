@@ -18,6 +18,7 @@ export default class MapMarkCommand extends ProtocolCommand {
     readonly marks = new SnapshotStore<MapMark>(key);
     private _loaded = false;
     private operation: { add: boolean; pos: MapMark } | null = null;
+    private reconcileSnapshot: (() => void) | null = null;
     error = '';
     get loaded(): boolean { return this._loaded; }
     get loading(): boolean { return this.requestInFlight(S.c2s_req_mark_list); }
@@ -32,16 +33,22 @@ export default class MapMarkCommand extends ProtocolCommand {
         this.listen(S.s2c_req_mark_list, this.onList);
         this.listen(S.s2c_add_mark, data => this.onChanged(true, data.markInfo?.pos));
         this.listen(S.s2c_del_mark, data => this.onChanged(false, data.pos));
+        this.reconcileOnNotice(['坐标无效', '标记已达上限', '没有这个标记'], WRITE, () => this.requestSnapshot(true));
     }
     protected onSessionReady(): void { this.requestList(); }
     protected reset(): void {
         this.marks.clear(); this._loaded = false; this.operation = null; this.error = '';
+        this.reconcileSnapshot = null;
         this.changed();
     }
     has(pos: MapMark): boolean { return !!position(pos) && !!this.marks.get(key(pos)); }
     pendingAt(pos: MapMark): boolean { return !!this.operation && key(this.operation.pos) === key(pos); }
     requestList(): boolean {
-        if (!this.sessionReady || this.loading || this.busy) return false;
+        return this.requestSnapshot(false);
+    }
+    private requestSnapshot(reconcile: boolean): boolean {
+        if (!this.sessionReady || this.loading || this.busy && !reconcile) return false;
+        this.reconcileSnapshot = this.capturePending(WRITE);
         this.marks.begin(); this.error = '';
         const sent = this.request(S.c2s_req_mark_list, {}, S.c2s_req_mark_list, () => {
             this.marks.cancel(); this.error = '标记读取超时，请重试'; this.changed();
@@ -76,7 +83,14 @@ export default class MapMarkCommand extends ProtocolCommand {
         });
         if (valid) { this.marks.replace(values); this._loaded = true; this.error = ''; }
         else { this.marks.cancel(); this.error = '标记数据无效，请重试'; }
-        this.finish(S.c2s_req_mark_list); this.changed();
+        const reconcile = this.reconcileSnapshot;
+        this.reconcileSnapshot = null;
+        this.finish(S.c2s_req_mark_list);
+        if (valid) {
+            reconcile?.();
+            if (!this.isPending(WRITE)) this.operation = null;
+        }
+        this.changed();
     }
     private onChanged(add: boolean, value: any): void {
         const pos = position(value); if (!pos) return;

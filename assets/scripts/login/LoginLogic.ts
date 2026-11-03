@@ -63,7 +63,6 @@ export default class LoginLogic extends Component {
         EventMgr.on(NetEvent.ServerReconnecting, this.onServerReconnecting, this);
         // 登录页保持空闲，只有用户点击登录才建立连接。
         var data = LocalCache.getLoginValidation();
-        console.log("LoginLogic  data:", data)
 
         this.rememberAccount = LocalCache.getPersonMemory("rememberAccount", true) !== false;
         var rememberedAccount = LocalCache.getPersonMemory("rememberedAccount", "");

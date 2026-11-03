@@ -1,0 +1,75 @@
+CCEffect %{
+  techniques:
+  - passes:
+    - vert: replay-vs:vert
+      frag: replay-fs:frag
+      depthStencilState:
+        depthTest: false
+        depthWrite: false
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendDstAlpha: one_minus_src_alpha
+      rasterizerState:
+        cullMode: none
+      properties:
+        frameTextureA: { value: white }
+        frameTextureB: { value: white }
+        frameRectA: { value: [0, 0, 1, 1] }
+        frameRectB: { value: [0, 0, 1, 1] }
+        frameSizeA: { value: [256, 256, 0.001, 0.001] }
+        frameSizeB: { value: [256, 256, 0.001, 0.001] }
+        blendMetrics: { value: [256, 256, 0, 1] }
+}%
+CCProgram replay-vs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #if USE_LOCAL
+    #include <builtin/uniforms/cc-local>
+  #endif
+  in vec3 a_position;
+  in vec2 a_texCoord;
+  in vec4 a_color;
+  out vec2 uv0;
+  out vec4 color;
+  vec4 vert () {
+    vec4 pos = vec4(a_position, 1.0);
+    #if USE_LOCAL
+      pos = cc_matWorld * pos;
+    #endif
+    uv0 = a_texCoord; color = a_color;
+    return cc_matViewProj * pos;
+  }
+}%
+CCProgram replay-fs %{
+  precision highp float;
+  in vec2 uv0;
+  in vec4 color;
+  uniform FrameBlend {
+    vec4 frameRectA;
+    vec4 frameRectB;
+    vec4 frameSizeA;
+    vec4 frameSizeB;
+    vec4 blendMetrics;
+  };
+  uniform sampler2D frameTextureA;
+  uniform sampler2D frameTextureB;
+  vec4 frag () {
+    vec2 p = (uv0 - frameRectA.xy) / frameRectA.zw;
+    // 两种画布都以底部同一落脚线对齐，不能随着图集尺寸切换而缩放人物。
+    vec2 pixel = vec2((p.x - 0.5) * blendMetrics.x, (p.y - 1.0) * blendMetrics.y);
+    vec2 a = vec2(0.5 + pixel.x * blendMetrics.w / frameSizeA.x, 1.0 + pixel.y / frameSizeA.y);
+    vec2 b = vec2(0.5 + pixel.x / frameSizeB.x, 1.0 + pixel.y / frameSizeB.y);
+    float maskA = step(0.0,a.x)*step(a.x,1.0)*step(0.0,a.y)*step(a.y,1.0);
+    float maskB = step(0.0,b.x)*step(b.x,1.0)*step(0.0,b.y)*step(b.y,1.0);
+    vec2 halfA = frameSizeA.zw * 0.5, halfB = frameSizeB.zw * 0.5;
+    vec4 ca = texture(frameTextureA, clamp(frameRectA.xy + a * frameRectA.zw, frameRectA.xy + halfA, frameRectA.xy + frameRectA.zw - halfA));
+    vec4 cb = texture(frameTextureB, clamp(frameRectB.xy + b * frameRectB.zw, frameRectB.xy + halfB, frameRectB.xy + frameRectB.zw - halfB));
+    ca.a *= maskA; cb.a *= maskB;
+    // 在一次绘制中混合预乘颜色，避免两个半透明 Sprite 叠加造成忽明忽暗。
+    vec4 premul = mix(vec4(ca.rgb * ca.a,ca.a),vec4(cb.rgb * cb.a,cb.a),blendMetrics.z);
+    return vec4(premul.rgb / max(premul.a,0.00001),premul.a) * color;
+  }
+}%

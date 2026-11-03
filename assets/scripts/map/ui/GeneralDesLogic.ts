@@ -130,11 +130,12 @@ export default class GeneralDesLogic extends Component {
         this._currData = curData;
         this._cfgData = cfgData;
 
-        var nextCfg = GeneralCommand.getInstance().proxy.getGeneralLevelCfg(this._currData.level + 1);
-        var levelExp = nextCfg ? nextCfg.exp : "MAX";
-        var maxLevel: number = GeneralCommand.getInstance().proxy.getMaxLevel();
+        const generalProxy = GeneralCommand.getInstance().proxy;
+        const maxLevel = generalProxy.getMaxLevel();
         if (this.lvLabel) this.lvLabel.string = this._currData.level + "/" + maxLevel;
-        if (this.expLabel) this.expLabel.string = curData.exp + "/" + levelExp;
+        const experience = generalProxy.getExperienceProgress(curData.level, curData.exp);
+        if (this.expLabel) this.expLabel.string = experience
+            ? `${experience.current} / ${experience.maximum}` : '—';
 
         if (this.nameLab) this.nameLab.string = this._cfgData.name;
 

@@ -53,23 +53,12 @@ export function drawCommandPanel(parent: Node, width: number, height: number, se
     chamfer(g, left + .5, bottom + .5, width - 1, height - 1, 6);
     g.stroke();
     g.fillColor = new Color(91, 85, 61, 100);
-    chamfer(g, left + 3, top - 39, width - 6, 36, 4);
+    chamfer(g, left + 3, top - 62, width - 6, 59, 4);
     g.fill();
     g.strokeColor = new Color(171, 151, 104, 95);
-    g.moveTo(left + 10, top - 40);
-    g.lineTo(-left - 10, top - 40);
+    g.moveTo(left + 10, top - 64);
+    g.lineTo(-left - 10, top - 64);
     g.stroke();
-    if (selected >= 0) {
-        const step = (width - 18) / tabCount;
-        const x = (selected - (tabCount - 1) / 2) * step;
-        g.fillColor = new Color(132, 112, 65, 128);
-        g.roundRect(x - step / 2 + 4, top - 34, step - 8, 28, 3);
-        g.fill();
-        g.strokeColor = new Color(193, 166, 106, 190);
-        g.moveTo(x - 22, top - 34);
-        g.lineTo(x + 22, top - 34);
-        g.stroke();
-    }
     g.strokeColor = new Color(207, 182, 119, 185);
     for (const direction of [-1, 1]) {
         const x = direction * (width / 2 - 8);
@@ -94,7 +83,7 @@ export function drawCommandHandle(parent: Node): void {
     g.stroke();
 }
 
-export function drawCommandRow(parent: Node, expanded = false, status = false): void {
+export function drawCommandRow(parent: Node, expanded = false, status = false, hasPortrait = false): void {
     const ui = parent?.getComponent(UITransform);
     if (!ui) return;
     const g = surface(parent, ui.width, ui.height);
@@ -109,19 +98,26 @@ export function drawCommandRow(parent: Node, expanded = false, status = false): 
     g.moveTo(left + 5, -ui.height / 2 + .5);
     g.lineTo(right - 5, -ui.height / 2 + .5);
     g.stroke();
-    // 军令牌形的编号底座，代替占据整行的大色块。
+    // 有主将时使用紧凑头像框，空主将位保留军令牌编号。
     g.fillColor = new Color(91, 82, 52, 215);
-    g.moveTo(left + 8, 18);
-    g.lineTo(left + 36, 18);
-    g.lineTo(left + 36, -10);
-    g.lineTo(left + 22, -19);
-    g.lineTo(left + 8, -10);
-    g.close();
-    g.fill();
     g.strokeColor = new Color(184, 157, 93, 180);
-    g.moveTo(left + 10, 16);
-    g.lineTo(left + 34, 16);
-    g.stroke();
+    if (hasPortrait) {
+        g.rect(left + 5, -23, 34, 46);
+        g.fill();
+        g.rect(left + 5, -23, 34, 46);
+        g.stroke();
+    } else {
+        g.moveTo(left + 8, 18);
+        g.lineTo(left + 36, 18);
+        g.lineTo(left + 36, -10);
+        g.lineTo(left + 22, -19);
+        g.lineTo(left + 8, -10);
+        g.close();
+        g.fill();
+        g.moveTo(left + 10, 16);
+        g.lineTo(left + 34, 16);
+        g.stroke();
+    }
     if (status) {
         g.fillColor = new Color(149, 137, 96, 38);
         g.roundRect(right - 54, 3, 46, 18, 3);

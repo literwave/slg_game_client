@@ -62,12 +62,13 @@ export default class ProgressionCommand extends ProtocolCommand {
     private notifyTasks(): void { EventMgr.emit(E.updateTasks, this.tasks.values()); }
     private notifyActivities(): void { EventMgr.emit(E.updateActivities, this.activities.values()); }
     requestTasks(): boolean {
-        if (this.isPending(S.c2s_req_task_list)) return false;
-        this.tasks.begin();
         // 回包不带 taskType，统一拉全量，界面按 getTasks(type) 筛选。
-        const ok = this.request(S.c2s_req_task_list, { taskType: 0 }, S.c2s_req_task_list, () => this.tasks.cancel());
-        if (!ok) this.tasks.cancel();
-        return ok;
+        return this.query(S.c2s_req_task_list, () => {
+            this.tasks.begin();
+            const ok = this.request(S.c2s_req_task_list, { taskType: 0 }, S.c2s_req_task_list, () => this.tasks.cancel());
+            if (!ok) this.tasks.cancel();
+            return ok;
+        });
     }
     getTasks(type = 0): TaskInfo[] { return this.tasks.values().filter(t => !type || t.taskType === type); }
     claimTask(taskId: number): boolean {

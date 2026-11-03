@@ -1,12 +1,116 @@
 import { BlockInputEvents, Button, Color, EditBox, Graphics, Label, Node, ProgressBar, Slider, Sprite, UITransform, Widget, view } from 'cc';
 import { caption, headerRule, hideSprite, inkSurface, ManagementColors as C, manualLayout, panelButton, place, textStyle } from './ManagementStyle';
 import { styleGeneralPageBackground } from './GeneralPageBackground';
+import { gameCloseButton } from './TaskBoardView';
+import { troopAttributeIcon, TroopAttributeIcon } from './TroopAttributeIcons';
+import { troopPortrait } from './TroopSidebarCard';
 
 const SURFACE = new Color(151, 144, 117, 25);
 const CONTROL = new Color(151, 144, 117, 46);
 const LINE = new Color(190, 166, 119, 105);
 const RULE = new Color(190, 166, 119, 50);
 const TITLE_INSET = 26;
+
+function polygon(g: Graphics, points: number[][]): void {
+    g.moveTo(points[0][0], points[0][1]);
+    points.slice(1).forEach(p => g.lineTo(p[0], p[1])); g.close();
+}
+
+/** 用旗帜和盔甲表示待上阵武将，避免空卡反复显示大段操作说明。 */
+function emptyHero(parent: Node, width: number, height: number, leader: boolean): void {
+    const g = inkSurface(parent, 'EmptyHeroSilhouette', 160, 190, null, null);
+    const scale = Math.min((width - 36) / 160, (height - 94) / 190, 1.2);
+    g.node.setScale(Math.max(.35, scale), Math.max(.35, scale), 1);
+    g.node.setPosition(0, 24, 0);
+    g.fillColor = new Color(40, 34, 25, 125); g.strokeColor = new Color(172, 143, 82, 55); g.lineWidth = 1;
+    polygon(g, [[-62, 90], [62, 90], [62, -64], [0, -89], [-62, -64]]); g.fill(); g.stroke();
+    g.strokeColor = new Color(183, 151, 87, 90); g.lineWidth = 2;
+    for (const side of [-1, 1]) {
+        g.moveTo(side * 61, -68); g.lineTo(side * 61, 72); g.stroke();
+        polygon(g, [[side * 61, 91], [side * 56, 70], [side * 66, 70]]); g.fill();
+    }
+    g.fillColor = new Color(118, 105, 76, 120); g.strokeColor = new Color(198, 169, 108, 115);
+    // 头盔、面甲和肩甲保持中性轮廓，不冒用尚未上阵的武将头像。
+    polygon(g, [[-27, 24], [-25, 49], [-12, 64], [12, 64], [25, 49], [27, 24], [14, 31], [-14, 31]]); g.fill(); g.stroke();
+    polygon(g, [[-18, 28], [18, 28], [16, 0], [0, -14], [-16, 0]]); g.fill(); g.stroke();
+    g.moveTo(0, 52); g.lineTo(0, 5); g.moveTo(-16, 19); g.lineTo(-5, 16); g.moveTo(5, 16); g.lineTo(16, 19); g.stroke();
+    polygon(g, [[-18, -9], [-45, -18], [-52, -39], [-29, -47], [0, -62], [29, -47], [52, -39], [45, -18], [18, -9], [0, -22]]); g.fill(); g.stroke();
+    for (const y of [-28, -39, -50]) { g.moveTo(-19, y + 6); g.lineTo(0, y); g.lineTo(19, y + 6); g.stroke(); }
+    if (leader) {
+        g.fillColor = new Color(165, 111, 57, 110);
+        polygon(g, [[-4, 62], [-9, 83], [1, 96], [13, 84], [7, 62]]); g.fill();
+    }
+}
+
+function squadDiagram(parent: Node, height: number, heroes: number[]): void {
+    const unit = height / 7;
+    const bottom = unit * .85 + 18;
+    const scale = Math.min(1, Math.max(.35, (height / 2 - bottom - 8) / 107));
+    const g = inkSurface(parent, 'SquadDiagram', 168, 116, null, null);
+    g.node.setPosition(0, bottom + 57 * scale); g.node.setScale(scale, scale, 1);
+    g.node.setSiblingIndex(parent.children.length - 1);
+    g.strokeColor = RULE; g.lineWidth = 1.5;
+    g.moveTo(-19, 16); g.lineTo(-52, -5); g.moveTo(19, 16); g.lineTo(52, -5); g.stroke();
+    const slots = [[0, 25, 44], [-52, -20, 34], [52, -20, 34]];
+    slots.forEach(([x, y, size], index) => {
+        const old = g.node.getChildByName('Position_' + index); if (old) old.active = false;
+        const occupied = heroes[index] > 0, edge = size / 2;
+        g.fillColor = new Color(29, 28, 21); g.roundRect(x - edge - 3, y - edge - 3, size + 6, size + 6, 3); g.fill();
+        g.strokeColor = index === 0 ? C.gold : new Color(158, 138, 94); g.lineWidth = index === 0 ? 2 : 1;
+        g.roundRect(x - edge - 2, y - edge - 2, size + 4, size + 4, 2); g.stroke();
+        troopPortrait(g.node, 'FormationHead_' + index, heroes[index] || 0, x, y, size);
+        const placeholder = troopAttributeIcon(g.node, 'VacantRole_' + index, 'soldiers', x, y, size - 6, true);
+        placeholder.active = !occupied;
+        const label = caption(g.node, 'RoleTitle_' + index, index === 0 ? '主将' : '副将',
+            x, y - edge - 12, 42, 10, occupied ? C.gold : C.muted, Label.HorizontalAlign.CENTER);
+        textStyle(label, x, y - edge - 12, 42, 10, occupied ? C.gold : C.muted, Label.HorizontalAlign.CENTER, 16);
+    });
+}
+
+function arrowButton(node: Node | null, x: number, y: number, direction: number): void {
+    if (!node) return;
+    troopButton(node, '', x, y, 44, 36);
+    const g = inkSurface(node, 'SquadArrow', 28, 28, null, null);
+    g.strokeColor = C.gold; g.lineWidth = 2;
+    g.moveTo(-direction * 4, -7); g.lineTo(direction * 4, 0); g.lineTo(-direction * 4, 7); g.stroke();
+}
+
+export interface TroopVisualState {
+    soldiers: number | null; wounded: number; reserve: number; allocated: number;
+    speed: number; attack: number; supply: boolean;
+}
+
+/** 只更新可视数据，不触发请求或重建卡槽，滑杆和拖动过程保持原节点。 */
+export function updateTroopPanelStatus(parts: TroopPanelParts): void {
+    const info = parts.node?.getChildByName('infoNode'), state = parts.visualState;
+    if (!info || !state) return;
+    const size = info.getComponent(UITransform); if (!size) return;
+    const unit = size.height / 7, compact = size.height < 310;
+    const heroes = parts.generalLayer?.children.map(n => (n.getComponent('CityGeneralItemLogic') as any)?.formationHeroId || 0) || [];
+    squadDiagram(info, size.height, heroes);
+    const value = caption(info, 'SoldierValue', state.soldiers === null ? '—' : String(state.soldiers), 17, -unit * .15,
+        size.width - 66, compact ? 26 : 34, C.text, Label.HorizontalAlign.CENTER);
+    value.isBold = true; value.overflow = Label.Overflow.SHRINK;
+    caption(info, 'WoundedValue', state.soldiers === null ? '同步中' : `伤兵 ${state.wounded}`, 10, -unit * 1.02,
+        size.width - 52, 12, C.muted, Label.HorizontalAlign.CENTER);
+    troopAttributeIcon(info, 'SoldierIcon', 'soldiers', -size.width / 2 + 25, -unit * .15, compact ? 25 : 30);
+    troopAttributeIcon(info, 'WoundedIcon', 'wounded', -30, -unit * 1.02, 20);
+    const values = [state.speed, state.attack], keys = ['SpeedValue', 'AttackValue'];
+    values.forEach((number, index) => {
+        const text = Number.isFinite(number) ? String(Math.round(number * 100) / 100) : '—';
+        const label = info.getChildByName(keys[index])?.getComponent(Label); if (label) label.string = text;
+    });
+    const footer = parts.node.getChildByName('conscriptNode');
+    if (!footer) return;
+    const reserve = footer.getChildByName('ReserveValue')?.getComponent(Label);
+    const allocated = footer.getChildByName('AllocatedValue')?.getComponent(Label);
+    if (reserve) { reserve.string = String(state.reserve); reserve.node.active = state.supply; }
+    if (allocated) { allocated.string = '+' + state.allocated; allocated.node.active = state.supply; }
+    if (parts.labelResCost) parts.labelResCost.node.active = !state.supply;
+    for (const name of ['ReserveTitle', 'ReserveGlyph', 'AllocatedTitle', 'AllocatedGlyph']) {
+        const node = footer.getChildByName(name); if (node) node.active = state.supply;
+    }
+}
 
 /** 只调整部队页的按钮底色，保留共享按钮的点击事件和主操作强调色。 */
 function troopButton(node: Node | null, text: string, x: number, y: number,
@@ -67,8 +171,11 @@ export function styleTroopCard(root: Node, width: number, height: number): void 
     if (bg) {
         place(bg, 0, 0, width, height);
         hideSprite(bg);
-        const surface = inkSurface(bg, 'TroopCardSurface', width, height, SURFACE, LINE);
+        const surface = inkSurface(bg, 'TroopCardSurface', width, height,
+            logic.index === 0 ? new Color(72, 57, 33, 130) : new Color(42, 39, 29, 110), LINE);
         cornerMarks(surface, width, height);
+        surface.strokeColor = new Color(178, 150, 93, logic.index === 0 ? 120 : 55);
+        surface.rect(-width / 2 + 12, -height / 2 + 12, width - 24, height - 24); surface.stroke();
         const button = bg.getComponent(Button);
         if (button) { button.transition = Button.Transition.SCALE; button.target = bg; button.zoomScale = .985; }
     }
@@ -77,9 +184,9 @@ export function styleTroopCard(root: Node, width: number, height: number): void 
         place(title, 0, height / 2 - TITLE_INSET, width - 32, 32);
         hideSprite(title);
         const rule = inkSurface(title, 'TroopRoleSurface', width - 32, 32, null, null);
-        rule.lineWidth = 1; rule.strokeColor = RULE;
-        rule.moveTo(-width / 2 + 16, -16); rule.lineTo(width / 2 - 16, -16); rule.stroke();
-        textStyle(logic.labelTitle, -width / 2 + 46, 0, 60, 16, C.gold, Label.HorizontalAlign.LEFT, 24);
+        rule.lineWidth = 1; rule.strokeColor = LINE; rule.fillColor = new Color(103, 75, 36, 180);
+        polygon(rule, [[-38, 15], [38, 15], [38, -11], [0, -19], [-38, -11]]); rule.fill(); rule.stroke();
+        textStyle(logic.labelTitle, 0, 0, 60, 16, C.gold, Label.HorizontalAlign.CENTER, 24);
         troopButton(logic.btnDown, '下阵', width / 2 - 40, 0, 48, 28);
     }
     const info = logic.infoNode as Node;
@@ -126,16 +233,18 @@ export function styleTroopCard(root: Node, width: number, height: number): void 
         if (add.parent !== root) add.setParent(root);
         place(add, 0, -12, width - 20, height - 60);
         hideSprite(add);
-        const g = inkSurface(add, 'EmptyTroopGlyph', 56, 56, null, null);
-        g.node.setPosition(0, 8, 0);
-        g.fillColor = CONTROL;
-        g.circle(0, 0, 28); g.fill();
+        emptyHero(add, width, height, logic.index === 0);
+        const g = inkSurface(add, 'EmptyTroopGlyph', 48, 48, null, null);
+        const plusY = -Math.min(88, (height - 100) * .36);
+        g.node.setPosition(0, plusY, 0); g.node.setSiblingIndex(add.children.length - 1);
+        g.fillColor = new Color(111, 82, 39, 210);
+        g.circle(0, 0, 23); g.fill();
         g.lineWidth = 2; g.strokeColor = new Color(197, 166, 108, 180);
-        g.circle(0, 0, 28); g.stroke();
+        g.circle(0, 0, 23); g.stroke();
         g.strokeColor = C.gold;
         g.moveTo(-9, 0); g.lineTo(9, 0); g.moveTo(0, -9); g.lineTo(0, 9); g.stroke();
-        const hint = caption(add, 'ChooseHeroHint', '选择武将', 0, -44, width - 24, 16, C.text, Label.HorizontalAlign.CENTER);
-        textStyle(hint, 0, -44, width - 24, 16, C.text, Label.HorizontalAlign.CENTER, 24);
+        const hint = caption(add, 'ChooseHeroHint', '上阵', 0, plusY - 36, width - 24, 15, C.text, Label.HorizontalAlign.CENTER);
+        textStyle(hint, 0, plusY - 36, width - 24, 15, C.text, Label.HorizontalAlign.CENTER, 24);
     }
     if (logic.lockNode) {
         place(logic.lockNode, 0, -12, width - 20, height - 60);
@@ -157,6 +266,7 @@ interface TroopPanelParts {
     editBoxs: EditBox[];
     sliders: Slider[];
     tipNodes: Node[];
+    visualState?: TroopVisualState;
 }
 
 export function styleTroopPanel(parts: TroopPanelParts): void {
@@ -192,17 +302,19 @@ export function styleTroopPanel(parts: TroopPanelParts): void {
         hideSprite(header);
         place(header, 0, headerY, usable, 56);
         textStyle(header.getChildByName('labelTitle')?.getComponent(Label),
-            left + 120, 0, 240, compact ? 25 : 28);
-        troopButton(header.getChildByName('btnClose'), '', usable / 2 - 22, 0, 44, 44, false, true);
+            left + 142, 0, 208, compact ? 25 : 28);
+        troopAttributeIcon(header, 'HeaderFlag', 'formation', left + 15, 0, 34);
+        const close = header.getChildByName('btnClose');
+        if (close) gameCloseButton(close, usable / 2 - 22, 0);
         headerRule(header, usable, -30);
         if (parts.labelId) {
             parts.labelId.node.parent = header;
             textStyle(parts.labelId, cardsX, 0, 104, 21, C.text, Label.HorizontalAlign.CENTER, 30);
         }
     }
-    troopButton(root.getChildByName('btnPrev'), '上一队', cardsX - 112, headerY, 80, 34);
-    troopButton(root.getChildByName('btnNext'), '下一队', cardsX + 112, headerY, 80, 34);
-    caption(root, 'TroopSelectionHint', '拖动武将交换阵位 · 点击查看详情', cardsX,
+    arrowButton(root.getChildByName('btnPrev'), cardsX - 94, headerY, -1);
+    arrowButton(root.getChildByName('btnNext'), cardsX + 94, headerY, 1);
+    caption(root, 'TroopSelectionHint', '拖动换位', cardsX,
         bodyTop + 14, cardAreaWidth, 12, C.muted, Label.HorizontalAlign.CENTER);
 
     const info = root.getChildByName('infoNode');
@@ -210,31 +322,37 @@ export function styleTroopPanel(parts: TroopPanelParts): void {
         place(info, left + summaryWidth / 2, cardY, summaryWidth, cardHeight);
         hideSprite(info.getChildByName('bg'));
         hideSprite(info.getChildByName('bg2'));
-        inkSurface(info, 'TroopSummary', summaryWidth, cardHeight, SURFACE, LINE);
-        caption(info, 'SummaryTitle', '编队概况', 0, cardHeight / 2 - TITLE_INSET, summaryWidth - 32, 18, C.gold);
-        const titleRule = inkSurface(info, 'SummaryTitleRule', summaryWidth - 32, 1, RULE, null);
-        titleRule.node.setPosition(0, cardHeight / 2 - TITLE_INSET - 16, 0);
-        const labels = ['label1', 'label2', 'label3', 'label4', 'label5'];
-        const titles = ['编队状态', '总兵力', '行军速度', '总攻击', '加成'];
-        const values = [parts.labelCost, parts.labelSoldierCnt, parts.labelSpeed, parts.labelAtkCity, parts.labelAddition];
-        const rowHeight = (cardHeight - 64) / 5;
-        const firstY = cardHeight / 2 - 48 - rowHeight / 2;
-        const labelWidth = 64;
-        const valueWidth = summaryWidth - 32 - labelWidth - 8;
-        const valueX = summaryWidth / 2 - 16 - valueWidth / 2;
-        labels.forEach((name, index) => {
-            const y = firstY - index * rowHeight;
-            const label = info.getChildByName(name)?.getComponent(Label);
-            textStyle(label, -summaryWidth / 2 + 16 + labelWidth / 2, y, labelWidth,
-                13, C.muted, Label.HorizontalAlign.LEFT, 24);
-            if (label) label.string = titles[index];
-            textStyle(values[index], valueX, y, valueWidth,
-                !compact && index !== 0 ? 16 : 14, C.text, Label.HorizontalAlign.RIGHT, 24);
-            if (values[index]) values[index].overflow = Label.Overflow.SHRINK;
-            const rule = inkSurface(info, 'SummaryRule' + index, summaryWidth - 32, 1, RULE, null);
-            rule.node.setPosition(0, y - rowHeight / 2 + 1, 0);
+        inkSurface(info, 'TroopSummary', summaryWidth, cardHeight, new Color(34, 35, 25, 175), LINE);
+        for (const name of ['SummaryTitle', 'SummaryTitleRule', 'label1', 'label2', 'label3', 'label4', 'label5',
+            'SummaryRule0', 'SummaryRule1', 'SummaryRule2', 'SummaryRule3', 'SummaryRule4']) {
+            const node = info.getChildByName(name); if (node) node.active = false;
+        }
+        const unit = cardHeight / 7, statWidth = (summaryWidth - 36) / 2, statHeight = Math.min(76, unit * 1.45);
+        textStyle(parts.labelCost, 0, unit * .85, summaryWidth - 20, 14, C.gold, Label.HorizontalAlign.CENTER, 24);
+        if (parts.labelCost) parts.labelCost.overflow = Label.Overflow.SHRINK;
+        for (const label of [parts.labelSoldierCnt, parts.labelSpeed, parts.labelAtkCity]) if (label) label.node.active = false;
+        (['march', 'attack'] as TroopAttributeIcon[]).forEach((kind, index) => {
+            const x = (index - .5) * (statWidth + 8), y = -unit * 2;
+            const plate = inkSurface(info, 'Attribute_' + index, statWidth, statHeight, new Color(93, 82, 53, 55), RULE);
+            plate.node.setPosition(x, y);
+            plate.node.setSiblingIndex(info.children.length - 1);
+            const valueY = y - statHeight * .19;
+            troopAttributeIcon(info, 'AttributeIcon_' + index, kind,
+                x - statWidth / 2 + (compact ? 17 : 20), valueY, compact ? 28 : 34);
+            const title = caption(info, 'AttributeTitle_' + index, index ? '部队攻击' : '行军速度',
+                x, y + statHeight * .29, statWidth - 12, 12, C.text, Label.HorizontalAlign.CENTER);
+            textStyle(title, x, y + statHeight * .29, statWidth - 12, 12, C.text, Label.HorizontalAlign.CENTER, 20);
+            title.isBold = true;
+            title.node.setSiblingIndex(info.children.length - 1);
+            const label = caption(info, index ? 'AttackValue' : 'SpeedValue', '—', x + (compact ? 16 : 18), valueY,
+                statWidth - (compact ? 36 : 42), compact ? 20 : 22, C.text, Label.HorizontalAlign.CENTER);
+            label.isBold = true; label.overflow = Label.Overflow.SHRINK;
+            label.node.setSiblingIndex(info.children.length - 1);
         });
-        place(info.getChildByName('additionNode'), valueX, firstY - 4 * rowHeight, valueWidth, 26);
+        troopAttributeIcon(info, 'AdditionGlyph', 'bonus', -summaryWidth / 2 + 28, -unit * 3, 22, true);
+        caption(info, 'AdditionTitle', '加成', -22, -unit * 3, 40, 11, C.muted, Label.HorizontalAlign.CENTER);
+        textStyle(parts.labelAddition, 30, -unit * 3, summaryWidth - 100, 12, C.muted, Label.HorizontalAlign.CENTER, 22);
+        place(info.getChildByName('additionNode'), 0, -unit * 3, summaryWidth - 20, 26);
     }
 
     manualLayout(parts.generalLayer);
@@ -253,13 +371,14 @@ export function styleTroopPanel(parts: TroopPanelParts): void {
     removeDecoration(footer, 'ConscriptHint');
     const allocationY = footerHeight / 2 - allocationHeight / 2;
     const fieldY = allocationY + allocationHeight / 2 - 20;
-    const allocationLabelSize = 16;
     const allocationLabelHeight = 24;
-    const allocationTitle = caption(footer, 'ConscriptTitle', '兵力分配',
-        left + summaryWidth / 2, fieldY, summaryWidth - 32, allocationLabelSize, C.gold);
-    // 同一行共用字号、行高和文本框高度，避免仅中心坐标相同但字面仍显得错位。
-    textStyle(allocationTitle, left + summaryWidth / 2, fieldY, summaryWidth - 32,
-        allocationLabelSize, C.gold, Label.HorizontalAlign.LEFT, allocationLabelHeight);
+    const oldTitle = footer.getChildByName('ConscriptTitle'); if (oldTitle) oldTitle.active = false;
+    troopAttributeIcon(footer, 'ReserveGlyph', 'reserve', left + 28, allocationY, 36);
+    caption(footer, 'ReserveTitle', '预备兵', left + summaryWidth / 2 + 12, allocationY + 17,
+        summaryWidth - 66, 12, C.muted, Label.HorizontalAlign.CENTER);
+    const reserveValue = caption(footer, 'ReserveValue', '—', left + summaryWidth / 2 + 12, allocationY - 11,
+        summaryWidth - 60, 26, C.text, Label.HorizontalAlign.CENTER);
+    reserveValue.isBold = true; reserveValue.overflow = Label.Overflow.SHRINK;
     for (let index = 0; index < 3; index++) {
         const x = cardsX + (index - 1) * (cardWidth + cardGap);
         const surface = inkSurface(footer, 'AllocationColumn' + index, cardWidth, allocationHeight, SURFACE, LINE);
@@ -267,11 +386,10 @@ export function styleTroopPanel(parts: TroopPanelParts): void {
         const title = footer.getChildByName('title' + (index + 1));
         if (title) {
             hideSprite(title);
-            place(title, x - cardWidth / 2 + 38, fieldY, 44, allocationLabelHeight);
+            place(title, x - cardWidth / 2 + 29, fieldY, 26, allocationLabelHeight);
             const label = title.getComponentInChildren(Label);
-            textStyle(label, 0, 0, 44, allocationLabelSize, C.gold,
-                Label.HorizontalAlign.LEFT, allocationLabelHeight);
-            if (label) label.string = '增援';
+            if (label) label.node.active = false;
+            troopAttributeIcon(title, 'ReinforceGlyph', 'reinforce', 0, 0, 25);
         }
         const edit = parts.editBoxs[index];
         if (edit) {
@@ -300,13 +418,27 @@ export function styleTroopPanel(parts: TroopPanelParts): void {
                 inkSurface(slider.handle.node, 'SliderHandle', 14, 20, C.gold, LINE);
             }
         }
-        textStyle(parts.tipNodes[index]?.getComponent(Label), x, allocationY - 10,
-            cardWidth - 24, 14, C.muted, Label.HorizontalAlign.CENTER, 24);
+        const tip = parts.tipNodes[index];
+        if (tip) {
+            place(tip, x, allocationY - 6, cardWidth - 24, 30);
+            const label = tip.getComponent(Label); if (label) label.enabled = false;
+            troopAttributeIcon(tip, 'EmptyAllocation', 'soldiers', -17, 0, 21, true);
+            caption(tip, 'EmptyAmount', '—', 14, 0, 34, 16, C.muted, Label.HorizontalAlign.CENTER);
+        }
     }
     const actionY = -footerHeight / 2 + actionHeight / 2;
-    troopButton(footer.getChildByName('btnQuick'), '快速分兵', usable / 2 - 204, actionY, 128, actionHeight);
-    troopButton(footer.getChildByName('btnSure'), '确认分兵', usable / 2 - 64, actionY, 128, actionHeight, true);
+    const quick = footer.getChildByName('btnQuick'), sure = footer.getChildByName('btnSure');
+    troopButton(quick, '快速分兵', usable / 2 - 204, actionY, 128, actionHeight);
+    troopButton(sure, '确认分兵', usable / 2 - 64, actionY, 128, actionHeight, true);
+    for (const node of [quick, sure]) if (node) {
+        troopAttributeIcon(node, 'ActionGlyph', node === quick ? 'reserve' : 'reinforce', -47, 0, 22);
+        const label = node.getComponentInChildren(Label); if (label) textStyle(label, 10, 0, 92, 15, C.text, Label.HorizontalAlign.CENTER, 26);
+    }
+    troopAttributeIcon(footer, 'AllocatedGlyph', 'reinforce', left + 14, actionY, 24);
+    caption(footer, 'AllocatedTitle', '本次增援', left + 67, actionY, 76, 12, C.muted, Label.HorizontalAlign.CENTER);
+    caption(footer, 'AllocatedValue', '+0', left + 160, actionY, 96, 22, C.gold, Label.HorizontalAlign.LEFT);
     const costWidth = usable - 292;
     textStyle(parts.labelResCost, left + costWidth / 2, actionY, costWidth, 12, C.muted, Label.HorizontalAlign.LEFT, 24);
     if (parts.labelResCost) parts.labelResCost.overflow = Label.Overflow.SHRINK;
+    updateTroopPanelStatus(parts);
 }

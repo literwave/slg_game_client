@@ -79,7 +79,7 @@ function harness() {
         'world/WorldCommand': { default: { getInstance: () => ({
             marches: { get: () => undefined }, isTroopAtHome: () => true,
         }) } },
-        'map/ui/TroopPanelSkin': { styleTroopPanel() {}, styleTroopCard() {} },
+        'map/ui/TroopPanelSkin': { styleTroopPanel() {}, styleTroopCard() {}, updateTroopPanelStatus() {} },
     };
     function load(name) {
         if (name.endsWith('.js')) return { default: require(path.resolve(scripts, name)) };
@@ -500,6 +500,60 @@ test('主城部队面板读取 World 快照，三队可打开，编队更新和�
     assert.equal(card.labelTip.string, '点击编制队伍');
     city.onDisable();
     assert.equal(h.additionReads, 0);
+});
+
+test('侧栏队名只取主将，主将下阵留下副将时立即清除旧名称和头像', () => {
+    const h = harness();
+    h.heroes.get(1001).config.name = '吕布';
+    h.heroes.get(1002).config.name = '貂蝉';
+    h.ready([{ troopIdx: 2, posMap: {
+        1: { heroIdx: 1001, soldier: { count: 50, hurtCount: 3 } },
+        2: { heroIdx: 1002, soldier: { count: 80, hurtCount: 9 } },
+    } }]);
+    const RightItem = h.load('map/ui/RightArmyItemLogic').default;
+    const item = new RightItem();
+    for (const name of ['labelInfo', 'labelPos', 'labelSoldierCnt', 'labelStrength', 'labelMorale']) {
+        item[name] = { string: '' };
+    }
+    item.headIcon = { node: { active: false }, getComponent: () => ({ setHeadId(id) { item.portraitId = id; } }) };
+    // 此处验证真实协议到侧栏数据的更新，几何排版和地图占领计时独立隔离。
+    item.layoutItem = () => {};
+    item.onOccupationChanged = () => {};
+    h.events.on(h.logic.updateTroop, item.onUpdateTroop, item);
+    item.setTroopData(h.command.proxy.getTroop(2), 2);
+    item.update();
+    assert.equal(item.labelInfo.string, '吕布队');
+    assert.equal(item.labelPos.string, '主城待命');
+    assert.equal(item.headIcon.node.active, true);
+    assert.equal(item.portraitId, 1001);
+
+    h.receive(h.server.s2c_sync_troop, { troopInfo: { troopIdx: 2, posMap: {
+        2: { heroIdx: 1002, soldier: { count: 80, hurtCount: 9 } },
+    } } });
+    assert.equal(item.labelInfo.string, '第2部队');
+    assert.equal(item.labelPos.string, '主将未上阵');
+    assert.equal(item.headIcon.node.active, false);
+    assert.equal(item._firstGeneral, null);
+    assert.equal(item.labelSoldierCnt.string, '兵力 80 / 伤兵 9');
+    assert.equal(item.labelStrength.string, '主将未上阵');
+    item.update();
+    assert.equal(item.labelPos.string, '主将未上阵', '逐帧更新不能把缺主将改回主城待命');
+
+    h.receive(h.server.s2c_sync_troop, { troopInfo: { troopIdx: 2, posMap: {
+        1: { heroIdx: 1002, soldier: { count: 80, hurtCount: 9 } },
+    } } });
+    item.update();
+    assert.equal(item.labelInfo.string, '貂蝉队');
+    assert.equal(item.labelPos.string, '主城待命');
+    assert.equal(item.headIcon.node.active, true);
+    assert.equal(item.portraitId, 1002);
+
+    h.receive(h.server.s2c_sync_troop, { troopInfo: { troopIdx: 2, posMap: {} } });
+    item.update();
+    assert.equal(item.labelInfo.string, '第2部队');
+    assert.equal(item.labelPos.string, '尚未编队');
+    assert.equal(item.headIcon.node.active, false);
+    assert.equal(item.labelSoldierCnt.string, '尚未配置武将');
 });
 
 test('新协议主城不依赖旧 ArmyData：快速分兵守恒、保留伤兵，收到回包才更新', () => {

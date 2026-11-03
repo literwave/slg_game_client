@@ -10,6 +10,7 @@ import SkillIconLogic from "./SkillIconLogic";
 import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
+import SkillInfoView from './SkillInfoView';
 
 const TRIGGER_NAMES: Record<number, string> = { 1: '主动', 2: '被动', 3: '追击', 4: '指挥' };
 const TARGET_NAMES: Record<number, string> = {
@@ -63,9 +64,28 @@ export default class SkillInfoLogic extends Component {
     _general: GeneralData = null;
     _type: number = 0;
     _skillPos : number = -1;
+    private detailView: SkillInfoView = null;
+
+    protected onLoad(): void {
+        this.ensureView();
+    }
 
     protected onEnable() {
         this.hideUnsupportedActions();
+        this.ensureView().refreshSize();
+    }
+
+    protected onDestroy(): void {
+        this.detailView?.dispose();
+    }
+
+    private ensureView(): SkillInfoView {
+        if (!this.detailView) this.detailView = new SkillInfoView(this.node, {
+            name: this.nameLab, icon: this.icon, level: this.lvLab,
+            trigger: this.triggerLab, target: this.targetLab, arms: this.armLab, rate: this.rateLab,
+            current: this.curDesLab, next: this.nextDesLab,
+        });
+        return this.detailView;
     }
 
     protected onClickClose(): void {
@@ -90,8 +110,12 @@ export default class SkillInfoLogic extends Component {
             this.rateLab, this.curDesLab, this.nextDesLab]) {
             if (label) label.string = '';
         }
-        if (this.nameLab) this.nameLab.string = conf?.name || '未知技能';
-        if (!conf) return;
+        if (this.nameLab) this.nameLab.string = conf?.name || '未知战法';
+        if (!conf) {
+            if (this.curDesLab) this.curDesLab.string = '暂未获取该战法的详情';
+            this.ensureView().show(0, false);
+            return;
+        }
 
         const outline = proxy.outLine;
         const triggerName = outline?.trigger_type?.list?.find(item => item.type === conf.trigger)?.des;
@@ -99,19 +123,20 @@ export default class SkillInfoLogic extends Component {
         if (this.triggerLab) this.triggerLab.string = triggerName || TRIGGER_NAMES[conf.trigger] || '未知类型';
         if (this.targetLab) this.targetLab.string = targetName || TARGET_NAMES[conf.target] || '未知目标';
         if (this.armLab) this.armLab.string = this.armstr(conf.arms || []);
-        if (this.lvLab) this.lvLab.string = equipped ? 'lv:' + equipped.lv : '';
-
         const levels = conf.levels || [];
         const index = Math.min(Math.max(0, Math.floor(Number(equipped?.lv) || 1) - 1), levels.length - 1);
         const current = levels[index];
         if (!current) {
             if (this.curDesLab) this.curDesLab.string = '暂无等级配置';
+            this.ensureView().show(0, false);
             return;
         }
+        if (this.lvLab) this.lvLab.string = `${index + 1}级`;
         if (this.rateLab) this.rateLab.string = current.probability + '%';
         if (this.curDesLab) this.curDesLab.string = this.formatDescription(conf, current);
         if (this.nextDesLab) this.nextDesLab.string = levels[index + 1]
             ? this.formatDescription(conf, levels[index + 1]) : '已达最高等级';
+        this.ensureView().show(index + 1, !!levels[index + 1]);
     }
 
     private hideUnsupportedActions(): void {
@@ -149,7 +174,7 @@ export default class SkillInfoLogic extends Component {
         if(arms.indexOf(3)>=0 || arms.indexOf(6)>=0 || arms.indexOf(9)>=0){
             str += "骑"
         }
-        return str;
+        return str.split('').join(' · ') || '不限';
     }
 
     

@@ -20,6 +20,7 @@ function harness() {
             sent.push({ name: packet.name, data: proto.decode(packet.name, packet.msg) });
         } }) } },
         'map/ui/ManagementStyle': {},
+        'chat/ChatView': {},
     };
     const cc = { _decorator: { ccclass: () => v => v }, Component: class {} };
     function load(name) {
@@ -122,6 +123,45 @@ test('发送成功只清对应草稿，发送途中继续编辑和失败草稿�
     panel.input.string = '不跨账号'; panel.node = { active: true }; panel.onLogout();
     assert.equal(panel.input.string, ''); assert.equal(panel.drafts.size, 0);
 });
+test('联系人从真实消息和成员生成，排除自己、非法身份并按身份去重', () => {
+    const h = harness();
+    h.receive(h.S.s2c_sync_chat, { msg: message(1, 1, peer) });
+    h.receive(h.S.s2c_sync_chat, { msg: { ...message(2, 1, peer), senderName: '新的青山', headIcon: 7 } });
+    h.receive(h.S.s2c_sync_chat, { msg: message(3, 1, me) });
+    h.receive(h.S.s2c_sync_chat, { msg: message(4, 1, '0') });
+    h.proxy.rememberPeer('0', '无效对象');
+    const contacts = h.proxy.contacts(me, [{ rid: peer2, name: '新的青山', headIcon: 9 },
+        { rid: me, name: '自己', headIcon: 1 }]);
+    assert.equal(contacts.length, 2, '同名的两位玩家仍分别保留');
+    assert.equal(contacts.find(p => p.id === peer).name, '新的青山');
+    assert.equal(contacts.find(p => p.id === peer).headIcon, 7);
+    assert.equal(contacts.find(p => p.id === peer).source, '世界频道');
+    assert.equal(contacts.find(p => p.id === peer2).source, '联盟成员');
+    assert.equal(h.proxy.conversations().length, 0, '浏览联系人不能凭空建立会话');
+    h.logout(); assert.equal(h.proxy.contacts(me).length, 0);
+});
+
+test('从头像选人只读取对应私聊，返回列表和换人不覆盖各自草稿', () => {
+    const h = harness(), Panel = h.load('chat/ChatLogic').default, panel = new Panel();
+    panel.input = { string: '', blur() {} }; panel.peerSearch = { string: '', blur() {} };
+    panel.scroll = { scrollToTop() {} }; panel.layout = panel.refresh = () => {};
+    panel.chooseTarget({ id: peer, name: '青山', headIcon: 8 });
+    assert.equal(panel.choosingPeer, false); assert.equal(panel.peerName, '青山');
+    assert.equal(panel.targetId, peer); assert.equal(h.proxy.conversations()[0].headIcon, 8);
+    assert.equal(h.sent[0].name, h.S.c2s_req_chat_list); assert.equal(h.sent[0].data.targetId, peer);
+    panel.input.string = '给青山的草稿'; panel.switchChannel(3);
+    assert.equal(panel.choosingPeer, true); assert.equal(panel.input.string, '');
+    panel.saveDraft(); assert.equal(panel.drafts.get(`3:${peer}`), '给青山的草稿');
+    panel.chooseTarget({ id: peer2, name: '青山', headIcon: 9 });
+    panel.input.string = '给另一位主公'; panel.switchChannel(3);
+    panel.chooseTarget({ id: peer, name: '青山', headIcon: 8 });
+    assert.equal(panel.input.string, '给青山的草稿');
+    assert.equal(panel.drafts.get(`3:${peer2}`), '给另一位主公');
+    panel.switchChannel(3); panel.chooseTarget({ id: me, name: '自己', headIcon: 1 });
+    assert.equal(panel.choosingPeer, true, '不能发起与自己的私聊');
+    assert.ok(h.sent.every(p => p.name === h.S.c2s_req_chat_list), '选择对象和浏览列表不会发出聊天消息');
+});
+
 test('宽窄屏消息栏避开任务和导航，聊天面板包含完整输入区', () => {
     const h = harness(), { chatDockLayout, chatPanelLayout } = h.load('chat/ChatPresentation');
     for (const [w, h] of [[1280, 720], [960, 540], [844, 390], [390, 844], [360, 640]]) {
@@ -131,5 +171,26 @@ test('宽窄屏消息栏避开任务和导航，聊天面板包含完整输入�
         if (w < 720) assert.ok(dock.y - dock.height / 2 + h / 2 >= 92);
         assert.ok(panel.width * panel.scale <= w && panel.height * panel.scale <= h);
     }
+});
+test('寻找联盟只打开联盟入口，并保存未发送草稿', () => {
+    const h = harness(), Panel = h.load('chat/ChatLogic').default, panel = new Panel();
+    panel.channel = 2; panel.node = { active: true }; panel.input = { string: '待联盟开放的草稿', blur() {} };
+    panel.peerSearch = { blur() {} };
+    let opened = 0; h.events.on(h.E.openChatAlliance, () => opened++, panel);
+    panel.findAlliance();
+    assert.equal(opened, 1); assert.equal(panel.node.active, false);
+    assert.equal(panel.drafts.get('2'), '待联盟开放的草稿');
+    assert.equal(h.sent.length, 0, '浏览入口不提交加入申请或聊天消息');
+});
+
+test('联盟权限变化会重新排版且保留输入，不滞留禁用状态', () => {
+    const h = harness(), Panel = h.load('chat/ChatLogic').default, panel = new Panel();
+    panel.panel = {}; panel.channel = 2; panel.input = { string: '保留草稿' };
+    let layouts = 0;
+    panel.layout = () => { layouts++; panel.allianceLocked = !h.load('union/UnionCommand').default.getInstance().proxy.isMeInUnion(); };
+    panel.refresh(); assert.equal(layouts, 1); assert.equal(panel.allianceLocked, true);
+    h.join(19); panel.refresh(); assert.equal(layouts, 2); assert.equal(panel.allianceLocked, false);
+    h.join(0); panel.refresh(); assert.equal(layouts, 3); assert.equal(panel.allianceLocked, true);
+    assert.equal(panel.input.string, '保留草稿');
 });
 console.log(`通过 ${passed} 项聊天回归`);

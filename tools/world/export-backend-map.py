@@ -17,11 +17,15 @@ if not output.is_relative_to(ROOT):
 runpy.run_path(str(ROOT / 'tools/tests/fixed-birth-resources-regression.py'), run_name='__main__')
 runpy.run_path(str(ROOT / 'tools/tests/mixed-resource-layout-regression.py'), run_name='__main__')
 world = json.loads((ROOT / 'assets/resources/world/campaign-map.json').read_text(encoding='utf8'))
+# 玩家出生位置由服务端管理；兼容旧快照时也不把建议出生区交付给服务端。
+world.pop('spawnZones', None)
 landscape = json.loads((ROOT / 'assets/resources/world/original-landscape.json').read_text(encoding='utf8'))
 map_res = json.loads((ROOT / 'assets/resources/config/mapRes_0.json').read_text(encoding='utf8'))
 fixed = json.loads((ROOT / 'tools/world/fixed-birth-resources.json').read_text(encoding='utf8'))
 inner = json.loads((ROOT / 'tools/world/fixed-inner-resources.json').read_text(encoding='utf8'))
 res_land = json.loads((ROOT / 'assets/resources/config/ResLand.json').read_text(encoding='utf8'))
+if isinstance(res_land, dict):
+    res_land = list(res_land.values())
 resource_types = {row['Enum']: row['Id'] for row in json.loads((ROOT / 'assets/resources/config/ResLandType.json').read_text(encoding='utf8'))}
 map_enums = {52: 'WOOD', 53: 'IRON', 54: 'STONE', 55: 'GRAIN'}
 pending = []
@@ -113,7 +117,9 @@ map_header = '''-- 百万格资源快照。服务端直接读取，不要按固�
 -- 不要用 #list，下标含 0。类型 52木、53铁、54石、55粮、50关隘、51城市。
 -- 类型 0 不是一律阻挡：emptyCells 的值是可通行空地 cellId，山河与城市占地见 terrain.lua。'''
 map_body = '{\n["w"] = 1000,\n["h"] = 1000,\n["list"] = ' + list_literal + ',\n["emptyCells"] = ' + lua_int_list(map_res['emptyCells']) + '\n}'
-campaign_header = '''-- 州域、关口、城池和建议出生区。出生点按容量分配玩家并保持间距。
+campaign_header = '''-- 静态州域、关口与系统城池。玩家出生位置由服务端管理，本文件不提供出生点。
+-- topologyVersion=2 使用不规则州域，禁止继续按半径100/285或扇区判定。
+-- regionRows[y+1] 每两个值为：结束列(不含)、州ID；找到第一个 x < row[i] 后返回 row[i+1]。
 -- footprintRadius 为方形占地半径：出生州 1 即 3×3，资源州 2 即 5×5，洛阳 4 即 9×9。'''
 terrain_header = '''-- blockedCells 是山河阻挡，reservedCityCells 是城市占地，元素都是 cellId。
 -- 类型 0 不能一律当作阻挡：可通行空地在 mapRes_0.lua 的 emptyCells。'''
@@ -132,11 +138,14 @@ if f'{int(map_res["emptyCells"][0])},'.encode('ascii') not in files['mapRes_0.lu
     raise SystemExit('emptyCells 未写入 mapRes_0.lua')
 if '临淄关'.encode('utf8') not in files['campaign-map.lua']:
     raise SystemExit('campaign-map.lua 缺少关口')
+if b'["spawnZones"]' in files['campaign-map.lua']:
+    raise SystemExit('campaign-map.lua 不应包含服务端出生点')
 if b'["blockedCells"]' not in files['terrain.lua'] or b'["reservedCityCells"]' not in files['terrain.lua']:
     raise SystemExit('terrain.lua 缺少阻挡或城市占地')
 checksums = {name: hashlib.sha256(content).hexdigest() for name, content in sorted(files.items())}
 revision = hashlib.sha256(json.dumps(checksums, sort_keys=True).encode('utf8')).hexdigest()
 manifest = dict(schemaVersion=2, mapRevision=revision, width=1000, height=1000,
+                topologyVersion=world.get('topologyVersion',1),
                 cellIdFormula='y * 1000 + x', listAccess='list[cellId][1]=type, list[cellId][2]=level',
                 fixedBirthResourceCount=len(fixed['points']), fixedBirthLevels=[4, 5, 6],
                 fixedInnerResourceCount=len(inner['points']), resourceLayoutVersion=world['resourceLayoutVersion'],

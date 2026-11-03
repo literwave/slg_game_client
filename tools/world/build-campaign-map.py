@@ -7,9 +7,23 @@ ROOT = Path(__file__).resolve().parents[2]
 SIZE = 1000
 CENTER = 499.5
 SEED = 20261024
+_REGION_IDS = None
 
 
 def region_at(x, y):
+    global _REGION_IDS
+    if _REGION_IDS is None:
+        current = json.loads((ROOT / 'assets/resources/world/campaign-map.json').read_text(encoding='utf8'))
+        rows = current.get('regionRows')
+        _REGION_IDS = bytearray()
+        if rows:
+            for row in rows:
+                start = 0
+                for i in range(0, len(row), 2):
+                    end, region = row[i:i+2]
+                    _REGION_IDS.extend(bytes([region]) * (end-start)); start = end
+    if _REGION_IDS:
+        return _REGION_IDS[y * SIZE + x]
     dx, dy = x - CENTER, y - CENTER
     radius = math.hypot(dx, dy)
     angle = math.atan2(dy, dx) % math.tau
@@ -71,25 +85,19 @@ def build():
         a = i * math.tau / 3
         gate(name, CENTER + 190 * math.cos(a), CENTER + 190 * math.sin(a), 6 + (i - 1) % 3, 6 + i, 6, -math.sin(a), math.cos(a))
 
-    ids = bytearray(region_at(x, y) for y in range(SIZE) for x in range(SIZE))
-    blocked = bytearray(SIZE * SIZE)
-    river = []
+    from natural_terrain import build_terrain, encode_rows, land_shapes, migrate_fixed, align_regions
+    ids, blocked, river_mask, features = build_terrain(regions, gates, noise)
+    print('Natural basins, rivers and gates generated', flush=True)
+    lookup = lambda x, y: ids[y * SIZE + x]
     patches = []
     resources = []
-    # 边界两格厚，通行走廊只在命名关隘附近开口。
+    # 山脉、河流与资源共同读取自然地形的阻挡，不再按半径拼圆环。
     for y in range(SIZE):
         for x in range(SIZE):
             idx = y * SIZE + x
             rid = ids[idx]
-            border = x < 3 or y < 3 or x >= SIZE - 3 or y >= SIZE - 3
-            if not border:
-                border = any(ids[(y + dy) * SIZE + x + dx] != rid for dx, dy in [(2, 0), (-2, 0), (0, 2), (0, -2)])
-            h = noise(x, y)
-            if border:
-                blocked[idx] = 1
+            if blocked[idx]:
                 resources.append([0, 0])
-                if 6 <= rid < 9 and math.hypot(x - CENTER, y - CENTER) > 275:
-                    river.append(idx)
                 continue
             level = resource_level(x, y, rid, regions)
             # 局部类型轮换，避免新手附近只有一种资源造成卡粮/卡铁。
@@ -121,9 +129,13 @@ def build():
                     blocked[idx] = 1
                     resources[idx] = [0, 0]
                     corridor.discard(idx)
+                    if g.get('crossing') == 'bridge': river_mask[idx] = 1
         resources[g['y'] * SIZE + g['x']] = [50, g['level']]
         del g['nx'], g['ny']
-    river = [idx for idx in river if idx not in corridor]
+    river = [idx for idx, wet in enumerate(river_mask) if wet and blocked[idx]]
+    # 桥面可通行，水面仍需画在桥下；此列表仅用于渲染，不纳入阻挡。
+    bridge_water = [idx for idx, wet in enumerate(river_mask) if wet and not blocked[idx]]
+    align_regions(ids, blocked, gates, regions)
     # 城池有独立 3/5/7 格占地范围，周边预留不产生资源图标。
     cities = []
     for r in regions:
@@ -137,19 +149,6 @@ def build():
             for x in range(c['x'] - radius, c['x'] + radius + 1):
                 resources[y * SIZE + x] = [0, 0]
         resources[c['y'] * SIZE + c['x']] = [51, c['level']]
-    spawn_zones = []
-    for y in range(24, SIZE - 24, 48):
-        for x in range(24, SIZE - 24, 48):
-            rid = region_at(x, y)
-            if rid >= 6 or math.hypot(x - CENTER, y - CENTER) < 380:
-                continue
-            if any(region_at(x + dx, y + dy) != rid for dx in (-14, 14) for dy in (-14, 14)):
-                continue
-            if any(math.hypot(x - c['x'], y - c['y']) < 36 for c in cities):
-                continue
-            if any(math.hypot(x - g['x'], y - g['y']) < 26 for g in gates):
-                continue
-            spawn_zones.append(dict(x=x, y=y, region=rid, safeRadius=12))
     # 真正可走、可选中的空地，与山河阻挡的[0,0]用独立索引区分。
     empty_cells = []
     for idx, (kind, level) in enumerate(resources):
@@ -162,7 +161,23 @@ def build():
         if not keep:
             empty_cells.append(idx)
             resources[idx] = [0, 0]
+    # 桥面及两端集结引道留空，不把树林、矿堆或高级资源刷到桥上。
+    bridge_reserved = set()
+    for g in gates:
+        if g.get('crossing') != 'bridge': continue
+        radius = g['bridgeSpan']//2 + 3
+        for u in range(-radius, radius+1):
+            for v in range(-2, 3):
+                x = g['x'] + (u if g['axis']=='x' else v)
+                y = g['y'] + (v if g['axis']=='x' else u)
+                idx = y*SIZE+x
+                if not blocked[idx] and resources[idx][0] != 50:
+                    bridge_reserved.add(idx)
+                    resources[idx] = [0,0]
+    empty_cells = sorted(set(empty_cells) | bridge_reserved)
+    reserved_landmarks = bridge_reserved | {g['y']*SIZE+g['x'] for g in gates}
     fixed = json.loads((ROOT / 'tools/world/fixed-birth-resources.json').read_text(encoding='utf8'))
+    fixed, migrated_birth = migrate_fixed(fixed, ids, blocked, cities, noise, reserved_landmarks)
     if fixed.get('schemaVersion') != 2 or fixed['width'] != SIZE or fixed['height'] != SIZE:
         raise ValueError('固定高级资源表尺寸与地图不一致')
     empty_set = set(empty_cells)
@@ -173,12 +188,10 @@ def build():
         idx = y * SIZE + x
         if not 0 <= x < SIZE or not 0 <= y < SIZE or idx in fixed_ids:
             raise ValueError(f'固定高级资源坐标无效或重复: {point}')
-        if region_at(x, y) != point['region'] or point['region'] >= 6 or point['level'] not in (4, 5, 6) or point['type'] not in (52, 53, 54, 55):
+        if lookup(x, y) != point['region'] or point['region'] >= 6 or point['level'] not in (4, 5, 6) or point['type'] not in (52, 53, 54, 55):
             raise ValueError(f'固定高级资源字段无效: {point}')
         if blocked[idx] or resources[idx][0] in (50, 51) or resources[idx][0] == 0 and idx not in empty_set:
             raise ValueError(f'固定高级资源与阻挡/城市占地冲突: {point}')
-        if any(max(abs(x - s['x']), abs(y - s['y'])) <= 12 for s in spawn_zones):
-            raise ValueError(f'固定高级资源进入新手保护圈: {point}')
         bucket = (x // 64, y // 64)
         for dx in (-1, 0, 1):
             for dy in (-1, 0, 1):
@@ -192,25 +205,34 @@ def build():
         fixed_ids.add(idx)
         empty_set.discard(idx)
     from resource_layout import apply_inner_resources, mix_resources
-    inner = apply_inner_resources(ROOT, resources, empty_set, blocked, region_at)
+    inner = json.loads((ROOT / 'tools/world/fixed-inner-resources.json').read_text(encoding='utf8'))
+    inner, migrated_inner = migrate_fixed(inner, ids, blocked, cities, noise, reserved_landmarks)
+    inner = apply_inner_resources(ROOT, resources, empty_set, blocked, lookup, inner)
+    print(f'Fixed resource relocation: birth={migrated_birth}, inner={migrated_inner}', flush=True)
     all_fixed_ids = fixed_ids | {p['y'] * SIZE + p['x'] for p in inner['points']}
     mix_resources(resources, ids, empty_set, all_fixed_ids, noise)
     empty_cells = sorted(empty_set)
-    strategy = dict(version=1, title='千里山河 · 破关逐鹿', width=SIZE, height=SIZE, seed=SEED,
+    river_mask = bytearray(SIZE*SIZE)
+    for idx in river + bridge_water: river_mask[idx] = 1
+    strategy = dict(version=2, topologyVersion=2, title='千里山河 · 破关逐鹿', width=SIZE, height=SIZE, seed=SEED,
+                    regionRows=encode_rows(ids), landShapes=land_shapes(ids, river_mask), terrainFeatures=features,
                     fixedBirthResourceCount=len(fixed_ids),
                     fixedBirthLevels=[4, 5, 6], birthResourceMinDistance=dict(all=8, advanced=28, level6=48),
                     resourceLayoutVersion=3, fixedInnerResourceCount=len(inner['points']), innerResourceSpacing=inner['spacing'],
-                    regions=regions, gates=gates, cities=cities, spawnZones=spawn_zones,
+                    regions=regions, gates=gates, cities=cities,
                     stages=['立足出生州，发展资源与同盟', '铺路至关口，集结攻关', '控制资源州，争夺渡口与都城', '突破王畿三关，会战洛阳'])
     rivers = set(river)
     mountains = [i for i, value in enumerate(blocked) if value and i not in rivers]
     from mountain_layout import build_mountain_patches
     patches = build_mountain_patches(set(mountains), gates, blocked, noise)
-    landscape = dict(version=5, width=SIZE, height=SIZE, seed=SEED, riverCells=river, mountainCells=mountains, patches=patches)
+    print(f'Mountain coverage complete: {len(patches)} patches', flush=True)
+    landscape = dict(version=6, topologyVersion=2, width=SIZE, height=SIZE, seed=SEED, riverCells=river, bridgeWaterCells=bridge_water, mountainCells=mountains, patches=patches)
     world = ROOT / 'assets/resources/world'
     (ROOT / 'assets/resources/config/mapRes_0.json').write_text(json.dumps(dict(w=SIZE, h=SIZE, list=resources, emptyCells=empty_cells), separators=(',', ':')), encoding='utf8')
     (world / 'original-landscape.json').write_text(json.dumps(landscape, separators=(',', ':')), encoding='utf8')
     (world / 'campaign-map.json').write_text(json.dumps(strategy, ensure_ascii=False, separators=(',', ':')), encoding='utf8')
+    (ROOT / 'tools/world/fixed-birth-resources.json').write_text(json.dumps(fixed,ensure_ascii=False,indent=2),encoding='utf8')
+    (ROOT / 'tools/world/fixed-inner-resources.json').write_text(json.dumps(inner,ensure_ascii=False,indent=2),encoding='utf8')
     city_mask = bytearray(SIZE * SIZE)
     for c in cities:
         city_mask[c['y'] * SIZE + c['x']] = 1
@@ -221,7 +243,7 @@ def build():
     stage = ROOT / 'temp/campaign-map'
     stage.mkdir(parents=True, exist_ok=True)
     (stage / 'map.tmx').write_text(tmx, encoding='utf8')
-    print(json.dumps(dict(size=[SIZE, SIZE], cells=len(resources), gates=len(gates), cities=len(cities), patches=len(patches), riverCells=len(river))))
+    print(json.dumps(dict(size=[SIZE, SIZE], cells=len(resources), gates=len(gates), cities=len(cities), patches=len(patches), riverCells=len(river), migratedBirth=migrated_birth, migratedInner=migrated_inner)))
     return strategy, ids, blocked, resources
 
 

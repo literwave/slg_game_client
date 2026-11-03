@@ -1,4 +1,4 @@
-import { _decorator, Camera, Color, Component, Graphics, Label, Prefab, Node, Vec2, instantiate, UITransform, view } from 'cc';
+import { _decorator, Component, Prefab, Node, Vec2, instantiate } from 'cc';
 const { ccclass, property } = _decorator;
 
 import { MapBuildData } from "./MapBuildProxy";
@@ -10,10 +10,9 @@ import MapUtil from "./MapUtil";
 import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
 import WorldLandscape from './WorldLandscape';
-import WorldMapArt from './WorldMapArt';
 import WorldCampaign from './WorldCampaign';
 import { gateHit, gateMirrored } from './GateGeometry';
-import { caption } from './ui/ManagementStyle';
+import { systemCityHit, systemCityOverlapsTile } from './SystemCityGeometry';
 
 @ccclass('MapTouchLogic')
 export default class MapTouchLogic extends Component {
@@ -25,12 +24,10 @@ export default class MapTouchLogic extends Component {
 
     protected _cmd: MapCommand;
     protected _clickUINode: Node = null;
-    private _blockedFeedback: Node = null;
 
     protected onLoad(): void {
         this._cmd = MapCommand.getInstance();
         EventMgr.on(LogicEvent.touchMap, this.onTouchMap, this);
-        EventMgr.on(LogicEvent.moveMap, this.onMoveMap, this);
     }
 
     protected onDestroy(): void {
@@ -41,14 +38,13 @@ export default class MapTouchLogic extends Component {
     }
 
     protected onTouchMap(mapPoint: Vec2, clickPixelPoint: Vec2, pointerPixelPoint?: Vec2): void {
-        this.clearBlocked();
         // 关城美术横跨山口，先按实体轮廓命中，再处理后方山体；透明角落仍然属于山脉。
         const campaign = WorldCampaign.config;
         if (pointerPixelPoint && campaign) {
             for (const gate of campaign.gates) {
                 const center = MapUtil.mapCellToPixelPoint(new Vec2(gate.x, gate.y));
                 if (!gateHit(pointerPixelPoint.x - center.x, pointerPixelPoint.y - center.y, gate.level,
-                    gateMirrored(gate.x, gate.y, campaign.width, campaign.height))) continue;
+                    gateMirrored(gate.x, gate.y, campaign.width, campaign.height, gate), gate)) continue;
                 const id = MapUtil.getIdByCellPoint(gate.x, gate.y);
                 const target = this._cmd.buildProxy.getBuild(id) || this._cmd.proxy.getResData(id);
                 if (target) { this.showClickUINode(target, center); return; }
@@ -60,8 +56,27 @@ export default class MapTouchLogic extends Component {
             this.showClickUINode(playerCity, MapUtil.mapCellToPixelPoint(new Vec2(playerCity.x, playerCity.y)));
             return;
         }
+        // 城池画面高于地面，屋顶和门前道路会投影到相邻格；按透明轮廓拾取实体。
+        if (pointerPixelPoint && campaign) {
+            for (const city of campaign.cities) {
+                const center = MapUtil.mapCellToPixelPoint(new Vec2(city.x, city.y));
+                if (!systemCityHit(pointerPixelPoint.x - center.x, pointerPixelPoint.y - center.y, city.level, MapUtil.tileSize.width, city)) continue;
+                const id = MapUtil.getIdByCellPoint(city.x, city.y);
+                const target = this._cmd.buildProxy.getBuild(id) || this._cmd.proxy.getResData(id);
+                if (target) { this.showClickUINode(target, center); return; }
+            }
+        }
+        // 已在城池实际占地内的空白格也属于城池，不能被 isEmpty 分支抢先选为空地。
+        const systemCity = MapUtil.isVaildCellPoint(mapPoint) ? this._cmd.proxy.getSysCityResData(mapPoint.x, mapPoint.y) : null;
+        if (systemCity) {
+            const id = MapUtil.getIdByCellPoint(systemCity.x, systemCity.y);
+            this.showClickUINode(this._cmd.buildProxy.getBuild(id) || systemCity,
+                MapUtil.mapCellToPixelPoint(new Vec2(systemCity.x, systemCity.y)));
+            return;
+        }
         const mountain = pointerPixelPoint && this.node.getComponentInChildren(WorldLandscape)?.blockerAt(pointerPixelPoint);
-        if (mountain && MapUtil.isVaildCellPoint(mountain)) { this.showBlocked(mountain, false); return; }
+        // 山体是不可选背景，误点时保持当前目标和操作，不创建任何提示或选框。
+        if (mountain && MapUtil.isVaildCellPoint(mountain)) return;
         if (MapUtil.isVaildCellPoint(mapPoint) == false) {
             this.removeClickUINode();
             return;
@@ -96,38 +111,27 @@ export default class MapTouchLogic extends Component {
             }
            
         } else {
-            if (resData.isEmpty) { this.showClickUINode(resData, clickPixelPoint); return; }
+            if (resData.isEmpty) {
+                // 落点在城图外、但整格选框压住道路或城墙时，仍选城池。
+                // 放在资源地和已占领地分支之后，保留它们的正常交互。
+                if (pointerPixelPoint && campaign) {
+                    const tileCenter = MapUtil.mapCellToPixelPoint(mapPoint);
+                    for (const city of campaign.cities) {
+                        const center = MapUtil.mapCellToPixelPoint(new Vec2(city.x, city.y));
+                        if (!systemCityOverlapsTile(tileCenter.x - center.x, tileCenter.y - center.y,
+                            city.level, MapUtil.tileSize.width, MapUtil.tileSize.height, city)) continue;
+                        const id = MapUtil.getIdByCellPoint(city.x, city.y);
+                        const target = this._cmd.buildProxy.getBuild(id) || this._cmd.proxy.getResData(id);
+                        if (target) { this.showClickUINode(target, center); return; }
+                    }
+                }
+                this.showClickUINode(resData, clickPixelPoint); return;
+            }
             const city = this._cmd.proxy.getSysCityResData(mapPoint.x, mapPoint.y);
             if (city) { this.showClickUINode(city, MapUtil.mapCellToPixelPoint(new Vec2(city.x, city.y))); return; }
-            this.showBlocked(mapPoint, (WorldMapArt.landscape?.riverCells || []).indexOf(cellId) >= 0);
+            // 河流与不可通行地形同样静默忽略，不清空原有侧栏或选队状态。
+            return;
         }
-    }
-
-    private showBlocked(point: Vec2, river: boolean): void {
-        this.removeClickUINode();
-        this.clearBlocked();
-        const node = new Node('BlockedTerrainFeedback'); node.layer = this.touch.layer;
-        this.touch.addChild(node); this._blockedFeedback = node;
-        const pixel = MapUtil.mapCellToPixelPoint(point); node.setPosition(pixel.x, pixel.y, 0);
-        const g = node.addComponent(Graphics), width = MapUtil.tileSize.width, height = MapUtil.tileSize.height;
-        g.lineWidth = 3; g.strokeColor = new Color(230, 113, 81, 255);
-        g.fillColor = new Color(154, 65, 43, 65);
-        g.moveTo(-width / 2, 0); g.lineTo(0, height / 2); g.lineTo(width / 2, 0); g.lineTo(0, -height / 2); g.close(); g.fill(); g.stroke();
-        let camera: Camera = null;
-        for (let parent = this.node.parent; parent && !camera; parent = parent.parent) camera = parent.getChildByName('Map Camera')?.getComponent(Camera);
-        const scale = camera ? camera.orthoHeight * 2 / Math.max(1, view.getVisibleSize().height) : 1;
-        const label = caption(node, 'BlockedReason', river ? '河流阻挡 · 请从渡口通过' : '山脉阻挡 · 请从关隘通过', 0, height / 2 + 24 * scale, 240, 15, new Color(255, 211, 167, 255), Label.HorizontalAlign.CENTER);
-        label.node.setScale(scale, scale, 1); label.enableOutline = true; label.outlineWidth = 2; label.outlineColor = new Color(36, 30, 23, 255);
-        this.unschedule(this.clearBlocked); this.scheduleOnce(this.clearBlocked, 1.8);
-    }
-
-    private clearBlocked(): void {
-        if (this._blockedFeedback) { this._blockedFeedback.removeFromParent(); this._blockedFeedback.destroy(); this._blockedFeedback = null; }
-    }
-
-    protected onMoveMap(): void {
-        // 拖动与缩放保留当前地块及右侧详情。
-        this.clearBlocked();
     }
 
     public showClickUINode(data: any, pos: Vec2): void {

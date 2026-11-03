@@ -1,4 +1,4 @@
-import { _decorator, Camera, Component, Node, Vec2, TiledMap } from 'cc';
+import { _decorator, Camera, Component, Node, Vec2, TiledMap, TiledMapAsset, UITransform } from 'cc';
 const { ccclass, property } = _decorator;
 
 import MapResBuildLogic from "../map/MapResBuildLogic";
@@ -43,6 +43,7 @@ export default class MapScene extends Component {
     private _ready = false;
     private _failed = false;
     private _tiledMap: TiledMap = null;
+    private _geometryAsset: TiledMapAsset = null;
     private _recycleLayers: MapBaseLayerLogic[] = [];
     private _recycleLayerIndex = 0;
     private _itemLayers: {
@@ -59,9 +60,7 @@ export default class MapScene extends Component {
 
     private initializeMap(): void {
         if (!this.mapLayer) throw new Error('地图节点缺失');
-        const tiledMap = this.mapLayer.addComponent(TiledMap);
-        this._tiledMap = tiledMap;
-        tiledMap.tmxAsset = this._cmd.proxy.tiledMapAsset;
+        const tiledMap = this.initializeMapGeometry();
 
         MapUtil.initMapConfig(tiledMap);
         const camera = this.node.parent.getChildByName('Map Camera')?.getComponent(Camera);
@@ -89,13 +88,33 @@ export default class MapScene extends Component {
         // 可见区域只负责本地渲染，不再轮询旧 scanBlock 或扫描远处关隘。
     }
 
+    /** 连续地形已接管绘制，只保留 TMX 的坐标定义，不再解码、构建随后被隐藏的百万格瓦片层。 */
+    private initializeMapGeometry(): TiledMap {
+        const header = this._cmd.proxy.tiledMapAsset?.tmxXmlStr?.match(/<map\b[^>]*>/)?.[0];
+        if (!header || !/\borientation=["']isometric["']/.test(header)) throw new Error('等距地图坐标定义缺失');
+        this._geometryAsset = new TiledMapAsset();
+        this._geometryAsset.tmxXmlStr = header + '</map>';
+        const map = this.mapLayer.addComponent(TiledMap);
+        map.tmxAsset = this._geometryAsset;
+        const size = map.getMapSize(), tile = map.getTileSize();
+        if (![size.width, size.height, tile.width, tile.height].every(n => Number.isFinite(n) && n > 0)) {
+            throw new Error('地图尺寸无效');
+        }
+        // 没有瓦片层时引擎不会自动设置容器尺寸；显式保留原等距投影和半宽锚点。
+        this.mapLayer.getComponent(UITransform).setContentSize(
+            (size.width + size.height) * tile.width / 2, (size.width + size.height) * tile.height / 2);
+        this._tiledMap = map;
+        return map;
+    }
+
     protected update(): void {
         if (this._failed) return;
         try {
-            const started = Date.now();
+            const now = () => typeof performance !== 'undefined' ? performance.now() : Date.now();
+            const started = now();
             // 七个图层共享预算；回收先取最多 2ms / 32 个节点，避免区域切换时集中解绑。
             let recycled = 0;
-            while (recycled < 32 && Date.now() - started < 2) {
+            while (recycled < 32 && now() - started < 2) {
                 let didRecycle = false;
                 for (let i = 0; i < this._recycleLayers.length; i++) {
                     const layer = this._recycleLayers[this._recycleLayerIndex];
@@ -109,9 +128,9 @@ export default class MapScene extends Component {
                 if (!didRecycle) break;
             }
             let processed = 0;
-            // 回收与生成合计 4ms；概览跳过逐格资源 Sprite，允许加快区域扫描。
-            const cellBudget = this._cmd.proxy.overview ? 256 : 24;
-            while (this._pendingAreas.length > 0 && processed < cellBudget && Date.now() - started < 4) {
+            // 首屏和拖图都以 4ms 时间预算为准；空地扫描不再被 24 格/帧拖慢。
+            const cellBudget = 256;
+            while (this._pendingAreas.length > 0 && processed < cellBudget && now() - started < 4) {
                 const area = this._pendingAreas[0];
                 this.addMapCell(area.id, area.x, area.y);
                 processed++;
@@ -176,6 +195,8 @@ export default class MapScene extends Component {
         this._pendingAreas.length = 0;
         EventMgr.targetOff(this);
         this._recycleLayers.length = 0;
+        this._geometryAsset?.destroy();
+        this._geometryAsset = null;
         if (this._cmd) this._cmd.proxy.clearData();
         this._cmd = null;
     }
@@ -269,11 +290,11 @@ export default class MapScene extends Component {
         }
     }
 
-    protected onScrollToMap(x: number, y: number): void {
+    protected onScrollToMap(x: number, y: number, focus?: 'player-city' | 'preserve-zoom'): void {
         let old = this.node.getComponent(MapLogic).curCameraPoint();
         let cur = this.node.getComponent(MapLogic).toCameraPoint(new Vec2(x, y));
 
         EventMgr.emit(LogicEvent.beforeScrollToMap, cur.x, cur.y, old.x, old.y);
-        this.node.getComponent(MapLogic).scrollToMapPoint(new Vec2(x, y));
+        this.node.getComponent(MapLogic).scrollToMapPoint(new Vec2(x, y), focus);
     }
 }

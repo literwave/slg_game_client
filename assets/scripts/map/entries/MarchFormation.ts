@@ -12,6 +12,7 @@ interface Member {
     sprite: Sprite; animations?: MarchAnimationSet;
     clip: string; moving: boolean; dustPhase: number; facing: number;
     guardPose: boolean; kind: MarchUnitKind;
+    guardPost?: { x: number; y: number; dx: number; dy: number };
     foot?: Vec2;
     arrivalFoot?: Vec2;
 }
@@ -22,6 +23,7 @@ export default class MarchFormation {
     private members: Member[] = [];
     private signature = '';
     private revision = 0;
+    private disposed = false;
     private heading = new Vec2(1, -.5).normalize();
     private groundHeading = new Vec2(1, 0);
     private previousCenter: Vec2 | null = null;
@@ -39,7 +41,7 @@ export default class MarchFormation {
     private guardWeight = 0;
     private pose: MarchPose = { x: 0, y: 0, angle: 0, stretch: 1 };
 
-    constructor(private host: Node) {
+    constructor(private host: Node, private renderLayer: Node | null = null) {
         this.root = new Node('MarchFormation');
         this.root.layer = host.layer; host.addChild(this.root);
         const dust = new Node('MarchDust'); dust.layer = host.layer; this.root.addChild(dust);
@@ -51,6 +53,7 @@ export default class MarchFormation {
     }
 
     configure(troop: TroopData | null, own: boolean): void {
+        if (this.disposed || !isValid(this.host, true)) return;
         const heroes = troop?.getSortedHeroes() || [];
         const soldiers = heroes.reduce((sum, h) => sum + troop.getSoldier(h.heroIdx).count, 0);
         const escortCount = troop ? (soldiers > 0 ? 6 : 0) : 4;
@@ -68,6 +71,16 @@ export default class MarchFormation {
             this.addMember(`Soldier${i + 1}`, 'infantry', .22 + row * .15,
                 (i % columns - (rowCount - 1) / 2) * .13, 48);
         }
+        // 四面警戒，人数多的两侧成对分布；主将落脚点始终在格心。
+        // 坐标是地面格坐标，所有哨位都位于本格内部。
+        const directions = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+        for (let i = 0; i < escortCount; i++) {
+            const side = i % 4, [dx, dy] = directions[side];
+            const count = Math.ceil((escortCount - side) / 4);
+            const spread = (Math.floor(i / 4) - (count - 1) / 2) * .22;
+            this.members[i + 1].guardPost = { x: dx * .34 - dy * spread,
+                y: dy * .34 + dx * spread, dx, dy };
+        }
     }
 
     /** 占领倒计时期间举起兵器防守；行军途中不生效。 */
@@ -79,7 +92,8 @@ export default class MarchFormation {
     }
 
     private addMember(name: string, kind: MarchUnitKind, lag: number, side: number, size: number): void {
-        const node = new Node(name); node.layer = this.host.layer; this.root.addChild(node);
+        const node = new Node(name); node.layer = this.host.layer;
+        (this.renderLayer || this.root).addChild(node);
         const shadow = new Node('GroundShadow'); shadow.layer = node.layer; node.addChild(shadow);
         shadow.addComponent(UITransform);
         const shadowG = shadow.addComponent(Graphics);
@@ -100,7 +114,7 @@ export default class MarchFormation {
         this.members.push(member);
         const revision = this.revision;
         void loadMarchAnimations(kind).then(animations => {
-            if (revision !== this.revision || !isValid(body)) return;
+            if (this.disposed || revision !== this.revision || !isValid(body, true)) return;
             member.animations = animations;
             animations.clips.forEach(clip => animation.addClip(clip));
             this.applyPose(member, member.moving);
@@ -108,13 +122,20 @@ export default class MarchFormation {
         }).catch(() => { /* 共享加载器已经报告具体资源错误。 */ });
     }
 
+    resetTrail(): void {
+        this.previousCenter = null;
+        for (const member of this.members) { member.foot = undefined; member.arrivalFoot = undefined; }
+    }
+
     update(playback: MarchPlayback, sample: MarchSample): void {
         const now = DateUtil.monotonicNow();
         const dt = this.lastMono ? Math.min(.1, Math.max(0, (now - this.lastMono) / 1000)) : 0;
         this.lastMono = now;
         this.gaitWeight += ((sample.moving ? 1 : 0) - this.gaitWeight) * (1 - Math.exp(-dt / .10));
-        this.guardWeight += ((this.guarding ? 1 : 0) - this.guardWeight) * (1 - Math.exp(-dt / .18));
-        this.root.setPosition(this.guardWeight * 22, this.guardWeight * -10, 0);
+        const defending = this.guarding && !sample.moving;
+        this.guardWeight += ((defending ? 1 : 0) - this.guardWeight) * (1 - Math.exp(-dt / .12));
+        if (Math.abs(this.guardWeight - (defending ? 1 : 0)) < .001) this.guardWeight = defending ? 1 : 0;
+        this.root.setPosition(0, 0, 0);
         // 全队共享步态时钟。到达后共同收完最后半步再站定，避免主将瞬间换姿势、
         // 护卫各自在后面继续踏步；这一小段仅影响显示，不延迟服务端到达状态。
         const justArrived = this.wasMarching && !sample.moving;
@@ -131,6 +152,8 @@ export default class MarchFormation {
         const stopBlend = 1 - Math.pow(1 - this.stopElapsed / .18, 2);
         if (!sample.moving && (stopping || justArrived))
             this.gaitTime = this.stopGait + (this.stopContact - this.stopGait) * stopBlend;
+        // 展开/收拢时护卫继续小步就位，站定后停止步态，只保留轻微呼吸。
+        if (!sample.moving && !stopping && this.members.some(member => member.moving)) this.gaitTime += dt;
         this.wasMarching = sample.moving;
         const center = MapUtil.mapCellToPixelPoint(new Vec2(sample.position.x, sample.position.y));
         const advance = this.previousCenter ? center.clone().subtract(this.previousCenter) : new Vec2();
@@ -159,12 +182,23 @@ export default class MarchFormation {
             // 先在地面排列，再统一做等距投影，斜行时不挤成一团或左右漂移。
             ground.x -= forward.y * member.side; ground.y += forward.x * member.side;
             const foot = MapUtil.mapCellToPixelPoint(ground);
+            if (member.guardPost && this.guardWeight > 0) {
+                const post = member.guardPost;
+                const guardFoot = MapUtil.mapCellToPixelPoint(new Vec2(sample.position.x + post.x, sample.position.y + post.y));
+                foot.x += (guardFoot.x - foot.x) * this.guardWeight;
+                foot.y += (guardFoot.y - foot.y) * this.guardWeight;
+                if (defending) {
+                    const outward = MapUtil.mapCellToPixelPoint(new Vec2(sample.position.x + post.dx,
+                        sample.position.y + post.dy)).subtract(center).normalize();
+                    direction.set(outward);
+                }
+            }
             // 领队跟随同一平滑后的坐标；队员沿拐点逐个转弯。
             if (!member.lag) foot.set(center);
             const previousFoot = member.foot?.clone();
             if (justArrived && member.foot) member.arrivalFoot = new Vec2(member.foot.x + advance.x, member.foot.y + advance.y);
             if (sample.moving) member.arrivalFoot = undefined;
-            if (!member.foot || !member.lag) member.foot = foot.clone();
+            if (!member.foot || !member.lag || !member.node.active) member.foot = foot.clone();
             else if (!sample.moving && member.arrivalFoot) {
                 member.foot.set(member.arrivalFoot.x + (foot.x - member.arrivalFoot.x) * stopBlend,
                     member.arrivalFoot.y + (foot.y - member.arrivalFoot.y) * stopBlend);
@@ -182,9 +216,11 @@ export default class MarchFormation {
             const settling = !sample.moving && (stopping || Vec2.distance(member.foot, foot) > .15);
             // 收步后位置和朝向保持稳定，全队一起切换站立。
             if (!sample.moving && !settling) member.foot.set(foot);
-            member.node.setPosition(member.foot.x - center.x, member.foot.y - center.y, 0);
+            member.node.setPosition(member.foot.x - (this.renderLayer ? 0 : center.x),
+                member.foot.y - (this.renderLayer ? 0 : center.y), 0);
+            member.node.active = this.host.active;
             // 转弯/折返的短暂跟随阶段，身体朝向实际位移，避免脸先转而双脚横滑。
-            if (previousFoot && sample.moving) {
+            if (previousFoot && (sample.moving || settling)) {
                 const travel = member.foot.clone().subtract(previousFoot);
                 if (travel.lengthSqr() > .0025) direction.set(travel).normalize();
             }
@@ -195,14 +231,19 @@ export default class MarchFormation {
                 member.facing = (Math.round(angle / (Math.PI / 4)) + 8) % 8;
             this.applyPose(member, sample.moving || settling);
             // 方向帧保持清晰，不对相邻图片做半透明混合；重心动作按真实时间连续采样。
-            sampleMarchPose(member.kind, this.gaitTime, this.gaitWeight, this.pose);
+            sampleMarchPose(member.kind, this.gaitTime, member.moving ? Math.max(this.gaitWeight, .35) : 0, this.pose);
+            if (defending && !member.moving) {
+                const breath = now / 1000 * 2 + member.dustPhase * 13;
+                this.pose.y += Math.sin(breath) * .22;
+                this.pose.angle += Math.sin(breath - .4) * .16;
+            }
             const mirror = member.animations?.mirrored[member.facing] ? -1 : 1;
             member.sprite.node.setPosition(this.pose.x * mirror, this.pose.y, 0);
             member.sprite.node.angle = this.pose.angle * mirror;
             member.sprite.node.setScale(mirror, this.pose.stretch, 1);
         }
         this.updateDust(dt, now);
-        this.members.slice().sort((a, b) => b.node.position.y - a.node.position.y)
+        if (!this.renderLayer) this.members.slice().sort((a, b) => b.node.position.y - a.node.position.y)
             .forEach((member, i) => member.node.setSiblingIndex(i + 1));
     }
 
@@ -237,7 +278,7 @@ export default class MarchFormation {
     }
 
     private updateDust(dt: number, now: number): void {
-        if (!this.members.some(member => member.moving)) {
+        if (!this.members.some(member => member.moving && member.node.active)) {
             if (this.dustVisible) this.dust.clear();
             this.dustVisible = false; this.dustElapsed = 0; return;
         }
@@ -245,18 +286,26 @@ export default class MarchFormation {
         if (this.dustVisible && this.dustElapsed < .1) return;
         this.dustElapsed = 0; this.dustVisible = true; this.dust.clear();
         for (const member of this.members) {
-            if (!member.moving) continue;
+            if (!member.moving || !member.node.active) continue;
             const age = (now / 1100 + member.dustPhase * 3) % 1;
-            const x = member.node.position.x - this.heading.x * (5 + age * 13);
-            const y = member.node.position.y - this.heading.y * (5 + age * 13);
+            const x = member.node.position.x - (this.renderLayer ? this.host.position.x : 0) - this.heading.x * (5 + age * 13);
+            const y = member.node.position.y - (this.renderLayer ? this.host.position.y : 0) - this.heading.y * (5 + age * 13);
             this.dust.fillColor = new Color(193, 174, 126, Math.round((1 - age) * 26));
             this.dust.ellipse(x, y, 3 + age * 5, 1.3 + age * 2); this.dust.fill();
         }
     }
 
     destroy(): void {
+        if (this.disposed) return;
+        this.disposed = true;
         this.revision++;
-        this.root.removeFromParent(); this.root.destroy(); this.members = [];
+        if (this.renderLayer) for (const member of this.members) {
+            if (isValid(member.node, true)) { member.node.removeFromParent(); member.node.destroy(); }
+        }
+        if (isValid(this.root, true)) { this.root.removeFromParent(); this.root.destroy(); }
+        this.members = [];
+        // 退出地图时宿主可能先于管理组件销毁，此时内部组件数组已被 Creator 清空。
+        if (!isValid(this.host, true)) return;
         const sprite = this.host.getComponent(Sprite); if (sprite) sprite.enabled = true;
         const animation = this.host.getComponent(Animation); if (animation) animation.enabled = true;
     }

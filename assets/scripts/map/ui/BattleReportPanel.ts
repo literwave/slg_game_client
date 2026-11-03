@@ -1,17 +1,18 @@
-import { _decorator, BlockInputEvents, Button, Color, Component, Graphics, Label, Mask, Node,
+import { _decorator, BlockInputEvents, Button, Color, Component, Label, Mask, Node,
     SafeArea, ScrollView, Sprite, UITransform, Widget } from 'cc';
 import BattleCommand, { ReportInfo } from '../../battle/BattleCommand';
-import { reportKind, reportLayout, reportResult, reportTime, reportUnitName, soldierTotals } from '../../battle/ReportPresentation';
+import { reportKind, reportLayout, reportResult, reportTime } from '../../battle/ReportPresentation';
 import { ServerConfig as S } from '../../config/ServerConfig';
 import { LogicEvent as E } from '../../common/LogicEvent';
 import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
-import { itemName } from '../../common/ItemPresentation';
+import { itemGlyph, itemName } from '../../common/ItemPresentation';
 import InventoryIconCache from '../../inventory/InventoryIconCache';
 import BattleReplayView from './BattleReplayView';
 import BattleReplayPaintedView from './BattleReplayPaintedView';
-import { reportUnitArt } from './ReportUnitArt';
-import { caption, headerRule, inkSurface, ManagementColors as C, panelButton, place } from './ManagementStyle';
+import { battleReportOverview } from './BattleReportSummaryView';
+import { reportDispatchCard, reportEmptyState, reportFilters, reportReadAll, reportWindowFrame } from './BattleReportFrameView';
+import { caption, inkSurface, ManagementColors as C, panelButton, place } from './ManagementStyle';
 const { ccclass } = _decorator;
 const WIN = new Color(135, 185, 139), LOSS = new Color(208, 121, 103);
 const FILTERS: Array<[number, string]> = [[0, '全部'], [4, '资源地'], [1, '讨伐'], [2, '攻城'], [3, '防守']];
@@ -42,6 +43,15 @@ export default class BattleReportPanel extends Component {
     }
     onDisable(): void { EventMgr.targetOff(this); this.unschedule(this.flushRender); this.queued = false; }
     onDestroy(): void { EventMgr.targetOff(this); }
+
+    /** 提前构建首开界面；不会切频道、发送消息或请求战报。 */
+    public prepareView(): void {
+        if (!this.panel) this.build();
+        this.node.getComponent(Widget).updateAlignment();
+        this.safe.getComponent(Widget).updateAlignment();
+        this.safe.getComponent(SafeArea).updateArea();
+        this.layout();
+    }
 
     public show(): void {
         if (!this.panel) this.build();
@@ -103,19 +113,14 @@ export default class BattleReportPanel extends Component {
         inkSurface(this.node, 'Scrim', root.width, root.height, new Color(4, 9, 7, 185), null);
         place(this.panel, 0, 0, m.width, m.height); this.panel.setScale(m.scale, m.scale, 1);
         inkSurface(this.panel, 'Surface', m.width, m.height, C.ink, C.gold);
-        place(this.panel.getChildByName('Title'), left + 96, top - 34, 148, 40);
-        place(this.panel.getChildByName('Status'), 0, top - 67, m.width - 44, 24);
-        panelButton(this.panel.getChildByName('Close'), '', m.width / 2 - 38, top - 35, 38, 38, false, true);
-        headerRule(this.panel, m.width - 40, top - 87);
-        place(this.tabs, 0, top - 116, m.width - 40, 36);
-        const step = (m.width - 40) / FILTERS.length;
-        FILTERS.forEach(([id, name], i) => panelButton(this.tabs.getChildByName(String(id)), name,
-            (i - 2) * step, 0, step - 6, 34, id === this.category));
-        const bodyY = top - 146 - m.bodyHeight / 2;
-        this.positionScroll(this.list, m.narrow ? 0 : left + 20 + m.listWidth / 2, bodyY, m.listWidth, m.bodyHeight);
-        this.positionScroll(this.detail, m.narrow ? 0 : m.width / 2 - 20 - m.detailWidth / 2, bodyY, m.detailWidth, m.bodyHeight);
-        panelButton(this.panel.getChildByName('ReadAll'), '全部已读', m.width / 2 - 72, -top + 18, 104, 28);
-        panelButton(this.panel.getChildByName('Back'), '返回列表', left + 72, -top + 18, 104, 28);
+        reportWindowFrame(this.panel, m.width, m.height);
+        place(this.tabs, 0, top - m.filterCenter, m.contentWidth, m.filterHeight);
+        reportFilters(this.tabs, m.contentWidth, FILTERS, this.category);
+        const bodyY = top - m.bodyTop - m.bodyHeight / 2;
+        this.positionScroll(this.list, m.narrow ? 0 : left + m.inset + m.listWidth / 2, bodyY, m.listWidth, m.bodyHeight);
+        this.positionScroll(this.detail, m.narrow ? 0 : m.width / 2 - m.inset - m.detailWidth / 2, bodyY, m.detailWidth, m.bodyHeight);
+        reportReadAll(this.panel.getChildByName('ReadAll'), m.width / 2 - m.inset - 65, -top + 24);
+        panelButton(this.panel.getChildByName('Back'), '返回列表', left + m.inset + 52, -top + 24, 104, 28);
         this.render(); this.layingOut = false;
     }
     private positionScroll(scroll: ScrollView, x: number, y: number, width: number, height: number): void {
@@ -130,8 +135,9 @@ export default class BattleReportPanel extends Component {
         const c = BattleCommand.getInstance(), m = this.metrics, rows = c.getReports(this.category);
         const status = this.panel.getChildByName('Status').getComponent(Label);
         status.string = !c.sessionReady ? '连接已断开，等待重新连接' : c.loadError || (c.loading ? '正在同步战报…'
-            : `${c.getReports().length} 份战报 · ${c.unreadCount ? `${c.unreadCount} 份未读` : '全部已读'}`);
+            : `${c.getReports().length} 封${c.unreadCount ? ` · ${c.unreadCount} 未读` : ''}`);
         this.panel.getChildByName('ReadAll').getComponent(Button).interactable = c.sessionReady && c.unreadCount > 0 && !c.requestInFlight(S.c2s_read_report);
+        this.panel.getChildByName('ReadAll').active = c.unreadCount > 0;
         if (this.selected && !rows.some(r => String(r.reportId) === this.selected)) this.selected = '';
         this.list.node.active = !m.narrow || !this.selected;
         this.detail.node.active = !m.narrow || !!this.selected;
@@ -140,22 +146,16 @@ export default class BattleReportPanel extends Component {
         for (const node of this.list.content.children.slice()) if (!used.has(node.name)) { node.removeFromParent(); node.destroy(); }
         rows.forEach((r, i) => {
             const id = String(r.reportId), cell = this.list.content.getChildByName(id) || this.button(this.list.content, id, () => this.select(id));
-            place(cell, 0, -49 - i * 108, width, 100);
-            inkSurface(cell, 'Surface', width, 100, id === this.selected ? new Color(63, 60, 43) : C.panel, id === this.selected ? C.gold : C.line);
-            caption(cell, 'Result', reportResult(r.result), -width / 2 + 42, 24, 52, 19, r.result === 1 ? WIN : LOSS).isBold = true;
-            caption(cell, 'Kind', reportKind(r), 32, 24, width - 112, 16);
-            caption(cell, 'Time', reportTime(r.time), 0, -8, width - 32, 12, C.muted);
-            caption(cell, 'Position', `战场 (${r.pos?.x ?? '—'}, ${r.pos?.y ?? '—'})`, -24, -32, width - 80, 13, C.muted);
-            caption(cell, 'Read', r.isRead ? '已读' : '未读', width / 2 - 36, -32, 44, 12, r.isRead ? C.muted : C.gold, Label.HorizontalAlign.RIGHT);
-            let dot = cell.getChildByName('Unread');
-            if (!dot) { dot = this.nodeAt(cell, 'Unread'); const g = dot.addComponent(Graphics); g.fillColor = new Color(205, 62, 48); g.circle(0, 0, 4); g.fill(); }
-            dot.setPosition(width / 2 - 14, 34); dot.active = !r.isRead;
+            place(cell, 0, -50 - i * 112, width, 100);
+            reportDispatchCard(cell, r, width, id === this.selected);
         });
-        this.contentHeight(this.list, Math.max(m.bodyHeight, rows.length * 108 - 8), width, false);
-        const empty = this.list.node.getChildByName('Empty'); empty.active = !rows.length;
+        this.contentHeight(this.list, Math.max(m.bodyHeight, rows.length * 112 - 12), width, false);
+        const empty = this.list.node.getChildByName('Empty'); empty.active = !rows.length && !m.narrow;
         place(empty, 0, 0, width - 32, 100);
         const emptyLabel = empty.getComponent(Label); emptyLabel.enableWrapText = true;
-        emptyLabel.string = c.loading ? '正在读取战报…' : c.loadError || (!c.loaded ? '等待战报同步' : '暂无战报\n战斗结束后会在这里留下记录');
+        emptyLabel.string = !c.sessionReady ? '等待重新连接' : c.loading ? '正在读取战报…' : c.loadError || (!c.loaded ? '等待战报同步' : '暂无军报');
+        const emptyArt = this.list.node.getChildByName('ReportEmptyState'); if (emptyArt) emptyArt.active = !rows.length && m.narrow;
+        if (!rows.length && m.narrow) reportEmptyState(this.list.node, width, m.bodyHeight, m.bodyHeight / 2, emptyLabel.string);
         this.renderDetail();
     }
     private select(id: number | string): void {
@@ -167,6 +167,7 @@ export default class BattleReportPanel extends Component {
     }
     private onDetail(info: ReportInfo): void {
         if (String(info.brief.reportId) !== this.selected || !this.node.activeInHierarchy) return;
+        if(BattleReplayPaintedView.supports(info))void BattleReplayPaintedView.prepare().catch(()=>undefined);
         // 成功取得正在查看的详情后才发已读；红点等服务器确认后消除。
         if (!info.brief.isRead) BattleCommand.getInstance().readReports([info.brief.reportId]);
         this.queueRender();
@@ -178,8 +179,9 @@ export default class BattleReportPanel extends Component {
         scroll.content.getComponent(UITransform).setContentSize(width, Math.max(viewportH, height));
         scroll.content.setPosition(0, viewportH / 2 + Math.min(offset, Math.max(0, height - viewportH)));
     }
-    private text(parent: Node, name: string, value: string, y: number, width: number, size = 15, color = C.text): number {
-        const label = caption(parent, name, value, 0, y, width, size, color);
+    private text(parent: Node, name: string, value: string, y: number, width: number, size = 15, color = C.text,
+        align = Label.HorizontalAlign.LEFT): number {
+        const label = caption(parent, name, value, 0, y, width, size, color, align);
         label.enableWrapText = true; label.overflow = Label.Overflow.RESIZE_HEIGHT;
         label.lineHeight = Math.ceil(size * 1.55); label.verticalAlign = Label.VerticalAlign.TOP;
         label.updateRenderData(true);
@@ -191,28 +193,26 @@ export default class BattleReportPanel extends Component {
         const replay = c.replays.get(this.selected) || info?.replay;
         const detailPending = c.requestInFlight(`detail:${this.selected}`), replayPending = c.requestInFlight(`replay:${this.selected}`);
         const m = this.metrics, width = m.detailWidth;
-        const key = JSON.stringify([width, m.bodyHeight, this.selected, this.page, info, replay, detailPending, replayPending, c.sessionReady]);
+        const key = JSON.stringify([width, m.bodyHeight, this.selected, this.category, this.page, info, replay, detailPending, replayPending,
+            c.sessionReady, c.loading, c.loadError, c.getReports(this.category).length]);
         if (key === this.detailKey) return;
         const location = `${width}:${m.bodyHeight}:${this.selected}:${this.page}`, reset = location !== this.detailLocation;
         this.detailKey = key; this.detailLocation = location;
         for (const node of this.detail.content.children.slice()) { node.removeFromParent(); node.destroy(); }
         const root = this.detail.content;
         inkSurface(this.detail.node, 'Surface', width, m.bodyHeight, C.inset, C.line);
-        let y = -18;
+        let y = -8;
         if (!brief) {
-            this.text(root, 'Prompt', '战场纪事', -m.bodyHeight / 2 + 36, width - 40, 24, C.gold);
-            this.text(root, 'Hint', '选择一份战报，查看交战双方与战斗详情', -m.bodyHeight / 2 - 8, width - 40, 14, C.muted);
+            reportEmptyState(root, width, m.bodyHeight, 0, c.getReports(this.category).length ? '点选左侧军报' : '战斗结束后收录军报');
         } else {
-            const title = caption(root, 'Result', `${reportResult(brief.result)} · ${reportKind(brief)}`, 0, y - 16, width - 36, 23, brief.result === 1 ? WIN : LOSS);
-            title.overflow = Label.Overflow.SHRINK; y -= 38;
             const dateWidth=width-176;
-            caption(root, 'Date', reportTime(brief.time), -width/2+18+dateWidth/2, y-14, dateWidth, 13, C.muted);
+            caption(root, 'Date', reportTime(brief.time), -width/2+18+dateWidth/2, y-12, dateWidth, 12, C.muted);
             const hasPosition=Number.isFinite(brief.pos?.x)&&Number.isFinite(brief.pos?.y);
             const coordinates=this.button(root,'Coordinates',()=>{
                 if(!hasPosition)return;
                 this.close();EventMgr.emit(E.scrollToMap,brief.pos.x,brief.pos.y);
             });
-            place(coordinates,width/2-82,y-14,128,32);
+            place(coordinates,width/2-82,y-12,128,28);
             const link=caption(coordinates,'CoordinateText',hasPosition?`(${brief.pos.x}, ${brief.pos.y})`:'坐标未知',
                 0,0,128,14,hasPosition?C.gold:C.muted,Label.HorizontalAlign.RIGHT);
             link.isUnderline=hasPosition;link.overflow=Label.Overflow.SHRINK;
@@ -223,8 +223,11 @@ export default class BattleReportPanel extends Component {
                 coordinates.on(Node.EventType.MOUSE_ENTER,()=>link.color=C.text);
                 coordinates.on(Node.EventType.MOUSE_LEAVE,()=>link.color=C.gold);
             }
-            y -= 36;
+            y -= 28;
             if (!info) {
+                const title = caption(root, 'Result', `${reportResult(brief.result)} · ${reportKind(brief)}`,
+                    0, y - 16, width - 36, 23, brief.result === 1 ? WIN : LOSS);
+                title.overflow = Label.Overflow.SHRINK; y -= 38;
                 y -= this.text(root, 'Loading', detailPending ? '正在加载战报详情…' : '详情暂未加载，请重试', y, width - 36, 15, C.muted) + 16;
                 if (!detailPending) {
                     const retry = this.button(root, 'Retry', () => c.requestDetail(this.selected));
@@ -239,7 +242,7 @@ export default class BattleReportPanel extends Component {
                     });
                     panelButton(tab, i ? '回合回放' : '战况总览', (i - .5) * (width - 30) / 2, y - 17, (width - 38) / 2, 34, this.page === page);
                 });
-                y -= 46;
+                y -= 40;
                 if (this.page === 'summary') y = this.summary(root, info, y, width);
                 else if (replay) {
                     const stage=this.nodeAt(root,'ReplayStage'),player=stage.addComponent(BattleReplayView);
@@ -260,57 +263,55 @@ export default class BattleReportPanel extends Component {
         this.contentHeight(this.detail, -y + 18, width, reset);
     }
     private summary(root: Node, info: ReportInfo, y: number, width: number): number {
-        const sides = [info.atkSide, info.defSide], stacked = width < 480;
-        const cardWidth = stacked ? width - 32 : (width - 48) / 2;
-        const maxUnits = Math.max(...sides.map(side => side?.units?.length || 0));
-        const cardHeight = 116 + maxUnits * 46;
-        sides.forEach((side, i) => {
-            const card = this.nodeAt(root, `SideCard${i}`);
-            place(card, stacked ? 0 : (i - .5) * (cardWidth + 16),
-                y - cardHeight / 2 - (stacked ? i * (cardHeight + 12) : 0), cardWidth, cardHeight);
-            inkSurface(card, 'Surface', cardWidth, cardHeight, new Color(39, 44, 35), C.line);
-            const top = cardHeight / 2, stats = soldierTotals(side), tone = i ? LOSS : C.gold;
-            caption(card, 'Side', i ? '守方' : '攻方', 0, top - 18, cardWidth - 24, 12, tone);
-            const name = caption(card, 'Commander', side?.name || (i ? '守军' : '出征部队'), 0, top - 44, cardWidth - 24, 20, C.text);
+        y -= battleReportOverview(root, info, y, width);
+        return this.rewardTray(root, info.rewardList || [], y, width);
+    }
+    private rewardTray(root: Node, rewards: ReportInfo['rewardList'], y: number, width: number): number {
+        const trayWidth = width - 32, cellWidth = 72, gap = 12, rowHeight = 66;
+        const columns = Math.max(1, Math.floor((trayWidth - 24 + gap) / (cellWidth + gap)));
+        const height = rewards.length ? 22 + Math.ceil(rewards.length / columns) * rowHeight : 52;
+        const tray = this.nodeAt(root, 'BattleRewards');
+        place(tray, 0, y - height / 2, trayWidth, height);
+        const top = height / 2;
+        const surface = inkSurface(tray, 'Surface', trayWidth, height, new Color(35, 38, 30), C.line);
+        const heading = caption(tray, 'Title', '战利品', 0, top - 12, 100, 13, C.gold, Label.HorizontalAlign.CENTER);
+        place(heading.node, 0, top - 12, 100, 20);
+        surface.strokeColor = C.line; surface.lineWidth = 1;
+        surface.moveTo(-trayWidth / 2 + 16, top - 12); surface.lineTo(-42, top - 12);
+        surface.moveTo(42, top - 12); surface.lineTo(trayWidth / 2 - 16, top - 12); surface.stroke();
+        if (!rewards.length) caption(tray, 'Empty', '本次战斗无奖励', 0, top - 35, trayWidth - 32, 12, C.muted, Label.HorizontalAlign.CENTER);
+        rewards.forEach((reward, index) => {
+            const row = Math.floor(index / columns), column = index % columns;
+            const rowCount = Math.min(columns, rewards.length - row * columns);
+            const cell = this.nodeAt(tray, `Reward${index}`);
+            place(cell, (column - (rowCount - 1) / 2) * (cellWidth + gap), top - 44 - row * rowHeight, cellWidth, rowHeight);
+            const rim = inkSurface(cell, 'ItemFrame', 44, 44, new Color(24, 28, 22), new Color(152, 127, 76));
+            // 双层铜边与四角短线沿用战报配色，不表达不存在的道具稀有度。
+            rim.strokeColor = new Color(86, 78, 52); rim.rect(-19, -19, 38, 38); rim.stroke();
+            rim.strokeColor = C.gold; rim.lineWidth = 2;
+            for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+                rim.moveTo(sx * 15, sy * 21); rim.lineTo(sx * 21, sy * 21); rim.lineTo(sx * 21, sy * 15);
+            }
+            rim.stroke();
+            const glyph = caption(cell, 'Glyph', itemGlyph(reward.itemId), 0, 3, 34, 23, C.gold, Label.HorizontalAlign.CENTER);
+            const icon = this.nodeAt(cell, 'Icon'), sprite = icon.addComponent(Sprite);
+            sprite.sizeMode = Sprite.SizeMode.CUSTOM; icon.active = false;
+            const applyIcon = (frame: ReturnType<typeof InventoryIconCache.get>) => {
+                if (!frame || !icon.isValid) return;
+                const rect = frame.originalSize, scale = 36 / Math.max(1, rect.width, rect.height);
+                sprite.spriteFrame = frame; place(icon, 0, 3, rect.width * scale, rect.height * scale);
+                icon.active = true; glyph.node.active = false;
+            };
+            const frame = InventoryIconCache.get(reward.itemId);
+            if (frame) applyIcon(frame); else void InventoryIconCache.load(reward.itemId).then(applyIcon);
+            const count = caption(cell, 'Amount', String(Number(reward.itemCount) || 0), -1, -13, 38, 13, C.text, Label.HorizontalAlign.RIGHT);
+            place(count.node, -1, -13, 38, 18);
+            count.isBold = true; count.overflow = Label.Overflow.SHRINK;
+            count.outlineColor = new Color(13, 17, 12); count.outlineWidth = 2;
+            const name = caption(cell, 'Name', itemName(reward.itemId), 0, -32, cellWidth, 11, C.text, Label.HorizontalAlign.CENTER);
+            place(name.node, 0, -32, cellWidth, 18);
             name.overflow = Label.Overflow.SHRINK;
-            const wounded = (side?.units || []).reduce((sum, unit) => sum + Math.max(0, (unit.afterSoldier?.hurtCount || 0) - (unit.beforeSoldier?.hurtCount || 0)), 0);
-            const values = stats ? [stats.after, wounded, stats.lost] : ['—', '—', '—'];
-            ['剩余兵力', '本次负伤', '阵亡'].forEach((label, j) => {
-                const x = (j - 1) * (cardWidth - 20) / 3;
-                caption(card, `Value${j}`, String(values[j]), x, top - 74, (cardWidth - 20) / 3, 21, j === 0 ? WIN : j === 2 ? LOSS : C.text, Label.HorizontalAlign.CENTER);
-                caption(card, `Stat${j}`, label, x, top - 96, (cardWidth - 20) / 3, 11, C.muted, Label.HorizontalAlign.CENTER);
-            });
-            (side?.units || []).forEach((unit, index) => {
-                const row = this.nodeAt(card, `Unit${index}`), yy = top - 138 - index * 46;
-                place(row, 0, yy, cardWidth - 24, 42);
-                reportUnitArt(row, side, unit, -cardWidth / 2 + 32, 0, 36);
-                const rowWidth = cardWidth - 78, xx = 20;
-                const unitName = caption(row, 'Name', `${reportUnitName(side, unit)} · Lv.${unit.level || 1}`, xx, 9, rowWidth, 13);
-                unitName.overflow = Label.Overflow.SHRINK;
-                const amount = unit.afterSoldier?.count || 0, before = unit.beforeSoldier?.count || 0;
-                caption(row, 'Count', `${before} → ${amount}`, xx, -10, rowWidth, 12, C.muted);
-            });
         });
-        y -= (cardHeight + 12) * (stacked ? 2 : 1);
-        y -= this.text(root, 'RewardsTitle', '战斗奖励', y, width - 36, 18, C.gold) + 12;
-        if (!info.rewardList?.length) y -= this.text(root, 'NoRewards', '本次战斗无奖励', y, width - 36, 14, C.muted);
-        else {
-            const columns = Math.max(1, Math.floor((width - 36) / 148)), cellWidth = (width - 36) / columns;
-            info.rewardList.forEach((reward, i) => {
-                const cell = this.nodeAt(root, `Reward${i}`), x = -width / 2 + 18 + cellWidth / 2 + (i % columns) * cellWidth;
-                place(cell, x, y - 25 - Math.floor(i / columns) * 58, cellWidth - 6, 50);
-                const frame = InventoryIconCache.get(reward.itemId);
-                if (frame) {
-                    const icon = this.nodeAt(cell, 'Icon'), sprite = icon.addComponent(Sprite);
-                    sprite.sizeMode = Sprite.SizeMode.CUSTOM; sprite.spriteFrame = frame;
-                    const rect = frame.originalSize, scale = 36 / Math.max(rect.width, rect.height);
-                    place(icon, -cellWidth / 2 + 22, 0, rect.width * scale, rect.height * scale);
-                }
-                caption(cell, 'Name', itemName(reward.itemId), 20, 10, cellWidth - 48, 12, C.muted);
-                caption(cell, 'Amount', `×${Number(reward.itemCount || 0).toLocaleString()}`, 20, -10, cellWidth - 48, 15);
-            });
-            y -= Math.ceil(info.rewardList.length / columns) * 58;
-        }
-        return y;
+        return y - height;
     }
 }

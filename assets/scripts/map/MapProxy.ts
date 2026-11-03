@@ -92,6 +92,8 @@ export default class MapProxy {
     private _resourceWidth = 0;
     private _emptyCells = new Uint8Array(0);
     private _resourceCache = new Map<number, MapResData>();
+    // 资源配置在同一版本中只读；退出地图保留字节表，重新登录无需再扫描百万格。
+    private _resourceSource: { json: any; list: any; emptyCells: any; width: number; height: number } | null = null;
     protected _mapSysCityResDatas: MapResData[] = [];
     protected _mapPosTags: MapTagPos[] = [];
 
@@ -144,19 +146,35 @@ export default class MapProxy {
         for (const _progress of this.initMapResConfigBatched(jsonData)) { /* drain */ }
     }
 
-    /** 每批最多 2048 格 / 4ms；全部完成后才发布，取消加载不会留下半张地图。 */
+    /** 每帧按约 4ms 的实际工作量分批；全部完成后才发布，取消加载不会留下半张地图。 */
     public *initMapResConfigBatched(jsonData: any): Generator<number, void, unknown> {
         if (!jsonData || !Number.isInteger(jsonData.w) || jsonData.w <= 0
             || !Number.isInteger(jsonData.h) || jsonData.h <= 0 || !Array.isArray(jsonData.list)
-            || jsonData.list.length !== jsonData.w * jsonData.h) {
+            || jsonData.list.length !== jsonData.w * jsonData.h
+            || (jsonData.emptyCells != null && !Array.isArray(jsonData.emptyCells))) {
             throw new Error('地图资源数据格式无效');
         }
         const w: number = jsonData.w;
         const list: Array<Array<number>> = jsonData.list;
+        const source = this._resourceSource;
+        if (source?.json === jsonData && source.list === list && source.emptyCells === jsonData.emptyCells
+            && source.width === w && source.height === jsonData.h) {
+            this._resourceCache.clear();
+            yield 1;
+            return;
+        }
+        const emptyIds: number[] = jsonData.emptyCells || [];
+        const total = list.length + emptyIds.length;
         const types = new Uint8Array(list.length), levels = new Uint8Array(list.length);
+        const emptyCells = new Uint8Array(list.length);
         const sysCityDatas: MapResData[] = [];
-        let batchStart = Date.now();
+        const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+            ? () => performance.now() : () => Date.now();
+        let batchStart = now();
         let batchCount = 0;
+        // 不再以 2048 格人为等待下一帧；高性能设备可在预算内多处理。
+        // 保留大批次上限，低精度或停滞时钟下也会把控制权交还给加载动画。
+        const shouldYield = () => batchCount >= 262144 || (batchCount % 128 === 0 && now() - batchStart >= 4);
         for (let i = 0; i < list.length; i++) {
             if (!Array.isArray(list[i]) || list[i].length < 2) throw new Error(`地图格 ${i} 数据缺失`);
             types[i] = list[i][0]; levels[i] = list[i][1];
@@ -167,19 +185,26 @@ export default class MapProxy {
                 sysCityDatas.push(data);
             }
             batchCount++;
-            if (i + 1 < list.length && (batchCount >= 2048 || (batchCount % 128 === 0 && Date.now() - batchStart >= 4))) {
-                yield (i + 1) / list.length;
-                batchStart = Date.now();
+            if (i + 1 < total && shouldYield()) {
+                yield (i + 1) / total;
+                batchStart = now();
                 batchCount = 0;
+            }
+        }
+        for (let i = 0; i < emptyIds.length; i++) {
+            const id = emptyIds[i];
+            if (Number.isInteger(id) && id >= 0 && id < list.length && types[id] === 0) emptyCells[id] = 1;
+            batchCount++;
+            if (list.length + i + 1 < total && shouldYield()) {
+                yield (list.length + i + 1) / total;
+                batchStart = now(); batchCount = 0;
             }
         }
         this._resourceTypes = types; this._resourceLevels = levels; this._resourceWidth = w;
         this._resourceCache.clear();
-        this._emptyCells = new Uint8Array(list.length);
-        for (const id of jsonData.emptyCells || []) {
-            if (Number.isInteger(id) && id >= 0 && id < list.length && types[id] === 0) this._emptyCells[id] = 1;
-        }
+        this._emptyCells = emptyCells;
         this._mapSysCityResDatas = sysCityDatas;
+        this._resourceSource = { json: jsonData, list, emptyCells: jsonData.emptyCells, width: w, height: jsonData.h };
         yield 1;
     }
 

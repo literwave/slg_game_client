@@ -9,12 +9,13 @@ class Node {
     constructor(name) { this.name = name; this.components = new Map(); this.children = []; this.active = true; this.position = { x: 0, y: 0 }; }
     addComponent(Type) { const c = new Type(); c.node = this; this.components.set(Type, c); return c; }
     getComponent(Type) { return this.components.get(Type); }
-    addChild(node) { this.children.push(node); }
+    addChild(node) { this.children.push(node); node.parent = this; }
     setPosition(x, y) { this.position = { x, y }; }
     setScale(x, y) { this.scale = { x, y }; }
-    setSiblingIndex(i) { this.order = i; }
+    getSiblingIndex() { return this.parent.children.indexOf(this); }
+    setSiblingIndex(i) { this.moves = (this.moves || 0) + 1; const children = this.parent.children; children.splice(children.indexOf(this), 1); children.splice(i, 0, this); }
 }
-const frames = Object.fromEntries(['mountain_ridge_connected', 'mountain_shoulder'].map(name => {
+const frames = Object.fromEntries(['mountain_ridge_connected', 'mountain_shoulder', 'mountain_massif_natural', 'mountain_saddle_natural'].map(name => {
     const bytes = fs.readFileSync(path.join(root, 'assets/resources/ui/world', name + '.png'));
     return [name, { originalSize: { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) } }];
 }));
@@ -57,4 +58,8 @@ for (const { x, y } of [{ x: 2, y: 400 }, { x: 710, y: 864 }, ...campaign.gates]
 }
 proxy.strategic = true; landscape.updateVisible(); assert.equal(landscape.decoration.active, false);
 proxy.strategic = false; landscape.updateVisible(); assert.equal(landscape.decoration.active, true);
+const before = landscape.decoration.children.reduce((sum, node) => sum + (node.moves || 0), 0);
+// 强制重新查询同一视口，验证结果集合未变时不重排节点、不打断批次。
+landscape.lastX = Infinity; landscape.updateVisible();
+assert.equal(landscape.decoration.children.reduce((sum, node) => sum + (node.moves || 0), 0), before);
 console.log('PASS mountain spatial buckets match full visibility; pooled anchors/flips/scales reset; 18 gates clickable; strategic detail resumes');

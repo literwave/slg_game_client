@@ -1,4 +1,4 @@
-import { _decorator, BlockInputEvents, Component, Mask, Toggle, ScrollView, Prefab, Node, instantiate, tween, Tween, Vec3, UITransform, Label, Layout, Color, Button } from 'cc';
+import { _decorator, BlockInputEvents, Component, Mask, Toggle, ScrollView, Prefab, Node, instantiate, tween, Tween, Vec3, UITransform, Label, Layout, Color, Button, Sprite } from 'cc';
 const { ccclass, property } = _decorator;
 
 import { ArmyData } from "../../general/ArmyProxy";
@@ -12,9 +12,12 @@ import RightTagItemLogic from "./RightTagItemLogic";
 import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
+import { CoreEvent } from '../../core/CoreEvent';
 import { drawCommandPanel, drawCommandHandle } from './RightHudSkin';
 import MapMarkCommand from '../../world/MapMarkCommand';
 import { caption, ManagementColors, panelButton, place } from './ManagementStyle';
+import { commandEmpty, commandTab } from './RightSidebarView';
+import SidebarIconCache from './SidebarIconCache';
 
 @ccclass('RightInfoNodeLogic')
 export default class RightInfoNodeLogic extends Component {
@@ -51,11 +54,13 @@ export default class RightInfoNodeLogic extends Component {
     private _tilePanel: Node = null;
     private _tileHeight = 0;
     private _baseHeight = 240;
+    private _selectedTab = 0;
     private _previousTab = 0;
     private _tileLayoutKey = '';
 
 
     protected onLoad(): void {
+        EventMgr.on(CoreEvent.gameReady, this.refreshTabStyle, this);
         EventMgr.on(LogicEvent.updateArmyList, this.onUpdateArmyList, this);
         EventMgr.on(LogicEvent.updateArmy, this.onUpdateArmy, this);
         EventMgr.on(LogicEvent.updateTroopList, this.onUpdateTroopList, this);
@@ -63,15 +68,14 @@ export default class RightInfoNodeLogic extends Component {
         EventMgr.on(LogicEvent.updateTag, this.onUpdateTag, this);
 
         this.ensureTileTab();
-        this.layoutPanel();
+        this.initToggleEvents();
+        SidebarIconCache.prepare().then(() => { if (this.isValid) this.refreshTabStyle(); })
+            .catch(error => console.warn('侧栏图标加载失败，保留功能图形', error));
+        this.selectTab(0);
         this.scheduleOnce(this.layoutPanel, 0);
         if (this.node.parent) {
             this.node.parent.on(Node.EventType.SIZE_CHANGED, this.layoutPanel, this);
         }
-        this.initToggleEvents();
-        this.armyScrollView.node.active = true;
-        this.cityScrollView.node.active = false;
-        this.tagsScrollView.node.active = false;
         this.initArmys();
         // MapUILogic 统一请求部队数据，避免首屏重复请求和重建列表。
     }
@@ -126,6 +130,7 @@ export default class RightInfoNodeLogic extends Component {
             }
         }
         this.armyScrollView.content.getComponent(Layout)?.updateLayout();
+        this.layoutPanel();
     }
 
     protected initCitys(): void {
@@ -137,7 +142,10 @@ export default class RightInfoNodeLogic extends Component {
                 item.parent = this.cityScrollView.content;
                 item.getComponent(RightCityItemLogic).setArmyData(citys[i]);
             }
+        } else {
+            commandEmpty(this.cityScrollView.content, 'CityEmpty', '暂无城池', 'city', 248);
         }
+        this.cityScrollView.content.getComponent(Layout)?.updateLayout();
     }
 
     protected initTags(): void {
@@ -145,17 +153,18 @@ export default class RightInfoNodeLogic extends Component {
         let tags = MapCommand.getInstance().proxy.getPosTags();
         this.clearList(this.tagsScrollView);
         const content = this.tagsScrollView.content, width = content.getComponent(UITransform).width || 250;
-        const summary = caption(content, 'MarkSummary', command.loading ? '正在读取标记…'
-            : command.error || `标记 ${tags.length} / ${command.limit || '—'}`, 0, 0, width, 13, ManagementColors.gold, Label.HorizontalAlign.CENTER);
-        summary.node.getComponent(UITransform).setContentSize(width, 32);
+        if (command.loading || command.error) {
+            const summary = caption(content, 'MarkSummary', command.loading ? '正在读取标记…' : command.error,
+                0, 0, width, 13, ManagementColors.gold, Label.HorizontalAlign.CENTER);
+            summary.node.getComponent(UITransform).setContentSize(width, 32);
+        }
         if (command.error && !command.loading) {
             const retry = new Node('MarkRetry'); retry.layer = content.layer; content.addChild(retry);
             retry.addComponent(Button); panelButton(retry, '重新读取', 0, 0, width, 32);
             retry.on(Button.EventType.CLICK, () => command.requestList());
         }
         if (command.loaded && !tags.length && !command.loading && !command.error) {
-            const empty = caption(content, 'MarkEmpty', '点击地图格子\n选择“标记”即可收藏', 0, 0, width - 16, 13, ManagementColors.muted, Label.HorizontalAlign.CENTER);
-            empty.enableWrapText = true; empty.node.getComponent(UITransform).setContentSize(width, 56);
+            commandEmpty(content, 'MarkEmpty', '点选地块，插旗收藏', 'flag', width);
         }
         for (let i: number = 0; i < tags.length; i++) {
             var tag = tags[i];
@@ -191,7 +200,9 @@ export default class RightInfoNodeLogic extends Component {
         if (item) {
             const itemLogic = item.getComponent(RightArmyItemLogic);
             if (itemLogic) {
+                const previousHeight = item.getChildByName('topNode')?.getComponent(UITransform)?.height;
                 itemLogic.setTroopData(troop, troop.troopIdx);
+                if (previousHeight !== item.getChildByName('topNode')?.getComponent(UITransform)?.height) this.layoutPanel();
             }
         } else {
             this.initArmys();
@@ -234,8 +245,7 @@ export default class RightInfoNodeLogic extends Component {
         this._tileScroll.elastic = false; this._tileScroll.inertia = true;
         const viewport = new Node('view'); viewport.layer = root.layer; root.addChild(viewport);
         viewport.addComponent(UITransform); viewport.addComponent(Mask).type = Mask.Type.GRAPHICS_RECT;
-        const empty = caption(viewport, 'NoSelection', '点选地图中的地块\n查看归属与可用操作', 0, 0, 216, 14, ManagementColors.muted, Label.HorizontalAlign.CENTER);
-        empty.enableWrapText = true; empty.lineHeight = 26; empty.getComponent(UITransform).height = 80;
+        commandEmpty(viewport, 'NoSelection', '点选地图，查看地块', 'land', 216);
         root.active = false; this._tileScroll.enabled = false;
         tab.active = true;
     }
@@ -248,12 +258,12 @@ export default class RightInfoNodeLogic extends Component {
         if (panel.parent !== viewport) panel.parent = viewport;
         if (this._tileScroll.content !== panel) this._tileScroll.content = panel;
         this._tileScroll.enabled = true; viewport.getChildByName('NoSelection').active = false;
-        const switching = select && !this._tileToggle.isChecked;
+        const switching = select && this._selectedTab !== 3;
         if (switching) {
-            this._previousTab = Math.max(0, this.toggles.findIndex(t => t.isChecked));
-            this._tileToggle.isChecked = true;
+            this._previousTab = this._selectedTab;
+            this.selectTab(3);
         }
-        panel.active = this._tileToggle.isChecked;
+        panel.active = this._selectedTab === 3;
         if (select && this._collapsed) { this._collapsed = false; this.layoutPanel(); }
         else if (changed && !switching) this.layoutPanel();
         if (select) {
@@ -267,26 +277,40 @@ export default class RightInfoNodeLogic extends Component {
         panel.active = false; this._tilePanel = null; this._tileHeight = 0;
         this._tileScroll.stopAutoScroll(); this._tileScroll.content = null; this._tileScroll.enabled = false;
         this._tileScroll.node.getChildByName('view').getChildByName('NoSelection').active = true;
-        if (this._tileToggle.isChecked) this.toggles[Math.min(2, this._previousTab)].isChecked = true;
+        if (this._selectedTab === 3) this.selectTab(Math.min(2, this._previousTab));
         this.layoutPanel();
     }
 
     private layoutPanel(): void {
+        // 四页共用一个选中状态，初始化、页签切换和重新排版时都保持互斥。
+        const tile = this._selectedTab === 3;
+        this.armyScrollView.node.active = this._selectedTab === 0;
+        this.cityScrollView.node.active = this._selectedTab === 1;
+        this.tagsScrollView.node.active = this._selectedTab === 2;
+        if (this._tileScroll) this._tileScroll.node.active = tile;
+        if (this._tilePanel) this._tilePanel.active = tile;
         const parentUi = this.node.parent ? this.node.parent.getComponent(UITransform) : null;
         const panelUi = this.getComponent(UITransform);
         if (!parentUi || !panelUi) {
             return;
         }
-        const tile = !!this._tileToggle?.isChecked;
-        panelUi.height = tile ? Math.min(Math.max(128, parentUi.height - 192), Math.max(240, this._tileHeight + 56)) : this._baseHeight;
+        const available = Math.max(160, parentUi.height - 192);
+        const armyHeight = this._armys.reduce((height, item) => height + (item.getChildByName('topNode')?.getComponent(UITransform)?.height || 100), 82)
+            + Math.max(0, this._armys.length - 1) * 8;
+        const preferred = this._selectedTab === 0 ? Math.max(300, Math.min(402, armyHeight)) : Math.max(300, this._baseHeight);
+        panelUi.height = Math.min(available, tile ? Math.max(288, this._tileHeight + 82) : preferred);
+        const viewHeight = panelUi.height - 82;
+        for (const scroll of [this.armyScrollView, this.cityScrollView, this.tagsScrollView]) {
+            place(scroll.node, 0, -31, panelUi.width - 8, viewHeight);
+            const viewport = scroll.node.getChildByName('view');
+            if (viewport) place(viewport, 0, 0, panelUi.width - 8, viewHeight);
+        }
         if (this._tileScroll) {
-            this._tileScroll.node.active = tile;
             const viewport = this._tileScroll.node.getChildByName('view');
-            const viewHeight = panelUi.height - 56;
             const key = `${panelUi.width}:${viewHeight}:${this._tileHeight}`;
             if (this._tileLayoutKey !== key) {
                 this._tileLayoutKey = key;
-                place(this._tileScroll.node, 0, -22, panelUi.width - 8, viewHeight);
+                place(this._tileScroll.node, 0, -31, panelUi.width - 8, viewHeight);
                 place(viewport, 0, 0, panelUi.width - 8, viewHeight);
                 if (this._tilePanel) this._tilePanel.setPosition(0, viewHeight / 2 - this._tileHeight / 2, 0);
             }
@@ -362,15 +386,13 @@ export default class RightInfoNodeLogic extends Component {
     private refreshTabStyle(): void {
         const panelUi = this.getComponent(UITransform);
         if (!panelUi) return;
-        const selected = this.toggles.findIndex(toggle => toggle && toggle.isChecked);
-        drawCommandPanel(this.node, panelUi.width, panelUi.height, selected, this.toggles.length);
+        drawCommandPanel(this.node, panelUi.width, panelUi.height, this._selectedTab, this.toggles.length);
         const group = this.toggles[0]?.node.parent;
-        if (group) group.setPosition(0, panelUi.height / 2 - 20, 0);
+        if (group) group.setPosition(0, panelUi.height / 2 - 32, 0);
         const step = (panelUi.width - 18) / this.toggles.length;
         this.toggles.forEach((toggle, index) => {
-            place(toggle.node, (index - (this.toggles.length - 1) / 2) * step, 0, step, 40);
-            const label = toggle?.node.getComponentInChildren(Label);
-            if (label) label.color = toggle.isChecked ? new Color(243, 228, 190, 255) : new Color(173, 173, 150, 255);
+            place(toggle.node, (index - (this.toggles.length - 1) / 2) * step, 0, step, 56);
+            commandTab(toggle.node, index, index === this._selectedTab, step, SidebarIconCache.frame(index));
         });
     }
 
@@ -403,33 +425,29 @@ export default class RightInfoNodeLogic extends Component {
     }
 
     onClockToggle(toggle: Toggle): void {
-        if (!toggle || !toggle.isChecked) {
+        const index = this.toggles.indexOf(toggle);
+        if (!toggle || !toggle.isChecked || index < 0) {
             return;
         }
         AudioManager.instance.playClick();
-        let index: number = this.toggles.indexOf(toggle);
-        if (this._tilePanel) this._tilePanel.active = index === 3;
+        this.selectTab(index);
+    }
+
+    private selectTab(index: number): void {
+        if (!this.toggles[index]) return;
+        this._selectedTab = index;
+        // 动态添加地块页时 ToggleContainer 仍可能在初始化，先选中目标再取消其他页。
+        this.toggles[index].setIsCheckedWithoutNotify(true);
+        this.toggles.forEach((toggle, i) => {
+            if (i !== index) toggle.setIsCheckedWithoutNotify(false);
+        });
         this.layoutPanel();
-        if (index == 1) {
-            this.armyScrollView.node.active = false;
-            this.cityScrollView.node.active = true;
-            this.tagsScrollView.node.active = false;
+        if (index === 1) {
             this.initCitys();
-        } else if (index == 0) {
-            this.armyScrollView.node.active = true;
-            this.cityScrollView.node.active = false;
-            this.tagsScrollView.node.active = false;
         } else if (index === 2) {
-            this.armyScrollView.node.active = false;
-            this.cityScrollView.node.active = false;
-            this.tagsScrollView.node.active = true;
             const marks = MapMarkCommand.getInstance();
             if (!marks.loaded && !marks.loading) marks.requestList();
             this.initTags();
-        } else {
-            this.armyScrollView.node.active = false;
-            this.cityScrollView.node.active = false;
-            this.tagsScrollView.node.active = false;
         }
     }
 }

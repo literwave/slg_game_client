@@ -15,14 +15,17 @@ import WorldMapArt from './WorldMapArt';
 import WorldCampaign from './WorldCampaign';
 import LoginCommand from '../login/LoginCommand';
 import { playerCityFootprint } from './PlayerCityAppearance';
+import { cityFootprintRadius } from './CityFootprint';
 import MapUtil from './MapUtil';
 import { isResourceLandCell } from '../world/ResourceLand';
 import WorldCommand, { MarchTargetType } from '../world/WorldCommand';
 import MapMarkCommand from '../world/MapMarkCommand';
 import { hasId, idKey } from '../network/pto/ProtocolCommand';
 import { caption, hideSprite, inkSurface, ManagementColors, panelButton, place, textStyle } from './ui/ManagementStyle';
-import { paintTileSelection } from './TileHighlight';
+import { paintCitySelection, paintTileSelection, placeGroundHighlight } from './TileHighlight';
 import RightInfoNodeLogic from './ui/RightInfoNodeLogic';
+import { CommandGlyph, commandAction, commandGlyph, landPortrait, landYields, ownershipSeal } from './ui/RightSidebarView';
+import { BRIDGE_ART, GATE_ART, gateSelectionPaths, gateMirrored } from './GateGeometry';
 
 @ccclass('MapClickUILogic')
 export default class MapClickUILogic extends Component {
@@ -226,7 +229,7 @@ export default class MapClickUILogic extends Component {
 
     protected onUpdateBuild(data: MapBuildData): void {
         if (this._data
-            && this._data instanceof MapBuildData
+            && (this._data instanceof MapBuildData || this._data.type === MapResType.SYS_CITY)
             && this._data.x == data.x
             && this._data.y == data.y) {
             this.setCellData(data, this._pixelPos, false);
@@ -307,6 +310,8 @@ export default class MapClickUILogic extends Component {
     }
 
     public setCellData(data: any, pixelPos: Vec2, select = true): void {
+        // 点选新地块时退出旧目标的选队，侧栏恢复后再展示新地块，避免误向旧坐标发令。
+        if (select) EventMgr.emit(LogicEvent.closeArmyAelectUi);
         this._selectInSidebar = select;
         this.stopCountDown();
         this._data = data;
@@ -360,8 +365,8 @@ export default class MapClickUILogic extends Component {
 
 
         if (this._data.type == MapResType.SYS_CITY) {
-            const width = WorldMapArt.cityWidth(this._data.level) * 1.2;
-            this.bgSelect.getComponent(UITransform).setContentSize(width, width * .5);
+            const span = cityFootprintRadius(this._data.level) * 2 + 1;
+            this.bgSelect.getComponent(UITransform).setContentSize(MapUtil.tileSize.width * span, MapUtil.tileSize.height * span);
         }
 
         if (this.leftInfoNode.active) {
@@ -430,7 +435,16 @@ export default class MapClickUILogic extends Component {
         const region = WorldCampaign.config?.regions[WorldCampaign.regionAt(data.x, data.y)];
         this._campaignText = gate ? `${gate.level}级关隘 · ${gate.regions.map(id => WorldCampaign.config.regions[id].name).join(' ↔ ')}\n同盟占领后打通两州，失守后路线关闭`
             : region ? `${region.name} · ${['出生州 · 稳固根基', '资源州 · 联盟争锋', '王畿 · 逐鹿洛阳'][region.tier]}` : '';
-        if (gate) this.labelYield.string = '关隘守备以战斗情报为准';
+        if (data.type === MapResType.SYS_CITY && !gate) {
+            // 城池不是资源格：静态配置只有城名/等级，不展示空产量或虚构占领状态。
+            this.labelYield.string = '';
+            if (data.rid == null) this.labelUnion.string = '归属待查';
+            this._campaignText = region?.name || '';
+        }
+        if (gate) {
+            this.labelName.string = gate.name + (gate.crossing === 'bridge' ? ' · 桥关' : '');
+            this.labelYield.string = gate.crossing === 'bridge' ? '攻下关城后控制渡桥' : '关隘守备以战斗情报为准';
+        }
         if (data.isEmpty) {
             this.labelName.string = '空地';
             this.labelYield.string = '无资源产出';
@@ -448,7 +462,7 @@ export default class MapClickUILogic extends Component {
         this.layoutPanel();
     }
 
-    /** 占领中只认到达后的倒计时；归属仍只认倒计时结束后的 AOI ownerId。 */
+    /** 占领计时结束后恢复普通地块交互；归属只认 AOI ownerId。 */
     private updateWorldResourceInfo(): void {
         const empty = !!this._data?.isEmpty;
         if ((!empty && !isResourceLandCell(this._data)) || this._data instanceof MapCityData) return;
@@ -506,13 +520,12 @@ export default class MapClickUILogic extends Component {
         const left = Math.max(0, countdown.endTime - now);
         const span = Math.max(.001, countdown.endTime - countdown.startTime);
         const who = troopIdx ? `部队${troopIdx} · ` : '';
-        this.labelSoldierCnt.string = left > 0 ? `${who}占领倒计时 ${DateUtil.converSecondStr(Math.ceil(left) * 1000)}`
-            : `${who}等待服务器确认占领`;
+        this.labelSoldierCnt.string = `${who}占领倒计时 ${DateUtil.converSecondStr(Math.ceil(left) * 1000)}`;
         if (this.durableNode && this.progressBarDurable && this.labelDurable) {
             this.durableNode.active = true;
             this.progressBarDurable.node.active = true;
             this.progressBarDurable.progress = Math.min(1, Math.max(0, (now - countdown.startTime) / span));
-            this.labelDurable.string = left > 0 ? DateUtil.converSecondStr(Math.ceil(left) * 1000) : '确认中';
+            this.labelDurable.string = DateUtil.converSecondStr(Math.ceil(left) * 1000);
         }
         this.paintDockProgress();
     }
@@ -529,20 +542,27 @@ export default class MapClickUILogic extends Component {
         const primary = [this.btnEnter, this.btnOccupy, this.btnMove].filter(b => b.node.active);
         const secondary = this.secondaryButtons().filter(b => b.node.active);
         const yieldText = this.leftInfoNode.active ? this.labelYield.string.replace(/\n/g, ' · ') : '';
-        const yieldHeight = yieldText ? Math.min(3, Math.max(1, Math.ceil(yieldText.length * 14 / contentWidth))) * 22 : 0;
+        const gate = WorldCampaign.gateAt(this._data.x, this._data.y);
+        const cfg = !this._data.isEmpty && !gate && this._data.type !== MapResType.SYS_CITY && this.leftInfoNode.active
+            ? MapCommand.getInstance().proxy.getResConfig(this._data.type, this._data.level) : null;
+        const yields = cfg ? [['grain', 'grain'], ['wood', 'forest'], ['iron', 'iron'], ['stone', 'quarry']]
+            .filter(([key]) => Number(cfg[key]) > 0).map(([key, art]) => ({ art: `${art}_lv1`, amount: Number(cfg[key]) })) : [];
+        const yieldHeight = yields.length ? Math.ceil(yields.length / 2) * 38
+            : yieldText && !this._data.isEmpty ? Math.min(3, Math.max(1, Math.ceil(yieldText.length * 12 / contentWidth))) * 20 : 0;
         // 常态不重复“选择部队”提示；真正的行军、占领进度才占用一行。
-        const showActivity = this.leftInfoNode.active && /出征中|已到达|倒计时|等待服务器/.test(this.labelSoldierCnt.string);
+        const showActivity = this.leftInfoNode.active && /出征中|已到达|倒计时/.test(this.labelSoldierCnt.string);
         const activityHeight = showActivity ? 36 : 0;
         const durable = this.durableNode.active, showDurableText = durable && !this._occupying;
-        const regionHeight = this._campaignText ? 40 : 0;
-        const secondaryHeight = Math.ceil(secondary.length / 2) * 44;
+        const regionText = gate ? this._campaignText : this._campaignText.split(' · ').slice(0, 2).join(' · ');
+        const regionHeight = regionText ? (gate ? 48 : 30) : 0;
+        const secondaryHeight = Math.ceil(secondary.length / 2) * 42;
         const detailsHeight = yieldHeight + activityHeight + (showDurableText ? 24 : 0) + (this.bgMain.active ? 24 : 0) + (durable ? 12 : 0);
-        const height = Math.max(184, 70 + detailsHeight + (primary.length ? 48 : 0) + secondaryHeight + regionHeight + 12);
+        const height = Math.max(200, 110 + detailsHeight + (primary.length ? 72 : 0) + secondaryHeight + regionHeight + 12);
         this._panelHeight = height;
         const selected = this._selectInSidebar; this._selectInSidebar = false;
-        const key = JSON.stringify([width, height, this._data.x, this._data.y, this.labelName.string,
+        const key = JSON.stringify([width, height, this._data.x, this._data.y, this._data.level, this.labelName.string,
             this.labelUnion.string, this.labelLunxian.string, yieldText, showActivity, showDurableText, this.bgMain.active,
-            this._occupying, this._campaignText, marking, this.buttons().map(b => [b.node.active, b.interactable])]);
+            this._occupying, this._campaignText, yields, marking, this.buttons().map(b => [b.node.active, b.interactable])]);
         if (key === this._presentationKey) {
             this._sidebar.showTilePanel(this._panel, height, selected);
             return;
@@ -553,36 +573,60 @@ export default class MapClickUILogic extends Component {
         const oldSurface = this._panel.getChildByName('Surface'); if (oldSurface) oldSurface.active = false;
         const left = Label.HorizontalAlign.LEFT, center = Label.HorizontalAlign.CENTER;
         const top = height / 2;
-        textStyle(this.labelName, -18, top - 20, contentWidth - 36, 17, ManagementColors.text, left, 30);
+        const resource = { 52: 'forest', 53: 'iron', 54: 'quarry', 55: 'grain' }[this._data.type];
+        const art = this._data.isEmpty ? '' : this._data instanceof MapCityData
+            ? `player_city_lv${Math.max(1, Math.min(30, this._data.level || 1))}` : gate ? (gate.crossing === 'bridge' ? BRIDGE_ART : GATE_ART)
+                : resource ? `${resource}_lv${Math.max(1, Math.min(10, this._data.level || 1))}`
+                    : this._data.type === MapResType.SYS_CITY ? WorldMapArt.citySprite(this._data.level, this._data) : 'fort';
+        landPortrait(this._panel, width, top, art);
+        const cityTier = this._panel.getChildByName('CityTier');
+        if (cityTier) cityTier.active = this._data.type === MapResType.SYS_CITY && !gate;
+        if (this._data.type === MapResType.SYS_CITY && !gate) {
+            const seal = inkSurface(this._panel, 'CityTier', 25, 23, new Color(97, 71, 32), ManagementColors.gold);
+            seal.node.active = true; seal.node.setPosition(-width / 2 + 88, top - 83, 0);
+            const label = caption(seal.node, 'Level', String(this._data.level), 0, 0, 23, 13,
+                new Color(255, 229, 166), center); label.isBold = true;
+            seal.node.setSiblingIndex(this._panel.children.length - 1);
+        }
+        const titleWidth = contentWidth - 100, titleX = 50;
+        textStyle(this.labelName, titleX, top - 37, titleWidth, 17, ManagementColors.text, left, 26);
+        this.labelName.isBold = true; this.labelName.overflow = Label.Overflow.SHRINK;
         const titleColor = this.labelUnion.string.includes('其他玩家') ? new Color(220, 135, 118)
             : this.labelUnion.string.includes('己方') ? new Color(139, 195, 174) : ManagementColors.muted;
         const state = this.labelUnion.string.replace(' · 已占领', '') + (this.labelLunxian.string ? ' · ' + this.labelLunxian.string : '');
         // 归属和坐标是两个独立文本，长名称也不会挤到操作区。
         this.labelUnion.node.active = false; this.labelLunxian.node.active = false;
-        const status = caption(this._panel, 'Ownership', state, -56, top - 46, contentWidth - 112, 12, titleColor);
-        status.overflow = Label.Overflow.SHRINK;
-        textStyle(this.labelPos, contentWidth / 2 - 56, top - 46, 112, 12, ManagementColors.gold, Label.HorizontalAlign.RIGHT, 32);
+        const oldStatus = this._panel.getChildByName('Ownership'); if (oldStatus) oldStatus.active = false;
+        ownershipSeal(this._panel, state, titleX, top - 64, titleWidth, titleColor);
+        commandGlyph(this._panel, 'CoordinatePin', 'pin', titleX - titleWidth / 2 + 7, top - 88, 13, ManagementColors.muted);
+        textStyle(this.labelPos, titleX + 10, top - 88, titleWidth - 20, 11, ManagementColors.gold, center, 24);
         // 保留足够点击面积，用轻量图标而非另一个大按钮。
-        place(this._closeButton.node, contentWidth / 2 - 14, top - 20, 32, 32);
+        place(this._closeButton.node, contentWidth / 2 - 10, top - 10, 28, 28);
         const oldClose = this._closeButton.node.getChildByName('ManagementButton'); if (oldClose) oldClose.active = false;
         const closeCaption = this._closeButton.node.getComponentInChildren(Label);
-        closeCaption.node.active = true; closeCaption.string = '×';
-        textStyle(closeCaption, 0, 0, 32, 22, ManagementColors.muted, center, 32);
+        closeCaption.node.active = false;
+        const closeArt = inkSurface(this._closeButton.node, 'CloseSeal', 28, 28, null, null);
+        closeArt.strokeColor = ManagementColors.line; closeArt.lineWidth = 1.5; closeArt.circle(0, 0, 11); closeArt.stroke();
+        closeArt.strokeColor = ManagementColors.gold; closeArt.lineWidth = 2;
+        closeArt.moveTo(-4, -4); closeArt.lineTo(4, 4); closeArt.moveTo(-4, 4); closeArt.lineTo(4, -4); closeArt.stroke();
         const rule = inkSurface(this._panel, 'TileRule', contentWidth, 1, null, null);
-        rule.node.setPosition(0, top - 64, 0);
+        rule.node.setPosition(0, top - 104, 0);
         rule.strokeColor = ManagementColors.line; rule.lineWidth = 1;
         rule.moveTo(-contentWidth / 2, 0); rule.lineTo(contentWidth / 2, 0); rule.stroke();
-        let y = top - 72;
-        this.labelYield.node.active = !!yieldHeight;
-        if (yieldHeight) {
-            textStyle(this.labelYield, 0, y - yieldHeight / 2, contentWidth, 14, ManagementColors.text, left, yieldHeight);
+        let y = top - 110;
+        landYields(this._panel, yields, contentWidth, y);
+        this.labelYield.node.active = !!yieldHeight && !yields.length;
+        if (yieldHeight && !yields.length) {
+            textStyle(this.labelYield, 0, y - yieldHeight / 2, contentWidth, 12, ManagementColors.muted, left, yieldHeight);
             this.labelYield.string = yieldText; this.labelYield.lineHeight = 22; this.labelYield.enableWrapText = true; y -= yieldHeight;
-        }
+        } else y -= yieldHeight;
         this.labelSoldierCnt.node.active = showActivity;
         if (showActivity) {
-            textStyle(this.labelSoldierCnt, 0, y - activityHeight / 2, contentWidth, 12, ManagementColors.gold, left, activityHeight);
+            textStyle(this.labelSoldierCnt, 12, y - activityHeight / 2, contentWidth - 24, 12, ManagementColors.gold, left, activityHeight);
             this.labelSoldierCnt.enableWrapText = true; this.labelSoldierCnt.lineHeight = 18; y -= activityHeight;
         }
+        const activityIcon = commandGlyph(this._panel, 'ActivityIcon', 'army', -contentWidth / 2 + 9, y + activityHeight / 2, 19);
+        activityIcon.active = showActivity;
         this.labelDurable.node.active = showDurableText;
         if (showDurableText) {
             if (!this.labelDurable.string.startsWith('耐久')) this.labelDurable.string = '耐久  ' + this.labelDurable.string;
@@ -595,37 +639,37 @@ export default class MapClickUILogic extends Component {
         this._progressY = y - 5;
         if (durable) y -= 12;
         const own = this.labelUnion.string.includes('己方');
-        const occupyText = WorldCampaign.gateAt(this._data.x, this._data.y) ? '攻打关隘'
-            : own ? this._data.isEmpty ? '派兵驻守' : '派兵采集'
-                : this.labelUnion.string.includes('其他玩家') ? '攻占领地' : '出征占领';
-        const texts = new Map<Button, string>([[this.btnEnter, '进入城池'], [this.btnOccupy, occupyText],
-            [this.btnMove, '移动部队'], [this.btnGiveUp, '放弃领地'], [this.btnReclaim, '屯田'], [this.btnBuild, '建造'],
-            [this._btnRelocate, LoginCommand.getInstance().movingCity ? '迁城中…' : '迁城至此'],
-            [this.btnTransfer, '调动'], [this.btnTagAdd, marking ? '标记中…' : '添加标记'], [this.btnTagRemove, marking ? '取消中…' : '取消标记']]);
+        const occupyText = gate ? '攻关' : own ? this._data.isEmpty ? '驻守' : '采集'
+            : this.labelUnion.string.includes('其他玩家') ? '攻占' : '出征';
+        const texts = new Map<Button, string>([[this.btnEnter, '入城'], [this.btnOccupy, occupyText],
+            [this.btnMove, '移动'], [this.btnGiveUp, '放弃领地'], [this.btnReclaim, '屯田'], [this.btnBuild, '建造'],
+            [this._btnRelocate, LoginCommand.getInstance().movingCity ? '迁城中…' : '迁城'],
+            [this.btnTransfer, '调动'], [this.btnTagAdd, marking ? '标记中…' : '插旗'], [this.btnTagRemove, marking ? '取消中…' : '撤旗']]);
+        const icons = new Map<Button, CommandGlyph>([[this.btnEnter, 'city'], [this.btnOccupy, own ? this._data.isEmpty ? 'shield' : 'harvest' : 'attack'],
+            [this.btnMove, 'move'], [this.btnGiveUp, 'remove'], [this.btnReclaim, 'harvest'], [this.btnBuild, 'build'],
+            [this._btnRelocate, 'home'], [this.btnTransfer, 'move'], [this.btnTagAdd, 'edit'], [this.btnTagRemove, 'remove']]);
         const gap = 8, actionWidth = (contentWidth - Math.max(0, primary.length - 1) * gap) / Math.max(1, primary.length);
-        const styleAction = (button: Button, text: string, x: number, py: number, w: number, h: number, main = false): void => {
-            panelButton(button.node, text, x, py, w, h, main);
-            const label = button.node.getComponentInChildren(Label);
-            if (label) { label.fontSize = 14; label.lineHeight = 20; }
-        };
         if (primary.length) {
             y -= 8;
-            primary.forEach((button, i) => styleAction(button, texts.get(button),
-                -contentWidth / 2 + actionWidth / 2 + i * (actionWidth + gap), y - 20, actionWidth, 40, i === 0));
-            y -= 40;
+            primary.forEach((button, i) => commandAction(button.node, texts.get(button), icons.get(button),
+                -contentWidth / 2 + actionWidth / 2 + i * (actionWidth + gap), y - 31, actionWidth, 62, i === 0, true));
+            y -= 64;
         }
         this._secondaryPanel.active = secondary.length > 0 || !!this._campaignText;
         place(this._secondaryPanel, 0, y - (secondaryHeight + regionHeight) / 2, width, secondaryHeight + regionHeight);
         const oldSecondarySurface = this._secondaryPanel.getChildByName('Surface'); if (oldSecondarySurface) oldSecondarySurface.active = false;
         const secondaryWidth = secondary.length === 1 ? contentWidth : (contentWidth - gap) / 2;
         const secondaryTop = (secondaryHeight + regionHeight) / 2;
-        secondary.forEach((button, i) => styleAction(button, texts.get(button),
+        secondary.forEach((button, i) => commandAction(button.node, texts.get(button), icons.get(button),
             secondary.length === 1 ? 0 : (i % 2 ? 1 : -1) * (secondaryWidth + gap) / 2,
-            secondaryTop - 26 - Math.floor(i / 2) * 44, secondaryWidth, 36));
-        const region = caption(this._secondaryPanel, 'Region', this._campaignText, 0,
-            secondaryTop - secondaryHeight - regionHeight / 2, contentWidth, 12, ManagementColors.muted);
+            secondaryTop - 24 - Math.floor(i / 2) * 42, secondaryWidth, 34));
+        const region = caption(this._secondaryPanel, 'Region', regionText, 10,
+            secondaryTop - secondaryHeight - regionHeight / 2, contentWidth - 20, 11, ManagementColors.muted, center);
         region.node.active = !!this._campaignText; region.enableWrapText = true; region.lineHeight = 18;
         region.getComponent(UITransform).height = regionHeight;
+        const regionIcon = commandGlyph(this._secondaryPanel, 'RegionIcon', 'land', -contentWidth / 2 + 9,
+            secondaryTop - secondaryHeight - regionHeight / 2, 16, ManagementColors.muted);
+        regionIcon.active = !!regionText;
         const legacy = this._panel.getChildByName('CampaignDetail'); if (legacy) legacy.active = false;
         this.paintDockProgress();
         hideSprite(this.bgSelect);
@@ -647,25 +691,51 @@ export default class MapClickUILogic extends Component {
 
     private refreshSelection(zoom = 1): void {
         const ui = this.bgSelect.getComponent(UITransform);
-        const key = `${ui.width}:${ui.height}:${Math.round(zoom * 40)}`;
+        const gate = this._data && WorldCampaign.gateAt(this._data.x, this._data.y);
+        const city = !gate && this._data?.type === MapResType.SYS_CITY;
+        const key = `${gate?.id || ''}:${city ? 'city' : ''}:${ui.width}:${ui.height}:${Math.round(zoom * 40)}`;
         if (key === this.selectionKey) return;
         this.selectionKey = key;
+        for (const name of ['SelectionOutline', 'SelectionPulse']) {
+            const old = this.bgSelect.getChildByName(name); if (old) old.active = !gate && !city;
+        }
+        const oldCity = this.bgSelect.getChildByName('SystemCitySelection'); if (oldCity) oldCity.active = !!city;
+        const oldGate = this.bgSelect.getChildByName('GateSelection'); if (oldGate) oldGate.active = !!gate;
+        if (city) {
+            paintCitySelection(this.bgSelect, ui.width, ui.height, zoom);
+            this.selectionPulse = null;
+            return;
+        }
+        if (gate) {
+            const config = WorldCampaign.config;
+            const paths = gateSelectionPaths(gate.level, gateMirrored(gate.x, gate.y, config.width, config.height, gate), gate);
+            const g = inkSurface(this.bgSelect, 'GateSelection', 1, 1, null, null); g.node.active = true;
+            // 基脚和桥头用短角标，屏幕长度有上限，缩近时也不盖住细节。
+            for (const [thickness, color] of [[4, new Color(35, 32, 22, 180)], [2, new Color(255, 222, 147, 245)]] as const) {
+                g.lineWidth = thickness * Math.max(.45, zoom); g.strokeColor = color;
+                paths.forEach(([a, b, c], i) => {
+                    const fraction = i < 3 ? .10 : 1, length = 18 * Math.max(.45, zoom);
+                    const left = Math.min(fraction, length / Math.max(1, Math.hypot(a[0] - b[0], a[1] - b[1])));
+                    const right = Math.min(fraction, length / Math.max(1, Math.hypot(c[0] - b[0], c[1] - b[1])));
+                    g.moveTo(b[0] + (a[0] - b[0]) * left, b[1] + (a[1] - b[1]) * left);
+                    g.lineTo(b[0], b[1]);
+                    g.lineTo(b[0] + (c[0] - b[0]) * right, b[1] + (c[1] - b[1]) * right);
+                });
+                g.stroke();
+            }
+            this.selectionPulse = null;
+            return;
+        }
         this.selectionPulse = paintTileSelection(this.bgSelect, ui.width, ui.height, zoom);
     }
 
-    /** 详情位于右侧栏，地块选框留在部队下方，不穿过人物。 */
+    /** 所有选框贴地绘制：桥、草石和建筑自然遮挡线条，侧栏仍独立接收操作。 */
     private placeGroundSelection(): void {
         if (!this.bgSelect?.isValid || !this.node.activeInHierarchy) return;
         for (let parent = this.node.parent; parent; parent = parent.parent) {
             const armyLayer = (parent.getComponent('MapArmyLogic') as Component & { parentLayer: Node })?.parentLayer;
             if (!armyLayer?.parent) continue;
-            if (this.bgSelect.parent !== armyLayer.parent) this.bgSelect.setParent(armyLayer.parent, true);
-            // 从前方移至目标索引时数组会先缩短一项，明确保持在 armyLayer 前一位。
-            const index = armyLayer.getSiblingIndex();
-            const current = this.bgSelect.getSiblingIndex(), target = current < index ? index - 1 : index;
-            if (current !== target) this.bgSelect.setSiblingIndex(target);
-            this.bgSelect.setWorldPosition(this.node.worldPosition);
-            this.bgSelect.setWorldScale(this.node.worldScale);
+            placeGroundHighlight(this.bgSelect, this.node, armyLayer.parent, armyLayer);
             return;
         }
     }

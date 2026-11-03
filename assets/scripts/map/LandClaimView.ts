@@ -52,22 +52,31 @@ export default class LandClaimView {
     }
 
     setProgress(timer: LandClaim['timer'], now: number): void {
-        if (this.owner !== 'pending' || !timer) return;
+        if (this.owner !== 'pending' || !timer || timer.endTime <= now) {
+            this.progressKey = '';
+            for (const name of ['OccupyPending', 'OccupyBar']) {
+                const node = this.node.getChildByName(name);
+                if (node) node.active = false;
+            }
+            return;
+        }
         const ratio = Math.min(1, Math.max(0, (now - timer.startTime) / Math.max(.001, timer.endTime - timer.startTime)));
         const left = Math.max(0, timer.endTime - now);
         const key = `${ratio.toFixed(3)}:${Math.ceil(left)}`;
         if (key === this.progressKey) return;
         this.progressKey = key;
-        const width = Math.min(this.width * .6 / this.unit, 92), height = 5;
+        const width = Math.min(this.width * .6 / this.unit, 96), height = 3;
+        // 放在阵形前沿，避开居中的主将和外围哨兵；文字、进度均不接收输入。
+        const labelY = -this.height * .30 - 10 * this.unit;
         const bar = tileInk(this.node, 'OccupyBar', width, height);
         bar.node.setScale(this.unit, this.unit, 1);
-        bar.node.setPosition(0, -this.height * .18, 0);
+        bar.node.setPosition(0, labelY - 11 * this.unit, 0);
         bar.fillColor = new Color(30, 33, 26, 230); bar.roundRect(-width / 2, -height / 2, width, height, 2); bar.fill();
         bar.fillColor = ManagementColors.gold; bar.rect(-width / 2, -height / 2, width * ratio, height); bar.fill();
-        const text = caption(this.node, 'OccupyPending', left > 0 ? `占领中 ${DateUtil.converSecondStr(Math.ceil(left) * 1000)}` : '等待占领确认',
-            0, -this.height * .18 + 14 * this.unit, width + 16, 12, ManagementColors.text, Label.HorizontalAlign.CENTER);
+        const text = caption(this.node, 'OccupyPending', `占领中 ${DateUtil.converSecondStr(Math.ceil(left) * 1000)}`,
+            0, labelY, width + 16, 12, ManagementColors.text, Label.HorizontalAlign.CENTER);
         text.node.setScale(this.unit, this.unit, 1);
-        text.outlineWidth = 2; text.outlineColor = new Color(30, 33, 26, 240);
+        text.enableOutline = true; text.outlineWidth = 2; text.outlineColor = new Color(30, 33, 26, 240);
         bar.node.active = text.node.active = this.showProgress;
     }
 }

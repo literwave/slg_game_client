@@ -292,12 +292,5 @@ export default class GeneralItemLogic extends Component {
 
 
 
-    /**
-     * 战报的
-     * @param curData 
-     */
-    public setWarReportData(curData: any): void {
-        this.updateView(curData)
-    }
 
 }

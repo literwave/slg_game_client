@@ -118,7 +118,8 @@ export default class TroopCommand {
                 return this.rejectEdit('武将或上阵位置无效');
             }
             if (!GeneralCommand.getInstance().proxy.getMyGeneral(heroIdx)) {
-                return this.rejectEdit('尚未拥有该武将，请刷新武将列表');
+                GeneralCommand.getInstance().qryMyGenerals(true);
+                return this.rejectEdit('该武将暂不可用，正在同步武将信息');
             }
             const assignedTroop = this._proxy.getTroopIdxByHero(heroIdx);
             if (assignedTroop && assignedTroop !== index) {

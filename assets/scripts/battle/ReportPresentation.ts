@@ -52,8 +52,10 @@ export function replayLines(action: any, info: ReportInfo): string[] {
 export function reportLayout(width: number, height: number) {
     const scale = Math.min(1, Math.max(1, width - 28) / 340, Math.max(1, height - 28) / 440);
     const w = Math.min(1040, (width - 28) / scale), h = Math.min(650, (height - 28) / scale);
-    const narrow = w < 760, bodyHeight = h - 180;
-    const listWidth = narrow ? w - 40 : Math.min(332, w * .35);
-    return { width: w, height: h, scale, narrow, bodyHeight, listWidth,
-        detailWidth: narrow ? w - 40 : w - listWidth - 56 };
+    const narrow = w < 760, inset = 20, columnGap = 16;
+    const filterHeight = 64, filterCenter = narrow ? 118 : 100;
+    const bodyTop = filterCenter + filterHeight / 2 + 16, bodyHeight = h - bodyTop - 48;
+    const contentWidth = w - inset * 2, listWidth = narrow ? contentWidth : Math.min(332, w * .35);
+    return { width: w, height: h, scale, narrow, inset, contentWidth, filterHeight, filterCenter,
+        bodyTop, bodyHeight, listWidth, detailWidth: narrow ? contentWidth : contentWidth - listWidth - columnGap };
 }

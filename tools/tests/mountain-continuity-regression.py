@@ -41,3 +41,39 @@ report_path.parent.mkdir(parents=True, exist_ok=True)
 report_path.write_text(json.dumps(report), encoding='utf8')
 print(json.dumps(report))
 assert not missing, '山脊轮廓仍有未衔接位置'
+
+# 关口不能继续整体跳过覆盖检查：围墙外的山带也必须衔接，城门道路保持透明。
+shoulder_spec = importlib.util.spec_from_file_location('gate_shoulders', ROOT / 'tools/world/gate_shoulders.py')
+shoulders = importlib.util.module_from_spec(shoulder_spec)
+shoulder_spec.loader.exec_module(shoulders)
+pass_checks = []
+additions = [p for p in landscape['patches'] if p.get('role') == 'gate-shoulder']
+passes = {g['id']: g for g in world['gates'] if g.get('crossing') == 'pass'}
+assert additions and all(p.get('gate') in passes for p in additions), '只为山口补山脚，不能填到河桥'
+for g in passes.values():
+    points = set()
+    ground = shoulders.gate_ground(g, module.pixel)
+    for y in range(g['y']-4, g['y']+5):
+        for x in range(g['x']-4, g['x']+5):
+            if y * 1000 + x not in mountains:
+                continue
+            for sx, sy in module.samples(x, y, mountains):
+                if not shoulders.inside_polygon(module.pixel(sx, sy), ground):
+                    points.add((sx, sy))
+    covered = sum(cover.covered(x,y) for x,y in points)
+    assert covered / len(points) >= .98, ('关城外山带露底', g['name'], covered, len(points))
+    own = [p for p in additions if p['gate'] == g['id']]
+    assert 1 <= len(own) <= 8
+    assert all(p['width'] <= 520 and p['heightScale'] <= .84 for p in own), '补山脚不能堆成高山墙'
+    # 九格中心之外，再检查前后四格道路的连续中线和两侧，捕捉格间伸出的轮廓。
+    for step in range(-16,17):
+        u = step / 4
+        for v in (-.32,0,.32):
+            x,y = (g['x']+u,g['y']+v) if g['axis']=='x' else (g['x']+v,g['y']+u)
+            if round(y)*1000+round(x) in blocked:
+                continue
+            px,py = module.pixel(x,y)
+            for p in additions:
+                assert cover.alpha_at(p,px,py)<48 and not cover.ellipse_at(p,px,py), ('新增山脚挡路',g['name'],p)
+    pass_checks.append(dict(gate=g['id'],samples=len(points),covered=covered))
+print(json.dumps(dict(passShoulders=len(additions),checks=pass_checks)))

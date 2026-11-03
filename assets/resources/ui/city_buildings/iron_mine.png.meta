@@ -1,0 +1,134 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "b4491629-710d-4eae-87bb-b74ff6fd7978",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "b4491629-710d-4eae-87bb-b74ff6fd7978@6c48a",
+      "displayName": "iron_mine",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "clamp-to-edge",
+        "wrapModeT": "clamp-to-edge",
+        "imageUuidOrDatabaseUri": "b4491629-710d-4eae-87bb-b74ff6fd7978",
+        "isUuid": true,
+        "visible": false,
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "b4491629-710d-4eae-87bb-b74ff6fd7978@f9941",
+      "displayName": "iron_mine",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": 0,
+        "offsetY": 0,
+        "trimX": 8,
+        "trimY": 8,
+        "width": 512,
+        "height": 416,
+        "rawWidth": 528,
+        "rawHeight": 432,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": true,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -256,
+            -208,
+            0,
+            256,
+            -208,
+            0,
+            -256,
+            208,
+            0,
+            256,
+            208,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            8,
+            424,
+            520,
+            424,
+            8,
+            8,
+            520,
+            8
+          ],
+          "nuv": [
+            0.015151515151515152,
+            0.018518518518518517,
+            0.9848484848484849,
+            0.018518518518518517,
+            0.015151515151515152,
+            0.9814814814814815,
+            0.9848484848484849,
+            0.9814814814814815
+          ],
+          "minPos": [
+            -256,
+            -208,
+            0
+          ],
+          "maxPos": [
+            256,
+            208,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "b4491629-710d-4eae-87bb-b74ff6fd7978@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "b4491629-710d-4eae-87bb-b74ff6fd7978@6c48a"
+  }
+}

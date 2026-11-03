@@ -20,7 +20,8 @@ world = json.loads((ROOT / 'assets/resources/world/campaign-map.json').read_text
 data = json.loads((ROOT / 'assets/resources/config/mapRes_0.json').read_text(encoding='utf8'))
 empty = set(data['emptyCells'])
 placed = []
-spawns = world['spawnZones']
+fixed_source = json.loads((ROOT / 'tools/world/fixed-birth-resources.json').read_text(encoding='utf8'))
+quotas_by_region = collections.Counter((p['region'], p['level']) for p in fixed_source['points'])
 
 
 def valid(x, y, region):
@@ -31,14 +32,14 @@ def valid(x, y, region):
         return False
     if any(math.hypot(x - c['x'], y - c['y']) < 9 for c in world['cities'] + world['gates']):
         return False
-    return all(max(abs(x - s['x']), abs(y - s['y'])) > 12 for s in spawns)
+    return True
 
 
 def distance2(a, b):
     return (a['x'] - b['x']) ** 2 + (a['y'] - b['y']) ** 2
 
 
-# 确定性最远点编排：每次填最缺少高级地的区域，禁止围着出生点排八点圆环。
+# 确定性最远点编排：沿用已冻结的州域资源配额，不依赖玩家出生位置。
 candidates = [[] for _ in range(6)]
 for y in range(6, 994, 3):
     for x in range(6, 994, 3):
@@ -47,7 +48,7 @@ for y in range(6, 994, 3):
             candidates[region].append(dict(x=x, y=y, region=region))
 for level in (6, 5):
     for region in range(6):
-        count = 8 if level == 6 else sum(s['region'] == region for s in spawns) * 2
+        count = quotas_by_region[region, level]
         points = [dict(p) for p in candidates[region]
                   if (315 <= math.hypot(p['x'] - 499.5, p['y'] - 499.5) <= 375 if level == 6
                       else math.hypot(p['x'] - 499.5, p['y'] - 499.5) > 375)]
@@ -101,7 +102,6 @@ fixed = dict(schemaVersion=2, width=1000, height=1000, minDistance=8,
 target.parent.mkdir(parents=True, exist_ok=True)
 target.write_text(json.dumps(fixed, ensure_ascii=False, indent=2), encoding='utf8')
 report = dict(points=len(placed), counts=dict(collections.Counter(p['level'] for p in placed)))
-report['spawnAccess'] = {level: {kind: round(max(min(math.sqrt(distance2(s, p)) for p in placed
-    if p['region'] == s['region'] and p['level'] == level and p['type'] == kind) for s in spawns), 2)
-    for kind in range(52, 56)} for level in (4, 5)}
+report['regionCounts'] = {region: dict(collections.Counter(p['level'] for p in placed if p['region'] == region))
+                          for region in range(6)}
 print(json.dumps(report))

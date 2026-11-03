@@ -14,7 +14,7 @@ export default class TroopDragInteraction {
     private outlines: Node[] = [];
     private muted: UIOpacity = null;
     private oldOpacity = 255;
-    private buttons: Array<{ button: Button; enabled: boolean }> = [];
+    private buttons: Array<{ button: Button; interactable: boolean }> = [];
     constructor(private root: Node, private cards: CityGeneralItemLogic[],
         private canEdit: () => boolean, private commit: (from: number, to: number) => void) {
         for (const card of cards) {
@@ -56,8 +56,10 @@ export default class TroopDragInteraction {
             card.suppressDragClick();
             this.muted = card.node.getComponent(UIOpacity) || card.node.addComponent(UIOpacity);
             this.oldOpacity = this.muted.opacity; this.muted.opacity = 110;
-            this.buttons = card.node.getComponentsInChildren(Button).map(button => ({ button, enabled: button.enabled }));
-            this.buttons.forEach(({ button }) => button.enabled = false);
+            // enabled=false 会注销按钮节点的触摸监听，使已捕获的拖动丢失后续事件。
+            // 只关闭点击交互，保留触摸派发直到松手。
+            this.buttons = card.node.getComponentsInChildren(Button).map(button => ({ button, interactable: button.interactable }));
+            this.buttons.forEach(({ button }) => button.interactable = false);
             this.showGhost(card);
         }
         e.propagationStopped = true;
@@ -86,11 +88,17 @@ export default class TroopDragInteraction {
         this.cancel();
         if (submit) this.commit(from, to);
     }
-    private abort(e: EventTouch): void { if (e.getID() === this.touchId) this.cancel(); }
+    private abort(e: EventTouch): void {
+        if (e.getID() !== this.touchId) return;
+        // Creator 3.8 在原卡片外松手会把 type 改为 TOUCH_CANCEL，
+        // getEventCode 保留原始输入类型，用它区分正常落位与系统取消。
+        if (e.getEventCode() === Node.EventType.TOUCH_END) this.end(e);
+        else this.cancel();
+    }
     cancel(): void {
         if (this.dragging && this.source >= 0) this.cards[this.source].suppressDragClick();
         if (this.muted?.isValid) this.muted.opacity = this.oldOpacity;
-        this.buttons.forEach(({ button, enabled }) => { if (button.isValid) button.enabled = enabled; });
+        this.buttons.forEach(({ button, interactable }) => { if (button.isValid) button.interactable = interactable; });
         this.buttons = []; this.muted = null;
         this.outlines.forEach(n => { if (n?.isValid) n.active = false; });
         if (this.ghost?.isValid) this.ghost.active = false;

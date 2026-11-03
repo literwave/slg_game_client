@@ -15,6 +15,7 @@ import { hasId, idKey } from '../network/pto/ProtocolCommand';
 import { aoiTroopMotion } from '../world/MarchPath';
 import TroopCommand from '../general/TroopCommand';
 import type { WorldEntity, MarchInfo } from '../world/WorldCommand';
+import MapDepthLayer from './MapDepthLayer';
 
 @ccclass('MapArmyLogic')
 export default class MapArmyLogic extends Component {
@@ -30,6 +31,7 @@ export default class MapArmyLogic extends Component {
     protected _arrowPool: NodePool = new NodePool();
     private aoiArmies = new Map<string, ArmyLogic>();
     private troopBindings = new Map<string, number>();
+    private depthLayer: MapDepthLayer = null;
 
     protected onLoad(): void {
         EventMgr.on(LogicEvent.updateArmyList, this.onUpdateArmyList, this);
@@ -65,6 +67,15 @@ export default class MapArmyLogic extends Component {
         if (MapUtil.areaCellSize) this.aoiArmies.forEach(logic => logic.update());
     }
 
+    protected lateUpdate(): void { this.depthLayer?.update(); }
+
+    private attachMarch(logic: ArmyLogic): void {
+        if (!this.depthLayer) this.depthLayer = MapDepthLayer.forLayer(this.parentLayer);
+        logic.aniNode.parent = this.depthLayer?.troops || this.parentLayer;
+        logic.arrowNode.parent = this.depthLayer?.routes || this.parentLayer;
+        logic.setFormationLayer(this.depthLayer?.troops || null);
+    }
+
     private syncWorldEntities(): void {
         // 地图加载完成前可能已经收到列表，gameReady 会再次使用缓存进行同步。
         if (!MapUtil.areaCellSize || !this.parentLayer) return;
@@ -86,7 +97,7 @@ export default class MapArmyLogic extends Component {
             let logic = this.aoiArmies.get(id);
             if (!logic) {
                 logic = new ArmyLogic(); logic.aniNode = this.createArmy(); logic.arrowNode = this.createArrow();
-                logic.aniNode.parent = this.parentLayer; logic.arrowNode.parent = this.parentLayer;
+                this.attachMarch(logic);
                 this.aoiArmies.set(id, logic);
             }
             const own = hasId(ownerId) && idKey(ownerId) === idKey(entity.ownerId);
@@ -100,7 +111,12 @@ export default class MapArmyLogic extends Component {
             if (!own) this.troopBindings.delete(id);
             const troopIdx = own ? this.troopBindings.get(id) : 0;
             const troop = troopIdx ? TroopCommand.getInstance().proxy.getTroop(troopIdx) : null;
-            logic.setWorldEntity(entity, own, logic.aniNode, logic.arrowNode, troop);
+            // 本人行军优先用 s2c_march 折线；AOI 更新偶发丢 path 时不要退成起终点直线
+            const march = troopIdx ? WorldCommand.getInstance().marches.get(troopIdx) : null;
+            const view = own && march?.state === 1 && Array.isArray(march.path) && march.path.length >= 2
+                ? { ...entity, path: march.path, startTime: march.startTime, endTime: march.endTime }
+                : entity;
+            logic.setWorldEntity(view, own, logic.aniNode, logic.arrowNode, troop);
         }
     }
 
@@ -153,6 +169,7 @@ export default class MapArmyLogic extends Component {
         }
         console.log("onUpdateArmy 3333:", logic);
         logic.setArmyData(data, aniNode, arrowNode);
+        this.attachMarch(logic);
     }
 
     protected createArmy(): Node {

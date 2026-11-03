@@ -20,6 +20,32 @@ export default class PlayerCityGround {
     private static smoothProfiles = new Map<string, number[]>();
     private static heights = new Map<string, number>();
 
+    /** 各等级原画主入口的横坐标；与贴地材质使用同一投影，不能固定偏移到城墙中央。 */
+    private static gateColumns = [410, 442, 516, 478, 492, 462, 490, 475, 496, 460, 1084,
+        468, 480, 455, 490, 450, 490, 466, 442, 458, 490, 470, 442, 488, 506, 462, 493, 468, 450, 490, 507];
+
+    static entrance(level: number): { x: number; y: number } | null {
+        const appearance = playerCityAppearance(level), profile = this.profiles.find(p => p.art === appearance.art);
+        if (!profile) return null;
+        const column = this.gateColumns[appearance.level];
+        let u: number;
+        if (profile.plane) {
+            const front = profile.plane.frontX;
+            u = column <= front ? (column - profile.left) / (front - profile.left) * .5
+                : .5 + (column - front) / (profile.right - front) * .5;
+        } else {
+            const sourceU = (column - profile.left) / (profile.right - profile.left), bias = this.frontRatio(profile) - .5;
+            let low = 0, high = 1;
+            for (let i = 0; i < 20; i++) {
+                const middle = (low + high) / 2;
+                if (middle + bias * 4 * middle * (1 - middle) < sourceU) low = middle; else high = middle;
+            }
+            u = (low + high) / 2;
+        }
+        // 城门口略向外留出落脚空间，保持实体完整显示；后排在此依次走出。
+        return u >= .5 ? { x: 1.52, y: 4.5 - 6 * u } : { x: 6 * u - 1.5, y: 1.52 };
+    }
+
     /** 每个立面只做线性平移，任意高度的竖直线段始终保持同一比例。 */
     private static planePoint(profile: GroundProfile, x: number, sourceY: number, scale: number, footprintHeight: number) {
         const p = profile.plane;

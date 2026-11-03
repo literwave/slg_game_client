@@ -1,4 +1,4 @@
-import { _decorator, Camera, Node, Vec2, Vec3, view } from 'cc';
+import { _decorator, Camera, Node, UITransform, Vec2, Vec3, view } from 'cc';
 const { ccclass } = _decorator;
 
 import ResLogic from "./entries/ResLogic";
@@ -12,16 +12,17 @@ import { LogicEvent } from '../common/LogicEvent';
 import { EventMgr } from '../utils/EventMgr';
 import DateUtil from '../utils/DateUtil';
 import LandClaimView, { LandClaim } from './LandClaimView';
+import WorldCampaign from './WorldCampaign';
 
 @ccclass('MapResLogic')
 export default class MapResLogic extends MapBaseLayerLogic {
-    private overview = false;
+    private overview: boolean | null = null;
     private landClaims = new Map<number, LandClaim>();
     private claimViews = new Map<number, LandClaimView>();
     private territoryLayer: Node = null;
+    private gateLayer: Node = null;
     private mapCamera: Camera = null;
     private viewKey = '';
-    private expiredTimers = new Set<string>();
 
     protected onLoad(): void {
         super.onLoad();
@@ -37,17 +38,35 @@ export default class MapResLogic extends MapBaseLayerLogic {
         EventMgr.targetOff(this);
         this.landClaims.clear();
         this.claimViews.clear();
-        this.expiredTimers.clear();
         this.territoryLayer?.destroy();
+        this.gateLayer?.destroy();
         super.onDestroy();
     }
 
     public setItemData(item: Node, data: any): void {
         let resData: MapResData = data as MapResData;
+        const gate = resData.type === MapResType.SYS_FORTRESS && WorldCampaign.gateAt(resData.x, resData.y);
+        // 资源仍在山体后方；关城与建筑基脚位于山体前方，避免背山截断角楼。
+        // 根节点随对象池一起转移/回收，不留下独立图片，也不改变地块或通路数据。
+        const layer = gate ? this.gatePresentationLayer() : this.parentLayer;
+        if (item.parent !== layer) item.parent = layer;
         let position: Vec2 = MapUtil.mapCellToPixelPoint(new Vec2(resData.x, resData.y));
         item.setPosition(new Vec3(position.x, position.y, 0));
         item.getComponent(ResLogic).setResourceData(resData);
         item.active = !this.overview || data.type === MapResType.SYS_FORTRESS;
+    }
+
+    private gatePresentationLayer(): Node {
+        if (!this.gateLayer?.isValid) {
+            this.gateLayer = new Node('WorldGateLandmarks'); this.gateLayer.layer = this.parentLayer.layer;
+            this.gateLayer.addComponent(UITransform); this.parentLayer.parent.addChild(this.gateLayer);
+        }
+        this.gateLayer.setPosition(this.parentLayer.position);
+        this.gateLayer.setRotation(this.parentLayer.rotation);
+        this.gateLayer.setScale(this.parentLayer.scale);
+        const mountains = this.parentLayer.parent.getChildByName('MountainRanges') || this.parentLayer;
+        this.gateLayer.setSiblingIndex(mountains.getSiblingIndex() + 1);
+        return this.gateLayer;
     }
 
     public addItem(areaIndex: number, data: any): Node {
@@ -104,26 +123,27 @@ export default class MapResLogic extends MapBaseLayerLogic {
             }
         }
         this.viewKey = ''; this.lateUpdate();
-        const timers = new Set(Array.from(this.landClaims.values()).filter(c => !!c.timer)
-            .map(c => `${c.x}:${c.y}:${c.timer.endTime}`));
-        for (const key of this.expiredTimers) if (!timers.has(key)) this.expiredTimers.delete(key);
         this.unschedule(this.tickOccupyProgress);
         if (Array.from(this.landClaims.values()).some(claim => !!claim.timer)) this.schedule(this.tickOccupyProgress, .1);
     }
 
     private tickOccupyProgress = (): void => {
         const now = DateUtil.getServerTime() / 1000;
+        let ended = false;
         for (const [id, claim] of this.landClaims) {
             if (!claim.timer) continue;
             if (claim.timer.endTime <= now) {
-                const key = `${claim.x}:${claim.y}:${claim.timer.endTime}`;
-                if (!this.expiredTimers.has(key)) {
-                    this.expiredTimers.add(key);
-                    WorldCommand.getInstance().refreshView();
-                }
+                ended = true;
+                continue;
             }
             const marker = this.claimViews.get(id);
             if (marker?.node.active) marker.setProgress(claim.timer, now);
+        }
+        if (ended) {
+            // 收起已结束的读条，恢复 AOI 当前归属；同帧多个地块只同步一次视野。
+            // 不改 ownerId，也不根据本地时间伪造成功提示。
+            this.refreshOwnership();
+            WorldCommand.getInstance().refreshView();
         }
     };
 
@@ -151,6 +171,8 @@ export default class MapResLogic extends MapBaseLayerLogic {
 
     /** 远景合并为一层资源色标，不为每一格新建高细节 Sprite；城池、要塞和领地保留。 */
     public refreshOverview(enabled: boolean): void {
+        // 平移跨区不会改变细节档位；AOI/归属变化已有独立事件更新，不能每次拖图再全量重建。
+        if (this.overview === enabled) return;
         this.overview = enabled;
         for (const items of this._itemMap.values()) for (const [id, node] of items) {
             node.active = !enabled || this._cmd.proxy.getResData(id)?.type === MapResType.SYS_FORTRESS;

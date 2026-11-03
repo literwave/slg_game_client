@@ -1,0 +1,11 @@
+# 军旗第二版素材
+
+Create a production-ready transparent PNG game sprite sheet containing EXACTLY TWO separate matching ancient Chinese Han / Three Kingdoms military standards, side by side, equal scale, left emerald dark jade silk, right deep vermilion crimson silk. Canvas 1024x768 landscape. Two equal 512x768 cells; complete left standard centered in left cell and right standard centered in right cell, generous transparent 55px gutter, no overlap, no ground/background. Entire pole and finial fully visible. Both standards face the same direction: pole on LEFT, broad flag cloth extending RIGHT. Design for a realistic painterly isometric strategy battlefield at small on-screen size. The flags must look commanding, grounded, readable, not a tiny pennant on a needle: short sturdy dark walnut pole with restrained antique bronze spearhead and bronze fittings; broad heavy rectangular silk banner occupying the UPPER TWO THIRDS of the total height, a single subtle swallowtail notch on its right edge, muted aged-gold embroidered border and a simple bold ancient bronze beast-mask insignia in the center (not a round gold coin, not text). Cloth width about 65 percent of total pole height. One strong broad wind fold and a few restrained creases, no noisy mini-patterns. Pole below cloth only one quarter total height. No floating ribbons that interfere with silhouette. True realistic cloth and aged bronze, painterly 3D game render, warm daylight from upper left, camera slightly above in 3/4 perspective but shaft perfectly vertical, both grounded foot points same horizontal line. NO pedestal, NO scenic background, NO labels, NO lettering, NO extra items, NO fake checkerboard. Both objects fully isolated on real transparent alpha. Matched silhouette and lighting, jade and crimson faction colors clearly distinct. Keep a minimum 40px transparent margin all around. This is game production art, not a UI icon.
+
+## 处理与接入
+
+- 生成透明原图 1448 × 1086，左右分别为青旗、赤旗。
+- 使用 Cocos 内置图像处理裁切左侧 770px 与右侧 678px，透明裁边，等比缩放至 208 × 336 范围，再增加四周 4px 透明留边。
+- 导入为 `assets/resources/ui/battle_replay/painted/army-standard-jade-v2.png`（215 × 344）和 `army-standard-vermilion-v2.png`（211 × 344）。
+- Sprite 使用线性过滤、Clamp、关闭 Mipmap；实际战场高度 92 × scale，脚底轴点固定，旗面向阵列外侧展开。
+- 原第一版文件保留，新版由 `BattleReplayStage.ts` 统一加载。

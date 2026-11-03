@@ -7,6 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 config = json.loads((ROOT / 'assets/resources/world/campaign-map.json').read_text(encoding='utf8'))
+assert 'spawnZones' not in config, '静态地图不应生成玩家出生位置'
 data = json.loads((ROOT / 'assets/resources/config/mapRes_0.json').read_text(encoding='utf8'))
 tmx = ET.parse(ROOT / 'assets/resources/world/map.tmx').getroot()
 assert int(tmx.attrib['width']) == int(tmx.attrib['height']) == data['w'] == data['h'] == 1000
@@ -45,6 +46,15 @@ for idx in range(1000000):
     component += 1
 assert component == 10, f'关口关闭后应有10个独立州域，实际 {component}'
 assert len({labels[r['y'] * 1000 + r['x']] for r in config['regions']}) == 10
+if config.get('regionRows'):
+    region_labels = [labels[r['y'] * 1000 + r['x']] for r in config['regions']]
+    for y, row in enumerate(config['regionRows']):
+        start = 0
+        for j in range(0, len(row), 2):
+            end, region = row[j:j+2]
+            assert all(labels[y*1000+x] < 0 or labels[y*1000+x] == region_labels[region]
+                       for x in range(start,end)), ('region/terrain disagreement',y,start,end,region)
+            start = end
 for g in config['gates']:
     near = {labels[y * 1000 + x] for y in range(g['y'] - 12, g['y'] + 13)
             for x in range(g['x'] - 12, g['x'] + 13) if labels[y * 1000 + x] >= 0}

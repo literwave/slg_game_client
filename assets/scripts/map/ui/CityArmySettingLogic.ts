@@ -17,11 +17,13 @@ import { ServerConfig } from "../../config/ServerConfig";
 import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
-import { styleTroopPanel } from './TroopPanelSkin';
+import { styleTroopPanel, TroopVisualState, updateTroopPanelStatus } from './TroopPanelSkin';
 import TroopDragInteraction from './TroopDragInteraction';
 
 @ccclass('CityArmySettingLogic')
 export default class CityArmySettingLogic extends Component {
+    readonly visualState: TroopVisualState = { soldiers: null, wounded: 0, reserve: 0, allocated: 0,
+        speed: 0, attack: 0, supply: true };
     @property(Label)
     labelId: Label = null;
     @property(Label)
@@ -320,6 +322,9 @@ export default class CityArmySettingLogic extends Component {
         }
         this.labelSpeed.string = speed.toFixed(2);
         this.labelAtkCity.string = attack.toFixed(2);
+        this.visualState.soldiers = troop || this._data ? soldierCnt : null;
+        this.visualState.wounded = hurtCount;
+        this.visualState.speed = speed; this.visualState.attack = attack;
 
         this.updateResCost();
         this.updateEditState();
@@ -340,6 +345,7 @@ export default class CityArmySettingLogic extends Component {
                 this.sliders[i].enabled = enabled;
             });
         }
+        updateTroopPanelStatus(this);
     }
 
     protected setCurConscriptForIndex(index: number, cnt: number = 0): void {
@@ -366,6 +372,10 @@ export default class CityArmySettingLogic extends Component {
 
     protected updateResCost(): void {
         let totalCnt: number = this.getTotalConscriptCnt();
+        this.visualState.supply = !this._data;
+        this.visualState.reserve = this.getReserveSoldiers();
+        this.visualState.allocated = totalCnt;
+        updateTroopPanelStatus(this);
         if (!this._data) {
             const reserve = this.getReserveSoldiers();
             this.labelResCost.string = `城中可用兵力 ${reserve} · 本次增援 ${totalCnt}`;

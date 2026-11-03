@@ -1,9 +1,18 @@
 import WorldMapArt from './WorldMapArt';
 
 export interface CampaignRegion { id: number; name: string; tier: number; color: string; x: number; y: number; }
-export interface CampaignGate { id: string; name: string; x: number; y: number; regions: number[]; level: number; }
+export interface CampaignGate {
+    id: string; name: string; x: number; y: number; regions: number[]; level: number;
+    crossing?: 'bridge' | 'pass'; axis?: 'x' | 'y'; bridgeSpan?: number;
+}
 export interface CampaignCity { name: string; x: number; y: number; level: number; region: number; footprintRadius: number; art: string; }
-export interface CampaignMap { width: number; height: number; regions: CampaignRegion[]; gates: CampaignGate[]; cities: CampaignCity[]; stages: string[]; }
+export interface CampaignMap {
+    width: number; height: number; regions: CampaignRegion[]; gates: CampaignGate[]; cities: CampaignCity[]; stages: string[];
+    topologyVersion?: number;
+    /** 每行 [结束列(不含), 州ID, ...]，与服务端导出的快照一致。 */
+    regionRows?: number[][];
+    landShapes?: { region: number; points: number[][] }[];
+}
 
 /** 客户端通关提示和可达性；关隘归属始终读取服务器的占领数据。 */
 export default class WorldCampaign {
@@ -12,6 +21,17 @@ export default class WorldCampaign {
     static regionAt(x: number, y: number): number {
         const config = this.config;
         if (!config || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= config.width || y >= config.height) return -1;
+        const row = config.regionRows?.[y];
+        if (row) {
+            let low = 0, high = row.length / 2;
+            while (low < high) {
+                const middle = (low + high) >>> 1;
+                if (x < row[middle * 2]) high = middle;
+                else low = middle + 1;
+            }
+            return low < row.length / 2 ? row[low * 2 + 1] : -1;
+        }
+        if (config.topologyVersion >= 2) return -1;
         const dx = x - (config.width - 1) / 2, dy = y - (config.height - 1) / 2;
         const r = Math.hypot(dx, dy), angle = (Math.atan2(dy, dx) + Math.PI * 2) % (Math.PI * 2);
         return r < 100 ? 9 : r < 285 ? 6 + Math.floor(angle / (Math.PI * 2 / 3)) : Math.floor(angle / (Math.PI / 3));

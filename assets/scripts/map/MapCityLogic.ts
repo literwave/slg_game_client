@@ -4,6 +4,8 @@ const { ccclass, property } = _decorator;
 import MapBaseLayerLogic from "./MapBaseLayerLogic";
 import CityLogic from "./entries/CityLogic";
 import MapUtil from "./MapUtil";
+import MapDepthLayer from './MapDepthLayer';
+import { playerCityFootprint } from './PlayerCityAppearance';
 import { MapCityData } from "./MapCityProxy";
 import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
@@ -50,6 +52,8 @@ export default class MapCityLogic extends MapBaseLayerLogic {
         let position: Vec2 = MapUtil.mapCellToPixelPoint(new Vec2(cityData.x, cityData.y));
         item.setPosition(new Vec3(position.x, position.y, 0));
         item.getComponent(CityLogic).setCityData(cityData);
+        const footprint = playerCityFootprint(MapUtil.tileSize.width, MapUtil.tileSize.height);
+        MapDepthLayer.forLayer(this.parentLayer)?.building(item, footprint.width, footprint.height);
     }
 
     public getIdByData(data: any): number {
