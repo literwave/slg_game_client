@@ -86,6 +86,8 @@ export class LogicEvent {
     public static chatReadChanged = 'chat_read_changed';
     public static chatSendResult = 'chat_send_result';
     public static openPrivateChat = 'open_private_chat';
+    public static openPlayerProfile = 'open_player_profile';
+    public static otherUserUpdated = 'other_user_updated';
     public static openChatPlayerRank = 'open_chat_player_rank';
     public static openChatAlliance = 'open_chat_alliance';
     public static openGeneralConvert:string = "open_general_convert";

@@ -136,7 +136,10 @@ export default class SkillInfoLogic extends Component {
         if (this.curDesLab) this.curDesLab.string = this.formatDescription(conf, current);
         if (this.nextDesLab) this.nextDesLab.string = levels[index + 1]
             ? this.formatDescription(conf, levels[index + 1]) : '已达最高等级';
-        this.ensureView().show(index + 1, !!levels[index + 1]);
+        const equippedCount = GeneralCommand.getInstance().proxy.getMyGenerals().filter(hero =>
+            (hero.skills || []).some(skill => skill?.cfgId === conf.cfgId)
+        ).length;
+        this.ensureView().show(index + 1, !!levels[index + 1], equippedCount, conf.limit);
     }
 
     private hideUnsupportedActions(): void {

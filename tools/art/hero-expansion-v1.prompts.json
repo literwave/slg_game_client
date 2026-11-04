@@ -1,0 +1,192 @@
+{
+  "tool": "built-in image_gen",
+  "style": "水墨矿物色·三国武将",
+  "size": {
+    "width": 350,
+    "height": 480
+  },
+  "portraits": [
+    {
+      "id": 1009,
+      "name": "典韦",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1009.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Dian Wei: massively built middle-aged bodyguard, broad rugged face, fierce dark eyes, thick short beard, iron-black Han lamellar armor over russet cloth, both hands holding two heavy short iron halberds, weighty planted stance, dim army camp behind."
+    },
+    {
+      "id": 1010,
+      "name": "张辽",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1010.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Zhang Liao: seasoned athletic commander around forty, sharp resolute eyes and long neatly divided beard, dark steel Han helmet and layered armor, muted blue-gray cloak, a long pole glaive held diagonally beside his shoulder, battlefield riverbank behind, commanding composed expression."
+    },
+    {
+      "id": 1027,
+      "name": "郭嘉",
+      "reference": "assets/resources/ui/hero/card_1011.png",
+      "output": "assets/resources/ui/hero/card_1027.png",
+      "prompt": "Use case: historical-scene. Asset: a single finished Three Kingdoms strategy game character portrait for Guo Jia (郭嘉), hero 1027. Reference image is STYLE ONLY: match its aged warm rice-paper ground, muted mineral-pigment ink-and-gouache painting, fine expressive black brush drawing, realistic adult proportions, painterly fabric texture and sober historical mood. Create a distinct young adult Chinese male strategist Guo Jia, slender elegant face, sparse neat moustache, confident observant gaze, long dark hair under a refined dark scholar cap, layered muted indigo and ivory Han robes, holding a folded bamboo dispatch near a low campaign map desk; windswept paper scrolls and distant camp silhouettes. Waist-up to upper thigh composition, face large and sharply legible in upper third, charismatic and calm, clear silhouette, rich but restrained details. One character only, portrait aspect ratio 350:480, edge-to-edge painted parchment background, no border, no text, no letters, no numbers, no insignia label, no card UI, no watermark. Do not copy the older man's identity or exact pose from the reference."
+    },
+    {
+      "id": 1028,
+      "name": "夏侯惇",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1028.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Xiahou Dun: tough middle-aged commander, opaque dark cloth patch covering his LEFT eye, scar and weathered brow, swept moustache, black iron armor and restrained deep red cloak, gripping spear, dusty windswept campaign camp; proud strong stance."
+    },
+    {
+      "id": 1029,
+      "name": "黄忠",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1029.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Huang Zhong: formidable elderly archer, long flowing white beard and white brows, alert focused face, warm bronze lamellar armor, deep ochre scarf, holding a powerful composite bow with a quiver visible at shoulder, rugged sunlit hills."
+    },
+    {
+      "id": 1030,
+      "name": "魏延",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1030.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Wei Yan: defiant seasoned front-line commander, long black beard and sun-reddened angular face, narrow determined eyes, dark olive and bronze armor, holding a heavy pole blade, tattered crimson sash in wind, rough mountain pass."
+    },
+    {
+      "id": 1031,
+      "name": "甘宁",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1031.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Gan Ning: bold athletic river warrior, tousled dark hair tied with a muted orange bandana, confident wild eyes and short goatee, naval leather and iron armor, a few small brass bells at his belt, curved saber in hand, misty river and warship masts."
+    },
+    {
+      "id": 1032,
+      "name": "颜良",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1032.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Yan Liang: powerful northern army champion, heavy square jaw and thick black beard, broad ornate but realistic Han helmet, dark green lamellar armor with ivory cloak, large spear held upright, pale dusty northern field."
+    },
+    {
+      "id": 1033,
+      "name": "荀彧",
+      "reference": "assets/resources/ui/hero/card_1011.png",
+      "output": "assets/resources/ui/hero/card_1033.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Xun Yu: refined mature statesman with thoughtful gentle eyes, elegant oval face, long neatly combed beard, black high scholar cap, layered ivory and muted violet robes, holding a bamboo document and small official seal, simple campaign desk and distant banners."
+    },
+    {
+      "id": 1034,
+      "name": "曹仁",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1034.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Cao Ren: stocky fortress defender, broad weathered face and short dense beard, substantial bronze-edged helmet and dark iron armor, forearm resting on a large practical shield, stance firm and patient, stone ramparts in soft haze."
+    },
+    {
+      "id": 1035,
+      "name": "张郃",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1035.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Zhang He: agile sophisticated commander, slim angular face, neatly trimmed moustache and beard, elegant high-crested Han helmet, gray steel lamellar armor and wine-red cloak, slender long spear held lightly, windswept battlefield."
+    },
+    {
+      "id": 1036,
+      "name": "庞统",
+      "reference": "assets/resources/ui/hero/card_1011.png",
+      "output": "assets/resources/ui/hero/card_1036.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Pang Tong: eccentric insightful strategist, adult weathered broad face, heavy expressive eyebrows, untidy beard, slightly crooked plain scholar cap, layered faded brown and moss robes, loose bamboo fan in hand, a mountain route map and swirling mist; intelligent, not comical."
+    },
+    {
+      "id": 1037,
+      "name": "徐庶",
+      "reference": "assets/resources/ui/hero/card_1011.png",
+      "output": "assets/resources/ui/hero/card_1037.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Xu Shu: principled former swordsman turned scholar, lean mature face, short black beard and searching eyes, simple gray-green layered robes and cloth cap, one hand resting on a sheathed straight sword, bamboo scroll in the other, quiet woodland track."
+    },
+    {
+      "id": 1038,
+      "name": "关平",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1038.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Guan Ping: young adult sturdy and honorable warrior, strong youthful face with a short neat beard, dark hair in a restrained topknot, bronze Han armor over deep green cloth, carrying a pole blade, clear calm gaze to the side, subdued spring battlefield."
+    },
+    {
+      "id": 1039,
+      "name": "太史慈",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1039.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Taishi Ci: noble athletic veteran warrior, strong straight brows and trimmed beard, practical open-faced Han helmet, red and ivory accents on worn steel armor, holding a composite bow while a spear stands at his side, sea breeze and coastal hills."
+    },
+    {
+      "id": 1040,
+      "name": "鲁肃",
+      "reference": "assets/resources/ui/hero/card_1011.png",
+      "output": "assets/resources/ui/hero/card_1040.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Lu Su: broad-faced middle-aged statesman, warm intelligent steady eyes, full neatly kept beard, understated dark cap and layered ochre-gray robes, holding an unfurled campaign scroll, riverside pavilion and ships as faded background; dignified and grounded."
+    },
+    {
+      "id": 1041,
+      "name": "华雄",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1041.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Hua Xiong: imposing rough frontier fighter, broad scarred face with shaggy beard, heavy weathered iron helmet and leather-fur shoulder trim, dark brown armor, large halberd leaning across his body, cold dusty military encampment."
+    },
+    {
+      "id": 1042,
+      "name": "高顺",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1042.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Gao Shun: disciplined infantry commander, stern rectangular face, short precise beard and focused gaze, matte charcoal lamellar armor with minimal decoration, large rectangular shield and spear, orderly camp palisade behind; restrained unwavering pose."
+    },
+    {
+      "id": 1043,
+      "name": "李典",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1043.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Li Dian: lean thoughtful officer around thirty-five, alert narrow face, short moustache and tidy beard, understated navy and iron armor, a folded tactical dispatch in one hand with a sheathed sword at his belt, pale battlefield hills."
+    },
+    {
+      "id": 1044,
+      "name": "乐进",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1044.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Yue Jin: compact powerfully built assault warrior with realistic adult proportions, determined scarred face and short coarse beard, close-fitting dark armor with russet sash, gripping a battle axe near the body, dusty city assault backdrop, fierce controlled energy."
+    },
+    {
+      "id": 1045,
+      "name": "周仓",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1045.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Zhou Cang: broad strong sun-weathered warrior, dark tanned Chinese complexion, heavy rough beard, deep green headwrap and simple leather-iron armor, supporting a long heavy pole blade on his shoulder, rural mountain path, loyal watchful expression."
+    },
+    {
+      "id": 1046,
+      "name": "廖化",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1046.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Liao Hua: seasoned resilient veteran, lean weathered face, salt-and-pepper stubble, faded brown headscarf and practical worn iron armor, carrying a straight spear, muted green cloak, rocky hillside and sparse trees; calm persistence."
+    },
+    {
+      "id": 1047,
+      "name": "蒋钦",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1047.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Jiang Qin: weathered river veteran, sturdy mature face, short beard, dark navy cloth headwrap, brown naval leather armor over pale cloth, gripping a curved saber, coiled ship rope and river mist in background, confident alert pose."
+    },
+    {
+      "id": 1048,
+      "name": "丁奉",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1048.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Ding Feng: muscular older commander, battle-scarred cheek and stern eyes, short moustache and beard, muted red armor under a thick weathered ivory winter cloak, long pole blade held firmly, light snow over a riverbank, resilient expression."
+    },
+    {
+      "id": 1049,
+      "name": "张梁",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1049.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Zhang Liang the Yellow Turban rebel commander: austere rugged middle-aged face, coarse beard, distinctive faded yellow headcloth, patched ochre robes over modest leather armor, simple spear and streaming worn yellow sash, dusty rebel camp; serious human character."
+    },
+    {
+      "id": 1050,
+      "name": "潘凤",
+      "reference": "assets/resources/ui/hero/card_1013.png",
+      "output": "assets/resources/ui/hero/card_1050.png",
+      "prompt": "Use case: historical-scene. Create ONE finished character portrait for a Three Kingdoms strategy game, in the same visual family as the reference (STYLE ONLY, do not copy its character, pose, horse or composition). Traditional hand-painted ink and gouache on warm aged rice paper, visible dry-brush strokes, restrained mineral pigments, realistic adult Chinese features and anatomy, finely rendered armor or fabric, sober historical illustration. Vertical 350:480 aspect ratio, waist-up to upper thigh, large readable head in the upper third with the entire face and headgear inside frame, single clear silhouette, atmospheric understated scenery. Full bleed painted parchment, no frame, no text, no name, no numbers, no UI, no watermark, no modern objects, no anime, no glossy 3D. Distinct individual face and pose. Pan Feng: massive northern warrior, broad proud face with heavy sideburns and thick beard, battered dark iron Han helmet and simple heavy armor, huge practical double-headed battle axe held upright, muted gray-brown bannered field; formidable and earnest, never cartoonish."
+    }
+  ]
+}

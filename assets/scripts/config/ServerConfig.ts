@@ -110,6 +110,8 @@ const ServerConfig = {
     s2c_sync_march: "World.s2c_sync_march",
     c2s_req_march_list: "World.c2s_req_march_list",
     s2c_req_march_list: "World.s2c_req_march_list",
+    c2s_req_march_path: "World.c2s_req_march_path",
+    s2c_req_march_path: "World.s2c_req_march_path",
     c2s_aoi_focus: "World.c2s_aoi_focus",
     s2c_aoi_enter: "World.s2c_aoi_enter",
     s2c_aoi_leave: "World.s2c_aoi_leave",
@@ -132,6 +134,8 @@ const ServerConfig = {
 
     c2s_user_base_info: "User.c2s_user_base_info",
     s2c_user_base_info: "User.s2c_user_base_info",
+    c2s_req_other_user: "User.c2s_req_other_user",
+    s2c_req_other_user: "User.s2c_req_other_user",
     c2s_user_create: "User.c2s_user_create",
     s2c_user_create: "User.s2c_user_create",
     c2s_change_head_icon: "User.c2s_change_head_icon",

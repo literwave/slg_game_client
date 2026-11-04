@@ -39,6 +39,7 @@ import InventoryIconCache from './inventory/InventoryIconCache';
 import ChatCommand from './chat/ChatCommand';
 import ChatIconCache from './chat/ChatIconCache';
 import RankCommand from './rank/RankCommand';
+import OtherUserCommand from './login/OtherUserCommand';
 import MailCommand from './mail/MailCommand';
 import UnionCommand from './union/UnionCommand';
 import BattleCommand from './battle/BattleCommand';
@@ -127,6 +128,7 @@ export default class Main extends Component {
         UnionCommand.getInstance();
         ChatCommand.getInstance();
         RankCommand.getInstance();
+        OtherUserCommand.getInstance();
         BattleCommand.getInstance();
         EventMgr.on(LogicEvent.lotteryResult, result => LotteryRewardWindow.show(result), this);
         TroopCommand.getInstance();

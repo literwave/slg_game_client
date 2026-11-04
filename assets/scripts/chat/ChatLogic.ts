@@ -120,7 +120,7 @@ export default class ChatLogic extends Component {
         this.emptyAlliance = this.button(this.scroll.node, 'FindAlliance', () => this.findAlliance());
         this.emptyWorld = this.button(this.scroll.node, 'GoWorld', () => this.switchChannel(1));
         this.emptyRank = this.button(this.scroll.node, 'FindInRank', () => { this.close(); EventMgr.emit(E.openChatPlayerRank); });
-        this.listHint = caption(this.panel, 'ListHint', '点选头像 · 发起私聊', 0, 0, 400, 12, C.muted, Label.HorizontalAlign.CENTER);
+        this.listHint = caption(this.panel, 'ListHint', '点选头像 · 查看主公资料', 0, 0, 400, 12, C.muted, Label.HorizontalAlign.CENTER);
         this.latest = this.button(this.panel, 'NewMessages', () => { this.followLatest = true; this.scroll.scrollToBottom(.15); this.markRead(); });
         this.composer = this.make('Composer', this.panel);
         this.input = this.edit(this.composer, 'MessageInput', '与诸位主公聊聊…', CHAT_MAX_LENGTH);
@@ -385,7 +385,7 @@ export default class ChatLogic extends Component {
         const own = idKey(msg.rid) === idKey(LoginCommand.getInstance().proxy.getRoleData()?.userId);
         const row = this.make('Msg_' + idKey(msg.msgId), this.content);
         const avatar = this.button(row, 'Avatar', () => {
-            if (!own && validChatTarget(msg.rid)) this.chooseTarget({ id: idKey(msg.rid), name: msg.nick_name, headIcon: msg.headIcon });
+            if (!own && validChatTarget(msg.rid)) EventMgr.emit(E.openPlayerProfile, idKey(msg.rid));
         });
         // 头像与气泡共用顶部基线，昵称和时间单独占一行。
         const avatarSize = 40, bubbleTop = 24, edge = width / 2 - 58;

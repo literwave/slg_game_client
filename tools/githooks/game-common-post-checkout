@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installed as external/game_common's post-checkout hook.
-# git submodule update checks out the submodule, and this copies client files into assets/resources.
+# git submodule update checks out the submodule, and this copies configs, enums and protocols into assets.
 if [ "$GAME_COMMON_SYNC" = "1" ]; then
     exit 0
 fi

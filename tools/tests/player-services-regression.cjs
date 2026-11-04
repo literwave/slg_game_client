@@ -26,7 +26,15 @@ class Node {
     click() { assert.ok(this.getComponent(Button)?.interactable !== false); this.events.click?.(); }
 }
 class Button { static EventType = { CLICK: 'click' }; static Transition = { SCALE: 1 }; interactable = true; clickEvents = []; }
-class Label { static HorizontalAlign = { LEFT: 0, CENTER: 1, RIGHT: 2 }; static VerticalAlign = { TOP: 0, CENTER: 1 }; static Overflow = { CLAMP: 0, SHRINK: 1 }; string = ''; }
+class Label {
+    static HorizontalAlign = { LEFT: 0, CENTER: 1, RIGHT: 2 }; static VerticalAlign = { TOP: 0, CENTER: 1 };
+    static Overflow = { CLAMP: 0, SHRINK: 1, RESIZE_HEIGHT: 2 }; string = '';
+    updateRenderData() {
+        if (this.overflow !== Label.Overflow.RESIZE_HEIGHT) return;
+        const ui = this.node.getComponent(UITransform), columns = Math.max(1, Math.floor(ui.width / this.fontSize));
+        ui.height = this.string.split('\n').reduce((n, line) => n + Math.max(1, Math.ceil(Array.from(line).length / columns)), 0) * this.lineHeight;
+    }
+}
 class Color { static WHITE = new Color(255, 255, 255, 255); constructor(r, g, b, a) { Object.assign(this, { r, g, b, a }); } }
 class Graphics { clear() {} rect() {} roundRect() {} fill() {} stroke() {} moveTo() {} lineTo() {} circle() {} }
 class Sprite { static SizeMode = { CUSTOM: 1 }; static Type = { SIMPLE: 0 }; isValid = true; }
@@ -50,6 +58,8 @@ const cc = { Component, Node, UITransform, Button, Label, Color, Graphics, Sprit
 const tasks = [{ taskId: 1001, taskType: 1, progress: 1, state: 1 }, { taskId: 2001, taskType: 2, progress: 0, state: 0 }];
 const uid = '9007199254740993';
 const mail = { mailUid: uid, isRead: false, isLock: false, isGotReward: false, startTime: 100, title: '石料补给' };
+let mailRows = [mail], mailLoaded = true;
+let mailText = { title: '石料补给', content: '修筑关城。\n请查收石料。', sender: '军需官' };
 let detail;
 function command() { return { sessionReady: true, requestInFlight: key => pending.has(key) }; }
 const progression = { ...command(), tasksLoaded: true,
@@ -58,9 +68,10 @@ const progression = { ...command(), tasksLoaded: true,
     requestTasks() { sent.push(['task-list']); return true; },
     claimTask(id) { sent.push(['task-claim', id]); pending.add(`task:${id}`); return true; },
 };
-const mailCmd = { ...command(), getList: kind => kind === 1 ? [mail] : [], getMail: (kind, id) => String(id) === uid ? mail : null,
-    listLoaded: () => true, getDetail: () => detail, presentation: () => ({ title: '石料补给', content: '修筑关城。\n请查收石料。', sender: '军需官' }),
-    requestList(kind) { sent.push(['mail-list', kind]); }, requestDetail(kind, id) { sent.push(['mail-detail', kind, id]); },
+const mailCmd = { ...command(), getList: kind => kind === 1 ? mailRows : [], getMail: (kind, id) => kind === 1 ? mailRows.find(m => String(id) === m.mailUid) : null,
+    listLoaded: () => mailLoaded, getDetail: () => detail, presentation: () => mailText,
+    requestList(kind) { sent.push(['mail-list', kind]); pending.add(`mail-list:${kind}`); return true; },
+    requestDetail(kind, id) { sent.push(['mail-detail', kind, id]); pending.add(`mail-detail:${id}`); return true; },
     claimRewards(refs) { sent.push(['mail-claim', refs]); return true; }, setLock(kind, id, lock) { sent.push(['mail-lock', kind, id, lock]); return true; },
     deleteMails(kind, ids) { sent.push(['mail-delete', kind, ids]); return true; } };
 const rank = { ...command(), pages: new Map(), requestRank(type, start, count) { sent.push(['rank', type, start, count]); return true; } };
@@ -167,18 +178,94 @@ assert.deepEqual(taskNames(), [presentation.taskPresentation(tasks[0]).name]);
 tasks.splice(0, tasks.length, ...taskSnapshot); panel.taskType = 1; panel.show('tasks');
 console.log('PASS 进行中优先、已领取移出、确认后刷新、默认分类与手动分类保留');
 
-panel.show('mail'); panel.content.children[0].getChildByName('Action').click();
+panel.show('mail'); panel.content.children[0].click();
 assert.deepEqual(sent.at(-1), ['mail-detail', 1, uid]);
+assert.equal(panel.content.getChildByName('MailState').getChildByName('State').getComponent(Label).string, '正在读取邮件…');
+pending.delete(`mail-detail:${uid}`);
 detail = { rewardList: [{ rewardType: 1, itemId: 4, itemCount: 200 }] }; panel.render();
 assert.equal(panel.footer.getChildByName('Delete').getComponent(Button).interactable, false, '未领附件不可删除');
-panel.content.children[1].getChildByName('Action').click(); assert.deepEqual(sent.at(-1), ['mail-claim', [{ mailKind: 1, mailUid: uid }]]);
+panel.footer.getChildByName('Claim').click(); assert.deepEqual(sent.at(-1), ['mail-claim', [{ mailKind: 1, mailUid: uid }]]);
 panel.filters.getChildByName('Lock').click(); assert.deepEqual(sent.at(-1), ['mail-lock', 1, uid, true]);
 mail.isLock = true; mail.isGotReward = true; panel.render();
 assert.equal(panel.footer.getChildByName('Delete').getComponent(Button).interactable, false);
 mail.isLock = false; panel.render(); const beforeDelete = sent.length;
 panel.footer.getChildByName('Delete').click(); assert.equal(sent.length, beforeDelete, '删除前需二次确认');
+panel.footer.getChildByName('CancelDelete').click(); assert.equal(panel.confirmDelete, false);
+panel.footer.getChildByName('Delete').click(); assert.equal(sent.length, beforeDelete);
 panel.footer.getChildByName('Delete').click(); assert.deepEqual(sent.at(-1), ['mail-delete', 1, [uid]]);
 console.log('PASS 邮件详情、领奖、锁定、删除确认均保留 int64 实例 ID');
+
+{
+    panel.backToMailList();
+    panel.filters.getChildByName('Filter1').click(); pending.delete('mail-list:2'); panel.render();
+    const state = panel.content.getChildByName('MailState');
+    assert.equal(state.getChildByName('State').getComponent(Label).string, '暂无邮件');
+    assert.equal(state.getChildByName('Surface'), undefined, '空状态不是一封伪造的邮件卡片');
+    assert.equal(state.position.y, -panel.scroll.node.getComponent(UITransform).height / 2);
+    assert.ok(panel.height <= 520 && panel.width <= 780);
+    for (let i = 0; i < 3; i++) {
+        const tab = panel.filters.getChildByName(`Filter${i}`), box = tab.getComponent(UITransform);
+        assert.equal(tab.getChildByName('ManagementButton').getComponent(UITransform).width, box.width, '页签装饰与点击区域同宽');
+        assert.ok(Math.abs(tab.position.x) + box.width / 2 <= panel.rowWidth / 2);
+    }
+    mailLoaded = false; panel.render();
+    panel.content.getChildByName('MailState').getChildByName('Retry').click();
+    assert.deepEqual(sent.at(-1), ['mail-list', 2]);
+    assert.equal(panel.content.getChildByName('MailState').getChildByName('State').getComponent(Label).string, '正在收取邮件…');
+    mailCmd.sessionReady = false; panel.render();
+    assert.equal(panel.content.getChildByName('MailState').getChildByName('State').getComponent(Label).string, '连接已断开');
+    mailCmd.sessionReady = true; mailLoaded = true; pending.clear();
+    panel.filters.getChildByName('Filter0').click();
+    const rows = panel.content.children.slice(), before = panel.scroll.stopCalls;
+    panel.queueRefresh(); panel.scheduled();
+    assert.deepEqual(panel.content.children, rows, '无关推送不重建邮件');
+    assert.equal(panel.scroll.stopCalls, before);
+    panel.scroll.scrolling = true; mail.isRead = true; panel.render();
+    assert.deepEqual(panel.content.children, rows, '新快照不打断列表拖动');
+    panel.scroll.scrolling = false; panel.update(0);
+    assert.notEqual(panel.content.children[0], rows[0]);
+    console.log('PASS 邮箱空状态、连接/收取/重试互不混淆，无关推送和新快照不打断滑动');
+}
+
+{
+    mailRows = Array.from({length: 25}, (_, i) => ({...mail, mailUid: i ? uid + i : uid}));
+    panel.show('mail');
+    const viewHeight = panel.scroll.node.getComponent(UITransform).height;
+    panel.content.setPosition(0, viewHeight / 2 + 184);
+    panel.content.children[2].click();
+    panel.filters.getChildByName('Back').click();
+    assert.equal(panel.scroll.getScrollOffset().y, 184, '读信返回保留原列表位置');
+    panel.content.children[2].click();
+    mailRows.splice(2, 1); panel.render();
+    assert.equal(panel.mailUid, '');
+    assert.equal(panel.scroll.getScrollOffset().y, 184, '删除成功返回原列表位置');
+    mailRows = [mail]; panel.show('mail'); panel.content.children[0].click();
+    const savedText = mailText;
+    mailText = {...mailText, title: '来自同盟的长标题'.repeat(5), content: ('军情通报：' + '长正文不会被截断。'.repeat(30) + '\n\n').repeat(4)};
+    detail = {rewardList: Array.from({length: 9}, (_, i) => ({rewardType: 1, itemId: 4, itemCount: 100 + i}))};
+    for (const width of [748, 319]) {
+        panel.rowWidth = width; panel.render(true);
+        const letter = panel.content.getChildByName('Letter'), body = letter.getChildByName('Body'), box = letter.getComponent(UITransform);
+        assert.ok(body.position.y - body.getComponent(UITransform).height >= -box.height / 2 + 16, '长正文不越过信纸底边');
+        const attachment = panel.content.getChildByName('Attachments');
+        assert.ok(attachment.position.y + attachment.getComponent(UITransform).height / 2 < letter.position.y - box.height / 2);
+        assert.equal(attachment.children.filter(n => n.name.startsWith('Reward')).length, 9);
+        for (const reward of attachment.children.filter(n => n.name.startsWith('Reward'))) {
+            assert.ok(Math.abs(reward.position.x) + reward.getComponent(UITransform).width / 2 <= width / 2);
+        }
+    }
+    mailText = savedText; detail = {rewardList: []}; panel.render();
+    assert.equal(panel.content.getChildByName('Attachments'), undefined, '没有附件不展示空附件区');
+    assert.equal(panel.footer.getChildByName('Claim'), undefined);
+    detail = {rewardList: [{rewardType: 1, itemId: 4, itemCount: 200}]}; mail.isGotReward = false; panel.render();
+    pending.clear(); panel.render();
+    panel.scroll.autoScrolling = true; pending.add(load('config/ServerConfig').ServerConfig.c2s_get_mail_reward); panel.render();
+    assert.equal(panel.footer.getChildByName('Claim').getComponent(Button).interactable, false, '惯性滚动时也立即禁止重复领取');
+    pending.clear(); panel.scroll.autoScrolling = false; panel.update(0);
+    assert.equal(panel.footer.getChildByName('Claim').getComponent(Button).interactable, true, '请求超时后，即使快照未变化也恢复领取入口');
+    panel.show('mail');
+    console.log('PASS 读信和删除保留列表位置，长正文与多附件不重叠，领取区固定且防重复');
+}
 
 rank.pages.set('1:1:20', { selfRank: { rank: 0, score: uid }, rankList: Array.from({ length: 20 }, (_, i) => ({ uid: String(i + 1), rank: i + 1, name: '主公', score: uid })) });
 panel.show('rank'); assert.deepEqual(sent.at(-1), ['rank', 1, 1, 20]);
@@ -255,6 +342,18 @@ for (const [w, h] of [[1280, 720], [375, 812], [812, 375]]) {
         assert.equal(panel.panel.getChildByName('Sections'), undefined, section + '只展示当前功能，不混入其他功能导航');
         assert.equal(panel.footer.getChildByName('Refresh'), undefined, section + '不显示手动刷新按钮');
         assert.ok(panel.width <= w && panel.height <= h);
+        if (section === 'mail') {
+            const tabs = [0, 1, 2].map(i => panel.filters.getChildByName(`Filter${i}`));
+            assert.equal(tabs[1].position.x, 0, '邮件页签整体居中');
+            assert.ok(Math.abs(tabs[0].position.x + tabs[2].position.x) < .01, '两侧页签对称');
+            tabs.forEach((tab, i) => {
+                const width = tab.getComponent(UITransform).width;
+                assert.equal(width, tabs[0].getComponent(UITransform).width, '三个邮件页签等宽');
+                assert.equal(tab.getChildByName('ManagementButton').getComponent(UITransform).width, width);
+                assert.ok(Math.abs(tab.position.x) + width / 2 <= panel.rowWidth / 2 + .01, '底板和点击范围不能越界');
+                if (i) assert.ok(Math.abs(tab.position.x - tabs[i - 1].position.x - width - 8) < .01, '页签间距一致');
+            });
+        }
         const maskNode = panel.viewport;
         assert.ok(maskNode.getComponent(Mask)); assert.equal(maskNode.getComponent(Graphics), null);
         const scrollBox = panel.scroll.node.getComponent(UITransform);

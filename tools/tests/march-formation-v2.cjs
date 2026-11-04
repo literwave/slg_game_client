@@ -117,16 +117,22 @@ async function main() {
     assert.equal(f.members.length, 7);
     assert.equal(f.members.filter(m => m.lag === 0).length, 1, '多武将部队仍由一个视觉主将领队');
     assert.ok(f.members.every(m => m.sprite.node.active && m.moving && m.sprite.node.scale.x === -1), '资源完成后直接进入当前左行朝向');
-    assert.equal(loads.length, 6, '主将和护卫共享资源，包含同一张驻守图集也只加载一次');
+    assert.equal(loads.length, 7, '图集在多支部队之间共享，半跪步兵与骑将分别加载一次');
     assert.ok(loads.includes('ui/march/guard_march_cycle/spriteFrame'), '步兵必须使用包含收腿、换脚阶段的新图集');
+    assert.equal(loads.filter(name => name === 'ui/march/guard_defend_sheet/spriteFrame').length, 1,
+        '半跪持盾图集只能共享加载一次');
     for (const kind of ['cavalry', 'infantry']) {
         const set = await load('map/entries/MarchAnimationLibrary').loadMarchAnimations(kind);
         assert.equal(set.clips.length, 8); assert.equal(set.idleFrames.length, 8);
         assert.deepEqual(set.mirrored, [false, false, false, true, true, true, false, false]);
-        for (const [i, index] of [0, 1, 2, 1, 0, 7, 6, 7].entries()) {
-            assert.equal(set.guardFrames[i].rect.x, index % 4 * 256, '哨兵朝向必须使用对应的侧/斜/正视列');
-            assert.equal(set.guardFrames[i].rect.y, (Math.floor(index / 4) + (kind === 'cavalry' ? 0 : 2)) * 256,
+        const guardColumns = kind === 'cavalry' ? 4 : 3;
+        const guardIndices = kind === 'cavalry' ? [0, 1, 2, 1, 0, 7, 6, 7] : [0, 1, 2, 1, 0, 3, 4, 3];
+        for (const [i, index] of guardIndices.entries()) {
+            assert.equal(set.guardFrames[i].rect.x, index % guardColumns * 256, '哨兵朝向必须使用对应的侧/斜/正视列');
+            assert.equal(set.guardFrames[i].rect.y, Math.floor(index / guardColumns) * 256,
                 '前后防区不能都误用正面图');
+            if (kind === 'infantry') assert.ok(set.guardFrames[i].name.startsWith('guard_defend_sheet_'),
+                '占领必须使用真正半跪姿势，不能把站立图片压扁');
         }
         for (const [i, row] of [0, 1, 2, 1, 0, 3, 4, 3].entries()) {
             const repairedFront = kind === 'cavalry' && (i === 5 || i === 7);
@@ -144,7 +150,7 @@ async function main() {
             set.clips[i].frames.forEach(frame => { assert.equal(frame.rect.width, 256); assert.equal(frame.rect.height, 256); });
         }
     }
-    console.log('PASS 六张图集真实尺寸、共享加载、八方向镜像、独立站姿与驻守姿势');
+    console.log('PASS 七张图集真实尺寸、共享加载、八方向镜像、独立站姿与半跪驻守姿势');
     const guards = f.members.filter(m => m.lag > 0);
     for (let i = 0; i < 90; i++) {
         update(f, -1, 1, true);
@@ -254,6 +260,7 @@ async function main() {
         for (let i = 0; i < 20; i++) update(defense, 1, 0, true);
         const center = project({ x: 10, y: 10 });
         defense.setGuarding(true);
+        assert.ok(defense.members.slice(1).every(m => !m.guardPose), '到达展开前不能提前跪下');
         for (let i = 0; i < 100; i++) {
             const feet = defense.members.map(m => m.foot.clone());
             update(defense, 1, 0, false);
@@ -266,6 +273,7 @@ async function main() {
         for (const m of escorts) {
             const post = m.guardPost;
             assert.ok(Math.abs(post.x) < .5 && Math.abs(post.y) < .5, '警戒哨位不能跨入邻格');
+            assert.ok(Math.max(Math.abs(post.x), Math.abs(post.y)) >= .42, '哨兵应贴近四条边防守，不能仍挤在主将周围');
             assert.ok(Vec2.distance(m.foot, project({ x: 10 + post.x, y: 10 + post.y })) < .001);
             const d = project({ x: post.dx, y: post.dy }), a = m.facing * Math.PI / 4;
             assert.ok(d.x * Math.cos(a) + d.y * Math.sin(a) > 0, '武器朝向防区外侧');
@@ -276,6 +284,8 @@ async function main() {
         const breath = defense.members[0].sprite.node.position.y;
         for (let i = 0; i < 15; i++) update(defense, 1, 0, false);
         assert.deepEqual(defense.members.map(m => [m.foot.x, m.foot.y]), feet, '待机动作不能造成脚底漂移');
+        assert.ok(escorts.every(m => m.sprite.node.position.y === 0 && m.sprite.node.scale.y === 1),
+            '跪姿保持真实比例，膝脚不能上下漂浮或靠压缩站姿实现');
         assert.notEqual(defense.members[0].sprite.node.position.y, breath, '驻守保留细微呼吸');
         defense.setGuarding(false);
         for (let i = 0; i < 100; i++) update(defense, 1, 0, false);

@@ -49,6 +49,10 @@ export default class ArmySelectItemLogic extends Component {
     private troopIdx = 0;
     private resourceEntityId: number | string = 0;
     private action: 'occupy' | 'move' = 'occupy';
+    public onSelected: ((troopIdx: number) => void) | null = null;
+    private selected = false;
+    private rowWidth = 280;
+    private rowHeight = 96;
 
     protected onLoad(): void {
         EventMgr.on(LogicEvent.updateArmy, this.onUpdateArmy, this);
@@ -67,6 +71,16 @@ export default class ArmySelectItemLogic extends Component {
     }
 
     protected onClickItem(): void {
+        if (this.troopIdx && this.onSelected) {
+            AudioManager.instance.playClick();
+            this.onSelected(this.troopIdx);
+            return;
+        }
+        this.dispatchOrder();
+    }
+
+    /** 选中卡片只改变选择，实际指令由面板底部的确认按钮触发。 */
+    public dispatchOrder(): void {
         AudioManager.instance.playClick();
         if (this.troopIdx) {
             const world = WorldCommand.getInstance();
@@ -163,6 +177,7 @@ export default class ArmySelectItemLogic extends Component {
     }
 
     public setArmyData(data: ArmyData, cmd: number, x: number, y: number): void {
+        this.onSelected = null;
         this.troopIdx = 0; this.resourceEntityId = 0;
         this._data = data;
         this._cmd = cmd;
@@ -208,20 +223,35 @@ export default class ArmySelectItemLogic extends Component {
         if (world.requestInFlight(`march:${troop.troopIdx}`)) return '指令处理中，请稍候';
         const march = world.marches.get(troop.troopIdx);
         const sameEnd = march?.endPos?.x === this._toX && march?.endPos?.y === this._toY;
-        if (march?.state === 1 && sameEnd) return '正在前往该位置';
-        if (this.action === 'move' && march?.state === 2 && sameEnd) return '已在目标位置';
+        if (march?.state === 1 && sameEnd) return '正前往此处';
+        if (this.action === 'move' && march?.state === 2 && sameEnd) return '已抵达此处';
         const leader = troop.getHeroIdxAt(0);
         if (!leader) return '主将未上阵，请先编队';
         return troop.getSoldier(leader).count > 0 ? '' : '主将兵力不足，请先配兵';
     }
 
+    public get selectionIssue(): string {
+        return this.troopIssue(TroopCommand.getInstance().proxy.getTroop(this.troopIdx));
+    }
+
+    public setSelected(selected: boolean): void {
+        this.selected = selected;
+        this.labelState.string = selected ? '已选中' : this.action === 'move' ? '可调动' : '可出征';
+        this.layoutRow(this.rowWidth, this.rowHeight);
+    }
+
     /** 紧凑纵向队列：主将、兵力、副将和状态在同一行卡片内读完。 */
     public layoutRow(width: number, height: number): void {
-        place(this.node, 0, 0, width, height);
+        this.rowWidth = width; this.rowHeight = height;
+        // 选中状态重绘不能覆盖列表为卡片设置的位置。
+        place(this.node, this.node.position.x, this.node.position.y, width, height);
         const bg = this.node.getChildByName('bg');
         if (!bg) return;
         place(bg, 0, 0, width, height); hideSprite(bg);
-        inkSurface(bg, 'RowSurface', width, height, C.panel, this.tipNode.active ? C.line : C.gold);
+        inkSurface(bg, 'RowSurface', width, height, this.selected ? C.inset : C.panel, this.selected ? C.gold : C.line);
+        const marker = inkSurface(bg, 'SelectedMarker', 3, height - 16, this.selected ? C.gold : null, null);
+        marker.node.setPosition(-width / 2 + 2, 0, 0);
+        marker.node.setSiblingIndex(bg.children.length - 1);
         for (const name of ['bgHead', 'label1', 'label2', 'label3']) {
             const old = bg.getChildByName(name); if (old) old.active = false;
         }

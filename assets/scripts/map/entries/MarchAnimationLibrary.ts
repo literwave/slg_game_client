@@ -8,7 +8,7 @@ export interface MarchAnimationSet {
     /** 回放按自己的时间轴采样，与大地图共用图集而不启动独立动画时钟。 */
     walkFrames: SpriteFrame[][];
     idleFrames: SpriteFrame[];
-    /** 占领驻守时的举武器姿势；没有则退回 idleFrames。 */
+    /** 占领驻守姿势：步兵半跪举盾持枪，骑将留在中央警戒。 */
     guardFrames?: SpriteFrame[];
     mirrored: boolean[];
 }
@@ -99,13 +99,17 @@ export function loadMarchAnimations(kind: MarchUnitKind): Promise<MarchAnimation
     return pending;
 }
 
-/** 占领中举武器防守姿势；图集 4×4，上两行骑将、下两行步兵，左右方向镜像。 */
+/** 驻守与行军图集分离，半跪姿势保持相同的身体比例和落脚点。 */
 function loadGuardFrames(kind: MarchUnitKind): Promise<SpriteFrame[]> {
+    if (kind === 'infantry') {
+        // 3×2：右、右后、背 / 右前、正、左前。左侧沿用行军的镜像规则。
+        return loadSheet('ui/march/guard_defend_sheet', 3, 2).then(frames =>
+            [0, 1, 2, 1, 0, 3, 4, 3].map(index => frames[index]));
+    }
     return loadSheet('ui/march/formation_idle_sheet', 4, 4).then(frames => {
-        const base = kind === 'cavalry' ? 0 : 8;
-        // 每种兵的八格依次是右、右后、背、左后、左、左前、正、右前。
+        // 骑将位于旧图集上两行：右、右后、背、左后、左、左前、正、右前。
         // 与行走共用镜像规则，左侧必须选择对应的右侧原帧再翻转。
         const indices = [0, 1, 2, 1, 0, 7, 6, 7];
-        return indices.map(index => frames[base + index]);
+        return indices.map(index => frames[index]);
     });
 }

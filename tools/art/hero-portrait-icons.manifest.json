@@ -1,0 +1,673 @@
+{
+  "description": "头像与武将碎片共用对应卡面的一份原画裁切，不重绘人物，不叠加徽章或装饰框。图片路径相对 assets/resources；裁切坐标以原图左上角为原点。",
+  "size": [
+    256,
+    256
+  ],
+  "frame": "none",
+  "heroes": [
+    {
+      "id": 1001,
+      "name": "吕布",
+      "source": "ui/hero/card_1001_v2.png",
+      "avatar": "ui/head_icon/avatar_1001.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1001.png",
+      "crop": {
+        "x": 145,
+        "y": 38,
+        "size": 155
+      },
+      "imageSha256": "40fa34e78b02faebc70629f097c81ced68fab26bde8cb45464301f634d940cb4"
+    },
+    {
+      "id": 1002,
+      "name": "刘协",
+      "source": "ui/hero/card_1002.png",
+      "avatar": "ui/head_icon/avatar_1002.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1002.png",
+      "crop": {
+        "x": 125,
+        "y": 35,
+        "size": 170
+      },
+      "imageSha256": "4c33194f22ef52033764db5d07fc16c7f5cbbf8099a84fcc59780a20f445869c"
+    },
+    {
+      "id": 1003,
+      "name": "张让",
+      "source": "ui/hero/card_1003.png",
+      "avatar": "ui/head_icon/avatar_1003.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1003.png",
+      "crop": {
+        "x": 130,
+        "y": 2,
+        "size": 160
+      },
+      "imageSha256": "c4151c0f9269ed49ac29ebbc3f1b48d87b37b8c4e06c92ccb6c33dfb993c9f9c"
+    },
+    {
+      "id": 1004,
+      "name": "貂蝉",
+      "source": "ui/hero/card_1004.png",
+      "avatar": "ui/head_icon/avatar_1004.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1004.png",
+      "crop": {
+        "x": 95,
+        "y": 10,
+        "size": 165
+      },
+      "imageSha256": "85be5e067b3f3aeaa80eba44da838f0c1fc0376c7f7107e24a56f8552cd8ed94"
+    },
+    {
+      "id": 1005,
+      "name": "何太后",
+      "source": "ui/hero/card_1005.png",
+      "avatar": "ui/head_icon/avatar_1005.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1005.png",
+      "crop": {
+        "x": 125,
+        "y": 5,
+        "size": 155
+      },
+      "imageSha256": "a4f44e17f28595927ac2d95eb1adc4bb676dcd27f150140c334d10ac79808667"
+    },
+    {
+      "id": 1006,
+      "name": "黄盖",
+      "source": "ui/hero/card_1006.png",
+      "avatar": "ui/head_icon/avatar_1006.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1006.png",
+      "crop": {
+        "x": 100,
+        "y": 10,
+        "size": 170
+      },
+      "imageSha256": "f937ae49b8387f0630ff524fe3e6ea493ead2daaff0c466a4581a271cd4a9527"
+    },
+    {
+      "id": 1007,
+      "name": "董卓",
+      "source": "ui/hero/card_1007.png",
+      "avatar": "ui/head_icon/avatar_1007.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1007.png",
+      "crop": {
+        "x": 65,
+        "y": 15,
+        "size": 180
+      },
+      "imageSha256": "3f6f3f0e473c57ceffd8d0ab9cda9f7dc96f460b8b1303f76f7c68460fcaa705"
+    },
+    {
+      "id": 1008,
+      "name": "张角",
+      "source": "ui/hero/card_1008.png",
+      "avatar": "ui/head_icon/avatar_1008.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1008.png",
+      "crop": {
+        "x": 140,
+        "y": 63,
+        "size": 130
+      },
+      "imageSha256": "eb04283331b27621491917408ee1ce896bdddcede32600c64233f24e325f172d",
+      "masterSampling": {
+        "size": [
+          1071,
+          1469
+        ],
+        "crop": {
+          "x": 428,
+          "y": 193,
+          "size": 398
+        },
+        "interpolation": "bicubic",
+        "note": "同一卡面原始大图直接裁切，避免从350×480卡面放大；crop记录卡面对应位置。"
+      }
+    },
+    {
+      "id": 1009,
+      "name": "典韦",
+      "source": "ui/hero/card_1009.png",
+      "avatar": "ui/head_icon/avatar_1009.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1009.png",
+      "crop": {
+        "x": 45,
+        "y": 28,
+        "size": 150
+      },
+      "imageSha256": "a233d30f017bedbf15babe2cc2aa87cc51891ad5f7df429ba8f055874ba9336b"
+    },
+    {
+      "id": 1010,
+      "name": "张辽",
+      "source": "ui/hero/card_1010.png",
+      "avatar": "ui/head_icon/avatar_1010.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1010.png",
+      "crop": {
+        "x": 125,
+        "y": 35,
+        "size": 145
+      },
+      "imageSha256": "827f71d61de61965a2112f74e996ce5f79b2bb094a94fa870bb680ec78e52dc8"
+    },
+    {
+      "id": 1011,
+      "name": "贾诩",
+      "source": "ui/hero/card_1011.png",
+      "avatar": "ui/head_icon/avatar_1011.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1011.png",
+      "crop": {
+        "x": 110,
+        "y": 0,
+        "size": 170
+      },
+      "imageSha256": "9786b4b804c7f7e0d2eb06d22c0a9dff01210664bf993068c2abcc3b4c1ad66b"
+    },
+    {
+      "id": 1012,
+      "name": "步练师",
+      "source": "ui/hero/card_1012.png",
+      "avatar": "ui/head_icon/avatar_1012.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1012.png",
+      "crop": {
+        "x": 125,
+        "y": 18,
+        "size": 150
+      },
+      "imageSha256": "1347a002f77de18fcc44f8470849effd3e30f370a07c54e70e87a65cbf68cb71"
+    },
+    {
+      "id": 1013,
+      "name": "赵云",
+      "source": "ui/hero/card_1013.png",
+      "avatar": "ui/head_icon/avatar_1013.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1013.png",
+      "crop": {
+        "x": 160,
+        "y": 5,
+        "size": 160
+      },
+      "imageSha256": "008e54098ee18c7e5a341598b03da81fa310f795fea59e88c23674f2a306ce7d"
+    },
+    {
+      "id": 1014,
+      "name": "吕蒙",
+      "source": "ui/hero/card_1014.png",
+      "avatar": "ui/head_icon/avatar_1014.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1014.png",
+      "crop": {
+        "x": 100,
+        "y": 25,
+        "size": 170
+      },
+      "imageSha256": "37d95decab1c150a0c6687887176048fe25b0638bd87dda779da33d9f154a219"
+    },
+    {
+      "id": 1015,
+      "name": "甄姬",
+      "source": "ui/hero/card_1015.png",
+      "avatar": "ui/head_icon/avatar_1015.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1015.png",
+      "crop": {
+        "x": 120,
+        "y": 0,
+        "size": 165
+      },
+      "imageSha256": "b5fd2cc8ee7ead304f0db7f107b6762145db4a7534124ca389782540ae2dd445"
+    },
+    {
+      "id": 1016,
+      "name": "刘备",
+      "source": "ui/hero/card_1016.png",
+      "avatar": "ui/head_icon/avatar_1016.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1016.png",
+      "crop": {
+        "x": 112,
+        "y": 5,
+        "size": 150
+      },
+      "imageSha256": "89bb4b6f2deaea32c0c9d3129d86c792503f4bdf1e52cf155c82f0dc0781d637"
+    },
+    {
+      "id": 1017,
+      "name": "诸葛亮",
+      "source": "ui/hero/card_1017.png",
+      "avatar": "ui/head_icon/avatar_1017.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1017.png",
+      "crop": {
+        "x": 150,
+        "y": 5,
+        "size": 155
+      },
+      "imageSha256": "b57ff1b1adf2a5a347774370e31c46b1c6d82fffccc3939c7569b7f183473553"
+    },
+    {
+      "id": 1018,
+      "name": "陆逊",
+      "source": "ui/hero/card_1018.png",
+      "avatar": "ui/head_icon/avatar_1018.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1018.png",
+      "crop": {
+        "x": 170,
+        "y": 35,
+        "size": 165
+      },
+      "imageSha256": "c8f0cc3cd5719a95ed8f082ff44979718f5a6912dd4681d7ca7b96b7c0feeb30"
+    },
+    {
+      "id": 1019,
+      "name": "马云禄",
+      "source": "ui/hero/card_1019.png",
+      "avatar": "ui/head_icon/avatar_1019.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1019.png",
+      "crop": {
+        "x": 112,
+        "y": 5,
+        "size": 170
+      },
+      "imageSha256": "80afd337504a3da52f0dd91880e64bd2591617a9fe99268fd306076fbaeabbc3"
+    },
+    {
+      "id": 1020,
+      "name": "黄月英",
+      "source": "ui/hero/card_1020.png",
+      "avatar": "ui/head_icon/avatar_1020.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1020.png",
+      "crop": {
+        "x": 112,
+        "y": 22,
+        "size": 175
+      },
+      "imageSha256": "28e6fb6f37e1255de123784fafd5b4cd9438fb545045fed29ba4bf82520638ed"
+    },
+    {
+      "id": 1021,
+      "name": "马超",
+      "source": "ui/hero/card_1021.png",
+      "avatar": "ui/head_icon/avatar_1021.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1021.png",
+      "crop": {
+        "x": 145,
+        "y": 10,
+        "size": 160
+      },
+      "imageSha256": "df6bf1249277257c80552b9f355c1b5fa3bf17e7626a3eb2c06d1506be57e312"
+    },
+    {
+      "id": 1022,
+      "name": "曹操",
+      "source": "ui/hero/card_1022.png",
+      "avatar": "ui/head_icon/avatar_1022.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1022.png",
+      "crop": {
+        "x": 65,
+        "y": 3,
+        "size": 180
+      },
+      "imageSha256": "d395e9e12c3fbdd55e2cf193bf23d7d797aa78e708c0218d6faa234b464936a2"
+    },
+    {
+      "id": 1023,
+      "name": "关羽",
+      "source": "ui/hero/card_1023.png",
+      "avatar": "ui/head_icon/avatar_1023.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1023.png",
+      "crop": {
+        "x": 102,
+        "y": 0,
+        "size": 170
+      },
+      "imageSha256": "bdaa817cfc041f020144176fd769cfc57341abfab2ce8287259754725bddd5a3"
+    },
+    {
+      "id": 1024,
+      "name": "张飞",
+      "source": "ui/hero/card_1024.png",
+      "avatar": "ui/head_icon/avatar_1024.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1024.png",
+      "crop": {
+        "x": 95,
+        "y": 0,
+        "size": 170
+      },
+      "imageSha256": "6fb9ab484b3e5ce0d294ec94a8dcc51dc3cdaaaa8db49d249e86474c52cfc23c"
+    },
+    {
+      "id": 1025,
+      "name": "周瑜",
+      "source": "ui/hero/card_1025.png",
+      "avatar": "ui/head_icon/avatar_1025.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1025.png",
+      "crop": {
+        "x": 90,
+        "y": 0,
+        "size": 165
+      },
+      "imageSha256": "fb4c575ebe8e351daf25ff373f763a744efca649bccd15deca120e492d6f4858"
+    },
+    {
+      "id": 1026,
+      "name": "孙尚香",
+      "source": "ui/hero/card_1026.png",
+      "avatar": "ui/head_icon/avatar_1026.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1026.png",
+      "crop": {
+        "x": 75,
+        "y": 0,
+        "size": 170
+      },
+      "imageSha256": "a8710c18eabe99bde40d74297a9240e877a7daf710c25e8b27aa4562947e8e71"
+    },
+    {
+      "id": 1027,
+      "name": "郭嘉",
+      "source": "ui/hero/card_1027.png",
+      "avatar": "ui/head_icon/avatar_1027.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1027.png",
+      "crop": {
+        "x": 45,
+        "y": 40,
+        "size": 160
+      },
+      "imageSha256": "21e6972bcc3c084f2aa1f8766e0aa11d7ce3418d065e0113f7fed25c949e747c"
+    },
+    {
+      "id": 1028,
+      "name": "夏侯惇",
+      "source": "ui/hero/card_1028.png",
+      "avatar": "ui/head_icon/avatar_1028.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1028.png",
+      "crop": {
+        "x": 85,
+        "y": 5,
+        "size": 165
+      },
+      "imageSha256": "0aa046e88c6d2a7dc135a14f4a9da5cd9bb4e6ea6c555fed9716152781222561"
+    },
+    {
+      "id": 1029,
+      "name": "黄忠",
+      "source": "ui/hero/card_1029.png",
+      "avatar": "ui/head_icon/avatar_1029.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1029.png",
+      "crop": {
+        "x": 140,
+        "y": 30,
+        "size": 150
+      },
+      "imageSha256": "0247d337ab39fb33cfe7b03f49e9d52c5b7c4c652b7a7eaca9f739f9eb2eb4e5"
+    },
+    {
+      "id": 1030,
+      "name": "魏延",
+      "source": "ui/hero/card_1030.png",
+      "avatar": "ui/head_icon/avatar_1030.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1030.png",
+      "crop": {
+        "x": 90,
+        "y": 20,
+        "size": 125
+      },
+      "imageSha256": "f86e31d5847c51d186a872475efe43e4bc62d3b858169d5914f1e4b5d5e812e1"
+    },
+    {
+      "id": 1031,
+      "name": "甘宁",
+      "source": "ui/hero/card_1031.png",
+      "avatar": "ui/head_icon/avatar_1031.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1031.png",
+      "crop": {
+        "x": 90,
+        "y": 15,
+        "size": 155
+      },
+      "imageSha256": "6eb436fce834d6379cfb062451220511324ea9ce183bb3c38e85330f33fb3c5d"
+    },
+    {
+      "id": 1032,
+      "name": "颜良",
+      "source": "ui/hero/card_1032.png",
+      "avatar": "ui/head_icon/avatar_1032.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1032.png",
+      "crop": {
+        "x": 115,
+        "y": 42,
+        "size": 150
+      },
+      "imageSha256": "69afbbeff7be74706305286094bdadfd453954a4bcf1593fe0c8527706dc7def"
+    },
+    {
+      "id": 1033,
+      "name": "荀彧",
+      "source": "ui/hero/card_1033.png",
+      "avatar": "ui/head_icon/avatar_1033.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1033.png",
+      "crop": {
+        "x": 70,
+        "y": 52,
+        "size": 160
+      },
+      "imageSha256": "abba0341595c2296988e86afe53b42e51b8884b86ef9a69ed508b9ec3b8a487f"
+    },
+    {
+      "id": 1034,
+      "name": "曹仁",
+      "source": "ui/hero/card_1034.png",
+      "avatar": "ui/head_icon/avatar_1034.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1034.png",
+      "crop": {
+        "x": 68,
+        "y": 52,
+        "size": 150
+      },
+      "imageSha256": "d5954b7c59d629b09659b8c1f2c96cf06fe6e1c422445932756fab2a0bea4d4a"
+    },
+    {
+      "id": 1035,
+      "name": "张郃",
+      "source": "ui/hero/card_1035.png",
+      "avatar": "ui/head_icon/avatar_1035.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1035.png",
+      "crop": {
+        "x": 108,
+        "y": 43,
+        "size": 116
+      },
+      "imageSha256": "a96b7a4130d4505c7ec8c930b00d7ca6909bd7c3f2716ae9a7ae70122da40863"
+    },
+    {
+      "id": 1036,
+      "name": "庞统",
+      "source": "ui/hero/card_1036.png",
+      "avatar": "ui/head_icon/avatar_1036.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1036.png",
+      "crop": {
+        "x": 65,
+        "y": 45,
+        "size": 175
+      },
+      "imageSha256": "5e89c1699a6706015944e29f187e6bb7ba436e86211b9cd43401b3394baddb88"
+    },
+    {
+      "id": 1037,
+      "name": "徐庶",
+      "source": "ui/hero/card_1037.png",
+      "avatar": "ui/head_icon/avatar_1037.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1037.png",
+      "crop": {
+        "x": 50,
+        "y": 10,
+        "size": 150
+      },
+      "imageSha256": "a4cd63480a87447ae05f619499a162402d1aa08c04acf45e28effbc855e66d7a"
+    },
+    {
+      "id": 1038,
+      "name": "关平",
+      "source": "ui/hero/card_1038.png",
+      "avatar": "ui/head_icon/avatar_1038.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1038.png",
+      "crop": {
+        "x": 90,
+        "y": 7,
+        "size": 150
+      },
+      "imageSha256": "8a447e4bbbb789f3c76e1ff98a801e7ac4a635e2b0728eb383ce39ca805e91eb"
+    },
+    {
+      "id": 1039,
+      "name": "太史慈",
+      "source": "ui/hero/card_1039.png",
+      "avatar": "ui/head_icon/avatar_1039.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1039.png",
+      "crop": {
+        "x": 80,
+        "y": 85,
+        "size": 160
+      },
+      "imageSha256": "fa4ef00beb68fcc8ddc7272db86f6df16097f3165c6836db933a86702bac51e1"
+    },
+    {
+      "id": 1040,
+      "name": "鲁肃",
+      "source": "ui/hero/card_1040.png",
+      "avatar": "ui/head_icon/avatar_1040.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1040.png",
+      "crop": {
+        "x": 55,
+        "y": 45,
+        "size": 160
+      },
+      "imageSha256": "1a7594b3ee92b36afe7527d173de64743eb30e428b9c17fb37758ae605f9f1f2"
+    },
+    {
+      "id": 1041,
+      "name": "华雄",
+      "source": "ui/hero/card_1041.png",
+      "avatar": "ui/head_icon/avatar_1041.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1041.png",
+      "crop": {
+        "x": 28,
+        "y": 20,
+        "size": 155
+      },
+      "imageSha256": "43a2d33d64c90bb0c9f492f39fb21776de112a8fb6b4e4b21fb8ec03086d3e00"
+    },
+    {
+      "id": 1042,
+      "name": "高顺",
+      "source": "ui/hero/card_1042.png",
+      "avatar": "ui/head_icon/avatar_1042.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1042.png",
+      "crop": {
+        "x": 143,
+        "y": 22,
+        "size": 150
+      },
+      "imageSha256": "0f618827461fdd4bed7299f6b70b5385192005ee2bee8e82b590d90e718904b8"
+    },
+    {
+      "id": 1043,
+      "name": "李典",
+      "source": "ui/hero/card_1043.png",
+      "avatar": "ui/head_icon/avatar_1043.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1043.png",
+      "crop": {
+        "x": 125,
+        "y": 43,
+        "size": 139
+      },
+      "imageSha256": "4555bd8902edf2e973fba2a59da229b23fb3feccd6506341cfc4187b063f97a1"
+    },
+    {
+      "id": 1044,
+      "name": "乐进",
+      "source": "ui/hero/card_1044.png",
+      "avatar": "ui/head_icon/avatar_1044.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1044.png",
+      "crop": {
+        "x": 140,
+        "y": 38,
+        "size": 150
+      },
+      "imageSha256": "9a2905a7f1c71bd3f36c3a6992da8f8c8ccb1fb5f6b8cf929940bbbc1a749347"
+    },
+    {
+      "id": 1045,
+      "name": "周仓",
+      "source": "ui/hero/card_1045.png",
+      "avatar": "ui/head_icon/avatar_1045.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1045.png",
+      "crop": {
+        "x": 40,
+        "y": 30,
+        "size": 160
+      },
+      "imageSha256": "231577d7a62e3167ad2cafe8a0fcd7e856fe6ce1185f65f40fe8c50d67424ee8"
+    },
+    {
+      "id": 1046,
+      "name": "廖化",
+      "source": "ui/hero/card_1046.png",
+      "avatar": "ui/head_icon/avatar_1046.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1046.png",
+      "crop": {
+        "x": 150,
+        "y": 15,
+        "size": 145
+      },
+      "imageSha256": "bf308e8bccd50f92d5adf6cb3d48fe78e098a378c23472e6cc81bd51c6b66936"
+    },
+    {
+      "id": 1047,
+      "name": "蒋钦",
+      "source": "ui/hero/card_1047.png",
+      "avatar": "ui/head_icon/avatar_1047.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1047.png",
+      "crop": {
+        "x": 120,
+        "y": 12,
+        "size": 150
+      },
+      "imageSha256": "102dc2facb6e0cb165bd4fb900147302271d1755cad9f8b59a8edf78506d4b78"
+    },
+    {
+      "id": 1048,
+      "name": "丁奉",
+      "source": "ui/hero/card_1048.png",
+      "avatar": "ui/head_icon/avatar_1048.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1048.png",
+      "crop": {
+        "x": 145,
+        "y": 10,
+        "size": 150
+      },
+      "imageSha256": "a2395368e2f235e49c05b96b6271709cf742e7a9b0d7b2e22ed3a0c83a36dd12"
+    },
+    {
+      "id": 1049,
+      "name": "张梁",
+      "source": "ui/hero/card_1049.png",
+      "avatar": "ui/head_icon/avatar_1049.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1049.png",
+      "crop": {
+        "x": 62,
+        "y": 35,
+        "size": 160
+      },
+      "imageSha256": "7523ea2e2118cccbb9b0c8384b87030eea0ec5e098c80435ac85c8630371de46"
+    },
+    {
+      "id": 1050,
+      "name": "潘凤",
+      "source": "ui/hero/card_1050.png",
+      "avatar": "ui/head_icon/avatar_1050.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1050.png",
+      "crop": {
+        "x": 145,
+        "y": 58,
+        "size": 155
+      },
+      "imageSha256": "266d7e51d2b47e305737472964cde267f57385b5a734609f66c64d58733c8039"
+    }
+  ]
+}

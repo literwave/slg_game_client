@@ -5,6 +5,9 @@ import { rewardName, rewardPreview, RewardPreview, taskPresentation } from '../.
 import { itemIconPath } from '../../common/ItemPresentation';
 import MailCommand from '../../mail/MailCommand';
 import RankCommand from '../../rank/RankCommand';
+import ConfigManager from '../../core/ConfigManager';
+import { hasId, idKey } from '../../network/pto/ProtocolCommand';
+import { RankTypeEnum } from '../../config/enum/RankTypeEnum';
 import LoginCommand from '../../login/LoginCommand';
 import { ServerConfig as S } from '../../config/ServerConfig';
 import { LogicEvent as E } from '../../common/LogicEvent';
@@ -14,6 +17,7 @@ import DateUtil from '../../utils/DateUtil';
 import { caption, inkSurface, ManagementColors as C, panelButton, place } from './ManagementStyle';
 import { rankColumns, rankRow, rankTabs, rankTitleTrim } from './RankBoardView';
 import { gameCloseButton, taskCard, taskCardLayout, taskTab, taskTabRail, taskWindowTrim } from './TaskBoardView';
+import { mailAttachments, mailEmpty, mailLetter, mailListRow, mailTabs } from './MailBoardView';
 
 const { ccclass } = _decorator;
 export type ServiceSection = 'tasks' | 'mail' | 'rank';
@@ -48,12 +52,15 @@ export default class PlayerServicesPanel extends Component {
     private rankSyncElapsed = 0;
     private rankContentKey = '';
     private rankRefreshDeferred = false;
+    private mailContentKey = '';
+    private mailRefreshDeferred = false;
+    private mailListOffset = 0;
 
     public show(section: ServiceSection): void {
         if (!this.panel) this.build();
         this.section = section;
         this.autoSelectTaskType = true;
-        this.mailUid = ''; this.confirmDelete = false; this.page = 0;
+        this.mailUid = ''; this.confirmDelete = false; this.page = 0; this.mailListOffset = 0;
         this.node.active = true;
         this.safe.getComponent(SafeArea).updateArea();
         this.layout();
@@ -94,8 +101,8 @@ export default class PlayerServicesPanel extends Component {
         const root = this.node.getComponent(UITransform), safe = this.safe.getComponent(UITransform);
         if (safe.width <= 1 || safe.height <= 1) return;
         inkSurface(this.node, 'Scrim', root.width, root.height, new Color(0, 0, 0, 175), null);
-        this.width = Math.min(this.section === 'tasks' ? 860 : 920, Math.max(280, safe.width - 24));
-        let targetHeight = 660;
+        this.width = Math.min(this.section === 'mail' ? 780 : this.section === 'tasks' ? 860 : 920, Math.max(280, safe.width - 24));
+        let targetHeight = this.section === 'mail' ? 520 : 660;
         if (this.section === 'tasks') {
             const tasks = ProgressionCommand.getInstance().getTasks().filter(task => task.state === 0 || task.state === 1);
             const categoryHeights = [1, 2, 3].map(type => tasks.filter(task => task.taskType === type).reduce((height, task) =>
@@ -114,9 +121,9 @@ export default class PlayerServicesPanel extends Component {
             this.title.isBold = true; this.title.color = new Color(241, 217, 165);
         }
         for (const name of ['TaskWindowTrim', 'TaskTitlePlate']) {
-            const trim = this.panel.getChildByName(name); if (trim) trim.active = this.section === 'tasks';
+            const trim = this.panel.getChildByName(name); if (trim) trim.active = this.section !== 'rank';
         }
-        if (this.section === 'tasks') taskWindowTrim(this.panel, this.width, this.height);
+        if (this.section !== 'rank') taskWindowTrim(this.panel, this.width, this.height);
         gameCloseButton(this.panel.getChildByName('Close'), this.width / 2 - 32, this.height / 2 - 32);
         place(this.filters, 0, this.height / 2 - 84, this.width - 32, 44);
         this.rowWidth = this.width - 32;
@@ -153,7 +160,12 @@ export default class PlayerServicesPanel extends Component {
 
     protected update(dt: number): void {
         // 任务和邮件由推送即时更新；排行榜没有推送，只在当前页可见时低频同步。
-        if (!this.node.activeInHierarchy || this.section !== 'rank') return;
+        if (!this.node.activeInHierarchy) return;
+        if (this.section === 'mail') {
+            if (this.mailRefreshDeferred && !this.scroll.isScrolling() && !this.scroll.isAutoScrolling()) this.render();
+            return;
+        }
+        if (this.section !== 'rank') return;
         if (this.rankRefreshDeferred && !this.scroll.isScrolling() && !this.scroll.isAutoScrolling()) this.render();
         if (!RankCommand.getInstance().sessionReady) return;
         this.rankSyncElapsed += dt;
@@ -162,14 +174,44 @@ export default class PlayerServicesPanel extends Component {
 
     protected onDisable(): void {
         this.unscheduleAllCallbacks();
-        this.refreshQueued = false; this.rankSyncElapsed = 0; this.rankRefreshDeferred = false;
+        this.refreshQueued = false; this.rankSyncElapsed = 0; this.rankRefreshDeferred = false; this.mailRefreshDeferred = false;
+    }
+
+    private mailDisplayKey(): string {
+        const cmd = MailCommand.getInstance();
+        const summary = (mail: ReturnType<MailCommand['getMail']>) => mail && [idKey(mail.mailUid), mail.mailId,
+            mail.title, mail.content, mail.isRead, mail.isLock, mail.isGotReward, mail.startTime];
+        const list = cmd.getList(this.mailKind);
+        const keys = [`mail-list:${this.mailKind}`, `mail-detail:${this.mailUid}`,
+            `mail-lock:${this.mailKind}:${this.mailUid}`, `mail-delete:${this.mailKind}`, S.c2s_get_mail_reward];
+        return JSON.stringify([this.mailKind, this.mailUid, this.page, this.confirmDelete, this.rowWidth,
+            this.scroll.node.getComponent(UITransform).height, cmd.sessionReady, cmd.listLoaded(this.mailKind),
+            keys.map(key => cmd.requestInFlight(key)), [1, 2, 3].map(kind => cmd.getList(kind).filter(mail => !mail.isRead).length),
+            this.mailUid ? [summary(cmd.getMail(this.mailKind, this.mailUid)), cmd.getDetail(this.mailUid)]
+                : [list.length, list.slice(this.page * PAGE_SIZE, (this.page + 1) * PAGE_SIZE).map(summary)]]);
+    }
+
+    /** 正文滚动期间也立即禁用在途操作，避免重复领取或锁定/删除互相竞争。 */
+    private syncMailActions(): void {
+        if (!this.mailUid) return;
+        const cmd = MailCommand.getInstance(), mail = cmd.getMail(this.mailKind, this.mailUid);
+        const deleting = cmd.requestInFlight(`mail-delete:${this.mailKind}`);
+        const locking = cmd.requestInFlight(`mail-lock:${this.mailKind}:${this.mailUid}`);
+        const getting = cmd.requestInFlight(S.c2s_get_mail_reward);
+        const detail = cmd.getDetail(this.mailUid), hasRewards = detail && rewardPreview(detail.rewardList).length > 0;
+        for (const [parent, name, available] of [[this.filters, 'Lock', !!mail && !locking && !deleting],
+            [this.footer, 'Claim', hasRewards && !getting && !deleting && !mail?.isGotReward],
+            [this.footer, 'Delete', !!detail && !getting && !deleting && !locking && !mail?.isLock && (!hasRewards || mail?.isGotReward)]] as const) {
+            const button = parent.getChildByName(name)?.getComponent(Button);
+            if (button) button.interactable = cmd.sessionReady && !!available;
+        }
     }
 
     /** 只比较当前排行实际显示的数据；无关协议、资源推送和相同快照不重建列表。 */
     private rankDisplayKey(): string {
         const cmd = RankCommand.getInstance();
         const snapshot = cmd.pages.get(`${this.rankType}:${this.page * PAGE_SIZE + 1}:${PAGE_SIZE}`);
-        const entry = (row: any) => [row?.rank || 0, row?.name || '', String(row?.score ?? '—'), row?.headIcon || 0];
+        const entry = (row: any) => [row?.rank || 0, idKey(row?.uid), row?.name || '', String(row?.score ?? '—'), row?.headIcon || 0];
         const role = LoginCommand.getInstance().proxy.getRoleData();
         return JSON.stringify([this.rankType, this.page, this.rowWidth, this.scroll.node.getComponent(UITransform).height,
             cmd.sessionReady, snapshot ? snapshot.rankList.map(entry) : null, entry(snapshot?.selfRank), role?.name, role?.headIcon]);
@@ -179,7 +221,7 @@ export default class PlayerServicesPanel extends Component {
     private syncRankPagination(): void {
         const cmd = RankCommand.getInstance(), pending = cmd.requestInFlight(`rank:${this.rankType}`);
         const snapshot = cmd.pages.get(`${this.rankType}:${this.page * PAGE_SIZE + 1}:${PAGE_SIZE}`);
-        for (const [name, available] of [['Previous', this.page > 0], ['Next', snapshot?.rankList.length === PAGE_SIZE]] as const) {
+        for (const [name, available] of [['Previous', this.page > 0], ['Next', this.rankHasNext(snapshot)]] as const) {
             const node = this.footer.getChildByName(name), button = node?.getComponent(Button);
             if (!button || button.interactable === (!!available && !pending)) continue;
             button.interactable = !!available && !pending;
@@ -189,6 +231,19 @@ export default class PlayerServicesPanel extends Component {
 
     private render(resetScroll = false): void {
         if (!this.panel || !this.node.activeInHierarchy) return;
+        let restoreMailList = false;
+        if (this.section === 'mail' && this.mailUid && !MailCommand.getInstance().getMail(this.mailKind, this.mailUid)) {
+            this.mailUid = ''; this.confirmDelete = false; restoreMailList = true;
+        }
+        const mailKey = this.section === 'mail' ? this.mailDisplayKey() : '';
+        if (this.section === 'mail') {
+            this.syncMailActions();
+            if (mailKey === this.mailContentKey && !resetScroll && !restoreMailList) { this.mailRefreshDeferred = false; return; }
+            if (!resetScroll && !restoreMailList && (this.scroll.isScrolling() || this.scroll.isAutoScrolling())) {
+                this.mailRefreshDeferred = true; return;
+            }
+        }
+        this.mailRefreshDeferred = false;
         const rankKey = this.section === 'rank' ? this.rankDisplayKey() : '';
         if (this.section === 'rank') {
             this.syncRankPagination();
@@ -207,7 +262,7 @@ export default class PlayerServicesPanel extends Component {
             }
         }
         this.rankRefreshDeferred = false;
-        const offset = resetScroll ? 0 : this.scroll.getScrollOffset().y;
+        const offset = restoreMailList ? this.mailListOffset : resetScroll ? 0 : this.scroll.getScrollOffset().y;
         this.scroll.stopAutoScroll();
         for (const node of [this.filters, this.content, this.footer]) this.clear(node);
         this.contentHeight = 0;
@@ -219,6 +274,7 @@ export default class PlayerServicesPanel extends Component {
         this.content.getComponent(UITransform).setContentSize(this.rowWidth, Math.max(viewHeight, this.contentHeight));
         this.content.setPosition(0, viewHeight / 2 + Math.min(Math.max(0, offset), Math.max(0, this.contentHeight - viewHeight)), 0);
         this.rankContentKey = rankKey;
+        this.mailContentKey = mailKey;
     }
 
     private renderTasks(): void {
@@ -263,92 +319,135 @@ export default class PlayerServicesPanel extends Component {
 
     private renderMail(): void {
         const cmd = MailCommand.getInstance();
-        if (this.mailUid && !cmd.getMail(this.mailKind, this.mailUid)) { this.mailUid = ''; this.confirmDelete = false; }
         if (this.mailUid) { this.renderMailDetail(); return; }
-        this.subTabs(['系统', '联盟', '公告'], this.mailKind - 1, index => {
-            this.mailKind = index + 1; this.page = 0; this.refreshFromServer(); this.render(true);
+        this.subTabs(['系统', '同盟', '公告'], this.mailKind - 1, index => {
+            if (this.mailKind === index + 1) return;
+            this.mailKind = index + 1; this.page = 0; this.mailListOffset = 0; this.refreshFromServer(); this.render(true);
         });
+        mailTabs(this.filters, this.rowWidth, this.mailKind - 1, [1, 2, 3].map(kind => cmd.getList(kind).filter(mail => !mail.isRead).length));
         const all = cmd.getList(this.mailKind), pages = Math.max(1, Math.ceil(all.length / PAGE_SIZE));
         this.page = Math.min(this.page, pages - 1);
         const pending = cmd.requestInFlight(`mail-list:${this.mailKind}`);
         this.pagination(pages, false);
-        if (!all.length) { this.empty(!cmd.sessionReady ? '连接恢复后自动收取邮件' : pending || !cmd.listLoaded(this.mailKind) ? '正在收取邮件…' : '暂时没有邮件'); return; }
+        if (!all.length) {
+            const retry = cmd.sessionReady && !pending && !cmd.listLoaded(this.mailKind);
+            this.mailState(!cmd.sessionReady ? '连接已断开' : pending ? '正在收取邮件…'
+                : retry ? '邮件暂未同步' : '暂无邮件', retry ? () => this.refreshFromServer() : null);
+            return;
+        }
+        caption(this.footer, 'MailCount', `${all.length} 封${pages > 1 ? `  ·  ${this.page + 1} / ${pages}` : ''}`,
+            0, 0, Math.max(60, this.rowWidth - 192), 12, C.muted, Label.HorizontalAlign.CENTER);
         for (const mail of all.slice(this.page * PAGE_SIZE, (this.page + 1) * PAGE_SIZE)) {
-            const text = cmd.presentation(this.mailKind, mail.mailUid), row = this.card(text?.title || '邮件',
-                `${mail.isRead ? '已读' : '未读'}${mail.isLock ? ' · 已锁定' : ''} · ${DateUtil.converTimeStr(mail.startTime * 1000, 'MM-DD hh:mm')}`, 134);
-            caption(row, 'Sender', text?.sender || '系统信使', -48, -34, this.rowWidth - 144, 14, C.muted);
-            this.rowAction(row, '查看', () => {
-                this.mailUid = String(mail.mailUid); this.confirmDelete = false;
+            const text = cmd.presentation(this.mailKind, mail.mailUid), row = this.make(`Mail${idKey(mail.mailUid)}`, this.content, this.rowWidth, 84);
+            row.setPosition(0, -this.contentHeight - 42, 0); this.contentHeight += 92;
+            mailListRow(row, this.rowWidth, { title: text?.title || '邮件', sender: text?.sender || ['系统信使', '同盟', '系统公告'][this.mailKind - 1],
+                time: DateUtil.converTimeStr(mail.startTime * 1000, 'MM-DD hh:mm'), read: mail.isRead, locked: mail.isLock });
+            row.on(Button.EventType.CLICK, () => {
+                AudioManager.instance.playClick();
+                this.mailListOffset = this.scroll.getScrollOffset().y;
+                this.mailUid = idKey(mail.mailUid); this.confirmDelete = false;
                 if (!cmd.getDetail(mail.mailUid)) cmd.requestDetail(this.mailKind, mail.mailUid);
                 this.render(true);
-            }, true, 134);
+            }, this);
         }
+    }
+
+    private mailState(text: string, retry: (() => void) | null = null): void {
+        const height = this.scroll.node.getComponent(UITransform).height;
+        const state = this.make('MailState', this.content, this.rowWidth, height);
+        state.setPosition(0, -height / 2, 0); this.contentHeight = height;
+        mailEmpty(state, this.rowWidth, height, text, !!retry);
+        if (retry) this.button(state, 'Retry', '重新收取', 0, height < 210 ? -24 : -88, 112, retry);
+    }
+
+    private backToMailList(): void {
+        this.mailUid = ''; this.confirmDelete = false;
+        this.render(true);
+        const height = this.scroll.node.getComponent(UITransform).height;
+        this.content.setPosition(0, height / 2 + Math.min(Math.max(0, this.mailListOffset), Math.max(0, this.contentHeight - height)), 0);
     }
 
     private renderMailDetail(): void {
         const cmd = MailCommand.getInstance(), uid = this.mailUid, mail = cmd.getMail(this.mailKind, uid), detail = cmd.getDetail(uid);
-        this.button(this.filters, 'Back', '返回列表', -this.rowWidth / 2 + 52, 0, 104, () => { this.mailUid = ''; this.confirmDelete = false; this.render(true); });
+        this.button(this.filters, 'Back', '返回列表', -this.rowWidth / 2 + 52, 0, 104, () => this.backToMailList());
         const locking = cmd.requestInFlight(`mail-lock:${this.mailKind}:${uid}`);
-        this.button(this.filters, 'Lock', locking ? '处理中…' : mail.isLock ? '解锁' : '锁定', this.rowWidth / 2 - 44, 0, 88,
-            () => { this.confirmDelete = false; this.submit(() => cmd.setLock(this.mailKind, uid, !mail.isLock)); }, !locking && cmd.sessionReady);
-        const text = cmd.presentation(this.mailKind, uid);
-        const body = text?.content || '暂无正文';
-        const chars = Math.max(8, Math.floor((this.rowWidth - 32) / 17));
-        const lines = body.split('\n').reduce((n, line) => n + Math.max(1, Math.ceil(line.length / chars)), 0);
-        const height = Math.max(160, 104 + lines * 25);
-        const row = this.card(text?.title || '邮件详情', text?.sender || '', height);
-        const label = caption(row, 'Body', body, 0, -36, this.rowWidth - 32, 17, C.text);
-        label.enableWrapText = true; label.verticalAlign = Label.VerticalAlign.TOP;
-        label.node.getComponent(UITransform).setContentSize(this.rowWidth - 32, height - 92);
-        label.node.setPosition(0, -36, 0);
+        const deleting = cmd.requestInFlight(`mail-delete:${this.mailKind}`);
+        this.button(this.filters, 'Lock', locking ? '处理中…' : mail.isLock ? '取消收藏' : '收藏', this.rowWidth / 2 - 50, 0, 100,
+            () => { this.confirmDelete = false; this.submit(() => cmd.setLock(this.mailKind, uid, !mail.isLock)); }, !locking && !deleting && cmd.sessionReady);
         if (!detail) {
-            this.empty(cmd.sessionReady ? '正在读取附件…' : '连接恢复后自动读取附件');
+            const pending = cmd.requestInFlight(`mail-detail:${uid}`), retry = cmd.sessionReady && !pending;
+            this.mailState(!cmd.sessionReady ? '连接已断开' : pending ? '正在读取邮件…' : '邮件暂未读取',
+                retry ? () => this.refreshFromServer() : null);
             return;
         }
+        const text = cmd.presentation(this.mailKind, uid);
+        const row = this.make('Letter', this.content, this.rowWidth, 1);
+        const height = mailLetter(row, this.rowWidth, text?.title || '邮件',
+            `${text?.sender || '系统信使'}  ·  ${DateUtil.converTimeStr(mail.startTime * 1000, 'MM-DD hh:mm')}`, text?.content || '暂无正文');
+        row.setPosition(0, -height / 2, 0); this.contentHeight = height + 12;
         const rewards = rewardPreview(detail.rewardList);
-        const attachment = this.card('附件', mail.isGotReward ? '附件已领取' : rewards.length ? '可领取以下物资' : '这封邮件没有附件', 148);
-        this.rewards(attachment, rewards, -44, this.rowWidth - 144);
+        if (rewards.length) {
+            const attachment = this.make('Attachments', this.content, this.rowWidth, 1);
+            const height = mailAttachments(attachment, this.rowWidth, rewards, mail.isGotReward);
+            attachment.setPosition(0, -this.contentHeight - height / 2, 0); this.contentHeight += height + 8;
+        }
         const getting = cmd.requestInFlight(S.c2s_get_mail_reward);
-        this.rowAction(attachment, getting ? '领取中…' : mail.isGotReward ? '已领取' : '领取附件',
-            () => this.submit(() => cmd.claimRewards([{ mailKind: this.mailKind, mailUid: uid }])),
-            !!rewards.length && !mail.isGotReward && !getting && cmd.sessionReady, 148);
         const canDelete = !mail.isLock && (!rewards.length || mail.isGotReward);
-        const deleting = cmd.requestInFlight(`mail-delete:${this.mailKind}`);
-        this.button(this.footer, 'Delete', deleting ? '删除中…' : this.confirmDelete ? '确认删除' : '删除邮件', this.rowWidth / 2 - 56, 0, 112, () => {
+        if (!canDelete) this.confirmDelete = false;
+        this.button(this.footer, 'Delete', deleting ? '删除中…' : this.confirmDelete ? '确认删除' : '删除', -this.rowWidth / 2 + 52, 0, 104, () => {
             if (!this.confirmDelete) { this.confirmDelete = true; this.render(); return; }
-            this.submit(() => cmd.deleteMails(this.mailKind, [uid])); this.confirmDelete = false;
-        }, canDelete && !deleting && cmd.sessionReady);
-        this.footerText(this.confirmDelete ? '再次点击确认删除此邮件' : mail.isLock ? '已锁定，解锁后可删除' : !canDelete ? '领取附件后可删除邮件' : '');
+            this.confirmDelete = false; this.submit(() => cmd.deleteMails(this.mailKind, [uid]));
+        }, canDelete && !deleting && !locking && !getting && cmd.sessionReady);
+        if (this.confirmDelete) {
+            this.button(this.footer, 'CancelDelete', '取消', this.rowWidth / 2 - 60, 0, 120,
+                () => { this.confirmDelete = false; this.render(); });
+        } else if (rewards.length) {
+            this.button(this.footer, 'Claim', getting ? '领取中…' : mail.isGotReward ? '已领取' : '领取附件', this.rowWidth / 2 - 60, 0, 120,
+                () => this.submit(() => cmd.claimRewards([{ mailKind: this.mailKind, mailUid: uid }])),
+                !mail.isGotReward && !getting && !deleting && cmd.sessionReady, !mail.isGotReward);
+        }
     }
 
     private renderRank(): void {
         const cmd = RankCommand.getInstance();
-        this.subTabs(['战力榜', '主城等级榜'], this.rankType - 1, index => { this.rankType = index + 1; this.page = 0; this.refreshFromServer(); this.render(true); });
+        this.subTabs(['战力榜', '主城榜', '歼敌榜', '同盟榜'], this.rankType - 1, index => { this.rankType = index + 1; this.page = 0; this.refreshFromServer(); this.render(true); });
         rankTabs(this.filters, this.rowWidth, this.rankType - 1);
         const pending = cmd.requestInFlight(`rank:${this.rankType}`);
         const snapshot = cmd.pages.get(`${this.rankType}:${this.page * PAGE_SIZE + 1}:${PAGE_SIZE}`);
-        this.pagination(snapshot?.rankList.length === PAGE_SIZE ? this.page + 2 : this.page + 1, true, pending);
+        this.pagination(this.rankHasNext(snapshot) ? this.page + 2 : this.page + 1, true, pending);
         for (const name of ['Previous', 'Next']) {
             const button = this.footer.getChildByName(name);
             if (button) panelButton(button, name === 'Previous' ? '上一页' : '下一页', button.position.x, -40, 88, 28);
         }
         caption(this.footer, 'Page', `第 ${this.page + 1} 页`, 0, -40, 100, 12, C.muted, Label.HorizontalAlign.CENTER);
         if (!snapshot) { this.empty(cmd.sessionReady ? '正在加载排行榜…' : '连接恢复后自动同步排行'); return; }
-        const metric = this.rankType === 1 ? '战力' : '主城等级';
+        const metric = ['战力', '主城等级', '歼敌', '同盟战力'][this.rankType - 1];
+        const alliance = this.rankType === RankTypeEnum.ALLIANCE_POWER;
         const role = LoginCommand.getInstance().proxy.getRoleData();
         const self = snapshot.selfRank;
         const selfRow = this.make('MyRank', this.footer, this.rowWidth, 70);
         selfRow.setPosition(0, 16, 0);
-        rankRow(selfRow, this.rowWidth, { ...self, name: role?.name || '我', headIcon: role?.headIcon }, metric, true);
+        rankRow(selfRow, this.rowWidth, { ...self, name: alliance ? self?.name || '我的同盟' : role?.name || '我',
+            headIcon: alliance ? 0 : role?.headIcon }, metric, true, alliance);
         const columns = this.make('RankColumns', this.content, this.rowWidth, 36);
         columns.setPosition(0, -18, 0); this.contentHeight = 40;
-        rankColumns(columns, this.rowWidth, metric);
+        rankColumns(columns, this.rowWidth, metric, alliance);
         if (!snapshot.rankList.length) this.empty('本页暂无排行记录');
         for (const item of snapshot.rankList) {
             const row = this.make(`Rank${item.rank}`, this.content, this.rowWidth, 82);
             row.setPosition(0, -this.contentHeight - 41, 0); this.contentHeight += 90;
-            rankRow(row, this.rowWidth, item, metric);
+            rankRow(row, this.rowWidth, item, metric, false, alliance);
+            if (!alliance && hasId(item.uid)) {
+                row.addComponent(Button).transition = Button.Transition.NONE;
+                row.on(Button.EventType.CLICK, () => EventMgr.emit(E.openPlayerProfile, item.uid), this);
+            }
         }
+    }
+    private rankHasNext(snapshot: { rankList: any[] } | undefined): boolean {
+        const rows = ConfigManager.getInstance().getConfig('Rank');
+        const row = Array.isArray(rows) ? rows.find(r => r.Id === this.rankType) : rows?.[this.rankType];
+        const limit = Number(row?.RankMax) || Infinity;
+        return snapshot?.rankList.length === PAGE_SIZE && (this.page + 1) * PAGE_SIZE < limit;
     }
 
     private submit(send: () => boolean): void {

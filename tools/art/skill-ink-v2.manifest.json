@@ -1,0 +1,1634 @@
+{
+  "version": 2,
+  "style": "宣纸水墨设色",
+  "notes": [
+    "依据技能含义绘制不同主体和动作",
+    "统一256×256，无内嵌文字或边框",
+    "保留现有资源路径及SpriteFrame引用",
+    "48px缩略图完成目视检查"
+  ],
+  "icons": [
+    {
+      "id": 1001,
+      "name": "无双乱舞",
+      "path": "assets/resources/ui/skill/skill_1001.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 0,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "75ad7d12b6e982b6450f2b4b70d78e33943b6e4c6344578d09f15cda0b8f8295",
+      "sha256": "347fb05954acc7dfe230cb991792cf860d75d1f6f2d7e5814928a2ef616e448a"
+    },
+    {
+      "id": 1002,
+      "name": "汉室余晖",
+      "path": "assets/resources/ui/skill/skill_1002.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 0,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "75ad7d12b6e982b6450f2b4b70d78e33943b6e4c6344578d09f15cda0b8f8295",
+      "sha256": "353b1c858bba02d2adceb52a45c465aa66384c58da95356d54a2093430efbcce"
+    },
+    {
+      "id": 1003,
+      "name": "宦官乱政",
+      "path": "assets/resources/ui/skill/skill_1003.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 1,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "1247d6aeee69fb21d3aee773924f0d699b0a8bcd8a550b5fba7d882320761b46",
+      "sha256": "9b1a63d4c50928686f9b4f29acd78695daa34ca918fae05b0e76e574ad870896"
+    },
+    {
+      "id": 1004,
+      "name": "闭月",
+      "path": "assets/resources/ui/skill/skill_1004.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 1,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "1247d6aeee69fb21d3aee773924f0d699b0a8bcd8a550b5fba7d882320761b46",
+      "sha256": "73f749f51a3df3a69153030181ca2045b077081c75998369aba92a5e27656393"
+    },
+    {
+      "id": 1005,
+      "name": "垂帘",
+      "path": "assets/resources/ui/skill/skill_1005.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 1,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "1247d6aeee69fb21d3aee773924f0d699b0a8bcd8a550b5fba7d882320761b46",
+      "sha256": "2184856d583db1a065280b844e3e2981801f6f7975628b01d72026036e4b1c32"
+    },
+    {
+      "id": 1006,
+      "name": "苦肉计",
+      "path": "assets/resources/ui/skill/skill_1006.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 1,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "1247d6aeee69fb21d3aee773924f0d699b0a8bcd8a550b5fba7d882320761b46",
+      "sha256": "f326016c6a867bbca57aa7cb24358e9868c69082ba48c31a49a6c602af2bf8d5"
+    },
+    {
+      "id": 1007,
+      "name": "西凉铁骑",
+      "path": "assets/resources/ui/skill/skill_1007.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 1,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "1247d6aeee69fb21d3aee773924f0d699b0a8bcd8a550b5fba7d882320761b46",
+      "sha256": "ecc1632a044bb74564e5aba88b015dfec8453b46403b73d87af6493cd6338812"
+    },
+    {
+      "id": 1008,
+      "name": "太平道法",
+      "path": "assets/resources/ui/skill/skill_1008.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 0,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "75ad7d12b6e982b6450f2b4b70d78e33943b6e4c6344578d09f15cda0b8f8295",
+      "sha256": "4c7060bf4cd57b88f0e111966d2d376f26aed86d052575fd1028f5841efac69f"
+    },
+    {
+      "id": 1009,
+      "name": "古之恶来",
+      "path": "assets/resources/ui/skill/skill_1009.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 1,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "1247d6aeee69fb21d3aee773924f0d699b0a8bcd8a550b5fba7d882320761b46",
+      "sha256": "e0121f40f0aa835b9cb87974bf693ad2e4522d124aebb14c9e0d0864d8876b9a"
+    },
+    {
+      "id": 1010,
+      "name": "威震逍遥津",
+      "path": "assets/resources/ui/skill/skill_1010.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 2,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "f4b90181501508977522296d119f05c08e77acc54d93cacd996b635058e9c00c",
+      "sha256": "27b624c6895e2f90d76ed534833e2d0ba38ed9ad2de47222d21be3271ee5d7a6"
+    },
+    {
+      "id": 1011,
+      "name": "毒士",
+      "path": "assets/resources/ui/skill/skill_1011.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 2,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "f4b90181501508977522296d119f05c08e77acc54d93cacd996b635058e9c00c",
+      "sha256": "ab0849477cf15c21e69d8e2675b8844b3ba2058996fd61114444d38c60b93ae2"
+    },
+    {
+      "id": 1012,
+      "name": "红妆",
+      "path": "assets/resources/ui/skill/skill_1012.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 2,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "f4b90181501508977522296d119f05c08e77acc54d93cacd996b635058e9c00c",
+      "sha256": "5efb4e34ad665a977781c71e2408f97ccc11944bfd3b72c131bc2bec882998d9"
+    },
+    {
+      "id": 1013,
+      "name": "一身是胆",
+      "path": "assets/resources/ui/skill/skill_1013.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 2,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "f4b90181501508977522296d119f05c08e77acc54d93cacd996b635058e9c00c",
+      "sha256": "5a892cc01fddd80e9608a2dc6b370cde5b9a8302d3fc3aa71cb4c85406f82eb6"
+    },
+    {
+      "id": 1014,
+      "name": "白衣渡江",
+      "path": "assets/resources/ui/skill/skill_1014.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 2,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "f4b90181501508977522296d119f05c08e77acc54d93cacd996b635058e9c00c",
+      "sha256": "54818ecec1d32998cebca2473f8ecaf0a2c5576e94b08b036ac5bf6cdff86bd1"
+    },
+    {
+      "id": 1015,
+      "name": "洛神",
+      "path": "assets/resources/ui/skill/skill_1015.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 2,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "f4b90181501508977522296d119f05c08e77acc54d93cacd996b635058e9c00c",
+      "sha256": "49e689852e225a60a1bd4b2767478ecd23f66de999493bb4551bde8c9942a04d"
+    },
+    {
+      "id": 1016,
+      "name": "仁德",
+      "path": "assets/resources/ui/skill/skill_1016.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 3,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "1a6300aee54aa74b37cebbb1547d287863e60d1f483a295167aefc3d7458699c",
+      "sha256": "3ffd7d8fe85a054b5071c0457808403c56f29cbf67a0c8bd8bc785febe3f0c36"
+    },
+    {
+      "id": 1017,
+      "name": "神机妙算",
+      "path": "assets/resources/ui/skill/skill_1017.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 0,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "75ad7d12b6e982b6450f2b4b70d78e33943b6e4c6344578d09f15cda0b8f8295",
+      "sha256": "7fd8faf7e588625a545f995b9dd531259da34108c72e569f51e017e5df5e304e"
+    },
+    {
+      "id": 1018,
+      "name": "火烧连营",
+      "path": "assets/resources/ui/skill/skill_1018.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 3,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "1a6300aee54aa74b37cebbb1547d287863e60d1f483a295167aefc3d7458699c",
+      "sha256": "a9a5b699dda563655c5ab35918814b1edf794c47d437fb152707b29bc446ce6d"
+    },
+    {
+      "id": 1019,
+      "name": "花枪",
+      "path": "assets/resources/ui/skill/skill_1019.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 3,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "1a6300aee54aa74b37cebbb1547d287863e60d1f483a295167aefc3d7458699c",
+      "sha256": "940019c0a1c999efe0302721aaf3a2a3d1941232b6c13a4971bcbedcd3bd54ec"
+    },
+    {
+      "id": 1020,
+      "name": "奇门",
+      "path": "assets/resources/ui/skill/skill_1020.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 3,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "1a6300aee54aa74b37cebbb1547d287863e60d1f483a295167aefc3d7458699c",
+      "sha256": "76a7312f22ec3c8ca7eb3460a6263548e1e7628ffc79734c9e545b06dbd7cda4"
+    },
+    {
+      "id": 1021,
+      "name": "西凉猛将",
+      "path": "assets/resources/ui/skill/skill_1021.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 3,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "1a6300aee54aa74b37cebbb1547d287863e60d1f483a295167aefc3d7458699c",
+      "sha256": "332f361e2ee2cb5412327590dae483ee2a6c8f77ba10e0a7c7dc26c8c3ac4bf0"
+    },
+    {
+      "id": 1022,
+      "name": "乱世奸雄",
+      "path": "assets/resources/ui/skill/skill_1022.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 3,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "1a6300aee54aa74b37cebbb1547d287863e60d1f483a295167aefc3d7458699c",
+      "sha256": "363d594b50f863c5b4ea32e902f5696f024dbe454265a46bd36d18fd220fc98a"
+    },
+    {
+      "id": 1023,
+      "name": "武圣",
+      "path": "assets/resources/ui/skill/skill_1023.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 4,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "211781620b38a289309d29b5f0354b8118af8e603ebdcb1ad5f02fa47781847f",
+      "sha256": "9c6ddae8465de31c9d929c70dbd093d3eeb917be918cd4a50f002ea0a7dac23b"
+    },
+    {
+      "id": 1024,
+      "name": "当阳桥",
+      "path": "assets/resources/ui/skill/skill_1024.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 4,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "211781620b38a289309d29b5f0354b8118af8e603ebdcb1ad5f02fa47781847f",
+      "sha256": "2fa9101e12e89f692189b1eed025bfbb0df03994e485110f98fdd6418d4cb479"
+    },
+    {
+      "id": 1025,
+      "name": "火烧赤壁",
+      "path": "assets/resources/ui/skill/skill_1025.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 0,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "75ad7d12b6e982b6450f2b4b70d78e33943b6e4c6344578d09f15cda0b8f8295",
+      "sha256": "fba9414bf5b2fa4be48735cd203f87bef66139fe625606e86f2f85d8f802fadf"
+    },
+    {
+      "id": 1026,
+      "name": "枭姬",
+      "path": "assets/resources/ui/skill/skill_1026.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 4,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "211781620b38a289309d29b5f0354b8118af8e603ebdcb1ad5f02fa47781847f",
+      "sha256": "7f89d6a13d452370dfff05355ee256fa7b7cb496487c2c9e8b118b53eb3a5400"
+    },
+    {
+      "id": 1027,
+      "name": "遗计",
+      "path": "assets/resources/ui/skill/skill_1027.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 4,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "211781620b38a289309d29b5f0354b8118af8e603ebdcb1ad5f02fa47781847f",
+      "sha256": "b0ed2ba9cbd6b45aa96d75c0814ec8221cda96edee422adf7e1a8ae0be465961"
+    },
+    {
+      "id": 1028,
+      "name": "刚烈",
+      "path": "assets/resources/ui/skill/skill_1028.png",
+      "size": [
+        256,
+        256
+      ],
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceSha256": "eb4988468c6f0c65daf518e0f881ef757155db7504531f6b7cafd7125cee278b",
+      "sha256": "277b90125f9d281484baee1d499428da5a0ede586974514d1277abf239d43ca3",
+      "sourceKind": "individual-redraw",
+      "revision": 3
+    },
+    {
+      "id": 1029,
+      "name": "百步穿杨",
+      "path": "assets/resources/ui/skill/skill_1029.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 0,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "75ad7d12b6e982b6450f2b4b70d78e33943b6e4c6344578d09f15cda0b8f8295",
+      "sha256": "53caa64f33b6cb638927b648744a5962b93aa3d1e8039b49ad676733380a4de7"
+    },
+    {
+      "id": 1030,
+      "name": "反骨",
+      "path": "assets/resources/ui/skill/skill_1030.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 4,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "211781620b38a289309d29b5f0354b8118af8e603ebdcb1ad5f02fa47781847f",
+      "sha256": "7bb79ddf4646ae57191d65ad71bdbd2c7a5e086af7c962f64588a7781736d21a"
+    },
+    {
+      "id": 1031,
+      "name": "锦帆突袭",
+      "path": "assets/resources/ui/skill/skill_1031.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 5,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "3f8036302da88f29280e248f4f16fbd4fc6a68a0879c8bbd8fea2d892e38cd14",
+      "sha256": "1e1dcc841f45b6ef064d61ff65224fdc466075e55c977ea9c98d114efd26cf12"
+    },
+    {
+      "id": 1032,
+      "name": "勇冠三军",
+      "path": "assets/resources/ui/skill/skill_1032.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 5,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "3f8036302da88f29280e248f4f16fbd4fc6a68a0879c8bbd8fea2d892e38cd14",
+      "sha256": "45caca1b22e513ce8ff30e30b9b1789c1f73916816340c2e498774976f290e3b"
+    },
+    {
+      "id": 1033,
+      "name": "王佐",
+      "path": "assets/resources/ui/skill/skill_1033.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 5,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "3f8036302da88f29280e248f4f16fbd4fc6a68a0879c8bbd8fea2d892e38cd14",
+      "sha256": "ca4aaea72d0d6f1bd3965660769d0f27e7eee7934a36f21aec8482482825feb7"
+    },
+    {
+      "id": 1034,
+      "name": "樊城",
+      "path": "assets/resources/ui/skill/skill_1034.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 5,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "3f8036302da88f29280e248f4f16fbd4fc6a68a0879c8bbd8fea2d892e38cd14",
+      "sha256": "d89b390ace6d98bd68806c5c4db7da95888db83e4923659092ac70984d468a43"
+    },
+    {
+      "id": 1035,
+      "name": "巧变",
+      "path": "assets/resources/ui/skill/skill_1035.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 5,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "3f8036302da88f29280e248f4f16fbd4fc6a68a0879c8bbd8fea2d892e38cd14",
+      "sha256": "73b3d183bbd1d7ebec8fda4685cc4c7e30a66456eddb562201bba98e96142e5c"
+    },
+    {
+      "id": 1036,
+      "name": "落凤",
+      "path": "assets/resources/ui/skill/skill_1036.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 5,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "3f8036302da88f29280e248f4f16fbd4fc6a68a0879c8bbd8fea2d892e38cd14",
+      "sha256": "180adb1d37b77cca25c52150c8066e1a5862782d171e3f4c98d7c54c828a8a1d"
+    },
+    {
+      "id": 1037,
+      "name": "举荐",
+      "path": "assets/resources/ui/skill/skill_1037.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 6,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "cafde931ceead6ea90d9efc606609ad3ec630ccb17d2eb9973a12093603064ee",
+      "sha256": "33bc15e97a2803ed1b66e72a965b95d1173f5ce4aaafee5f1743669a1a9128e2"
+    },
+    {
+      "id": 1038,
+      "name": "忠勇",
+      "path": "assets/resources/ui/skill/skill_1038.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 6,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "cafde931ceead6ea90d9efc606609ad3ec630ccb17d2eb9973a12093603064ee",
+      "sha256": "624e06b4c979c4c6cff28c5c16030ae871e5fadb43bf6e8a66e639b08fadb5b6"
+    },
+    {
+      "id": 1039,
+      "name": "神射",
+      "path": "assets/resources/ui/skill/skill_1039.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 6,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "cafde931ceead6ea90d9efc606609ad3ec630ccb17d2eb9973a12093603064ee",
+      "sha256": "b6de04072a2aab10c4fec93c74654a5ee26ff324f1789cb3c244aa081db323fc"
+    },
+    {
+      "id": 1040,
+      "name": "竭虑",
+      "path": "assets/resources/ui/skill/skill_1040.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 6,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "cafde931ceead6ea90d9efc606609ad3ec630ccb17d2eb9973a12093603064ee",
+      "sha256": "9f446a4c908342eac56dd8cecad728a840340cd7e143089cb077bad48f038a86"
+    },
+    {
+      "id": 1041,
+      "name": "斩将",
+      "path": "assets/resources/ui/skill/skill_1041.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 6,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "cafde931ceead6ea90d9efc606609ad3ec630ccb17d2eb9973a12093603064ee",
+      "sha256": "0554147ddc938bd89f597669f74a5dfea96cb50e4fae43f8990b69f8d68ea2eb"
+    },
+    {
+      "id": 1042,
+      "name": "陷阵营",
+      "path": "assets/resources/ui/skill/skill_1042.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 6,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "cafde931ceead6ea90d9efc606609ad3ec630ccb17d2eb9973a12093603064ee",
+      "sha256": "ab0b0a7b7b823525b365d11fe4bb45187563f1412b3473fe25bf1deba377cd00"
+    },
+    {
+      "id": 1043,
+      "name": "儒将",
+      "path": "assets/resources/ui/skill/skill_1043.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 7,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "71cf58fb6d78aa8f1bdc2568bafeb57b514f7aa700e89a7f1f58e4e1b4c0b14c",
+      "sha256": "204748bbe4fc3001d3a30d74ee2b2cc628f22419cef90dc8601cfca39fdfb599"
+    },
+    {
+      "id": 1044,
+      "name": "骁果",
+      "path": "assets/resources/ui/skill/skill_1044.png",
+      "size": [
+        256,
+        256
+      ],
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceSha256": "f082a4f54c1dde75ce18c8886c49f04edfd2c78a02ada94a1b76a3badba96935",
+      "sha256": "e22bb1053cdb2c0dc1d80aa32435aebd5ad472b8b47c8f4a64cfaf27a6cb3930",
+      "sourceKind": "individual-redraw",
+      "revision": 3
+    },
+    {
+      "id": 1045,
+      "name": "忠护",
+      "path": "assets/resources/ui/skill/skill_1045.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 7,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "71cf58fb6d78aa8f1bdc2568bafeb57b514f7aa700e89a7f1f58e4e1b4c0b14c",
+      "sha256": "c1951a8056fb223e210658de8de1206cde0e63daffae2614f5ca760bfdb09c38"
+    },
+    {
+      "id": 1046,
+      "name": "先锋",
+      "path": "assets/resources/ui/skill/skill_1046.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 7,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "71cf58fb6d78aa8f1bdc2568bafeb57b514f7aa700e89a7f1f58e4e1b4c0b14c",
+      "sha256": "35b7de5faff618128fc91d00e4c40a9dda8f759ba22c3dfc087775d5f6c1fc0b"
+    },
+    {
+      "id": 1047,
+      "name": "水战",
+      "path": "assets/resources/ui/skill/skill_1047.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 7,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "71cf58fb6d78aa8f1bdc2568bafeb57b514f7aa700e89a7f1f58e4e1b4c0b14c",
+      "sha256": "7df626ac38f9566e7e348c32e8eb5aa8362725140d3d58676d7dcaf2e18d5142"
+    },
+    {
+      "id": 1048,
+      "name": "短兵",
+      "path": "assets/resources/ui/skill/skill_1048.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 7,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "71cf58fb6d78aa8f1bdc2568bafeb57b514f7aa700e89a7f1f58e4e1b4c0b14c",
+      "sha256": "7764b4be9c9d7af78848d0570257d7a55db7cfd2d6f3576d69630bde3d20ba87"
+    },
+    {
+      "id": 1049,
+      "name": "地公",
+      "path": "assets/resources/ui/skill/skill_1049.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 8,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "bc9b6a3e0904246d042822af5cf8cb02625c2f8ecea6c9cdf15aeb18ce997616",
+      "sha256": "649b12f9802b1171bdfb069c6357804b53e762c52c3158a4ea0e4f64630e19fc"
+    },
+    {
+      "id": 1050,
+      "name": "蛮勇",
+      "path": "assets/resources/ui/skill/skill_1050.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 8,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "bc9b6a3e0904246d042822af5cf8cb02625c2f8ecea6c9cdf15aeb18ce997616",
+      "sha256": "09d7a220f6cfb544ccf1a91ad932732e13e3db7e948d1f838d4dc9fe02dbbde7"
+    },
+    {
+      "id": 2001,
+      "name": "破军",
+      "path": "assets/resources/ui/skill/skill_2001.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 8,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "bc9b6a3e0904246d042822af5cf8cb02625c2f8ecea6c9cdf15aeb18ce997616",
+      "sha256": "e5f0cc4d4153ce87dfd71cc03ec00b78c04de280d687d9deded7cefa54ce497f"
+    },
+    {
+      "id": 2002,
+      "name": "强攻",
+      "path": "assets/resources/ui/skill/skill_2002.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 8,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "bc9b6a3e0904246d042822af5cf8cb02625c2f8ecea6c9cdf15aeb18ce997616",
+      "sha256": "4323960a7cb179b640bc86d36da4c751e010dc49240a6a3608d38042f332c376"
+    },
+    {
+      "id": 2003,
+      "name": "横扫",
+      "path": "assets/resources/ui/skill/skill_2003.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 8,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "bc9b6a3e0904246d042822af5cf8cb02625c2f8ecea6c9cdf15aeb18ce997616",
+      "sha256": "3a29b2dd59987534f7272b2cc558ccf0d46c389424d0188fc68258dcde1ac7ba"
+    },
+    {
+      "id": 2004,
+      "name": "乱击",
+      "path": "assets/resources/ui/skill/skill_2004.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 8,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "bc9b6a3e0904246d042822af5cf8cb02625c2f8ecea6c9cdf15aeb18ce997616",
+      "sha256": "0d4078057489f895e924327023844e2e22445be3c64aabe56582fb7366f9b210"
+    },
+    {
+      "id": 2005,
+      "name": "奇计",
+      "path": "assets/resources/ui/skill/skill_2005.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 9,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "8366d16ea9b45494742205dc0e635f7b3091ff71e6962e4e14a39cd252aa1b55",
+      "sha256": "6770acd0c7d9c3ca8295d9783314d067fbce2ed09fb10e3b2e73e75b013d670f"
+    },
+    {
+      "id": 2006,
+      "name": "连环计",
+      "path": "assets/resources/ui/skill/skill_2006.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 9,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "8366d16ea9b45494742205dc0e635f7b3091ff71e6962e4e14a39cd252aa1b55",
+      "sha256": "f33919468ad8d354c269e5249186f6395c8e775d3e3fbc5db771d2d23f50132b"
+    },
+    {
+      "id": 2007,
+      "name": "十面埋伏",
+      "path": "assets/resources/ui/skill/skill_2007.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 9,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "8366d16ea9b45494742205dc0e635f7b3091ff71e6962e4e14a39cd252aa1b55",
+      "sha256": "840c337656ec78fe69674bafd81a43ad8e71735303e4ba0a57cbbfb93787241d"
+    },
+    {
+      "id": 2008,
+      "name": "天火",
+      "path": "assets/resources/ui/skill/skill_2008.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 9,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "8366d16ea9b45494742205dc0e635f7b3091ff71e6962e4e14a39cd252aa1b55",
+      "sha256": "7713e1f11d3f7bd3ee1e9f6a77bfe71e423ac280beaf8375c6bab0e2e5d48cb6"
+    },
+    {
+      "id": 2009,
+      "name": "突袭",
+      "path": "assets/resources/ui/skill/skill_2009.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 9,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "8366d16ea9b45494742205dc0e635f7b3091ff71e6962e4e14a39cd252aa1b55",
+      "sha256": "dfecc1e286c8e7158e5f11d2bc9e6d7222c3e6caae2cec1b0ee62461ea585113"
+    },
+    {
+      "id": 2010,
+      "name": "猛进",
+      "path": "assets/resources/ui/skill/skill_2010.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 9,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "8366d16ea9b45494742205dc0e635f7b3091ff71e6962e4e14a39cd252aa1b55",
+      "sha256": "e1f8f0980bf19cfc8cfd7eb94ade797e9bdf9659d10b521525a98a6a3b0f8c9e"
+    },
+    {
+      "id": 2011,
+      "name": "挫锐",
+      "path": "assets/resources/ui/skill/skill_2011.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 10,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "dabe0ebc91c418e42aafdc1184629e1890c6868eb351d4050bdb6cebfa8d5926",
+      "sha256": "98bb53a65c0794f954ea0e88b137bfe9da644ea6f890209a1e8d87df9d7c2c5a"
+    },
+    {
+      "id": 2012,
+      "name": "破胆",
+      "path": "assets/resources/ui/skill/skill_2012.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 10,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "dabe0ebc91c418e42aafdc1184629e1890c6868eb351d4050bdb6cebfa8d5926",
+      "sha256": "473b98653990c933cddaacc5fd22d33ac55b53395454c05b5ac0a50298aa03f8"
+    },
+    {
+      "id": 2013,
+      "name": "鼓舞",
+      "path": "assets/resources/ui/skill/skill_2013.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 10,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "dabe0ebc91c418e42aafdc1184629e1890c6868eb351d4050bdb6cebfa8d5926",
+      "sha256": "8932c6a1e0c0f2ac4a4591ffa48867fec0e5d6742f408b92ddadfec83811cc94"
+    },
+    {
+      "id": 2014,
+      "name": "铁壁",
+      "path": "assets/resources/ui/skill/skill_2014.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 10,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "dabe0ebc91c418e42aafdc1184629e1890c6868eb351d4050bdb6cebfa8d5926",
+      "sha256": "57887a786243a7b3a23e509365ff5662ab0f7cdbaedbc8c7f8af29cd2484c9fa"
+    },
+    {
+      "id": 2015,
+      "name": "神算",
+      "path": "assets/resources/ui/skill/skill_2015.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 10,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "dabe0ebc91c418e42aafdc1184629e1890c6868eb351d4050bdb6cebfa8d5926",
+      "sha256": "3cd467db6976dbb39736c658b38309dd8d5032f963f0bc52d9e0ba473b00d174"
+    },
+    {
+      "id": 2016,
+      "name": "疾风",
+      "path": "assets/resources/ui/skill/skill_2016.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 10,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "dabe0ebc91c418e42aafdc1184629e1890c6868eb351d4050bdb6cebfa8d5926",
+      "sha256": "aa6c2bd274d3c8d3037d692dfdbaefcec78253e5d1c9586b0510175420e96100"
+    },
+    {
+      "id": 2017,
+      "name": "独行",
+      "path": "assets/resources/ui/skill/skill_2017.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 11,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "e8099829442f18de29dc8ea209cf1ef3162722c3db0f93918a96b79c78d7ba75",
+      "sha256": "fdf727040c67e86d5d0bba9c5bd73549a9f7a21c016daa56e04b9fbbaf6223bd"
+    },
+    {
+      "id": 2018,
+      "name": "坚守",
+      "path": "assets/resources/ui/skill/skill_2018.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 11,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "e8099829442f18de29dc8ea209cf1ef3162722c3db0f93918a96b79c78d7ba75",
+      "sha256": "61e1cb6e25e660bb29ed55fb108bc3534ec8a6197c3496ab6ae16028ac4e475a"
+    },
+    {
+      "id": 2019,
+      "name": "深谋",
+      "path": "assets/resources/ui/skill/skill_2019.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 11,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "e8099829442f18de29dc8ea209cf1ef3162722c3db0f93918a96b79c78d7ba75",
+      "sha256": "630308b37be693581c62133962bb862adaae8941062ccd444073e605220c23a0"
+    },
+    {
+      "id": 2020,
+      "name": "疾行",
+      "path": "assets/resources/ui/skill/skill_2020.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 11,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "e8099829442f18de29dc8ea209cf1ef3162722c3db0f93918a96b79c78d7ba75",
+      "sha256": "dc2e4d2c59450d9a0ef89f865c794cb8aa9713624190f1a61bcd3fdc9e836c0c"
+    },
+    {
+      "id": 2021,
+      "name": "挫敌",
+      "path": "assets/resources/ui/skill/skill_2021.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 11,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "e8099829442f18de29dc8ea209cf1ef3162722c3db0f93918a96b79c78d7ba75",
+      "sha256": "3aa06c4de2edda1935e484990b93ca55f222d2a77efe3671433b6b696e5b3c0a"
+    },
+    {
+      "id": 2022,
+      "name": "破甲",
+      "path": "assets/resources/ui/skill/skill_2022.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 11,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "e8099829442f18de29dc8ea209cf1ef3162722c3db0f93918a96b79c78d7ba75",
+      "sha256": "42c8c0a6ed37bff9b6645dcfb422819e3c44d2e25eacb7578efea1a509d2d345"
+    },
+    {
+      "id": 2023,
+      "name": "惑心",
+      "path": "assets/resources/ui/skill/skill_2023.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 12,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "e103e3c42a65c2a4064be7cc6b7581d13309b45b0017aa06f9849291361708f0",
+      "sha256": "31225294085108d2a5b1bf6a302f2061742ba563de42c9072fc5250bb330bc52"
+    },
+    {
+      "id": 2024,
+      "name": "迟滞",
+      "path": "assets/resources/ui/skill/skill_2024.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 12,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "e103e3c42a65c2a4064be7cc6b7581d13309b45b0017aa06f9849291361708f0",
+      "sha256": "64c7b1ba5ee59375be7fd4e77323bd7dfc87cd1687c15b0beada5cf75af4e3d3"
+    },
+    {
+      "id": 2025,
+      "name": "连击",
+      "path": "assets/resources/ui/skill/skill_2025.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 12,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "e103e3c42a65c2a4064be7cc6b7581d13309b45b0017aa06f9849291361708f0",
+      "sha256": "0d4636d0ee8ce7e72266fb24498f296c16e4413d7e79d53ff96332d50b904d85"
+    },
+    {
+      "id": 2026,
+      "name": "追斩",
+      "path": "assets/resources/ui/skill/skill_2026.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 12,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "e103e3c42a65c2a4064be7cc6b7581d13309b45b0017aa06f9849291361708f0",
+      "sha256": "02f4525132039694ac423f7be61b231263dce94e28eb7a18a01c38d3b3f20b09"
+    },
+    {
+      "id": 2027,
+      "name": "回马",
+      "path": "assets/resources/ui/skill/skill_2027.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 12,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "e103e3c42a65c2a4064be7cc6b7581d13309b45b0017aa06f9849291361708f0",
+      "sha256": "aaa8178c34cfe6a023894a6dc0050d664adcf10596fc4f618e3503d4300e6263"
+    },
+    {
+      "id": 2028,
+      "name": "闪击",
+      "path": "assets/resources/ui/skill/skill_2028.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 12,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "e103e3c42a65c2a4064be7cc6b7581d13309b45b0017aa06f9849291361708f0",
+      "sha256": "e93bcd6573d1c9fc603963133a837e100ed6bf3c999cb0f0d9a78644504c365a"
+    },
+    {
+      "id": 2029,
+      "name": "军威",
+      "path": "assets/resources/ui/skill/skill_2029.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 13,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "368eaa4ed22dfc94937c9451467030e3782ac0db1b3f841fd16a880eae74b39c",
+      "sha256": "94730628a9ca4efe6d27f00c653b7dc3216610af0b366258eb0bb2f912b4e87d"
+    },
+    {
+      "id": 2030,
+      "name": "励军",
+      "path": "assets/resources/ui/skill/skill_2030.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 13,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "368eaa4ed22dfc94937c9451467030e3782ac0db1b3f841fd16a880eae74b39c",
+      "sha256": "977be8989e4f7b09606e1bdbf408064c8987498a34b88795d88baff9a81853a9"
+    },
+    {
+      "id": 2031,
+      "name": "固守",
+      "path": "assets/resources/ui/skill/skill_2031.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 13,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "368eaa4ed22dfc94937c9451467030e3782ac0db1b3f841fd16a880eae74b39c",
+      "sha256": "0ff97efc9db4092849fc9801e49b851d91148c68725258999be6d9bc9acaf1fb"
+    },
+    {
+      "id": 2032,
+      "name": "妙策",
+      "path": "assets/resources/ui/skill/skill_2032.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 13,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "368eaa4ed22dfc94937c9451467030e3782ac0db1b3f841fd16a880eae74b39c",
+      "sha256": "e736f68dbb32fab7e4bd6ee903097a9e3045a683fedc11074626810850f6510e"
+    },
+    {
+      "id": 2033,
+      "name": "疾驰",
+      "path": "assets/resources/ui/skill/skill_2033.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 13,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "368eaa4ed22dfc94937c9451467030e3782ac0db1b3f841fd16a880eae74b39c",
+      "sha256": "a00f7312e761d04216cc5ffb26e0cb3266c1937533c561ef94092082173158c0"
+    },
+    {
+      "id": 2034,
+      "name": "先登",
+      "path": "assets/resources/ui/skill/skill_2034.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 13,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "368eaa4ed22dfc94937c9451467030e3782ac0db1b3f841fd16a880eae74b39c",
+      "sha256": "25627896eb6f31bf3df894234a02b197bcc1c450cda01736e8ce0640aa84e627"
+    },
+    {
+      "id": 2035,
+      "name": "御敌",
+      "path": "assets/resources/ui/skill/skill_2035.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 14,
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "7d57d194b72a6a74d03699f558243c5ed8c449a14ca93217c6891b64e5343d54",
+      "sha256": "0dea92dfbaeadb96f3574e6b971ddd2ce5bc0632c1efd4586baa047738281057"
+    },
+    {
+      "id": 2036,
+      "name": "锐进",
+      "path": "assets/resources/ui/skill/skill_2036.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 14,
+      "crop": {
+        "x": 512,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "7d57d194b72a6a74d03699f558243c5ed8c449a14ca93217c6891b64e5343d54",
+      "sha256": "af9628cd5160eed9fe5e71dd82ae251ba0467095728edcf9c01046c3b7abcc97"
+    },
+    {
+      "id": 2037,
+      "name": "落雷",
+      "path": "assets/resources/ui/skill/skill_2037.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 14,
+      "crop": {
+        "x": 1024,
+        "y": 0,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "7d57d194b72a6a74d03699f558243c5ed8c449a14ca93217c6891b64e5343d54",
+      "sha256": "8752af344f540fde40c5f258176a0cb926f72a82f2b2d1cae659676df79cc2f5"
+    },
+    {
+      "id": 2038,
+      "name": "破阵",
+      "path": "assets/resources/ui/skill/skill_2038.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 14,
+      "crop": {
+        "x": 0,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "7d57d194b72a6a74d03699f558243c5ed8c449a14ca93217c6891b64e5343d54",
+      "sha256": "a243c6f91fa1e043c32414c1209ed8cbd3cb8c45497ef9c8577fdc8f9a74e4da"
+    },
+    {
+      "id": 2039,
+      "name": "焚营",
+      "path": "assets/resources/ui/skill/skill_2039.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 14,
+      "crop": {
+        "x": 512,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "7d57d194b72a6a74d03699f558243c5ed8c449a14ca93217c6891b64e5343d54",
+      "sha256": "ca43f24e7c5a3a4a5d7cfa880c3e7190992009338fdb07732637cbc0cd4e059b"
+    },
+    {
+      "id": 2040,
+      "name": "枭雄",
+      "path": "assets/resources/ui/skill/skill_2040.png",
+      "size": [
+        256,
+        256
+      ],
+      "sheet": 14,
+      "crop": {
+        "x": 1024,
+        "y": 512,
+        "width": 512,
+        "height": 512
+      },
+      "sourceSha256": "7d57d194b72a6a74d03699f558243c5ed8c449a14ca93217c6891b64e5343d54",
+      "sha256": "3ddc84aa04b471281ef22406927a6b12caac381a2f9c1ae6714947c6249c0371"
+    }
+  ]
+}

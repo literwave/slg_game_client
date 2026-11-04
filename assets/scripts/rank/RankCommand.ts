@@ -2,6 +2,7 @@ import ProtocolCommand, { uint } from '../network/pto/ProtocolCommand';
 import { ServerConfig as S } from '../config/ServerConfig';
 import { LogicEvent as E } from '../common/LogicEvent';
 import { EventMgr } from '../utils/EventMgr';
+import { RankTypeEnum } from '../config/enum/RankTypeEnum';
 
 export default class RankCommand extends ProtocolCommand {
     private static instance: RankCommand;
@@ -21,7 +22,8 @@ export default class RankCommand extends ProtocolCommand {
     }
     protected reset(): void { this.pages.clear(); this.requestedPages.clear(); }
     requestRank(rankType: number, start = 1, count = 0): boolean {
-        if ([1, 2].indexOf(rankType) < 0 || !uint(start, true) || !uint(count, true) || this.isPending(`rank:${rankType}`)) return false;
+        if ([RankTypeEnum.POWER, RankTypeEnum.CITY_LEVEL, RankTypeEnum.KILL, RankTypeEnum.ALLIANCE_POWER].indexOf(rankType) < 0
+            || !uint(start, true) || !uint(count, true) || this.isPending(`rank:${rankType}`)) return false;
         start = Math.max(1, start);
         return this.query(`rank:${rankType}`, () => {
             this.requestedPages.set(rankType, { start, count });

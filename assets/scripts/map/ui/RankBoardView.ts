@@ -66,18 +66,18 @@ function avatar(parent: Node, entry: RankEntry, x: number, size: number, border:
     });
 }
 
-export function rankColumns(parent: Node, width: number, metric: string): void {
+export function rankColumns(parent: Node, width: number, metric: string, alliance = false): void {
     const narrow = width < 500;
     text(parent, 'RankColumn', '名次', -width / 2 + (narrow ? 26 : 42), 0, 64, 13, C.muted, Label.HorizontalAlign.CENTER);
     const nameLeft = -width / 2 + (narrow ? 108 : 144);
-    text(parent, 'PlayerColumn', '主公', nameLeft + 40, 0, 80, 13, C.muted);
+    text(parent, 'PlayerColumn', alliance ? '同盟' : '主公', nameLeft + 40, 0, 80, 13, C.muted);
     if (!narrow) text(parent, 'ScoreColumn', metric, width / 2 - 28 - 90, 0, 180, 13, C.gold, Label.HorizontalAlign.RIGHT);
     const g = parent.addComponent(Graphics); g.strokeColor = C.line; g.lineWidth = 1;
     g.moveTo(-width / 2 + 12, -17); g.lineTo(width / 2 - 12, -17); g.stroke();
 }
 
 export function rankRow(parent: Node, width: number, entry: RankEntry, metric: string,
-    self = false): void {
+    self = false, alliance = false): void {
     const narrow = width < 500, height = self ? 70 : 82;
     const rank = Number(entry.rank) || 0, top = rank >= 1 && rank <= 3;
     const metal = top ? MEDALS[rank - 1] : C.line;
@@ -86,7 +86,11 @@ export function rankRow(parent: Node, width: number, entry: RankEntry, metric: s
     const edge = node(parent, 'Accent', -width / 2 + 3, 0, 3, height - 16);
     inkSurface(edge, 'Line', 3, height - 16, self ? C.gold : metal, null);
     medal(parent, rank, -width / 2 + (narrow ? 26 : 42), narrow || self);
-    avatar(parent, entry, -width / 2 + (narrow ? 76 : 108), self || narrow ? 46 : 56, metal);
+    if (alliance) {
+        const emblem = node(parent, 'AllianceSeal', -width / 2 + (narrow ? 76 : 108), 0, 46, 46);
+        inkSurface(emblem, 'Frame', 46, 46, C.inset, metal);
+        text(emblem, 'Symbol', '盟', 0, 0, 40, 24, C.gold, Label.HorizontalAlign.CENTER);
+    } else avatar(parent, entry, -width / 2 + (narrow ? 76 : 108), self || narrow ? 46 : 56, metal);
     const nameLeft = -width / 2 + (narrow ? 108 : 148);
     const scoreWidth = Math.min(190, width * .24), scoreRight = width / 2 - 28;
     const nameRight = narrow ? width / 2 - 12 : scoreRight - scoreWidth - 24;
@@ -159,14 +163,15 @@ function rankTabIcon(parent: Node, index: number, x: number, selected: boolean):
 
 /** 页签只承载榜单切换，保留原按钮回调与列表更新策略。 */
 export function rankTabs(parent: Node, width: number, selected: number): void {
-    const gap = 12, tabWidth = Math.min(216, (width - gap) / 2);
+    const names = ['战力榜', '主城榜', '歼敌榜', '同盟榜'];
+    const gap = 6, tabWidth = Math.min(216, (width - gap * (names.length - 1)) / names.length);
     const rail = inkSurface(parent, 'RankTabRail', width, 44, null, null);
     rail.node.setSiblingIndex(0); rail.strokeColor = C.line; rail.lineWidth = 1;
     rail.moveTo(-width / 2 + 8, -19); rail.lineTo(width / 2 - 8, -19); rail.stroke();
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < names.length; i++) {
         const button = parent.getChildByName(`Filter${i}`); if (!button) continue;
         const active = i === selected;
-        place(button, (i - .5) * (tabWidth + gap), 0, tabWidth, 44);
+        place(button, (i - (names.length - 1) / 2) * (tabWidth + gap), 0, tabWidth, 44);
         const g = inkSurface(button, 'ManagementButton', tabWidth, 44, null, null);
         g.fillColor = active ? new Color(73, 58, 34) : new Color(34, 39, 30);
         g.strokeColor = active ? C.gold : C.line; g.lineWidth = 1;
@@ -180,12 +185,13 @@ export function rankTabs(parent: Node, width: number, selected: number): void {
             g.fillColor = C.gold;
             g.moveTo(-5, -21); g.lineTo(0, -26); g.lineTo(5, -21); g.lineTo(-5, -21); g.fill();
         }
-        const compact = width < 400, iconX = -tabWidth / 2 + (compact ? 23 : 30);
-        rankTabIcon(button, i, iconX, active);
+        const compact = tabWidth < 150, iconX = -tabWidth / 2 + 26;
+        if (!compact && i < 2) rankTabIcon(button, i, iconX, active);
+        const emblem = button.getChildByName('CategoryIcon'); if (emblem) emblem.active = !compact && i < 2;
         const label = button.getComponentInChildren(Label);
-        const labelWidth = tabWidth - (compact ? 48 : 62);
-        place(label.node, compact ? 17 : 20, 0, labelWidth, 30);
-        label.string = i === 0 ? '战力榜' : '主城等级榜';
+        const hasIcon = !compact && i < 2, labelWidth = tabWidth - (hasIcon ? 62 : 12);
+        place(label.node, hasIcon ? 20 : 0, 0, labelWidth, 30);
+        label.string = names[i];
         label.fontSize = compact ? 14 : 17; label.isBold = active; label.overflow = Label.Overflow.SHRINK;
         label.color = active ? new Color(250, 228, 181) : C.muted;
         const control = button.getComponent(Button); control.target = g.node;

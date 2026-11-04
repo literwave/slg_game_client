@@ -75,9 +75,9 @@ export function gameCloseButton(button: Node, x: number, y: number): void {
     control.transition = Button.Transition.SCALE; control.zoomScale = .92; control.duration = .08;
 }
 
-export function taskTab(button: Node, selected: boolean): void {
+export function taskTab(button: Node, selected: boolean, width = button.parent.getComponent(UITransform).width / 3): void {
     const g = button.getChildByName('ManagementButton').getComponent(Graphics);
-    const w = button.parent.getComponent(UITransform).width / 3;
+    const w = width;
     place(button, button.position.x, 0, w, 44); place(g.node, 0, 0, w, 44); g.clear();
     if (selected) {
         g.fillColor = new Color(77, 62, 37);

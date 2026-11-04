@@ -5,11 +5,6 @@ import { Skill } from "../../skill/SkillProxy";
 import SkillIconLogic from "./SkillIconLogic";
 import { styleSkillCard } from './SkillListView';
 
-const TARGET_NAMES: Record<number, string> = {
-    1: '自身', 4: '我军全体', 5: '敌军单体',
-    6: '敌军1-2个目标', 7: '敌军2-3个目标', 8: '敌军全体',
-};
-
 @ccclass('SkillItemLogic')
 export default class SkillItemLogic extends Component {
 
@@ -39,12 +34,8 @@ export default class SkillItemLogic extends Component {
         this.icon.getComponent(SkillIconLogic).setData(skill, null);
 
         const count = (skill.generals || []).length;
-        this.limitLab.string = conf ? `装备 ${count}${conf.limit > 0 ? ' / ' + conf.limit : ''}` : '—';
-        const outline = SkillCommand.getInstance().proxy.outLine;
-        const trigger = outline?.trigger_type?.list?.find(item => item.type === conf?.trigger)?.des;
-        const target = outline?.target_type?.list?.find(item => item.type === conf?.target)?.des
-            || TARGET_NAMES[conf?.target];
-        styleSkillCard(this.node, this.icon, this.nameLab, this.limitLab, conf?.trigger, trigger, target, count > 0);
+        this.limitLab.string = '已装备';
+        styleSkillCard(this.node, this.icon, this.nameLab, this.limitLab, count > 0);
     }
 
 }

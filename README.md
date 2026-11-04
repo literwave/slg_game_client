@@ -101,10 +101,12 @@ tools/sync-game-common.ps1
 脚本会：
 
 1. 执行 `git submodule update --init --remote -- external/game_common`（没初始化过时必须带 `--init`，否则 `--remote` 会静默跳过）。
-2. 把 `client/res/*.json` 拷到 `assets/resources/config`，把 `proto` 和 `client/net_pb.json` 拷到 `assets/resources/protbuf`。
+2. 把 `client/res/*.json` 拷到 `assets/resources/config`，把 `client/enum/*.ts` 拷到 `assets/scripts/config/enum`，把 `proto` 和 `client/net_pb.json` 拷到 `assets/resources/protbuf`。枚举代码由公共库导出，不手工修改；旧的同内容 `*Enum.json` 会清理，配置使用原表名（如 `TargetType.json`）。
 3. 给 submodule 安装 `post-checkout` 钩子。装过之后，再跑 `git submodule update --remote` 会自动拷贝。
 
 钩子只存在本机 `.git` 里，不进仓库。新克隆或钩子丢了，再跑一次脚本。不要只跑 `git submodule update --remote` 就当表已经进客户端。
+
+子模块已经更新、只需补同步文件时，执行 `tools/sync-game-common.ps1 -CopyOnly`；子模块提交未变化时，Git 不会再次触发 checkout 钩子。
 
 改表在 `game_common` 里做，不要直接改 `assets/resources/config`。表里的 `Icon` 写成 `assets/resources/ui` 下的路径，不要写扩展名，例如 `"Icon": "ui/item_icons/speed_up"`，对应 `assets/resources/ui/item_icons/speed_up.png`。
 

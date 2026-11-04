@@ -143,7 +143,7 @@ export default abstract class ProtocolCommand {
     }
 
     /** 无请求序号的列表/写操作同一时刻只发一次；超时允许用户重试。 */
-    protected request(name: string, data: object, key = name, onTimeout?: () => void): boolean {
+    protected request(name: string, data: object, key = name, onTimeout?: () => void, silentTimeout = false): boolean {
         if (this.isPending(key) || !this.ready) return false;
         const timer = setTimeout(() => {
             if (!this.ready || this.pending.get(key) !== timer) return;
@@ -155,7 +155,7 @@ export default abstract class ProtocolCommand {
             if (query) {
                 if (this.queries.get(key) === query) this.retryQuery(key);
             }
-            else EventMgr.emit(LogicEvent.showToast, '服务器响应超时，请重试');
+            else if (!silentTimeout) EventMgr.emit(LogicEvent.showToast, '服务器响应超时，请重试');
         }, 8000);
         this.pending.set(key, timer);
         if (this.send(name, data)) { EventMgr.emit(LogicEvent.protocolRequestChanged); return true; }

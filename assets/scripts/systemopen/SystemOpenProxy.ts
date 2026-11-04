@@ -1,3 +1,5 @@
+import { SystemOpenEnum } from '../config/enum/SystemOpenEnum';
+
 export interface SystemOpenCondition {
     level?: number;
     [key: string]: any;
@@ -28,7 +30,7 @@ export default class SystemOpenProxy {
             this._configs.set(id, {
                 Id: id,
                 Name: String(item.Name || `系统 ${id}`),
-                Enum: item.Enum ? String(item.Enum) : "",
+                Enum: SystemOpenEnum[id] || "",
                 Desc: item.Desc ? String(item.Desc) : "",
                 Cond: Array.isArray(item.Cond) ? item.Cond.slice() : [],
             });

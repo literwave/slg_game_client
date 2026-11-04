@@ -1,0 +1,76 @@
+{
+  "version": 2,
+  "style": "宣纸水墨设色；大主体、克制的矿物色、48px可辨识",
+  "size": [
+    256,
+    256
+  ],
+  "sheetSize": [
+    1536,
+    1024
+  ],
+  "grid": [
+    3,
+    2
+  ],
+  "pilot": {
+    "index": 0,
+    "ids": [
+      1001,
+      1002,
+      1008,
+      1017,
+      1025,
+      1029
+    ],
+    "subjects": [
+      {
+        "id": 1001,
+        "name": "无双乱舞",
+        "scene": "A warrior's cropped lamellar armored forearm grips a massive crescent ji-halberd, the dark steel blade sweeps diagonally upward from bottom left to top right, two bold dry vermilion brush arcs express a powerful double slash. The blade is the clear large focus. No face."
+      },
+      {
+        "id": 1002,
+        "name": "汉室余晖",
+        "scene": "Three broad overlapping dark wooden and iron shields under a worn vermilion imperial silk canopy with a simple aged jade ornament. A quiet protective semicircle, symbolic of the Han army's defense. Front-on symmetrical silhouette, muted ochre and jade green accents, no letters or emblems."
+      },
+      {
+        "id": 1008,
+        "name": "太平道法",
+        "scene": "A cropped Taoist's sleeve and raised open hand command a jagged pale lightning fork descending into a dark swirling ink cloud above a low rocky ridge; one loose ochre prayer ribbon trails across the corner without writing. Bold vertical lightning composition, charcoal and storm-indigo wash."
+      },
+      {
+        "id": 1017,
+        "name": "神机妙算",
+        "scene": "A broad ivory feather fan held over a simple tilted wooden Go strategy board: three dark stones precisely surround one vermilion stone. Large pale fan dominates upper right, board occupies lower left. Scholarly calm, warm sepia, restrained jade wash, no lettering."
+      },
+      {
+        "id": 1025,
+        "name": "火烧赤壁",
+        "scene": "Two clearly silhouetted ancient Chinese war junks chained together, their square sails consumed by angular vermilion and ochre flames, blue-black river waves below. Low close view, largest burning sail fills most of icon; action on a river, no sprawling fleet or tiny soldiers."
+      },
+      {
+        "id": 1029,
+        "name": "百步穿杨",
+        "scene": "Extreme close view of one long dark arrow piercing the center of a single large green willow leaf mid-flight, feather fletching visible at the opposite end, a faint bow arc far behind. Strong descending diagonal, crisp dark arrow against pale rice paper, restrained leaf green."
+      }
+    ],
+    "prompt": "Create ONE landscape 3:2 sprite sheet, 1536 x 1024 pixels, exactly 3 equal columns by 2 equal rows. Six separate SQUARE skill illustrations, each exactly filling its own 512 x 512 cell. Read order left to right, top row then bottom row. No outside margins, NO grid lines, NO borders, NO gutters, NO captions, NO numbers, NO writing. Every illustration stays strictly within its own cell with a 6% quiet paper safety margin so cutting at x=512/1024 and y=512 loses no important parts. Consistent warm aged Xuan rice paper background throughout. ART STYLE: Chinese Three Kingdoms historical ink-and-opaque-gouache narrative painting, the same hand-painted art language as fine traditional hero cards: visible dry-brush contours, textured ink washes, subtle paper fibers, muted mineral pigments, weathered cloth and iron, realistic proportions. NOT medallions, NOT tokens, NOT metallic relief, NOT 3D rendered, NOT glossy gold trim, NO neon glow, NO magical glowing rings, NO modern vector glyphs. Each skill is a bold distinct pictorial emblem painted on paper, NOT a character portrait. At 48 pixels the main action or object must remain unmistakable: one dominant silhouette, large 70–85% cell coverage, only a few supporting shapes, high dark/light contrast and a restrained skill-specific accent color. No repeated composition or repeated generic crossed swords. Each cell is an independent finished production icon, not a concept sketch. CELL 1 (TOP LEFT), concept 无双乱舞: A warrior's cropped lamellar armored forearm grips a massive crescent ji-halberd, the dark steel blade sweeps diagonally upward from bottom left to top right, two bold dry vermilion brush arcs express a powerful double slash. The blade is the clear large focus. No face.\nCELL 2 (TOP CENTER), concept 汉室余晖: Three broad overlapping dark wooden and iron shields under a worn vermilion imperial silk canopy with a simple aged jade ornament. A quiet protective semicircle, symbolic of the Han army's defense. Front-on symmetrical silhouette, muted ochre and jade green accents, no letters or emblems.\nCELL 3 (TOP RIGHT), concept 太平道法: A cropped Taoist's sleeve and raised open hand command a jagged pale lightning fork descending into a dark swirling ink cloud above a low rocky ridge; one loose ochre prayer ribbon trails across the corner without writing. Bold vertical lightning composition, charcoal and storm-indigo wash.\nCELL 4 (BOTTOM LEFT), concept 神机妙算: A broad ivory feather fan held over a simple tilted wooden Go strategy board: three dark stones precisely surround one vermilion stone. Large pale fan dominates upper right, board occupies lower left. Scholarly calm, warm sepia, restrained jade wash, no lettering.\nCELL 5 (BOTTOM CENTER), concept 火烧赤壁: Two clearly silhouetted ancient Chinese war junks chained together, their square sails consumed by angular vermilion and ochre flames, blue-black river waves below. Low close view, largest burning sail fills most of icon; action on a river, no sprawling fleet or tiny soldiers.\nCELL 6 (BOTTOM RIGHT), concept 百步穿杨: Extreme close view of one long dark arrow piercing the center of a single large green willow leaf mid-flight, feather fletching visible at the opposite end, a faint bow arc far behind. Strong descending diagonal, crisp dark arrow against pale rice paper, restrained leaf green."
+  },
+  "overrides": [
+    {
+      "id": 1044,
+      "name": "骁果",
+      "scene": "骁勇破盾",
+      "identityReference": "ui/hero/card_1044",
+      "prompt": "Completely redraw the FIRST reference image into a finished production skill icon for 骁果 (Valorous Strike), a decisive single-target physical attack by the Three Kingdoms general Le Jin. The first reference is the REJECTED old icon: replace its first-person disembodied arms, rope and wall entirely. The SECOND reference is the matching hero card: use it ONLY for this character's adult Chinese face, stout muscular build, weathered bronze-black lamellar armor, indigo cloak, small tied hair with bronze ornament, and the excellent traditional ink-and-opaque-gouache painting language. Do not copy its climbing pose.\n\nCreate ONE SQUARE 1:1 illustration, full bleed on warm aged Xuan paper, a skill illustration designed to read instantly at 48 to 96 pixels. A compact dynamic three-quarter view of ONE fierce adult armored warrior executing one powerful downward diagonal sword strike onto ONE enemy wooden shield. Show a large clearly visible head, shoulders, connected weapon arm and torso, not merely cropped floating arms. The warrior fills the left and central two-thirds; his unobscured expressive face looks intently down toward the impact in the lower right. The shoulder, upper arm, elbow, forearm and gripping hand must connect naturally with correct anatomy. One hand firmly grips the hilt of one straight short heavy iron dao with a single simple guard. The blade is a substantial broad dark steel diagonal with one pale worn edge, running from his raised hand near upper middle toward the shield at lower right. Exactly one blade with a continuous unbroken connection to its hilt, exactly one weapon-holding hand, five fingers naturally wrapped around the grip. The other arm is close to his body and obscured by cloak, not raised or duplicated. The tilted enemy shield is cropped at lower-right corner and takes no more than one quarter of the square; the sword clearly strikes its near edge with two or three large wood splinters and one dark brush accent. No second full character, no gore, no wounded body, no severed limbs. Clear forward force, shoulders and torso turn together, no dislocated joints or stretched limbs.\n\nDesign hierarchy: ONE strong attack silhouette, then the visible focused face, then the shield impact. Keep all essential face, gripping hand and sword tip within a 7 percent safe margin. Large simple shapes, restrained background of pale dusty ochre paper and a few diluted ink strokes, no detailed scenery, no wall, no rope, no climbing, no distant armies. Broad weathered indigo cloak behind the shoulder and a small rusty-red sash give restrained color contrast. Historical illustrated gravitas, textured ink contours, dry brush, opaque mineral pigment highlights, realistic adult anatomy, harmonious with the hero card. Avoid tiny armor ornaments and visual noise. No glossy rendering, no photorealism, no anime, no fantasy aura, no neon, no energy arcs, no glowing rings, no circular frame, no medallion, no border, no lettering, no numbers, no logo, no watermark, no UI. This is a bold readable pictorial game skill icon, not a full-body portrait and not a screenshot."
+    },
+    {
+      "id": 1028,
+      "name": "刚烈",
+      "scene": "折箭不屈",
+      "identityReference": "ui/hero/card_1028",
+      "prompt": "Redraw the FIRST reference into a corrected finished Three Kingdoms strategy-game skill icon for 刚烈 (Unyielding Valor), Xiahou Dun's self attack-and-defense strengthening skill. The first reference is a REJECTED old icon: its head is missing and the fist and armor look like a headless body. Replace that composition completely. The SECOND reference supplies the SAME warrior's identity and art style: rugged mature Chinese face, swept-back black hair in a topknot with a small weathered bronze hair ornament, short black moustache and beard, navy-black lamellar armor with bronze rivets, a worn rusty-red cloak, historical ink-and-gouache painting on aged Xuan paper.\n\nCreate one SQUARE full-bleed illustration, designed to remain immediately understandable at 48-96px. Narrative moment: Xiahou Dun remains unbowed under fire, holding the snapped enemy arrow firmly beside his upper chest, jaw set and gaze fierce. This is resilient fighting spirit, not a detached suit of armor. MOST IMPORTANT: his ENTIRE HEAD, topknot, FACE, NECK and BOTH SHOULDERS are visible and unmistakably joined to his torso. A large readable face in the upper center/right, head at x=57 percent and y=29 percent. Keep the top of the hair ornament at least 9 percent below the upper edge. Warm pale paper behind the head provides clear negative space; no cape, fist, arrow, hair or scenery covering the face or the neck connection. Give him a determined tight mouth, focused battle-hardened expression, one eye naturally narrowed beneath an old healed brow scar if needed to recall the hero; NO arrow in an eye, NO injury closeup, NO blood or gore.\n\nOne forearm rises from the lower-left side, anatomically and visibly connected to its shoulder, bent elbow below the frame, hand at x=28 percent, y=59 percent, BELOW the chin. A single natural strong fist firmly grips the middle of a snapped wooden arrow shaft; dark fletching and the broken end project away from the face into the left-side negative space, a few tiny splinters show it has broken. Keep the arrow short, bold and clearly separate from the head. This hand belongs to this visible warrior: correct five-finger grip, plausible wrist and forearm in worn cloth and dark lamellar bracer. Exactly one visible raised hand, no extra limbs, no floating fist. His other arm remains low and mostly outside the crop. Broad braced shoulders and solid armor fill the lower half; complete neck and collar visibly connect face to armor. A heavy rusty-red cloak arcs behind his outer left shoulder and down the edge, giving a forceful triangular silhouette without hiding any body junction.\n\nPainterly rendering closely matching the reference hero: dry-brush dark ink contours, hand-painted opaque mineral pigments, subtle paper fibers, worn metal and cloth, muted ochre, navy-charcoal and cinnabar red, crisp value separation and realistic adult anatomy. Strong simple silhouette, readable face, bold fist-and-broken-arrow motif, very sparse pale paper background with two light ink wind strokes. Avoid excessive tiny texture, busy armies or buildings. A dynamic skill illustration, not a character-selection screenshot. No horse, no helmet-only torso, no beheading, no body missing its head, no severed parts, no glowing power rings, no circles, no circular frame, no medallion, no borders, no lettering, no numbers, no UI, no logo, no watermark, no glossy 3D and no anime. All important anatomy and arrow details fit safely inside the square."
+    }
+  ]
+}

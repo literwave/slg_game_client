@@ -96,6 +96,7 @@ message s2c_req_march_list {
 // 视野内实体；entityType → EntityType.Id（1主城 2行军部队 3怪物组 4资源地）
 // 主城额外填 name、level；改名/主城升级时用 s2c_aoi_update 同步
 // 资源地占领中：startTime/endTime 为占领倒计时（时长 Global.Id=19 秒），到期完成占领
+// 奖励只在倒计时结束时发放，且只有首占（ResLandFirst，按类型+等级）；非首占无奖励
 message p_aoi_entity {
 	int64 entityId = 1;
 	uint32 entityType = 2;
@@ -161,4 +162,15 @@ message c2s_del_mark {
 
 message s2c_del_mark {
 	Common.p_pos pos = 1;
+}
+
+// ---------- 行军路线 ----------
+// 按实体查询行军路径。path 与 p_march_info.path 相同：拐点，含起点和终点
+message c2s_req_march_path {
+	int64 entityId = 1;
+}
+
+message s2c_req_march_path {
+	int64 entityId = 1;
+	repeated Common.p_pos_f path = 2;
 }

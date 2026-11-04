@@ -225,11 +225,17 @@ test('reward and unlock payloads stay cached while loading and flush once on UI 
     const Reward = load('assets/scripts/reward/RewardCommand.ts', {
         ...f.imports, '../core/ConfigManager': asDefault(configManager),
     }).default;
-    const OpenProxy = load('assets/scripts/systemopen/SystemOpenProxy.ts').default;
+    const OpenProxy = load('assets/scripts/systemopen/SystemOpenProxy.ts', {
+        '../config/enum/SystemOpenEnum': load('assets/scripts/config/enum/SystemOpenEnum.ts'),
+    }).default;
     const Open = load('assets/scripts/systemopen/SystemOpenCommand.ts', {
         ...f.imports, '../core/ConfigManager': asDefault(configManager), './SystemOpenProxy': asDefault(OpenProxy),
     }, { ...cc, resources: { load: (url, type, cb) => cb(null, { json: [] }) } }).default;
     const reward = new Reward(), open = new Open();
+    open.proxy.setConfigs(JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/SystemOpen.json'), 'utf8')));
+    assert.equal(open.proxy.getConfigByEnum('HEAD_ICON').Id, 1, 'generated enum works without an Enum field in JSON');
+    assert.equal(open.proxy.getConfigByEnum('CREATE_ALLIANCE').Id, 2);
+    assert.equal(open.proxy.getConfigByEnum('MISSING'), null);
     const rewards = [], unlocks = [], updates = [];
     f.EventMgr.on(LogicEvent.showReward, list => rewards.push(list), {});
     f.EventMgr.on(LogicEvent.systemUnlock, id => unlocks.push(id), {});

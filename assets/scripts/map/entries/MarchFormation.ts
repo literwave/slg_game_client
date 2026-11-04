@@ -71,19 +71,19 @@ export default class MarchFormation {
             this.addMember(`Soldier${i + 1}`, 'infantry', .22 + row * .15,
                 (i % columns - (rowCount - 1) / 2) * .13, 48);
         }
-        // 四面警戒，人数多的两侧成对分布；主将落脚点始终在格心。
-        // 坐标是地面格坐标，所有哨位都位于本格内部。
+        // 沿四条边向外警戒，成对哨兵拉开间隔；主将落脚点始终在格心。
+        // 地面格边界为 ±0.5，哨位内收 0.07 格，半跪时膝脚仍留在本格内。
         const directions = [[1, 0], [-1, 0], [0, 1], [0, -1]];
         for (let i = 0; i < escortCount; i++) {
             const side = i % 4, [dx, dy] = directions[side];
             const count = Math.ceil((escortCount - side) / 4);
-            const spread = (Math.floor(i / 4) - (count - 1) / 2) * .22;
-            this.members[i + 1].guardPost = { x: dx * .34 - dy * spread,
-                y: dy * .34 + dx * spread, dx, dy };
+            const spread = (Math.floor(i / 4) - (count - 1) / 2) * .32;
+            this.members[i + 1].guardPost = { x: dx * .43 - dy * spread,
+                y: dy * .43 + dx * spread, dx, dy };
         }
     }
 
-    /** 占领倒计时期间举起兵器防守；行军途中不生效。 */
+    /** 占领倒计时期间展开到边缘半跪防守；行军途中不生效。 */
     setGuarding(on: boolean): void {
         if (this.guarding === on) return;
         this.guarding = on;
@@ -234,8 +234,9 @@ export default class MarchFormation {
             sampleMarchPose(member.kind, this.gaitTime, member.moving ? Math.max(this.gaitWeight, .35) : 0, this.pose);
             if (defending && !member.moving) {
                 const breath = now / 1000 * 2 + member.dustPhase * 13;
-                this.pose.y += Math.sin(breath) * .22;
-                this.pose.angle += Math.sin(breath - .4) * .16;
+                // 半跪哨兵固定落脚线，仅做极轻微转动，避免膝盖随呼吸上下漂浮。
+                if (member.kind === 'cavalry') this.pose.y += Math.sin(breath) * .22;
+                this.pose.angle += Math.sin(breath - .4) * (member.kind === 'infantry' ? .06 : .16);
             }
             const mirror = member.animations?.mirrored[member.facing] ? -1 : 1;
             member.sprite.node.setPosition(this.pose.x * mirror, this.pose.y, 0);
@@ -252,6 +253,8 @@ export default class MarchFormation {
         member.moving = moving;
         const animations = member.animations, clip = animations?.clips[member.facing]?.name;
         if (!clip) return;
+        // 步兵走到边缘后才下蹲，不能先跪下、展开途中又起身走路。
+        const guardPose = this.guarding && (member.kind === 'cavalry' || this.guardWeight >= .995);
         const changedClip = member.clip !== clip;
         if (changedClip) member.sprite.node.setScale(animations.mirrored[member.facing] ? -1 : 1, 1, 1);
         if (moving) {
@@ -266,10 +269,10 @@ export default class MarchFormation {
                 state.time = this.gaitTime % state.duration;
                 state.sample();
             }
-        } else if (changedClip || changed || member.guardPose !== this.guarding) {
+        } else if (changedClip || changed || member.guardPose !== guardPose) {
             member.animation.stop();
-            member.guardPose = this.guarding;
-            const frames = this.guarding && animations.guardFrames?.length
+            member.guardPose = guardPose;
+            const frames = guardPose && animations.guardFrames?.length
                 ? animations.guardFrames : animations.idleFrames;
             member.sprite.spriteFrame = frames[member.facing] || animations.idleFrames[member.facing];
             member.sprite.node.setScale(animations.mirrored[member.facing] ? -1 : 1, 1, 1);

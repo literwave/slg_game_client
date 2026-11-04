@@ -1,11 +1,15 @@
 import ConfigManager from '../core/ConfigManager';
+import { ResLandTypeEnum } from '../config/enum/ResLandTypeEnum';
 
 export interface ResourceLandConfig {
     Id: number; Type: number; Level: number; Name: string; Desc: string;
     Capacity: number; GatherSpeed: number; OutputItem: number; MonsterGroups: number[];
     OpenCond?: { level?: number };
 }
-const MAP_RESOURCE_ENUM: { [type: number]: string } = { 52: 'WOOD', 53: 'IRON', 54: 'STONE', 55: 'GRAIN' };
+const MAP_RESOURCE_TYPE: { [type: number]: ResLandTypeEnum } = {
+    52: ResLandTypeEnum.WOOD, 53: ResLandTypeEnum.IRON,
+    54: ResLandTypeEnum.STONE, 55: ResLandTypeEnum.GRAIN,
+};
 
 /** 配置表可能是数组，也可能是以 Id 为键的对象。 */
 function configRows(name: string): any[] {
@@ -15,14 +19,14 @@ function configRows(name: string): any[] {
 }
 
 export function isResourceLandCell(cell: { type: number; level: number; isEmpty?: boolean } | null | undefined): boolean {
-    return !!cell && !cell.isEmpty && !!MAP_RESOURCE_ENUM[cell.type] && Number.isInteger(cell.level) && cell.level > 0;
+    return !!cell && !cell.isEmpty && !!MAP_RESOURCE_TYPE[cell.type] && Number.isInteger(cell.level) && cell.level > 0;
 }
 
-/** 石料也走配置：补齐ResLandType.STONE与对应ResLand行即可，不猜资源/道具ID。 */
+/** 类型取自公共库生成的枚举，仍须存在对应资源类型配置。 */
 export function resourceTypeForMap(mapType: number): number | undefined {
-    const name = MAP_RESOURCE_ENUM[mapType];
+    const type = MAP_RESOURCE_TYPE[mapType];
     const rows = configRows('ResLandType');
-    return name ? rows.find(row => row.Enum === name)?.Id : undefined;
+    return type ? rows.find(row => row.Id === type)?.Id : undefined;
 }
 export function resourceLandConfig(cfgId: number): ResourceLandConfig | undefined {
     return configRows('ResLand').find(row => row.Id === cfgId);

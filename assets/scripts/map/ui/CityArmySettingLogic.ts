@@ -70,6 +70,7 @@ export default class CityArmySettingLogic extends Component {
     protected _conTimes: number[] = null;
     protected _conCnts: number[] = null;
     private _formationDrag: TroopDragInteraction = null;
+    private returnToSelection: (() => void) | null = null;
 
     protected onLoad(): void {
         this.initView();
@@ -108,6 +109,7 @@ export default class CityArmySettingLogic extends Component {
     }
 
     protected onDisable(): void {
+        this.returnToSelection = null;
         this._formationDrag?.cancel();
         EventMgr.targetOff(this);
         view.off('canvas-resize', this.refreshVisualLayout, this);
@@ -523,7 +525,14 @@ export default class CityArmySettingLogic extends Component {
 
     protected onClickClose(): void {
         AudioManager.instance.playClick();
+        const onReturn = this.returnToSelection;
+        this.returnToSelection = null;
         this.node.active = false;
+        onReturn?.();
+    }
+
+    public setReturnToSelection(onReturn?: () => void): void {
+        this.returnToSelection = onReturn || null;
     }
 
     public setData(cityId: number, order: number = 1): void {

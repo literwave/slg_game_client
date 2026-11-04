@@ -1,0 +1,392 @@
+{
+  "description": "叙事版武将卡。路径相对 assets/resources；头像与碎片使用同一份无装饰框的卡面裁切，完整记录见 hero-portrait-icons.manifest.json。场景为三国故事美术演绎，包含演义及构想场景。",
+  "cardSize": [
+    350,
+    480
+  ],
+  "fragmentSize": [
+    256,
+    256
+  ],
+  "avatarSize": [
+    256,
+    256
+  ],
+  "heroes": [
+    {
+      "id": 1008,
+      "name": "张角",
+      "scene": "黄巾号令（美术演绎）",
+      "card": "ui/hero/card_1008.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1008.png",
+      "avatar": "ui/head_icon/avatar_1008.png",
+      "faceCrop": {
+        "x": 140,
+        "y": 63,
+        "size": 130
+      }
+    },
+    {
+      "id": 1009,
+      "name": "典韦",
+      "scene": "宛城守门",
+      "card": "ui/hero/card_1009.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1009.png",
+      "avatar": "ui/head_icon/avatar_1009.png",
+      "faceCrop": {
+        "x": 45,
+        "y": 28,
+        "size": 150
+      }
+    },
+    {
+      "id": 1010,
+      "name": "张辽",
+      "scene": "逍遥津突阵",
+      "card": "ui/hero/card_1010.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1010.png",
+      "avatar": "ui/head_icon/avatar_1010.png",
+      "faceCrop": {
+        "x": 125,
+        "y": 35,
+        "size": 145
+      }
+    },
+    {
+      "id": 1027,
+      "name": "郭嘉",
+      "scene": "辽东遗计",
+      "card": "ui/hero/card_1027.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1027.png",
+      "skill": "ui/skill/skill_1027.png",
+      "faceCrop": {
+        "x": 45,
+        "y": 40,
+        "size": 160
+      },
+      "avatar": "ui/head_icon/avatar_1027.png"
+    },
+    {
+      "id": 1028,
+      "name": "夏侯惇",
+      "scene": "拔矢奋战",
+      "card": "ui/hero/card_1028.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1028.png",
+      "skill": "ui/skill/skill_1028.png",
+      "faceCrop": {
+        "x": 85,
+        "y": 5,
+        "size": 165
+      },
+      "avatar": "ui/head_icon/avatar_1028.png"
+    },
+    {
+      "id": 1029,
+      "name": "黄忠",
+      "scene": "定军山",
+      "card": "ui/hero/card_1029.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1029.png",
+      "skill": "ui/skill/skill_1029.png",
+      "faceCrop": {
+        "x": 140,
+        "y": 30,
+        "size": 150
+      },
+      "avatar": "ui/head_icon/avatar_1029.png"
+    },
+    {
+      "id": 1030,
+      "name": "魏延",
+      "scene": "子午谷奇谋",
+      "card": "ui/hero/card_1030.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1030.png",
+      "skill": "ui/skill/skill_1030.png",
+      "faceCrop": {
+        "x": 90,
+        "y": 20,
+        "size": 125
+      },
+      "avatar": "ui/head_icon/avatar_1030.png"
+    },
+    {
+      "id": 1031,
+      "name": "甘宁",
+      "scene": "百骑劫营",
+      "card": "ui/hero/card_1031.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1031.png",
+      "skill": "ui/skill/skill_1031.png",
+      "faceCrop": {
+        "x": 90,
+        "y": 15,
+        "size": 155
+      },
+      "avatar": "ui/head_icon/avatar_1031.png"
+    },
+    {
+      "id": 1032,
+      "name": "颜良",
+      "scene": "白马挥军",
+      "card": "ui/hero/card_1032.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1032.png",
+      "skill": "ui/skill/skill_1032.png",
+      "faceCrop": {
+        "x": 115,
+        "y": 42,
+        "size": 150
+      },
+      "avatar": "ui/head_icon/avatar_1032.png"
+    },
+    {
+      "id": 1033,
+      "name": "荀彧",
+      "scene": "许都筹政",
+      "card": "ui/hero/card_1033.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1033.png",
+      "skill": "ui/skill/skill_1033.png",
+      "faceCrop": {
+        "x": 70,
+        "y": 52,
+        "size": 160
+      },
+      "avatar": "ui/head_icon/avatar_1033.png"
+    },
+    {
+      "id": 1034,
+      "name": "曹仁",
+      "scene": "樊城守御",
+      "card": "ui/hero/card_1034.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1034.png",
+      "skill": "ui/skill/skill_1034.png",
+      "faceCrop": {
+        "x": 68,
+        "y": 52,
+        "size": 150
+      },
+      "avatar": "ui/head_icon/avatar_1034.png"
+    },
+    {
+      "id": 1035,
+      "name": "张郃",
+      "scene": "街亭断水",
+      "card": "ui/hero/card_1035.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1035.png",
+      "skill": "ui/skill/skill_1035.png",
+      "faceCrop": {
+        "x": 108,
+        "y": 43,
+        "size": 116
+      },
+      "avatar": "ui/head_icon/avatar_1035.png"
+    },
+    {
+      "id": 1036,
+      "name": "庞统",
+      "scene": "连环献策",
+      "card": "ui/hero/card_1036.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1036.png",
+      "skill": "ui/skill/skill_1036.png",
+      "faceCrop": {
+        "x": 65,
+        "y": 45,
+        "size": 175
+      },
+      "avatar": "ui/head_icon/avatar_1036.png"
+    },
+    {
+      "id": 1037,
+      "name": "徐庶",
+      "scene": "破阵运筹",
+      "card": "ui/hero/card_1037.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1037.png",
+      "skill": "ui/skill/skill_1037.png",
+      "faceCrop": {
+        "x": 50,
+        "y": 10,
+        "size": 150
+      },
+      "avatar": "ui/head_icon/avatar_1037.png"
+    },
+    {
+      "id": 1038,
+      "name": "关平",
+      "scene": "汉水扬威",
+      "card": "ui/hero/card_1038.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1038.png",
+      "skill": "ui/skill/skill_1038.png",
+      "faceCrop": {
+        "x": 90,
+        "y": 7,
+        "size": 150
+      },
+      "avatar": "ui/head_icon/avatar_1038.png"
+    },
+    {
+      "id": 1039,
+      "name": "太史慈",
+      "scene": "神亭酣战",
+      "card": "ui/hero/card_1039.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1039.png",
+      "skill": "ui/skill/skill_1039.png",
+      "faceCrop": {
+        "x": 80,
+        "y": 85,
+        "size": 160
+      },
+      "avatar": "ui/head_icon/avatar_1039.png"
+    },
+    {
+      "id": 1040,
+      "name": "鲁肃",
+      "scene": "单刀会",
+      "card": "ui/hero/card_1040.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1040.png",
+      "skill": "ui/skill/skill_1040.png",
+      "faceCrop": {
+        "x": 55,
+        "y": 45,
+        "size": 160
+      },
+      "avatar": "ui/head_icon/avatar_1040.png"
+    },
+    {
+      "id": 1041,
+      "name": "华雄",
+      "scene": "汜水关搦战",
+      "card": "ui/hero/card_1041.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1041.png",
+      "skill": "ui/skill/skill_1041.png",
+      "faceCrop": {
+        "x": 28,
+        "y": 20,
+        "size": 155
+      },
+      "avatar": "ui/head_icon/avatar_1041.png"
+    },
+    {
+      "id": 1042,
+      "name": "高顺",
+      "scene": "陷阵破寨",
+      "card": "ui/hero/card_1042.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1042.png",
+      "skill": "ui/skill/skill_1042.png",
+      "faceCrop": {
+        "x": 143,
+        "y": 22,
+        "size": 150
+      },
+      "avatar": "ui/head_icon/avatar_1042.png"
+    },
+    {
+      "id": 1043,
+      "name": "李典",
+      "scene": "博望识伏",
+      "card": "ui/hero/card_1043.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1043.png",
+      "skill": "ui/skill/skill_1043.png",
+      "faceCrop": {
+        "x": 125,
+        "y": 43,
+        "size": 139
+      },
+      "avatar": "ui/head_icon/avatar_1043.png"
+    },
+    {
+      "id": 1044,
+      "name": "乐进",
+      "scene": "先登夺隘",
+      "card": "ui/hero/card_1044.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1044.png",
+      "skill": "ui/skill/skill_1044.png",
+      "faceCrop": {
+        "x": 140,
+        "y": 38,
+        "size": 150
+      },
+      "avatar": "ui/head_icon/avatar_1044.png"
+    },
+    {
+      "id": 1045,
+      "name": "周仓",
+      "scene": "汉水擒敌",
+      "card": "ui/hero/card_1045.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1045.png",
+      "skill": "ui/skill/skill_1045.png",
+      "faceCrop": {
+        "x": 40,
+        "y": 30,
+        "size": 160
+      },
+      "avatar": "ui/head_icon/avatar_1045.png"
+    },
+    {
+      "id": 1046,
+      "name": "廖化",
+      "scene": "千里寻主",
+      "card": "ui/hero/card_1046.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1046.png",
+      "skill": "ui/skill/skill_1046.png",
+      "faceCrop": {
+        "x": 150,
+        "y": 15,
+        "size": 145
+      },
+      "avatar": "ui/head_icon/avatar_1046.png"
+    },
+    {
+      "id": 1047,
+      "name": "蒋钦",
+      "scene": "江上截击",
+      "card": "ui/hero/card_1047.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1047.png",
+      "skill": "ui/skill/skill_1047.png",
+      "faceCrop": {
+        "x": 120,
+        "y": 12,
+        "size": 150
+      },
+      "avatar": "ui/head_icon/avatar_1047.png"
+    },
+    {
+      "id": 1048,
+      "name": "丁奉",
+      "scene": "雪中奋短兵",
+      "card": "ui/hero/card_1048.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1048.png",
+      "skill": "ui/skill/skill_1048.png",
+      "faceCrop": {
+        "x": 145,
+        "y": 10,
+        "size": 150
+      },
+      "avatar": "ui/head_icon/avatar_1048.png"
+    },
+    {
+      "id": 1049,
+      "name": "张梁",
+      "scene": "黄巾举义",
+      "card": "ui/hero/card_1049.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1049.png",
+      "skill": "ui/skill/skill_1049.png",
+      "faceCrop": {
+        "x": 62,
+        "y": 35,
+        "size": 160
+      },
+      "avatar": "ui/head_icon/avatar_1049.png"
+    },
+    {
+      "id": 1050,
+      "name": "潘凤",
+      "scene": "关前扬斧",
+      "card": "ui/hero/card_1050.png",
+      "fragment": "ui/item_icons/hero_fragments/fragment_1050.png",
+      "skill": "ui/skill/skill_1050.png",
+      "faceCrop": {
+        "x": 145,
+        "y": 58,
+        "size": 155
+      },
+      "avatar": "ui/head_icon/avatar_1050.png"
+    }
+  ]
+}

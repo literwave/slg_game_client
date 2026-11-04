@@ -47,9 +47,11 @@ function harness() {
         'general/ArmyCommand': { default: noOpCommand },
         'general/TroopCommand': { default: noOpCommand },
         'map/ui/MapUICommand': { default: noOpCommand },
+        'map/ui/MapUILogic': { default: class {} },
         'skill/SkillCommand': { default: noOpCommand },
         'reward/RewardCommand': { default: noOpCommand },
         'reward/RewardWindowLogic': { default: { init() {} } },
+        'reward/LotteryRewardWindow': { default: { init() {}, clear() {} } },
         'core/LoaderManager': { default: {}, LoadData: class {}, LoadDataType: {} },
         'config/GameConfig': { GameConfig: {} },
         'network/http/HttpManager': { HttpManager: {} },
@@ -117,12 +119,13 @@ async function main() {
         const h = harness();
         const heads = h.command.headIcons;
         heads.initConfig(json('HeadIcon'), json('Hero'));
-        assert.equal(heads.configs.length, 26);
+        assert.equal(heads.configs.length, 50);
+        assert.equal(heads.getConfig(1050).name, '潘凤');
         assert.equal(heads.getConfig(1001).name, '吕布');
         const SkillProxy = h.load('skill/SkillProxy').default;
         const skills = new SkillProxy();
         skills.initSkillConfig(json('Skill'));
-        assert.equal(skills.skillConfs.length, 15);
+        assert.equal(skills.skillConfs.length, json('Skill').length, '所有技能配置都应进入客户端列表');
         const paths = heads.configs.map(row => heads.getIconPath(row.id))
             .concat(skills.skillConfs.map(row => skills.getIconPath(row.cfgId)));
         for (const resource of paths) {
@@ -183,6 +186,7 @@ async function main() {
         const main = new Main();
         main._enteringMap = true;
         main._mapReady = main._mapUiReady = main._heroAssetsReady = main._skillAssetsReady = true;
+        main._inventoryAssetsReady = main._chatAssetsReady = true;
         let uiReady = false;
         h.events.on(h.load('core/CoreEvent').CoreEvent.gameReady, () => { uiReady = true; }, main);
         main.tryFinishLoading();
@@ -225,18 +229,18 @@ async function main() {
         const h = harness();
         h.authenticate();
         h.command.notifyClientLoaded();
-        assert.equal(h.command.changeHeadIcon(1002), true);
+        assert.equal(h.command.changeHeadIcon(1050), true);
         assert.equal(h.command.proxy.getRoleData().headIcon, 1001);
         assert.equal(h.command.changeHeadIcon(1003), false);
         const requests = h.sent.filter(msg => msg.name === h.server.c2s_change_head_icon);
         assert.equal(requests.length, 1);
-        assert.equal(requests[0].data.headIcon, 1002);
+        assert.equal(requests[0].data.headIcon, 1050);
         assert.equal(h.proto.getIdByMsgType(requests[0].name), JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/protbuf/net_pb.json'), 'utf8')).define.User.c2s_change_head_icon);
-        h.events.emit(h.server.s2c_change_head_icon, { headIcon: 1002 });
+        h.events.emit(h.server.s2c_change_head_icon, { headIcon: 1050 });
         assert.equal(h.command.changingHeadIcon, false);
-        assert.equal(h.command.proxy.getRoleData().headIcon, 1002);
+        assert.equal(h.command.proxy.getRoleData().headIcon, 1050);
         h.events.emit(h.server.s2c_client_load_ok, { headIcon: 1001 });
-        assert.equal(h.command.proxy.getRoleData().headIcon, 1002);
+        assert.equal(h.command.proxy.getRoleData().headIcon, 1050);
         assert.equal(h.command.changeHeadIcon(99999), false);
     });
     await test('未开放、发送失败、超时和断线均保留服务器确认的头像', () => {

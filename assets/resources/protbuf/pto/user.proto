@@ -19,6 +19,24 @@ message s2c_user_base_info {
 	int64 allianceId = 9;                   // 联盟 id，0=无联盟
 }
 
+// 查看其它玩家（点头像、主城等）。不含经验、兵力、资源
+message c2s_req_other_user {
+	int64 uid = 1;
+}
+
+message s2c_req_other_user {
+	int64 uid = 1;
+	string name = 2;
+	int32 headIcon = 3;
+	int32 sex = 4;
+	int32 level = 5;                       // 角色等级
+	int64 power = 6;                       // 战力
+	int32 cityLevel = 7;                   // 主城建筑等级 BuildingDetail.Id=1
+	int64 allianceId = 8;                  // 0=无联盟
+	string allianceName = 9;
+	int32 offlineTime = 10;                // 0=在线，否则上次离线时间
+}
+
 // 同步城中兵力
 message s2c_sync_soldier {
 	Common.p_soldier_info soldierInfo = 1;

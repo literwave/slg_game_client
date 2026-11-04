@@ -3,9 +3,9 @@ const { ccclass, property } = _decorator;
 
 const FONT_SIZE = 16;
 const LINE_HEIGHT = 22;
-const LEFT_PADDING = 48;
+const LEFT_PADDING = 22;
 const RIGHT_PADDING = 22;
-const VERTICAL_PADDING = 9;
+const VERTICAL_PADDING = 6;
 
 @ccclass('Toast')
 export default class Toast extends Component {
@@ -49,6 +49,9 @@ export default class Toast extends Component {
         const maxWidth = Math.max(80, Math.min(440, size.width - 40));
         const labelUi = label.node.getComponent(UITransform);
         label.customMaterial = null;
+        label.font = null;
+        label.useSystemFont = true;
+        label.fontFamily = 'Microsoft YaHei';
         label.fontSize = FONT_SIZE;
         label.lineHeight = LINE_HEIGHT;
         label.color = new Color(239, 229, 205, 255);
@@ -65,7 +68,7 @@ export default class Toast extends Component {
         label.overflow = Label.Overflow.NONE;
         label.enableWrapText = false;
         label.updateRenderData(true);
-        const width = Math.min(maxWidth, Math.max(208, Math.ceil(labelUi.width) + LEFT_PADDING + RIGHT_PADDING));
+        const width = Math.min(maxWidth, Math.max(120, Math.ceil(labelUi.width) + LEFT_PADDING + RIGHT_PADDING));
         const textWidth = Math.max(10, width - LEFT_PADDING - RIGHT_PADDING);
         labelUi.setContentSize(textWidth, LINE_HEIGHT);
         label.overflow = Label.Overflow.RESIZE_HEIGHT;
@@ -97,30 +100,19 @@ export default class Toast extends Component {
             const g = surface.getComponent(Graphics);
             g.clear();
             const left = -width / 2, bottom = -height / 2;
-            g.fillColor = new Color(10, 14, 10, 65);
-            g.roundRect(left - 2, bottom - 4, width + 4, height + 3, 6);
+            // 两端渐隐的墨色底，只衬托文字，不再使用按钮式边框或通知图标。
+            const feather = 22, steps = 12, alpha = 210;
+            g.fillColor = new Color(24, 29, 24, alpha);
+            g.rect(left + feather, bottom, width - feather * 2, height);
             g.fill();
-            g.fillColor = new Color(30, 35, 28, 247);
-            g.moveTo(left + 6, bottom); g.lineTo(-left - 6, bottom);
-            g.lineTo(-left, bottom + 6); g.lineTo(-left, -bottom - 6);
-            g.lineTo(-left - 6, -bottom); g.lineTo(left + 6, -bottom);
-            g.lineTo(left, -bottom - 6); g.lineTo(left, bottom + 6); g.close();
-            g.fill();
-            g.strokeColor = new Color(170, 143, 90, 185);
-            g.lineWidth = 1;
-            g.stroke();
-            g.strokeColor = new Color(229, 198, 134, 135);
-            g.moveTo(left + 12, -bottom - 2); g.lineTo(-left - 12, -bottom - 2); g.stroke();
-
-            // 小笺表示通知，不把成功和普通信息都画成警告符号。
-            const iconX = left + 25;
-            g.fillColor = new Color(166, 134, 77, 30); g.circle(iconX, 0, 13); g.fill();
-            g.strokeColor = new Color(212, 180, 117); g.lineWidth = 1.4;
-            g.moveTo(iconX - 6, -8); g.lineTo(iconX + 6, -8); g.lineTo(iconX + 6, 4);
-            g.lineTo(iconX + 2, 8); g.lineTo(iconX - 6, 8); g.close(); g.stroke();
-            g.moveTo(iconX + 2, 8); g.lineTo(iconX + 2, 4); g.lineTo(iconX + 6, 4);
-            g.moveTo(iconX - 3, 1); g.lineTo(iconX + 2, 1);
-            g.moveTo(iconX - 3, -3); g.lineTo(iconX + 3, -3); g.stroke();
+            for (let i = 0; i < steps; i++) {
+                const t = (i + .5) / steps;
+                g.fillColor = new Color(24, 29, 24, Math.round(alpha * t * t * (3 - 2 * t)));
+                const band = feather / steps, inset = (1 - t) * 2;
+                g.rect(left + i * band, bottom + inset, band, height - inset * 2);
+                g.rect(-left - (i + 1) * band, bottom + inset, band, height - inset * 2);
+                g.fill();
+            }
         }
 
         const centerX = parentUi ? (.5 - parentUi.anchorX) * size.width : 0;
@@ -170,7 +162,7 @@ export default class Toast extends Component {
 
         // 连点同一操作只延长停留，不反复闪烁或堆叠提示。
         if (repeat) {
-            this.scheduleOnce(this.onRemove, Math.min(4.5, Math.max(2.2, message.length * .07)));
+            this.scheduleOnce(this.onRemove, Math.min(4.5, Math.max(1.6, message.length * .1)));
             return;
         }
         this.node.setPosition(this._basePosition.x, this._basePosition.y + 5, this._basePosition.z);
@@ -185,6 +177,6 @@ export default class Toast extends Component {
                 .start();
         }
 
-        this.scheduleOnce(this.onRemove, Math.min(4.5, Math.max(2.2, message.length * .07)));
+        this.scheduleOnce(this.onRemove, Math.min(4.5, Math.max(1.6, message.length * .1)));
     }
 }

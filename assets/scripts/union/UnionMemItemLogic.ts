@@ -14,6 +14,7 @@ import { Member } from "./UnionProxy";
 import { EventMgr } from '../utils/EventMgr';
 import { AudioManager } from '../common/AudioManager';
 import { LogicEvent } from '../common/LogicEvent';
+import { hasId } from '../network/pto/ProtocolCommand';
 
 @ccclass('UnionMemItemLogic')
 export default class UnionMemItemLogic extends Component {
@@ -62,7 +63,9 @@ export default class UnionMemItemLogic extends Component {
     
     protected jump():void{
         AudioManager.instance.playClick();
-        EventMgr.emit(LogicEvent.showToast, '暂时无法定位该成员');
+        if (this._menberData && hasId(this._menberData.rid)) {
+            EventMgr.emit(LogicEvent.openPlayerProfile, this._menberData.rid);
+        }
     }
 
 }

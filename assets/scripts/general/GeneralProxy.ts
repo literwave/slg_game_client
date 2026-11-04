@@ -250,6 +250,11 @@ export default class GeneralProxy {
         this.initHeroConfig(cfgs, bCost);
     }
 
+    /** 旧军队列表仍使用公共体力配置，与武将配置初始化共用同一份数据。 */
+    public getCommonCfg(): GeneralCommonConfig {
+        return this._commonConfig;
+    }
+
     public initGeneralTex(texs: SpriteFrame[]): void {
         this._heroTexs.clear();
         const nameMap: Map<string, SpriteFrame> = new Map();

@@ -16,8 +16,19 @@ export default class SkillIconLogic extends Component {
     _data: Skill = null;
     private _iconRequest: number = 0;
 
+    protected onLoad(): void {
+        this.hideLegacyFrame();
+    }
+
+    private hideLegacyFrame(): void {
+        // 旧圆形饰框没有状态含义；保留节点和等级引用，仅关闭装饰 Sprite。
+        const frame = this.node.getChildByName('wrap')?.getComponent(Sprite);
+        if (frame) frame.enabled = false;
+    }
+
     public setData(data:Skill, gdata:gSkill):void{
 
+        this.hideLegacyFrame();
         this._data = data;
         const request = ++this._iconRequest;
 

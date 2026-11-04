@@ -189,7 +189,7 @@ function row(node: Node, width: number, kind: string): void {
         label(node, 'title', -width / 2 + 50, 0, 68, 13, C.gold);
         label(node, 'name', -width / 2 + 100 + (width - 214) / 2, 11, width - 214, 18);
         label(node, 'pos', -width / 2 + 100 + (width - 214) / 2, -16, width - 214, 12, C.muted);
-        panelButton(node.getChildByName('jump'), '定位', width / 2 - 48, 0, 72, 38);
+        panelButton(node.getChildByName('jump'), '资料', width / 2 - 48, 0, 72, 38);
     } else if (kind === 'apply') {
         label(node, 'name', -width / 2 + 16 + (width - 182) / 2, 0, width - 182, 17);
         panelButton(button(node, 'verify', '1'), '同意', width / 2 - 118, 0, 68, 38, true);

@@ -1,4 +1,4 @@
-import { _decorator, BlockInputEvents, Component, Node, Prefab, instantiate, Label, Mask, ScrollView, UITransform, Vec2, sys, view } from 'cc';
+import { _decorator, BlockInputEvents, Button, Component, Node, Prefab, instantiate, Label, Mask, ScrollView, UITransform, UIOpacity, Vec2, sys, view } from 'cc';
 const { ccclass, property } = _decorator;
 
 import { ArmyCmd } from "../../general/ArmyProxy";
@@ -30,7 +30,14 @@ export default class ArmySelectNodeLogic extends Component {
     private viewport: Node = null;
     private status: Label = null;
     private targetLabel: Label = null;
-    private hint: Label = null;
+    private statusTitle: Label = null;
+    private stateArt: Node = null;
+    private primaryButton: Node = null;
+    private secondaryButton: Node = null;
+    private state: 'list' | 'empty' | 'loading' | 'error' | 'invalid' = 'loading';
+    private primaryAction: 'dispatch' | 'formation' | 'retry' | 'choose' | 'none' = 'none';
+    private selectedTroopIdx = 0;
+    private targetRevision = 0;
     private hiddenSidebar: { node: Node; active: boolean }[] = [];
     private itemCount = 3;
     private rowWidth = 560;
@@ -43,7 +50,8 @@ export default class ArmySelectNodeLogic extends Component {
         this.buildPanel();
         EventMgr.on(LogicEvent.closeArmyAelectUi, this.close, this);
         for (const event of [LogicEvent.updateTroopList, LogicEvent.troopListState, LogicEvent.troopEditState,
-            LogicEvent.updateMarches, LogicEvent.updateMyGenerals, LogicEvent.protocolRequestChanged]) {
+            LogicEvent.updateMarches, LogicEvent.updateMyGenerals, LogicEvent.protocolRequestChanged,
+            LogicEvent.updateCity, LogicEvent.updateCitys]) {
             EventMgr.on(event, this.queueRefresh, this);
         }
         EventMgr.on(LogicEvent.updateWorldEntities, this.onTargetEntitiesChanged, this);
@@ -83,10 +91,13 @@ export default class ArmySelectNodeLogic extends Component {
     }
 
     private close(): void {
+        this.targetRevision++;
+        this.resourceTarget = null;
         this.node.active = false;
     }
 
     public setData(cmd: number | 'move', x: number, y: number): void {
+        this.targetRevision++;
         const map = MapCommand.getInstance();
         const id = MapUtil.getIdByCellPoint(x, y), cell = map.proxy.getResData(id);
         // 移动按坐标，资源占领按实体；两种操作都只使用新版 World 部队。
@@ -124,7 +135,7 @@ export default class ArmySelectNodeLogic extends Component {
         const offset = resetScroll ? 0 : this.scroll?.getScrollOffset().y || 0;
         if (!this.resourceTarget) {
             if (this.targetLabel) this.targetLabel.string = '';
-            this.showStatus('当前目标暂不支持出征\n请返回地图选择资源地');
+            this.showStatus('请选择空地或资源地', 'invalid');
             return;
         }
         const { x, y, action } = this.resourceTarget, map = MapCommand.getInstance(), command = TroopCommand.getInstance();
@@ -135,15 +146,16 @@ export default class ArmySelectNodeLogic extends Component {
         const issue = action === 'move' ? map.moveTargetIssue(x, y)
             : blocked ? '目标已变更，请重新选择空地或资源地'
             : map.campaignBlockReason(x, y) || (empty ? world.emptyLandIssue(x, y) : world.resourceLandIssue(x, y, cell.type, cell.level));
-        if (this.targetLabel) this.targetLabel.string = action === 'move' ? `移动至 (${x}, ${y})`
-            : `占领 · ${empty ? '空地' : `${cell?.level || ''}级资源地`} (${x}, ${y})`;
-        if (issue) { this.showStatus(issue); return; }
+        const resourceName = { 52: '林地', 53: '铁矿', 54: '石料', 55: '粮田' }[cell?.type] || '资源地';
+        if (this.targetLabel) this.targetLabel.string = action === 'move' ? `目的地  ·  ${x}, ${y}`
+            : `${empty ? '空地' : `${cell?.level || ''}级${resourceName}`}  ·  ${x}, ${y}`;
+        if (issue) { this.showStatus(issue, 'invalid'); return; }
         if (!command.listReady) {
-            this.showStatus(command.listLoading ? '正在同步部队…' : '部队数据尚未同步\n请稍后重新打开选择队伍');
+            this.showStatus(command.listLoading ? '正在同步部队…' : '部队同步失败', command.listLoading ? 'loading' : 'error');
             return;
         }
         const troops = command.proxy.getTroops();
-        if (!troops.length) { this.showStatus('暂无已编成的部队\n请先进入主城编队并配置兵力'); return; }
+        if (!troops.length) { this.showStatus('编入武将，分配兵力', 'empty'); return; }
         this.showStatus('');
         this.itemCount = troops.length;
         this.layoutPanel();
@@ -158,18 +170,116 @@ export default class ArmySelectNodeLogic extends Component {
             used.add(item);
             const logic = item.getComponent(ArmySelectItemLogic);
             logic.setTroopData(troop, x, y, action);
+            logic.onSelected = troopIdx => { this.selectedTroopIdx = troopIdx; this.updateSelection(); };
             logic.layoutRow(this.rowWidth, ROW_HEIGHT);
             item.setPosition(0, -ROW_HEIGHT / 2 - index * (ROW_HEIGHT + ROW_GAP), 0);
         }
         for (const child of [...this.armyContainer.children]) if (!used.has(child)) { child.removeFromParent(); child.destroy(); }
+        if (!troops.some(troop => troop.troopIdx === this.selectedTroopIdx)) {
+            this.selectedTroopIdx = troops.find(troop =>
+                !this.armyContainer.getChildByName(`Troop${troop.troopIdx}`)?.getComponent(ArmySelectItemLogic)?.selectionIssue)?.troopIdx
+                || troops[0].troopIdx;
+        }
         this.sizeContent(troops.length, offset);
+        this.updateSelection();
     }
 
-    private showStatus(text: string): void {
+    private showStatus(text: string, state: 'empty' | 'loading' | 'error' | 'invalid' = 'error'): void {
+        this.state = text ? state : 'list';
         if (this.status) { this.status.string = text; this.status.node.active = !!text; }
-        if (text) {
-            this.clearItems(); this.itemCount = 0; this.layoutPanel(); this.sizeContent(0, 0);
+        if (this.statusTitle) {
+            this.statusTitle.node.active = state === 'empty' && !!text;
+            this.statusTitle.string = '尚未编队';
         }
+        if (this.stateArt) this.stateArt.active = state === 'empty' && !!text;
+        if (text) {
+            this.clearItems(); this.itemCount = 0; this.selectedTroopIdx = 0;
+            this.layoutPanel(); this.sizeContent(0, 0);
+        }
+    }
+
+    private updateSelection(): void {
+        for (const item of this.armyContainer.children) {
+            const logic = item.getComponent(ArmySelectItemLogic);
+            if (logic) logic.setSelected(item.name === `Troop${this.selectedTroopIdx}`);
+        }
+        this.layoutActions();
+    }
+
+    private selectedItem(): ArmySelectItemLogic | null {
+        return this.armyContainer?.getChildByName(`Troop${this.selectedTroopIdx}`)?.getComponent(ArmySelectItemLogic) || null;
+    }
+
+    private onPrimary(): void {
+        if (this.primaryAction === 'formation') { this.openFormation(); return; }
+        if (this.primaryAction === 'choose') { this.onClickBack(); return; }
+        if (this.primaryAction === 'retry') {
+            AudioManager.instance.playClick();
+            TroopCommand.getInstance().requestTroops(true);
+            this.refreshTroops();
+            return;
+        }
+        if (this.primaryAction === 'dispatch') this.selectedItem()?.dispatchOrder();
+    }
+
+    private onSecondary(): void {
+        if (this.state === 'list' && WorldCommand.getInstance().isTroopAtHome(this.selectedTroopIdx)) this.openFormation();
+        else this.onClickBack();
+    }
+
+    private openFormation(): void {
+        const city = MapCommand.getInstance().cityProxy.getMyMainCity();
+        if (!city?.cityId || !this.resourceTarget) return;
+        const revision = this.targetRevision;
+        const index = this.selectedTroopIdx || 1;
+        AudioManager.instance.playClick();
+        this.node.active = false;
+        EventMgr.emit(LogicEvent.openArmySetting, city.cityId, index, () => {
+            // 只响应本次编队返回；关闭选队、换目标或场景销毁后不能重新弹出旧目标。
+            if (!this.isValid || !this.node.isValid || revision !== this.targetRevision || !this.resourceTarget) return;
+            this.node.active = true;
+            TroopCommand.getInstance().requestTroops();
+            this.refreshTroops(true);
+        });
+    }
+
+    private layoutActions(): void {
+        if (!this.primaryButton || !this.panel) return;
+        const { width, height } = this.panel.getComponent(UITransform);
+        const command = TroopCommand.getInstance();
+        const cityReady = !!MapCommand.getInstance().cityProxy.getMyMainCity()?.cityId;
+        const troop = command.proxy.getTroop(this.selectedTroopIdx);
+        const leader = troop?.getHeroIdxAt(0);
+        const atHome = WorldCommand.getInstance().isTroopAtHome(this.selectedTroopIdx);
+        this.primaryAction = 'none';
+        let text = '正在同步…';
+        if (this.state === 'empty') {
+            text = cityReady ? '前往编队' : '主城同步中…';
+            if (cityReady && !command.editingTroopIdx) this.primaryAction = 'formation';
+        } else if (this.state === 'error') {
+            text = '重试同步'; this.primaryAction = 'retry';
+        } else if (this.state === 'invalid') {
+            text = '重选目标'; this.primaryAction = 'choose';
+        } else if (this.state === 'list') {
+            const issue = this.selectedItem()?.selectionIssue;
+            if ((!leader || troop.getSoldier(leader).count <= 0) && atHome) {
+                text = leader ? '补充兵力' : '前往编队';
+                if (cityReady && command.listReady && !command.editingTroopIdx) this.primaryAction = 'formation';
+            } else {
+                text = this.resourceTarget?.action === 'move' ? '确认移动' : '确认出征';
+                if (troop && !issue) this.primaryAction = 'dispatch';
+            }
+        }
+        const y = -height / 2 + 34, secondaryWidth = 88, gap = 10;
+        panelButton(this.secondaryButton, this.state === 'list' && atHome ? '编队' : '返回地图',
+            -width / 2 + 16 + secondaryWidth / 2, y, secondaryWidth, 44);
+        const primaryWidth = width - 32 - secondaryWidth - gap;
+        panelButton(this.primaryButton, text, width / 2 - 16 - primaryWidth / 2, y, primaryWidth, 44, true);
+        this.primaryButton.getComponent(Button).interactable = this.primaryAction !== 'none';
+        this.primaryButton.getComponent(UIOpacity).opacity = this.primaryAction === 'none' ? 140 : 255;
+        const secondaryReady = this.state !== 'list' || !atHome || (cityReady && !command.editingTroopIdx);
+        this.secondaryButton.getComponent(Button).interactable = secondaryReady;
+        this.secondaryButton.getComponent(UIOpacity).opacity = secondaryReady ? 255 : 140;
     }
 
     private sizeContent(count: number, offset: number): void {
@@ -179,7 +289,7 @@ export default class ArmySelectNodeLogic extends Component {
         this.armyContainer.getComponent(UITransform).setContentSize(this.viewWidth, height);
         this.armyContainer.setPosition(0, this.viewHeight / 2, 0);
         this.scroll.scrollToOffset(new Vec2(0, Math.max(0, Math.min(offset, height - this.viewHeight))), 0);
-        if (this.hint) this.hint.string = height > this.viewHeight + 1 ? '上下滑动选择部队' : '点选地图可重新选择目标';
+
     }
 
     private buildPanel(): void {
@@ -209,7 +319,20 @@ export default class ArmySelectNodeLogic extends Component {
         this.scroll.content = this.armyContainer;
         this.status = caption(this.panel, 'Status', '', 0, -28, 400, 17, C.muted, Label.HorizontalAlign.CENTER);
         this.targetLabel = caption(this.panel, 'Target', '', 0, 0, 400, 15, C.muted);
-        this.hint = caption(this.panel, 'Hint', '', 0, 0, 280, 12, C.muted, Label.HorizontalAlign.CENTER);
+        this.statusTitle = caption(this.panel, 'StateTitle', '', 0, 0, 280, 18, C.text, Label.HorizontalAlign.CENTER);
+        const art = inkSurface(this.panel, 'EmptyFormation', 80, 58, null, null);
+        this.stateArt = art.node;
+        art.lineWidth = 1.5; art.strokeColor = C.line;
+        art.roundRect(-34, -22, 22, 30, 2); art.roundRect(12, -22, 22, 30, 2); art.stroke();
+        art.strokeColor = C.gold; art.roundRect(-13, -6, 26, 36, 2);
+        art.moveTo(-6, 12); art.lineTo(6, 12); art.moveTo(0, 6); art.lineTo(0, 18); art.stroke();
+        for (const [name, handler] of [['PrimaryAction', this.onPrimary], ['SecondaryAction', this.onSecondary]] as const) {
+            const button = new Node(name); button.layer = this.node.layer; this.panel.addChild(button);
+            button.addComponent(UITransform); button.addComponent(Button); button.addComponent(UIOpacity);
+            button.on(Button.EventType.CLICK, handler, this);
+            if (name === 'PrimaryAction') this.primaryButton = button; else this.secondaryButton = button;
+        }
+        this.statusTitle.node.active = this.stateArt.active = false;
         for (const label of this.panel.getComponentsInChildren(Label)) {
             label.font = null; label.useSystemFont = true; label.fontFamily = 'Microsoft YaHei';
         }
@@ -224,24 +347,33 @@ export default class ArmySelectNodeLogic extends Component {
         place(this.node, 0, 0, size.width, size.height);
         // 当前 UI 根没有 SafeArea，直接使用 Creator 返回的设计坐标安全矩形一次。
         const safe = sys.getSafeAreaRect();
-        const width = Math.min(320, Math.max(280, safe.width * .3), safe.width - 24);
-        const top = Math.min(96, safe.height * .2), bottom = Math.min(92, safe.height * .18);
+        const width = Math.min(328, Math.max(280, safe.width * .3), safe.width - 24);
+        const top = Math.min(96, safe.height * .16), bottom = 20;
         const rows = Math.max(1, Math.min(3, this.itemCount));
-        const height = Math.min(100 + rows * ROW_HEIGHT + (rows - 1) * ROW_GAP, safe.height - top - bottom);
+        const contentHeight = this.state === 'list' ? 156 + rows * ROW_HEIGHT + (rows - 1) * ROW_GAP : this.state === 'empty' ? 300 : 248;
+        const height = Math.min(contentHeight, safe.height - top - bottom);
         place(this.panel, safe.x + safe.width - size.width / 2 - width / 2 - 12,
             safe.y + safe.height - size.height / 2 - top - height / 2, width, height);
         inkSurface(this.panel, 'Surface', width, height, C.ink, C.line);
         const title = this.panel.getChildByName('Label')?.getComponent(Label);
         textStyle(title, -18, height / 2 - 25, width - 64, 18, C.text);
-        if (title) title.string = '选择部队';
-        panelButton(this.panel.getChildByName('btnClose'), '', width / 2 - 26, height / 2 - 25, 36, 36, false, true);
+        if (title) title.string = this.resourceTarget?.action === 'move' ? '调动部队' : '出征部队';
+        panelButton(this.panel.getChildByName('btnClose'), '', width / 2 - 30, height / 2 - 27, 40, 40, false, true);
         textStyle(this.targetLabel, 0, height / 2 - 50, width - 28, 13, C.gold, Label.HorizontalAlign.LEFT, 22);
         headerRule(this.panel, width - 24, height / 2 - 66);
-        this.viewWidth = this.rowWidth = width - 24; this.viewHeight = height - 100;
-        place(this.scroll.node, 0, -26, this.viewWidth, this.viewHeight);
+        this.viewWidth = this.rowWidth = width - 24; this.viewHeight = Math.max(32, height - 156);
+        place(this.scroll.node, 0, -6, this.viewWidth, this.viewHeight);
+        this.scroll.node.active = this.state === 'list';
         place(this.viewport, 0, 0, this.viewWidth, this.viewHeight);
-        textStyle(this.status, 0, -26, width - 48, 14, C.muted, Label.HorizontalAlign.CENTER, this.viewHeight);
-        this.status.enableWrapText = true; this.status.lineHeight = 24;
-        textStyle(this.hint, 0, -height / 2 + 12, width - 24, 12, C.muted, Label.HorizontalAlign.CENTER, 18);
+        const compact = this.viewHeight < 120;
+        if (this.stateArt) {
+            this.stateArt.active = this.state === 'empty' && !compact;
+            this.stateArt.setPosition(0, 30, 0);
+        }
+        textStyle(this.statusTitle, 0, compact ? 6 : -16, width - 40, 18, C.text, Label.HorizontalAlign.CENTER, 28);
+        textStyle(this.status, 0, this.state === 'empty' ? (compact ? -24 : -48) : -6,
+            width - 48, 14, C.muted, Label.HorizontalAlign.CENTER, this.state === 'empty' ? 24 : this.viewHeight);
+        this.status.enableWrapText = true; this.status.lineHeight = 22;
+        this.layoutActions();
     }
 }

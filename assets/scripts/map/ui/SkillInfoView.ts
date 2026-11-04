@@ -33,6 +33,7 @@ export default class SkillInfoView {
     private readonly hint: Label;
     private level = 0;
     private hasNext = false;
+    private equipmentSummary = '';
     private arranging = false;
 
     constructor(private readonly root: Node, private readonly ui: SkillInfoElements) {
@@ -92,9 +93,11 @@ export default class SkillInfoView {
         this.refreshSize();
     }
 
-    public show(level: number, hasNext: boolean): void {
+    public show(level: number, hasNext: boolean, equippedCount?: number, limit = 0): void {
         this.level = level;
         this.hasNext = hasNext;
+        this.equipmentSummary = equippedCount == null ? ''
+            : `装备 ${equippedCount}${limit > 0 ? ' / ' + limit : ''}`;
         this.refreshSize();
         this.scroll.scrollToTop(0);
     }
@@ -122,7 +125,7 @@ export default class SkillInfoView {
 
             const factHeight = this.layoutFacts(bodyWidth, compact);
             const currentHeight = this.layoutEffect(this.currentCard, this.ui.current, bodyWidth,
-                '当前效果', this.level ? `${this.level}级` : '—', false, compact);
+                '当前效果', this.equipmentSummary || (this.level ? `${this.level}级` : '—'), false, compact);
             this.nextCard.active = this.level > 0;
             const nextHeight = this.level > 0 ? this.layoutEffect(this.nextCard, this.ui.next, bodyWidth,
                 this.hasNext ? '升级预览' : '', `${this.level + 1}级`, true, compact) : 0;
@@ -161,7 +164,7 @@ export default class SkillInfoView {
         const textWidth = width / 2 - 62 - nameLeft;
         place(this.ui.icon, left + iconSize / 2, -2, iconSize, iconSize);
         const wrap = this.ui.icon.getChildByName('wrap');
-        if (wrap) place(wrap, 0, 0, iconSize, iconSize);
+        if (wrap) { hideSprite(wrap); place(wrap, 0, 0, iconSize, iconSize); }
         caption(this.header, 'Eyebrow', '战 法 详 情', nameLeft + textWidth / 2, 38,
             textWidth, 12, C.gold);
         textStyle(this.ui.name, nameLeft + textWidth / 2, 7, textWidth, compact ? 26 : 32, C.text,
@@ -230,8 +233,9 @@ export default class SkillInfoView {
         }
         const heading = caption(card, 'Heading', title, 0, height / 2 - 25, width - inset * 2,
             17, next ? C.muted : C.gold);
-        const badge = caption(card, 'LevelBadge', level, width / 2 - inset - 32, height / 2 - 25,
-            64, 14, next ? new Color(168, 194, 163, 255) : C.gold, Label.HorizontalAlign.RIGHT);
+        const badgeWidth = next ? 64 : 112;
+        const badge = caption(card, 'LevelBadge', level, width / 2 - inset - badgeWidth / 2, height / 2 - 25,
+            badgeWidth, 14, next ? new Color(168, 194, 163, 255) : C.gold, Label.HorizontalAlign.RIGHT);
         heading.node.active = badge.node.active = !maxed;
         label.node.setPosition(0, height / 2 - (maxed ? 16 : 52), 0);
         return height;

@@ -5,11 +5,16 @@ import { LogicEvent as E } from '../common/LogicEvent';
 import { EventMgr } from '../utils/EventMgr';
 import LoginCommand from '../login/LoginCommand';
 import { resourceLandForCell } from './ResourceLand';
+import { TargetTypeEnum } from '../config/enum/TargetTypeEnum';
+import { EntityTypeEnum } from '../config/enum/EntityTypeEnum';
 
 /** 路径中的p_pos_f保留小数；只有目的格和视野中心使用整数坐标。 */
 export interface WorldPosition { x: number; y: number; }
 /** 与 game_common 的 TargetType 配置一致；坐标移动不需要实体 ID。 */
-export enum MarchTargetType { ReturnCity = 1, AttackMonster = 2, OccupyResource = 3, Move = 4 }
+export enum MarchTargetType {
+    ReturnCity = TargetTypeEnum.RETURN_CITY, AttackMonster = TargetTypeEnum.ATTACK_MONSTER,
+    OccupyResource = TargetTypeEnum.OCCUPY_RES_LAND, Move = TargetTypeEnum.MOVE,
+}
 export interface MarchInfo {
     troopIdx: number; targetType: number; targetId: number | string;
     startPos: WorldPosition; endPos: WorldPosition; startTime: number; endTime: number;
@@ -33,6 +38,8 @@ export default class WorldCommand extends ProtocolCommand {
     private lastFocus = '';
     private focusTimer: ReturnType<typeof setTimeout> | null = null;
     private reconcileSnapshot: (() => void) | null = null;
+    private pathRequests = new Map<string, WorldEntity>();
+    private failedPaths = new Map<string, string>();
     constructor() {
         super();
         this.listen(S.s2c_req_march_list, d => {
@@ -54,11 +61,42 @@ export default class WorldCommand extends ProtocolCommand {
             this.notifyMarches();
         });
         [S.s2c_aoi_enter, S.s2c_aoi_update].forEach(name => this.listen(name, d => {
-            for (const entity of d.entities || []) if (hasId(entity.entityId)) this.entities.set(idKey(entity.entityId), entity);
+            for (const entity of d.entities || []) {
+                if (!hasId(entity?.entityId)) continue;
+                const id = idKey(entity.entityId), previous = this.entities.get(id);
+                // 同一次行军的 AOI 简报可以不带路线；改道、驻留和重新进入视野不能沿用旧路。
+                if (name === S.s2c_aoi_update && previous && this.pathVersion(previous) === this.pathVersion(entity)
+                    && this.isMovingEntity(entity) && !this.validPath(entity.path) && this.validPath(previous.path)) {
+                    entity.path = previous.path;
+                }
+                this.entities.set(id, entity);
+                this.requestMarchPath(entity.entityId);
+            }
             this.notifyEntities();
         }));
+        this.listen(S.s2c_req_march_path, d => {
+            const id = idKey(d.entityId), requested = this.pathRequests.get(id);
+            if (!requested) return;
+            this.pathRequests.delete(id); this.finish(`march-path:${id}`);
+            const current = this.entities.get(id);
+            if (!current || !this.isMovingEntity(current)) return;
+            // 回包没有版本号：同实体只允许一个查询在途，旧行军的回包结束后才能查询新路线。
+            if (this.pathVersion(current) !== this.pathVersion(requested)) {
+                this.requestMarchPath(current.entityId); return;
+            }
+            if (!this.validPath(d.path)) { this.failedPaths.set(id, this.pathVersion(current)); return; }
+            if (!this.validPath(current.path)) {
+                current.path = d.path.map(p => ({ x: p.x, y: p.y }));
+                this.failedPaths.delete(id); this.notifyEntities();
+            }
+        });
         this.listen(S.s2c_aoi_leave, d => {
-            for (const id of d.entityIds || []) this.entities.delete(idKey(id));
+            for (const id of d.entityIds || []) {
+                const key = idKey(id); this.entities.delete(key); this.failedPaths.delete(key);
+                // 留下在途请求锁，防止同一实体迅速重新进入时把旧回包认成新查询。
+                const pending = this.pathRequests.get(key);
+                if (pending) this.pathRequests.set(key, { ...pending, startTime: -1 });
+            }
             this.notifyEntities();
         });
         EventMgr.on(E.updateCityPosition, this.focus, this);
@@ -72,6 +110,7 @@ export default class WorldCommand extends ProtocolCommand {
         if (this.focusTimer !== null) clearTimeout(this.focusTimer);
         this.focusTimer = null;
         this.reconcileSnapshot = null;
+        this.pathRequests.clear(); this.failedPaths.clear();
         this.notifyMarches();
         this.notifyEntities();
     }
@@ -81,6 +120,32 @@ export default class WorldCommand extends ProtocolCommand {
     }
     private notifyMarches(): void { EventMgr.emit(E.updateMarches, this.marches.values()); }
     private notifyEntities(): void { EventMgr.emit(E.updateWorldEntities, Array.from(this.entities.values())); }
+    private pathVersion(entity: WorldEntity): string {
+        return `${entity.entityType}:${idKey(entity.ownerId)}:${entity.startTime}:${entity.endTime}`;
+    }
+    private isMovingEntity(entity: WorldEntity): boolean {
+        return entity?.entityType === EntityTypeEnum.TROOP && Number.isFinite(entity.startTime)
+            && Number.isFinite(entity.endTime) && entity.endTime > entity.startTime && entity.startTime > 0;
+    }
+    private validPath(path: WorldPosition[]): boolean {
+        return Array.isArray(path) && path.length >= 2 && path.every(p => p && Number.isFinite(p.x)
+            && Number.isFinite(p.y) && p.x >= 0 && p.y >= 0 && p.x < 1000 && p.y < 1000);
+    }
+    /** 缺少路线时按 AOI 实体补查一次；保留浮点拐点，不在每帧重复请求。 */
+    requestMarchPath(entityId: number | string): boolean {
+        if (!hasId(entityId)) return false;
+        const id = idKey(entityId), entity = this.entities.get(id);
+        if (!entity || !this.isMovingEntity(entity) || this.validPath(entity.path)
+            || this.pathRequests.has(id) || this.failedPaths.get(id) === this.pathVersion(entity)) return false;
+        this.pathRequests.set(id, entity);
+        const sent = this.request(S.c2s_req_march_path, { entityId }, `march-path:${id}`, () => {
+            this.pathRequests.delete(id); this.failedPaths.set(id, this.pathVersion(entity));
+            const current = this.entities.get(id);
+            if (current && this.pathVersion(current) !== this.pathVersion(entity)) this.requestMarchPath(current.entityId);
+        }, true);
+        if (!sent) this.pathRequests.delete(id);
+        return sent;
+    }
     requestMarches(): boolean {
         if (!this.sessionReady || this.isPending(S.c2s_req_march_list)) return false;
         this.reconcileSnapshot = this.capturePending('march:');

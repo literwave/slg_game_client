@@ -152,7 +152,9 @@ test('MOVE 按坐标无实体移动，确认后同步位置；忙碌、重复、
     const h = harness();
     const config = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/TargetType.json'), 'utf8'));
     const type = h.load('world/WorldCommand').MarchTargetType.Move;
-    assert.equal(type, Object.values(config).find(c => c.Enum === 'MOVE').Id);
+    const generated = h.load('config/enum/TargetTypeEnum').TargetTypeEnum;
+    assert.equal(type, generated.MOVE);
+    assert.ok(Object.values(config).some(c => c.Id === generated.MOVE));
     assert.equal(h.world.moveTroop(1, { x: 0, y: 999 }), false);
     h.authenticate();
     assert.equal(h.world.moveTroop(1, { x: 0, y: 999 }), true);
@@ -163,7 +165,7 @@ test('MOVE 按坐标无实体移动，确认后同步位置；忙碌、重复、
     const march = { troopIdx: 1, targetType: 4, startPos: { x: 12, y: 20 }, endPos: { x: 0, y: 999 },
         startTime: 1.5, endTime: 1000.25, state: 1, path: [{ x: 12, y: 20 }, { x: 1.5, y: 30 }, { x: 0, y: 999 }] };
     h.receive(h.S.s2c_march, { marchInfo: march });
-    assert.equal(h.world.moveTroop(1, { x: 10, y: 20 }), false);
+    assert.equal(h.world.moveTroop(1, { x: 0, y: 999 }), false, '行军中的相同目标不重复发送');
     h.receive(h.S.s2c_sync_march, { marchInfo: { ...march, state: 2 } });
     assert.equal(h.world.marches.get(1).state, 2);
     assert.equal(h.world.moveTroop(1, { x: 0, y: 999 }), false, '已驻留在目的地不重发');
@@ -365,19 +367,19 @@ test('旧任务列表与领奖并发时追加一次同步，超时和断线不�
     h.disconnect(); const count = h.sent.length; h.tick(8000);
     assert.equal(h.progress.tasks.values().length, 0); assert.equal(h.sent.length, count);
 });
-test('任务领奖仅在可领取状态发送；活动 ACK 不重复累加兑换次数', () => {
+test('任务领奖仅在可领取状态发送；共享协议未开放活动兑换时不发请求', () => {
     const h = harness(); h.authenticate();
     h.progress.requestTasks(); h.receive(h.S.s2c_sync_task, { taskInfo: { taskId: 1, taskType: 1, state: 1, progress: 10 } });
     h.receive(h.S.s2c_req_task_list, { taskList: [] });
     assert.equal(h.progress.tasks.get(1).state, 1); assert.equal(h.progress.claimTask(1), true); assert.equal(h.progress.claimTask(1), false);
     h.receive(h.S.s2c_get_task_reward, { taskId: 1 }); assert.equal(h.progress.tasks.get(1).state, 2);
     assert.equal(h.progress.claimTask(1), false);
-    h.receive(h.S.s2c_sync_activity, { activityInfo: { activityId: 2, state: 1, extraMap: { 0: 4 } } });
-    assert.equal(h.progress.exchange(2, 0, 1), true);
-    h.receive(h.S.s2c_sync_activity, { activityInfo: { activityId: 2, state: 1, extraMap: { 0: 5 } } });
-    h.receive(h.S.s2c_activity_exchange, { activityId: 2, index: 0, count: 1 });
-    assert.equal(h.progress.activities.get(2).extraMap[0], 5);
-    assert.equal(h.sent.at(-1).name, h.S.c2s_req_activity_list);
+    h.receive(h.S.s2c_sync_activity, { activityInfo: { activityId: 2, state: 1 } });
+    const beforeExchange = h.sent.length;
+    assert.equal(h.progress.exchange(2, 0, 1), false);
+    assert.equal(h.sent.length, beforeExchange, '当前共享协议没有兑换消息号，不发送未知协议');
+    assert.equal(h.progress.activities.get(2).state, 1, '未发送兑换时保留服务端活动状态');
+    h.progress.requestActivities();
     h.receive(h.S.s2c_req_activity_list, { activityList: [] }); assert.equal(h.progress.activities.values().length, 0);
     h.receive(h.S.s2c_sync_activity, { activityInfo: { activityId: 3, state: 2 } });
     assert.equal(h.progress.claimActivity(3, 0), true, '已结束活动仍可向服务器请求结算奖励');
@@ -584,37 +586,42 @@ test('攻占他人领地发送坐标目标，不伪造归属并保留资源校�
     assert.equal(h.world.occupyResourceLand(2, 10, 20), false);
 });
 
-test('资源占领使用AOI实体ID，浮点路径无截断，拒绝错图/自有/离场目标', () => {
+test('资源占领使用固定格子实体ID，浮点路径无截断，离开视野不改变地块编号', () => {
     const h = harness(); h.authenticate(); h.role.level = 20;
     assert.equal(h.world.occupyResourceLand(1, 20010), false);
     const entity = { entityId: other, entityType: 4, cfgId: 203, pos: { x: 10, y: 20 } };
     h.receive(h.S.s2c_aoi_enter, { entities: [entity] });
     assert.equal(h.world.resourceLandIssue(10, 20, 52, 3), ''); assert.ok(h.world.resourceLandIssue(10, 20, 53, 3));
-    assert.equal(h.world.occupyResourceLand(1, other), true);
-    assert.deepEqual(plain(h.sent.at(-1).data), { troopIdx: 1, targetType: 3, targetId: other, targetPos: { x: 10, y: 20 } });
+    assert.equal(h.world.occupyResourceLand(1, 10, 20), true);
+    assert.deepEqual(plain(h.sent.at(-1).data), { troopIdx: 1, targetType: 3, targetId: h.world.resourceLandEntityId(10, 20), targetPos: { x: 10, y: 20 } });
     h.receive(h.S.s2c_march, { marchInfo: { troopIdx: 1, targetType: 3, targetId: other, state: 1, path: [{ x: 1.25, y: 2.75 }, { x: 10, y: 20 }] } });
     assert.equal(h.world.marches.get(1).path[0].x, 1.25); assert.equal(h.world.marches.get(1).path[0].y, 2.75);
-    assert.equal(h.world.occupyResourceLand(1, other), false);
+    assert.equal(h.world.occupyResourceLand(1, 10, 20), true, 'ACK 后可发送下一条指令，由服务器校验部队状态');
+    assert.equal(h.world.occupyResourceLand(1, 10, 20), false, '下一条指令等待期间仍然去重');
     h.receive(h.S.s2c_aoi_update, { entities: [{ ...entity, ownerId: big }] });
-    assert.equal(h.world.occupyResourceLand(2, other), false); assert.ok(h.world.resourceLandIssue(10, 20, 52, 3).includes('归你'));
+    assert.equal(h.world.resourceLandIssue(10, 20, 52, 3), '', '归属和守军规则由服务器判定');
     h.receive(h.S.s2c_aoi_leave, { entityIds: [other] });
-    assert.equal(h.world.resourceLandAt(10, 20), undefined); assert.equal(h.world.occupyResourceLand(2, other), false);
+    assert.equal(h.world.resourceLandAt(10, 20), undefined);
+    assert.equal(h.world.occupyResourceLand(2, 10, 20), true, '中立地或离场地仍可按格子坐标出征');
+    assert.equal(h.sent.at(-1).data.targetId, h.world.resourceLandEntityId(10, 20));
+    assert.equal(h.world.occupyResourceLand(3, -1, 20), false);
     assert.equal(h.world.march(2, 3, 0, { x: 10, y: 20 }), false);
     assert.equal(h.world.march(2, 3, other, { x: 10.5, y: 20 }), false);
 });
-test('石料补配置即可占领，按STONE枚举查找，不假定类型/模板/道具ID', () => {
+test('石料使用生成的STONE枚举，JSON不再依赖Enum字段，模板和道具仍由配置提供', () => {
     const h = harness(); h.authenticate(); h.role.level = 20;
     const actual = h.load('world/ResourceLand').resourceLandForCell(54, 3);
-    assert.equal(actual.Id, 403); assert.equal(actual.OutputItem, 5);
+    assert.equal(actual.Id, 403); assert.equal(actual.OutputItem, 4);
     const config = h.load('core/ConfigManager').default.getInstance();
     config.loadConfigs([{ name: 'ResLandType', json: [] }, { name: 'ResLand', json: [] }]);
     assert.ok(h.world.resourceLandIssue(10, 20, 54, 3).includes('石料'));
-    config.loadConfigs([{ name: 'ResLandType', json: [{ Id: 17, Enum: 'STONE' }] },
-        { name: 'ResLand', json: [{ Id: 7303, Type: 17, Level: 3, Capacity: 300, GatherSpeed: 40, OutputItem: 9 }] }]);
+    const stoneType = h.load('config/enum/ResLandTypeEnum').ResLandTypeEnum.STONE;
+    config.loadConfigs([{ name: 'ResLandType', json: [{ Id: stoneType, Name: '石场' }] },
+        { name: 'ResLand', json: [{ Id: 7303, Type: stoneType, Level: 3, Capacity: 300, GatherSpeed: 40, OutputItem: 9 }] }]);
     const land = h.load('world/ResourceLand').resourceLandForCell(54, 3);
     assert.equal(land.Id, 7303); assert.equal(land.OutputItem, 9);
     h.receive(h.S.s2c_aoi_enter, { entities: [{ entityId: other, entityType: 4, cfgId: 7303, pos: { x: 10, y: 20 } }] });
-    assert.equal(h.world.resourceLandIssue(10, 20, 54, 3), ''); assert.equal(h.world.occupyResourceLand(1, other), true);
+    assert.equal(h.world.resourceLandIssue(10, 20, 54, 3), ''); assert.equal(h.world.occupyResourceLand(1, 10, 20), true);
 });
 test('任务查询自动退避重试，合并推送，成功后停止重试', () => {
     const h = harness(); h.authenticate();
@@ -767,5 +774,63 @@ test('标记服务端上限拦截后同步真实列表，不追加成功或超�
     assert.equal(marks.has({ x: 20, y: 20 }), true);
     h.tick(8000); assert.equal(h.notices.length, 0);
     assert.equal(h.sent.filter(p => p.name === h.S.c2s_add_mark).length, 1);
+});
+test('公开资料查询保留 int64、按 uid 对应回包且不覆盖自己，超时与断线可恢复', () => {
+    const h = harness(), cmd = h.load('login/OtherUserCommand').default.getInstance();
+    assert.equal(cmd.requestProfile(big), false); h.authenticate();
+    assert.equal(cmd.requestProfile(big), true); assert.equal(cmd.requestProfile(big), false);
+    assert.equal(cmd.requestProfile(other), true); assert.equal(h.sent.at(-1).data.uid, other);
+    h.receive(h.S.s2c_req_other_user, { uid: other, name: '盟友', power: big, allianceId: other, cityLevel: 12 });
+    assert.equal(cmd.profiles.get(other).power, big); assert.equal(cmd.profiles.has(big), false);
+    assert.equal(h.role.userId, big); assert.equal(h.role.cityPos.x, 12);
+    h.tick(8000); assert.equal(cmd.hasFailed(big), true); assert.equal(h.notices.length, 0);
+    assert.equal(cmd.requestProfile(big), true); h.disconnect();
+    assert.equal(cmd.profiles.size, 0); assert.equal(cmd.requestInFlight(`profile:${big}`), false);
+    h.receive(h.S.s2c_req_other_user, { uid: big, name: '旧会话' }); assert.equal(cmd.profiles.size, 0);
+    h.authenticate(); assert.equal(cmd.requestProfile(big), true);
+    h.receive(h.S.s2c_req_other_user, { uid: big, name: '新会话', level: 22, power: other });
+    assert.equal(cmd.profiles.get(big).name, '新会话');
+});
+test('行军补查保留小数拐点，缓存、改道、离开视野与超时不串路线或重复发包', () => {
+    const h = harness(); h.authenticate();
+    const entity = { entityId: other, ownerId: big, entityType: 2, pos: { x: 12, y: 20 }, startTime: 100, endTime: 200 };
+    const path = [{ x: 12.25, y: 20.5 }, { x: 14.75, y: 21.125 }, { x: 20.5, y: 25.25 }];
+    h.receive(h.S.s2c_aoi_enter, { entities: [entity] });
+    assert.equal(h.sent.at(-1).name, h.S.c2s_req_march_path); assert.equal(h.sent.at(-1).data.entityId, other);
+    const count = h.sent.length; h.receive(h.S.s2c_aoi_update, { entities: [entity] });
+    assert.equal(h.sent.length, count);
+    h.receive(h.S.s2c_req_march_path, { entityId: other, path });
+    assert.deepEqual(plain(h.world.entities.get(other).path), path);
+    h.receive(h.S.s2c_aoi_update, { entities: [entity] });
+    assert.deepEqual(plain(h.world.entities.get(other).path), path); assert.equal(h.sent.length, count);
+    const changed = { ...entity, startTime: 201, endTime: 300 };
+    h.receive(h.S.s2c_aoi_update, { entities: [changed] });
+    h.receive(h.S.s2c_aoi_update, { entities: [{ ...changed, startTime: 202 }] });
+    h.receive(h.S.s2c_req_march_path, { entityId: other, path });
+    assert.equal(h.world.entities.get(other).path.length, 0, '旧行军回包不能写入新行军');
+    assert.equal(h.sent.length, count + 2);
+    h.receive(h.S.s2c_aoi_leave, { entityIds: [other] });
+    h.receive(h.S.s2c_req_march_path, { entityId: other, path });
+    assert.equal(h.world.entities.has(other), false);
+    h.receive(h.S.s2c_aoi_enter, { entities: [changed] }); h.tick(8000);
+    const afterTimeout = h.sent.length;
+    h.receive(h.S.s2c_aoi_update, { entities: [changed] });
+    assert.equal(h.sent.length, afterTimeout, '同一次失败不在 AOI 刷新中反复查询');
+    assert.equal(h.notices.length, 0, '后台补路超时不弹窗打断地图');
+    h.disconnect(); h.authenticate(); h.receive(h.S.s2c_aoi_enter, { entities: [changed] });
+    assert.equal(h.sent.length, afterTimeout + 1);
+    h.receive(h.S.s2c_aoi_update, { entities: [{ ...entity, startTime: 0, endTime: 0 }] });
+    h.receive(h.S.s2c_req_march_path, { entityId: other, path });
+    assert.equal(h.world.entities.get(other).path.length, 0, '驻留推送不能被旧回包恢复成行军');
+});
+test('四类排行榜由生成的枚举支持，未知类型拒绝发送', () => {
+    const h = harness(); h.authenticate();
+    const types = h.load('config/enum/RankTypeEnum').RankTypeEnum;
+    for (const type of [types.POWER, types.CITY_LEVEL, types.KILL, types.ALLIANCE_POWER]) {
+        assert.equal(h.rank.requestRank(type, 1, 20), true);
+        h.receive(h.S.s2c_req_rank_list, { rankType: type, rankList: [{ uid: big, score: other, name: '排行实体' }] });
+        assert.equal(h.rank.pages.get(`${type}:1:20`).rankList[0].score, other);
+    }
+    assert.equal(h.rank.requestRank(5), false);
 });
 console.log(`通过 ${passed} 项 game_common 新协议回归`);

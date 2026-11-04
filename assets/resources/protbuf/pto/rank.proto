@@ -3,13 +3,14 @@ syntax = "proto3";
 package Rank;
 // 排行榜（打开时拉取最新快照，无实时推送）
 
-// rankType → RankType.Id（1战力 2主城等级）
+// rankType → RankType.Id（1战力 2主城等级 3歼敌 4联盟战力）
+// 上榜人数上限见 Rank.RankMax（Id 与 RankType.Id 相同）
 message p_rank_item {
 	uint32 rank = 1;       // 名次，0=未上榜
 	int64 uid = 2;
 	string name = 3;
 	int32 headIcon = 4;
-	int64 score = 5;       // 分值（战力/主城等级等，含义由 rankType 决定）
+	int64 score = 5;       // 分值（战力/主城等级/歼敌/联盟战力等，含义由 rankType 决定）
 }
 
 // 打开排行榜时请求；服务端返回当前快照

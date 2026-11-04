@@ -239,7 +239,9 @@ export default class MapClickUILogic extends Component {
     protected onClickEnter(): void {
         AudioManager.instance.playClick();
         if (this._data instanceof MapCityData) {
-            EventMgr.emit(LogicEvent.openCityAbout, this._data);
+            if (idKey(this._data.rid) === idKey(MapCommand.getInstance().cityProxy.myId)) {
+                EventMgr.emit(LogicEvent.openCityAbout, this._data);
+            } else if (hasId(this._data.rid)) EventMgr.emit(LogicEvent.openPlayerProfile, this._data.rid);
         }
         this.node.parent = null;
     }
@@ -348,6 +350,7 @@ export default class MapClickUILogic extends Component {
             this.progressBarDurable.progress = this._data.maxDurable > 0 ? this._data.curDurable / this._data.maxDurable : 0;
         } else if (this._data instanceof MapCityData) {
             const city = this._data as MapCityData;
+            this.btnEnter.node.active = hasId(city.rid);
             if (city.rid == MapCommand.getInstance().cityProxy.myId) {
                 this.btnEnter.node.active = true;
                 this.btnTagAdd.node.active = false;
@@ -557,7 +560,7 @@ export default class MapClickUILogic extends Component {
         const regionHeight = regionText ? (gate ? 48 : 30) : 0;
         const secondaryHeight = Math.ceil(secondary.length / 2) * 42;
         const detailsHeight = yieldHeight + activityHeight + (showDurableText ? 24 : 0) + (this.bgMain.active ? 24 : 0) + (durable ? 12 : 0);
-        const height = Math.max(200, 110 + detailsHeight + (primary.length ? 72 : 0) + secondaryHeight + regionHeight + 12);
+        const height = Math.max(200, 110 + detailsHeight + (primary.length ? 72 : 0) + secondaryHeight + regionHeight + 8);
         this._panelHeight = height;
         const selected = this._selectInSidebar; this._selectInSidebar = false;
         const key = JSON.stringify([width, height, this._data.x, this._data.y, this._data.level, this.labelName.string,
@@ -641,7 +644,8 @@ export default class MapClickUILogic extends Component {
         const own = this.labelUnion.string.includes('己方');
         const occupyText = gate ? '攻关' : own ? this._data.isEmpty ? '驻守' : '采集'
             : this.labelUnion.string.includes('其他玩家') ? '攻占' : '出征';
-        const texts = new Map<Button, string>([[this.btnEnter, '入城'], [this.btnOccupy, occupyText],
+        const otherCity = this._data instanceof MapCityData && idKey(this._data.rid) !== idKey(MapCommand.getInstance().cityProxy.myId);
+        const texts = new Map<Button, string>([[this.btnEnter, otherCity ? '主公资料' : '入城'], [this.btnOccupy, occupyText],
             [this.btnMove, '移动'], [this.btnGiveUp, '放弃领地'], [this.btnReclaim, '屯田'], [this.btnBuild, '建造'],
             [this._btnRelocate, LoginCommand.getInstance().movingCity ? '迁城中…' : '迁城'],
             [this.btnTransfer, '调动'], [this.btnTagAdd, marking ? '标记中…' : '插旗'], [this.btnTagRemove, marking ? '取消中…' : '撤旗']]);
@@ -663,17 +667,39 @@ export default class MapClickUILogic extends Component {
         secondary.forEach((button, i) => commandAction(button.node, texts.get(button), icons.get(button),
             secondary.length === 1 ? 0 : (i % 2 ? 1 : -1) * (secondaryWidth + gap) / 2,
             secondaryTop - 24 - Math.floor(i / 2) * 42, secondaryWidth, 34));
-        const region = caption(this._secondaryPanel, 'Region', regionText, 10,
-            secondaryTop - secondaryHeight - regionHeight / 2, contentWidth - 20, 11, ManagementColors.muted, center);
-        region.node.active = !!this._campaignText; region.enableWrapText = true; region.lineHeight = 18;
-        region.getComponent(UITransform).height = regionHeight;
-        const regionIcon = commandGlyph(this._secondaryPanel, 'RegionIcon', 'land', -contentWidth / 2 + 9,
-            secondaryTop - secondaryHeight - regionHeight / 2, 16, ManagementColors.muted);
-        regionIcon.active = !!regionText;
+        this.paintRegionFooter(regionText, !!gate, contentWidth, secondaryTop - secondaryHeight, regionHeight);
         const legacy = this._panel.getChildByName('CampaignDetail'); if (legacy) legacy.active = false;
         this.paintDockProgress();
         hideSprite(this.bgSelect);
         this._sidebar.showTilePanel(this._panel, height, selected);
+    }
+
+    /** 州名与州类型分层展示；归属栏是静态信息，不再用地块图标制造操作感。 */
+    private paintRegionFooter(text: string, gate: boolean, width: number, top: number, height: number): void {
+        const parent = this._secondaryPanel;
+        const oldIcon = parent.getChildByName('RegionIcon'); if (oldIcon) oldIcon.active = false;
+        const [name, tier = ''] = text.split(' · ');
+        const badgeWidth = !gate && tier ? tier.length * 11 + 16 : 0;
+        const titleWidth = width - (badgeWidth ? badgeWidth + 12 : 0);
+        const y = top - (gate ? height / 2 + 2 : 17);
+        const region = caption(parent, 'Region', gate ? text : name, -width / 2 + titleWidth / 2,
+            y, titleWidth, gate ? 11 : 14, gate ? ManagementColors.muted : ManagementColors.text);
+        region.node.active = !!text; region.isBold = !gate;
+        region.enableWrapText = gate; region.lineHeight = 18;
+        region.getComponent(UITransform).height = gate ? height - 4 : 22;
+
+        const rule = inkSurface(parent, 'RegionRule', width, 1, null, null);
+        rule.node.active = !!text; rule.node.setPosition(0, top - 3, 0);
+        rule.strokeColor = new Color(153, 134, 91, 70); rule.lineWidth = 1;
+        rule.moveTo(-width / 2, 0); rule.lineTo(width / 2, 0); rule.stroke();
+
+        const badge = inkSurface(parent, 'RegionTier', Math.max(1, badgeWidth), 20,
+            new Color(74, 65, 43, 145), new Color(153, 134, 91, 100));
+        badge.node.active = !!text && badgeWidth > 0;
+        badge.node.setPosition(width / 2 - badgeWidth / 2, y, 0);
+        const label = caption(badge.node, 'Text', tier, 0, 0, badgeWidth, 11,
+            ManagementColors.gold, Label.HorizontalAlign.CENTER);
+        label.getComponent(UITransform).height = 20;
     }
 
     private paintDockProgress(): void {

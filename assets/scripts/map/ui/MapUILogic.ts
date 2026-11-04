@@ -47,6 +47,7 @@ import MapChatStrip from '../../chat/MapChatStrip';
 import { chatDockLayout, validChatTarget } from '../../chat/ChatPresentation';
 import { idKey } from '../../network/pto/ProtocolCommand';
 import ChatCommand from '../../chat/ChatCommand';
+import PlayerProfilePanel from './PlayerProfilePanel';
 import { CloudAni } from '../../cloud/CloudAni';
 import { panelButton } from './ManagementStyle';
 
@@ -255,6 +256,7 @@ export default class MapUILogic extends Component {
         EventMgr.on(LogicEvent.closeCityAbout, this.closeCityAbout, this);
         EventMgr.on(LogicEvent.openFacility, this.openFacility, this);
         EventMgr.on(LogicEvent.openPrivateChat, this.onOpenPrivateChat, this);
+        EventMgr.on(LogicEvent.openPlayerProfile, this.onOpenPlayerProfile, this);
         EventMgr.on(LogicEvent.openChatPlayerRank, this.onOpenChatPlayerRank, this);
         EventMgr.on(LogicEvent.openChatAlliance, this.openUnion, this);
         EventMgr.on(LogicEvent.openArmySetting, this.openArmySetting, this);
@@ -724,7 +726,7 @@ export default class MapUILogic extends Component {
         this._facilityNode.getComponent(CityBuildingPanel).show(data.cityId);
     }
 
-    protected openArmySetting(cityId: number, order: number): void {
+    protected openArmySetting(cityId: number, order: number, onReturn?: () => void): void {
         if (this._armySettingNode == null) {
             this._armySettingNode = instantiate(this.armySettingPrefab);
             this._armySettingNode.parent = this.contentNode;
@@ -732,7 +734,9 @@ export default class MapUILogic extends Component {
             this._armySettingNode.active = true;
         }
         this._armySettingNode.setSiblingIndex(this.topLayer());
-        this._armySettingNode.getComponent(CityArmySettingLogic).setData(cityId, order);
+        const setting = this._armySettingNode.getComponent(CityArmySettingLogic);
+        setting.setData(cityId, order);
+        setting.setReturnToSelection(onReturn);
     }
     /**
      * 武将
@@ -1011,6 +1015,15 @@ export default class MapUILogic extends Component {
     }
 
     private onOpenChatPlayerRank(): void { this.openServices('rank'); }
+    private onOpenPlayerProfile(uid: number | string): void {
+        if (!this._uiListenersReady || !this.contentNode || !validChatTarget(uid)) return;
+        let node = this.contentNode.getChildByName('PlayerProfilePanel');
+        if (!node) {
+            node = new Node('PlayerProfilePanel'); node.layer = this.node.layer;
+            this.contentNode.addChild(node); node.addComponent(PlayerProfilePanel);
+        }
+        node.setSiblingIndex(this.topLayer()); node.getComponent(PlayerProfilePanel).show(uid);
+    }
 
 
 
