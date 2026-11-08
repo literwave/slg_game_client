@@ -84,3 +84,34 @@ assert.equal(exit?._active, false, 'exit must not appear in More before it is mo
 const button = entry._components.map(ref => prefab[ref.__id__]).find(item => item.__type__ === 'cc.Button');
 assert.equal(prefab[button.clickEvents[0].__id__].handler, 'onClickSetting');
 console.log('PASS the settings entry is reachable and the exit entry is hidden from More');
+
+// Exercise the real window-creation method twice, with the first window reclaimed between opens.
+const uiSource = fs.readFileSync(path.join(root, 'assets/scripts/map/ui/MapUILogic.ts'), 'utf8');
+const uiCompiled = ts.transpileModule(uiSource, { compilerOptions: {
+    target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, experimentalDecorators: true,
+} });
+const uiModule = { exports: {} }, hud = {}, exitTemplate = { parent: hud, active: false, isValid: true };
+const panelPrefab = {}, windows = [];
+const uiEngine = { ...engine, instantiate(value) {
+    if (value === exitTemplate) return { ...exitTemplate };
+    assert.equal(value, panelPrefab);
+    const panel = {}, setting = new mod.exports.Setting();
+    const node = { isValid: true, active: false, getComponent: () => setting,
+        getChildByName: () => panel, destroy() { this.isValid = false; setting._exitButton.isValid = false; } };
+    setting.node = node; windows.push(node); return node;
+} };
+new Function('require', 'module', 'exports', uiCompiled.outputText)(id => {
+    if (id === 'cc') return uiEngine;
+    if (id === './Setting') return mod.exports;
+    return { default: class {} };
+}, uiModule, uiModule.exports);
+const ui = new uiModule.exports.default(); ui.settingPrefab = panelPrefab; ui.contentNode = {};
+ui.node = { getChildByPath: () => exitTemplate.isValid && exitTemplate.parent === hud ? exitTemplate : null };
+const first = ui.ensureSettingsPanel();
+assert.notEqual(first._exitButton, exitTemplate);
+assert.equal(exitTemplate.parent, hud); assert.equal(exitTemplate.active, false);
+windows[0].destroy(); ui._settingNode = null;
+const second = ui.ensureSettingsPanel();
+assert.equal(second._exitButton.isValid, true); assert.notEqual(second._exitButton, first._exitButton);
+assert.equal(exitTemplate.parent, hud); assert.equal(exitTemplate.isValid, true);
+console.log('PASS idle settings reclamation preserves the hidden exit template for the next open');

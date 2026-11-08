@@ -1,5 +1,25 @@
 import ConfigManager from '../core/ConfigManager';
+import { ReportTypeEnum } from '../config/enum/ReportTypeEnum';
 import { ReportBrief, ReportInfo } from './BattleCommand';
+
+/** 界面分类独立于协议战报类型；攻城守军在协议中属于 NPC。 */
+export type ReportCategory = 'all' | 'pve' | 'pvp';
+export function reportCategory(brief: Pick<ReportBrief, 'reportType'>): ReportCategory {
+    switch (brief.reportType) {
+        case ReportTypeEnum.ATTACK_MONSTER:
+        case ReportTypeEnum.OCCUPY_RES_LAND:
+        case ReportTypeEnum.ATTACK_CITY:
+            return 'pve';
+        case ReportTypeEnum.ATTACK_PLAYER:
+        case ReportTypeEnum.DEFEND:
+            return 'pvp';
+        default:
+            return 'all';
+    }
+}
+export function matchesReportCategory(brief: Pick<ReportBrief, 'reportType'>, category: ReportCategory): boolean {
+    return category === 'all' || reportCategory(brief) === category;
+}
 
 export function reportConfig(table: string, id: number): any {
     const rows = ConfigManager.getInstance().getConfig(table);

@@ -1,3 +1,5 @@
+import MapArmyLogic from './MapArmyLogic';
+import MapLogic from './MapLogic';
 import { _decorator, Component, Prefab, Node, Vec2, instantiate } from 'cc';
 const { ccclass, property } = _decorator;
 
@@ -12,7 +14,7 @@ import { LogicEvent } from '../common/LogicEvent';
 import WorldLandscape from './WorldLandscape';
 import WorldCampaign from './WorldCampaign';
 import { gateHit, gateMirrored } from './GateGeometry';
-import { systemCityHit, systemCityOverlapsTile } from './SystemCityGeometry';
+import { systemCityHit } from './SystemCityGeometry';
 
 @ccclass('MapTouchLogic')
 export default class MapTouchLogic extends Component {
@@ -38,6 +40,14 @@ export default class MapTouchLogic extends Component {
     }
 
     protected onTouchMap(mapPoint: Vec2, clickPixelPoint: Vec2, pointerPixelPoint?: Vec2): void {
+        const armies = this.node.getComponent(MapArmyLogic);
+        const troopIdx = pointerPixelPoint && armies?.pickTroop(pointerPixelPoint);
+        if (troopIdx) {
+            this.removeClickUINode();
+            this.node.getComponent(MapLogic)?.followMapTarget(() => armies.troopMapPosition(troopIdx));
+            return;
+        }
+
         // 关城美术横跨山口，先按实体轮廓命中，再处理后方山体；透明角落仍然属于山脉。
         const campaign = WorldCampaign.config;
         if (pointerPixelPoint && campaign) {
@@ -112,19 +122,8 @@ export default class MapTouchLogic extends Component {
            
         } else {
             if (resData.isEmpty) {
-                // 落点在城图外、但整格选框压住道路或城墙时，仍选城池。
-                // 放在资源地和已占领地分支之后，保留它们的正常交互。
-                if (pointerPixelPoint && campaign) {
-                    const tileCenter = MapUtil.mapCellToPixelPoint(mapPoint);
-                    for (const city of campaign.cities) {
-                        const center = MapUtil.mapCellToPixelPoint(new Vec2(city.x, city.y));
-                        if (!systemCityOverlapsTile(tileCenter.x - center.x, tileCenter.y - center.y,
-                            city.level, MapUtil.tileSize.width, MapUtil.tileSize.height, city)) continue;
-                        const id = MapUtil.getIdByCellPoint(city.x, city.y);
-                        const target = this._cmd.buildProxy.getBuild(id) || this._cmd.proxy.getResData(id);
-                        if (target) { this.showClickUINode(target, center); return; }
-                    }
-                }
+                // 城池实体与实际占地已在上方处理；点到墙外草地就选择该格。
+                // 选框边缘碰到城墙不代表整格属于城池，不能额外吞掉外围空地。
                 this.showClickUINode(resData, clickPixelPoint); return;
             }
             const city = this._cmd.proxy.getSysCityResData(mapPoint.x, mapPoint.y);

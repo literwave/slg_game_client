@@ -1,0 +1,100 @@
+{
+  "generator": "built-in imagegen",
+  "reference": "assets/resources/ui/march/commander_march_walk12.png",
+  "prompts": [
+    {
+      "direction": "r",
+      "prompt": "Use case: stylized-concept. Production game animation sprite sheet, replacing faulty cavalry hoof anatomy and sideways sliding. Input reference is ONLY for character appearance, materials, colors, and painterly game art. Make the SAME Chinese mounted commander: adult male, dark steel lamellar armor, red cape and helmet plume, upright long spear, chestnut brown horse, restrained red/gold tack. No change of equipment, breed, scale or identity.\nCreate EXACTLY TWELVE distinct sequential full-body frames of one smooth natural brisk TROT cycle. EXACT grid SIX equal columns by TWO equal rows, row-major, ONE figure per cell. 1536x512 transparent canvas, twelve 256-square cells, all weapons, mane, hooves and tails safely inside each cell. No text, gridlines, floor or cast shadows. Actual alpha transparency, not a checkerboard.\nFIXED slightly elevated isometric camera, uniform light/exposure and stable rider/horse torso position across frames. Do not turn between frames. Frame 0/6 are opposite diagonal support phases: near foreleg plus far hindleg, then far foreleg plus near hindleg; intermediate frames show load, push-off, flexion, passing, extension, and touchdown. Keep proportions consistent and transition last frame into first.\nANATOMY IS CRITICAL: exactly four horse legs attached at shoulder/hip with correct fore-knee/fetlock and hind stifle/hock joints. Four SOLID SINGLE hooves, flat dark keratin cups continuous with each pastern, never toes/claws/cloven hooves, blobs, floating foot bits, extra legs or detached limbs. Hooves land flat with weight, then lift naturally. Distinct far/near legs, leg-length constant. No permanently curled leg, no back-bending foreleg, no stretching/morphing body. Clean sharp silhouettes, painted realistic miniature matching the reference. Consistent contact ground plane near y=238 of each cell, horse pelvis stable; modest bob of torso only, no sprite drift.\nVIEW TO USE IN EVERY ONE OF THE 12 CELLS: RIGHT SIDE VIEW. Horse points exactly to screen right, its ground travel vector horizontal (1,0)."
+    },
+    {
+      "direction": "ru",
+      "prompt": "Use case: stylized-concept. Production game animation sprite sheet, replacing faulty cavalry hoof anatomy and sideways sliding. Input reference is ONLY for character appearance, materials, colors, and painterly game art. Make the SAME Chinese mounted commander: adult male, dark steel lamellar armor, red cape and helmet plume, upright long spear, chestnut brown horse, restrained red/gold tack. No change of equipment, breed, scale or identity.\nCreate EXACTLY TWELVE distinct sequential full-body frames of one smooth natural brisk TROT cycle. EXACT grid SIX equal columns by TWO equal rows, row-major, ONE figure per cell. 1536x512 transparent canvas, twelve 256-square cells, all weapons, mane, hooves and tails safely inside each cell. No text, gridlines, floor or cast shadows. Actual alpha transparency, not a checkerboard.\nFIXED slightly elevated isometric camera, uniform light/exposure and stable rider/horse torso position across frames. Do not turn between frames. Frame 0/6 are opposite diagonal support phases: near foreleg plus far hindleg, then far foreleg plus near hindleg; intermediate frames show load, push-off, flexion, passing, extension, and touchdown. Keep proportions consistent and transition last frame into first.\nANATOMY IS CRITICAL: exactly four horse legs attached at shoulder/hip with correct fore-knee/fetlock and hind stifle/hock joints. Four SOLID SINGLE hooves, flat dark keratin cups continuous with each pastern, never toes/claws/cloven hooves, blobs, floating foot bits, extra legs or detached limbs. Hooves land flat with weight, then lift naturally. Distinct far/near legs, leg-length constant. No permanently curled leg, no back-bending foreleg, no stretching/morphing body. Clean sharp silhouettes, painted realistic miniature matching the reference. Consistent contact ground plane near y=238 of each cell, horse pelvis stable; modest bob of torso only, no sprite drift.\nVIEW TO USE IN EVERY ONE OF THE 12 CELLS: REAR THREE-QUARTER VIEW, travelling AWAY from camera toward SCREEN UPPER RIGHT. Ground travel vector is precisely screen (1,-1), 45 degrees upward, not almost sideways. Show the rider's back, horse rump nearer and head farther; the horse's longitudinal axis must match that screen direction."
+    },
+    {
+      "direction": "u",
+      "prompt": "Use case: stylized-concept. Production game animation sprite sheet, replacing faulty cavalry hoof anatomy and sideways sliding. Input reference is ONLY for character appearance, materials, colors, and painterly game art. Make the SAME Chinese mounted commander: adult male, dark steel lamellar armor, red cape and helmet plume, upright long spear, chestnut brown horse, restrained red/gold tack. No change of equipment, breed, scale or identity.\nCreate EXACTLY TWELVE distinct sequential full-body frames of one smooth natural brisk TROT cycle. EXACT grid SIX equal columns by TWO equal rows, row-major, ONE figure per cell. 1536x512 transparent canvas, twelve 256-square cells, all weapons, mane, hooves and tails safely inside each cell. No text, gridlines, floor or cast shadows. Actual alpha transparency, not a checkerboard.\nFIXED slightly elevated isometric camera, uniform light/exposure and stable rider/horse torso position across frames. Do not turn between frames. Frame 0/6 are opposite diagonal support phases: near foreleg plus far hindleg, then far foreleg plus near hindleg; intermediate frames show load, push-off, flexion, passing, extension, and touchdown. Keep proportions consistent and transition last frame into first.\nANATOMY IS CRITICAL: exactly four horse legs attached at shoulder/hip with correct fore-knee/fetlock and hind stifle/hock joints. Four SOLID SINGLE hooves, flat dark keratin cups continuous with each pastern, never toes/claws/cloven hooves, blobs, floating foot bits, extra legs or detached limbs. Hooves land flat with weight, then lift naturally. Distinct far/near legs, leg-length constant. No permanently curled leg, no back-bending foreleg, no stretching/morphing body. Clean sharp silhouettes, painted realistic miniature matching the reference. Consistent contact ground plane near y=238 of each cell, horse pelvis stable; modest bob of torso only, no sprite drift.\nVIEW TO USE IN EVERY ONE OF THE 12 CELLS: STRAIGHT REAR VIEW, travelling directly AWAY toward SCREEN TOP. Rider's back, centered rump and tail; symmetrical fixed viewing direction."
+    },
+    {
+      "direction": "rd",
+      "prompt": "Use case: stylized-concept. Production game animation sprite sheet, replacing faulty cavalry hoof anatomy and sideways sliding. Input reference is ONLY for character appearance, materials, colors, and painterly game art. Make the SAME Chinese mounted commander: adult male, dark steel lamellar armor, red cape and helmet plume, upright long spear, chestnut brown horse, restrained red/gold tack. No change of equipment, breed, scale or identity.\nCreate EXACTLY TWELVE distinct sequential full-body frames of one smooth natural brisk TROT cycle. EXACT grid SIX equal columns by TWO equal rows, row-major, ONE figure per cell. 1536x512 transparent canvas, twelve 256-square cells, all weapons, mane, hooves and tails safely inside each cell. No text, gridlines, floor or cast shadows. Actual alpha transparency, not a checkerboard.\nFIXED slightly elevated isometric camera, uniform light/exposure and stable rider/horse torso position across frames. Do not turn between frames. Frame 0/6 are opposite diagonal support phases: near foreleg plus far hindleg, then far foreleg plus near hindleg; intermediate frames show load, push-off, flexion, passing, extension, and touchdown. Keep proportions consistent and transition last frame into first.\nANATOMY IS CRITICAL: exactly four horse legs attached at shoulder/hip with correct fore-knee/fetlock and hind stifle/hock joints. Four SOLID SINGLE hooves, flat dark keratin cups continuous with each pastern, never toes/claws/cloven hooves, blobs, floating foot bits, extra legs or detached limbs. Hooves land flat with weight, then lift naturally. Distinct far/near legs, leg-length constant. No permanently curled leg, no back-bending foreleg, no stretching/morphing body. Clean sharp silhouettes, painted realistic miniature matching the reference. Consistent contact ground plane near y=238 of each cell, horse pelvis stable; modest bob of torso only, no sprite drift.\nVIEW TO USE IN EVERY ONE OF THE 12 CELLS: FRONT THREE-QUARTER VIEW, travelling TOWARD camera and SCREEN LOWER RIGHT. Ground travel vector is precisely screen (1,1), 45 degrees downward, not almost sideways. Show the horse's CHEST and face prominently, with its rump behind/upper-left. The horse longitudinal axis and all planted hoof travel must align with that screen vector."
+    },
+    {
+      "direction": "d",
+      "prompt": "Use case: stylized-concept. Production game animation sprite sheet, replacing faulty cavalry hoof anatomy and sideways sliding. Input reference is ONLY for character appearance, materials, colors, and painterly game art. Make the SAME Chinese mounted commander: adult male, dark steel lamellar armor, red cape and helmet plume, upright long spear, chestnut brown horse, restrained red/gold tack. No change of equipment, breed, scale or identity.\nCreate EXACTLY TWELVE distinct sequential full-body frames of one smooth natural brisk TROT cycle. EXACT grid SIX equal columns by TWO equal rows, row-major, ONE figure per cell. 1536x512 transparent canvas, twelve 256-square cells, all weapons, mane, hooves and tails safely inside each cell. No text, gridlines, floor or cast shadows. Actual alpha transparency, not a checkerboard.\nFIXED slightly elevated isometric camera, uniform light/exposure and stable rider/horse torso position across frames. Do not turn between frames. Frame 0/6 are opposite diagonal support phases: near foreleg plus far hindleg, then far foreleg plus near hindleg; intermediate frames show load, push-off, flexion, passing, extension, and touchdown. Keep proportions consistent and transition last frame into first.\nANATOMY IS CRITICAL: exactly four horse legs attached at shoulder/hip with correct fore-knee/fetlock and hind stifle/hock joints. Four SOLID SINGLE hooves, flat dark keratin cups continuous with each pastern, never toes/claws/cloven hooves, blobs, floating foot bits, extra legs or detached limbs. Hooves land flat with weight, then lift naturally. Distinct far/near legs, leg-length constant. No permanently curled leg, no back-bending foreleg, no stretching/morphing body. Clean sharp silhouettes, painted realistic miniature matching the reference. Consistent contact ground plane near y=238 of each cell, horse pelvis stable; modest bob of torso only, no sprite drift.\nVIEW TO USE IN EVERY ONE OF THE 12 CELLS: STRAIGHT FRONT VIEW, travelling directly TOWARD camera toward SCREEN BOTTOM. Horse face and chest centered, rider frontal; symmetrical fixed viewing direction."
+    }
+  ],
+  "sourceGrid": {
+    "columns": 6,
+    "rows": 2,
+    "cellSize": 362
+  },
+  "registration": {
+    "resize": [
+      182,
+      182
+    ],
+    "outputCell": [
+      192,
+      192
+    ],
+    "interpolation": "bicubic",
+    "perDirection": [
+      {
+        "direction": "r",
+        "candidate": 2,
+        "left": 14,
+        "top": 18
+      },
+      {
+        "direction": "ru",
+        "candidate": 1,
+        "left": 9,
+        "top": 10
+      },
+      {
+        "direction": "u",
+        "candidate": 3,
+        "left": 0,
+        "top": 5
+      },
+      {
+        "direction": "rd",
+        "candidate": 4,
+        "left": 8,
+        "top": 3
+      },
+      {
+        "direction": "d",
+        "candidate": 5,
+        "left": 1,
+        "top": 10
+      }
+    ],
+    "note": "同一方向十二帧使用完全相同的等比缩放和位移；保留抬蹄高度差。"
+  },
+  "atlas": {
+    "columns": 10,
+    "rows": 7,
+    "cellSize": 192,
+    "walkSlots": [
+      0,
+      59
+    ],
+    "idleSlots": [
+      60,
+      64
+    ],
+    "emptySlots": [
+      65,
+      69
+    ],
+    "order": [
+      "r",
+      "ru",
+      "u",
+      "rd",
+      "d"
+    ],
+    "idleSource": "assets/resources/ui/march/commander_march_walk12.png"
+  }
+}

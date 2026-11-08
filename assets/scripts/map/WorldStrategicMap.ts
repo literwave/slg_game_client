@@ -6,10 +6,16 @@ import WorldMapArt from './WorldMapArt';
 import { playerCityAppearance } from './PlayerCityAppearance';
 import { BRIDGE_ART, GATE_ART } from './GateGeometry';
 import { caption, inkSurface, ManagementColors, place } from './ui/ManagementStyle';
+import CityCommand from '../world/CityCommand';
+import LoginCommand from '../login/LoginCommand';
+import { EventMgr } from '../utils/EventMgr';
+import { LogicEvent } from '../common/LogicEvent';
+import { resolveCityOwner } from './CityOwnership';
+import { cityOwnerColor, drawCityFlag } from './CityMapPresentation';
 const { ccclass } = _decorator;
-interface GateMarker { node: Node; plate: Graphics; title: Label; gate: CampaignGate; x: number; y: number; owned?: boolean; }
+interface GateMarker { node: Node; plate: Graphics; title: Label; gate: CampaignGate; x: number; y: number; ownerKey?: string; }
 interface HomeMarker { node: Node; sprite: Sprite; plate: Graphics; city: { x: number; y: number; level: number }; art: string; height: number; }
-interface CityMarker { node: Node; title: Node; city: CampaignCity; x: number; y: number; width: number; height: number; }
+interface CityMarker { node: Node; title: Node; city: CampaignCity; x: number; y: number; width: number; height: number; ownerKey?: string; }
 
 /** 与地图共用相机的远景，不创建百万格资源节点。 */
 @ccclass('WorldStrategicMap')
@@ -25,9 +31,46 @@ export default class WorldStrategicMap extends Component {
     private lastY = Infinity;
     private lastRefresh = 0;
 
+    protected onEnable(): void {
+        EventMgr.on(LogicEvent.updateAllianceCities, this.invalidateOwnership, this);
+        EventMgr.on(LogicEvent.updateMyRole, this.invalidateOwnership, this);
+        this.invalidateOwnership();
+    }
+
+    protected onDisable(): void { EventMgr.targetOff(this); }
+    private invalidateOwnership(): void { this.lastRefresh = -Infinity; }
+
+    private refreshCityOwner(marker: CityMarker | GateMarker, cell: { x: number; y: number }, width: number): void {
+        const owner = resolveCityOwner(CityCommand.getInstance().at(cell.x, cell.y),
+            LoginCommand.getInstance().proxy.getRoleData()?.allianceId);
+        const key = JSON.stringify(owner);
+        if (key === marker.ownerKey) return;
+        marker.ownerKey = key;
+        let flag = marker.node.getChildByName('StrategicAllianceFlag');
+        if (!flag && owner.occupied) {
+            flag = new Node('StrategicAllianceFlag'); flag.layer = marker.node.layer;
+            flag.addComponent(UITransform); marker.node.addChild(flag);
+        }
+        if (flag) {
+            flag.active = owner.occupied;
+            flag.setPosition(width * .22, 8, 0); flag.setScale(.48, .48, 1);
+            drawCityFlag(flag, owner);
+        }
+        if ('plate' in marker) {
+            const color = cityOwnerColor(owner), g = marker.plate; g.clear(); g.lineWidth = owner.occupied ? 1.6 : 1;
+            g.fillColor = owner.occupied ? new Color(Math.round(color.r * .22), Math.round(color.g * .22), Math.round(color.b * .22), 248)
+                : new Color(29, 35, 28, 244);
+            g.strokeColor = color;
+            g.moveTo(-43, 12); g.lineTo(43, 12); g.lineTo(47, 8); g.lineTo(47, -8);
+            g.lineTo(43, -12); g.lineTo(-43, -12); g.lineTo(-47, -8); g.lineTo(-47, 8); g.close(); g.fill(); g.stroke();
+            marker.title.color = owner.occupied ? new Color(247, 237, 208) : new Color(247, 227, 182);
+        }
+    }
+
     initialize(camera: Camera): void {
         this.camera = camera;
         this.root = new Node('StrategicWorld'); this.root.layer = this.node.layer;
+        this.root.active = false;
         this.node.addChild(this.root); this.root.addComponent(UITransform).setContentSize(MapUtil.mapPixcelSize);
         const terrain = new Node('ProvinceColors'); terrain.layer = this.node.layer; this.root.addChild(terrain);
         const g = terrain.addComponent(Graphics), config = WorldCampaign.config;
@@ -236,6 +279,7 @@ export default class WorldStrategicMap extends Component {
             marker.node.active = Math.abs(x) < viewport.width / 2 + 40 && Math.abs(y) < viewport.height / 2 + 30;
             if (!marker.node.active) continue;
             marker.node.setPosition(marker.x, marker.y); marker.node.setScale(scale * density, scale * density, 1);
+            this.refreshCityOwner(marker, marker.city, marker.width);
             placed.push({ x, y, width: marker.width * density, height: marker.height * density });
         }
         for (const marker of this.gateMarkers) {
@@ -247,18 +291,7 @@ export default class WorldStrategicMap extends Component {
             marker.plate.node.active = !placed.some(other => Math.abs(x - other.x) < (94 * density + other.width) / 2 + 6
                 && Math.abs(labelY - other.y) < other.height / 2 + 12 * density + 4);
             if (marker.plate.node.active) placed.push({ x, y: labelY, width: 94 * density, height: 24 * density });
-            const build = cmd.buildProxy.getBuild(MapUtil.getIdByCellPoint(marker.gate.x, marker.gate.y));
-            const own = !!build && (build.rid > 0 && String(build.rid) === String(cmd.cityProxy.myId)
-                || Number(cmd.cityProxy.myUnionId) > 0 && String(build.unionId) === String(cmd.cityProxy.myUnionId));
-            if (marker.owned !== own) {
-                marker.owned = own;
-                const g = marker.plate; g.clear(); g.lineWidth = 1;
-                g.fillColor = new Color(29, 35, 28, 244);
-                g.strokeColor = own ? new Color(125, 185, 157) : new Color(194, 163, 98);
-                g.moveTo(-43, 12); g.lineTo(43, 12); g.lineTo(47, 8); g.lineTo(47, -8);
-                g.lineTo(43, -12); g.lineTo(-43, -12); g.lineTo(-47, -8); g.lineTo(-47, 8); g.close(); g.fill(); g.stroke();
-                marker.title.color = own ? new Color(165, 221, 184) : new Color(247, 227, 182);
-            }
+            this.refreshCityOwner(marker, marker.gate, 50);
         }
         if (this.homeMarker?.node.active) this.homeMarker.node.setSiblingIndex(this.root.children.length - 1);
     }

@@ -7,6 +7,7 @@ import MapCityLogic from "../map/MapCityLogic";
 import { MapCityData } from "../map/MapCityProxy";
 import MapCommand from "../map/MapCommand";
 import MapLogic from "../map/MapLogic";
+import MapArmyLogic from "../map/MapArmyLogic";
 import { MapAreaData, MapResType } from "../map/MapProxy";
 import MapResLogic from "../map/MapResLogic";
 import MapUtil from "../map/MapUtil";
@@ -19,6 +20,10 @@ import { LogicEvent } from '../common/LogicEvent';
 import { CoreEvent } from '../core/CoreEvent';
 import WorldMapArt from '../map/WorldMapArt';
 import WorldLandscape from '../map/WorldLandscape';
+import AssetLoadQueue from '../core/AssetLoadQueue';
+import { playerCityAppearance } from '../map/PlayerCityAppearance';
+import WorldCampaign from '../map/WorldCampaign';
+import { BRIDGE_ART, GATE_ART } from '../map/GateGeometry';
 
 interface PendingMapArea {
     id: number;
@@ -36,6 +41,7 @@ export default class MapScene extends Component {
 
     protected _cmd: MapCommand = null;
     private _pendingAreas: PendingMapArea[] = [];
+    private _prefetch: Generator<void, void, unknown> = null;
     private _initialCellTotal = 0;
     private _initialCellDone = 0;
     private _positionReady = false;
@@ -110,6 +116,8 @@ export default class MapScene extends Component {
     protected update(): void {
         if (this._failed) return;
         try {
+            WorldMapArt.updateStreaming();
+            if (!this._ready && WorldMapArt.visibleState.error) throw WorldMapArt.visibleState.error;
             const now = () => typeof performance !== 'undefined' ? performance.now() : Date.now();
             const started = now();
             // 七个图层共享预算；回收先取最多 2ms / 32 个节点，避免区域切换时集中解绑。
@@ -146,13 +154,17 @@ export default class MapScene extends Component {
                 const progress = this._initialCellTotal > 0 ? this._initialCellDone / this._initialCellTotal : 1;
                 EventMgr.emit(CoreEvent.mapLoadProgress, 0.9 + Math.min(1, progress) * 0.08, '正在部署城池与资源…');
             }
-            if (this._positionReady && !this._ready && !this._warmupStarted && this._pendingAreas.length === 0) {
+            if (this._ready && this._prefetch && now() - started < 3 && this._pendingAreas.length === 0) {
+                if (this._prefetch.next().done) this._prefetch = null;
+            }
+            if (this._positionReady && !this._ready && !this._warmupStarted && this._pendingAreas.length === 0
+                && WorldMapArt.visibleState.pending === 0) {
                 this._warmupStarted = true;
                 EventMgr.emit(CoreEvent.mapLoadProgress, 0.99, '正在展开山河…');
                 this.warmUpMap(this._tiledMap, 3, () => {
                     this.scheduleOnce(() => {
                         if (this._failed) return;
-                        if (this._pendingAreas.length > 0) {
+                        if (this._pendingAreas.length > 0 || WorldMapArt.visibleState.pending > 0) {
                             this._warmupStarted = false;
                             return;
                         }
@@ -192,6 +204,8 @@ export default class MapScene extends Component {
     }
 
     protected onDestroy(): void {
+        WorldMapArt.unbindTree(this.node);
+        this._prefetch = null;
         this._pendingAreas.length = 0;
         EventMgr.targetOff(this);
         this._recycleLayers.length = 0;
@@ -202,7 +216,8 @@ export default class MapScene extends Component {
     }
 
     protected onMapShowAreaChange(centerPoint: Vec2, centerAreaId: number, addIds: number[], removeIds: number[], detailChanged = false): void {
-
+        AssetLoadQueue.pauseBackground();
+        this._prefetch = this.prefetchRing(centerAreaId);
 
         let resLogic: MapResLogic = this.node.getComponent(MapResLogic);
         let buildResLogic: MapResBuildLogic = this.node.getComponent(MapResBuildLogic);
@@ -251,6 +266,42 @@ export default class MapScene extends Component {
         }
     }
 
+    /** 只预取可见分区外一圈；分帧查轻量逻辑数据，不提前创建场景节点。 */
+    private *prefetchRing(centerAreaId: number): Generator<void, void, unknown> {
+        if (this._cmd.proxy.overview) return;
+        const visible = new Set(this._cmd.proxy.visibleAreaIds), ring = new Set<number>();
+        for (const id of visible) {
+            const point = MapUtil.getAreaPointById(id);
+            for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+                const p = new Vec2(point.x + dx, point.y + dy);
+                if (!MapUtil.isVaildAreaPoint(p)) continue;
+                const neighbor = MapUtil.getIdByAreaPoint(p.x, p.y);
+                if (!visible.has(neighbor)) ring.add(neighbor);
+            }
+        }
+        const center = MapUtil.getAreaPointById(centerAreaId);
+        const distance = (id: number) => { const p = MapUtil.getAreaPointById(id); return Math.abs(p.x - center.x) + Math.abs(p.y - center.y); };
+        const names = new Set<string>(); let inspected = 0;
+        for (const id of [...ring].sort((a, b) => distance(a) - distance(b))) {
+            const area = this._cmd.proxy.getMapAreaData(id);
+            for (let x = area.startCellX; x < area.endCellX; x++) for (let y = area.startCellY; y < area.endCellY; y++) {
+                const cell = MapUtil.getIdByCellPoint(x, y), data = this._cmd.proxy.getResData(cell);
+                const city = this._cmd.cityProxy.getCity(cell);
+                let name = city ? playerCityAppearance(city.level).art : '';
+                if (!name && data?.type === MapResType.SYS_CITY) name = WorldMapArt.citySprite(data.level, data);
+                else if (!name && data?.type === MapResType.SYS_FORTRESS) {
+                    const gate = WorldCampaign.gateAt(x, y);
+                    name = gate ? (gate.crossing === 'bridge' ? BRIDGE_ART : GATE_ART) : 'fort';
+                } else if (!name && data) {
+                    const type = { [MapResType.WOOD]: 'forest', [MapResType.IRON]: 'iron', [MapResType.STONE]: 'quarry', [MapResType.GRAIN]: 'grain' }[data.type];
+                    if (type) name = `${type}_lv${Math.min(10, Math.max(1, Math.floor(data.level) || 1))}`;
+                }
+                if (name && !names.has(name)) { names.add(name); WorldMapArt.prefetch([name]); }
+                if (++inspected % 32 === 0) yield;
+            }
+        }
+    }
+
     private addMapCell(areaId: number, x: number, y: number): void {
         const layers = this._itemLayers;
         if (!layers) throw new Error('地图图层尚未初始化');
@@ -290,11 +341,15 @@ export default class MapScene extends Component {
         }
     }
 
-    protected onScrollToMap(x: number, y: number, focus?: 'player-city' | 'preserve-zoom'): void {
+    protected onScrollToMap(x: number, y: number, focus?: 'player-city' | 'preserve-zoom', troopIdx?: number): void {
         let old = this.node.getComponent(MapLogic).curCameraPoint();
         let cur = this.node.getComponent(MapLogic).toCameraPoint(new Vec2(x, y));
 
-        EventMgr.emit(LogicEvent.beforeScrollToMap, cur.x, cur.y, old.x, old.y);
+        if (focus !== 'preserve-zoom') EventMgr.emit(LogicEvent.beforeScrollToMap, cur.x, cur.y, old.x, old.y);
         this.node.getComponent(MapLogic).scrollToMapPoint(new Vec2(x, y), focus);
+        if (Number.isInteger(troopIdx) && troopIdx > 0) {
+            const armies = this.node.getComponent(MapArmyLogic);
+            if (armies) this.node.getComponent(MapLogic).followMapTarget(() => armies.troopMapPosition(troopIdx));
+        }
     }
 }

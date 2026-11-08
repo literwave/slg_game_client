@@ -1,0 +1,60 @@
+{
+  "generator": "built-in imagegen",
+  "reference": "https://www.nga.gov/artworks/166999-plate-number-580-annie-g-walking-saddled",
+  "purpose": "Replace floating/curled-leg marching with a grounded four-beat walk; preserve commander identity.",
+  "assets": {
+    "primary": {
+      "path": "assets/resources/ui/march/commander_walk_grounded_primary_v6.png",
+      "grid": [
+        6,
+        6
+      ],
+      "groups": [
+        "side right",
+        "shallow rear right",
+        "shallow front right"
+      ]
+    },
+    "axial": {
+      "path": "assets/resources/ui/march/commander_walk_grounded_axial_v6.png",
+      "grid": [
+        6,
+        8
+      ],
+      "groups": [
+        "front",
+        "rear",
+        "steep rear right",
+        "steep front right"
+      ]
+    },
+    "idle": {
+      "path": "assets/resources/ui/march/commander_idle_v6.png",
+      "grid": [
+        5,
+        1
+      ],
+      "source": "Crop x=0,y=1152,w=960,h=192 from original v4 atlas through Image Core"
+    }
+  },
+  "processing": "Primary unmodified; axial resized by less than 0.2% to 888x1776 for integral cells. AssetDB import, linear/clamp/no mipmap. Non-square source cells are placed on a padded square SpriteFrame canvas without stretching.",
+  "registration": {
+    "primaryCanvasScale": 1.11,
+    "primaryOffsetY": -4,
+    "axialCanvasScale": 1.04,
+    "axialOffsetY": 0,
+    "insetPixels": 0.5
+  },
+  "playback": {
+    "framesPerView": 12,
+    "horseCycle": 0.96,
+    "infantryCycle": 0.75,
+    "wholeImageBounce": false,
+    "wholeImageRoll": false,
+    "wholeImageSquash": false
+  },
+  "prompts": {
+    "primary": "Create a production animation sprite sheet using images 1-3 ONLY as the exact character/horse design and rendering reference. Image 4 is a public-domain Muybridge WALK motion study: use the anatomical weight-bearing principles, never copy its rider, photographic style, background, numbers or grid. Chinese commander with dark steel/brass lamellar armor, red cape and plume, vertical spear, chestnut horse, black mane/tail, same restrained red-gold tack. Realistic painted isometric miniature, not cartoon. Rebuild the HORSE WALK cycle from scratch: FOUR-BEAT GROUNDED WALK, no gallop/trot, no hopping, no floating horse, no permanently curled front leg. Exactly four connected legs; distinguish near/far forelegs and near/far hindlegs; single solid small dark hoof caps, no toes/claws/extra stumps, no fused limbs. Stance legs extend to planted hooves and sweep backwards relative to the torso; swing legs lift a little, flex, pass, extend forward, land. Always at least two planted hooves; the far legs remain visible where not naturally occluded. Full 12-phase cycle at equal time intervals: 1 left hind contacts; 2 load/push; 3 left fore passes; 4 left fore contacts; 5 load/push; 6 right hind passes; 7 right hind contacts; 8 load/push; 9 right fore passes; 10 right fore contacts; 11 load/push; 12 left hind passes back into phase 1. Keep all twelve phases distinct and smoothly ordered; no repeated keyframe posing. OUTPUT EXACTLY SIX COLUMNS by SIX ROWS of equal SQUARE cells, 36 sprites total, square 1536x1536 PNG with genuine transparent background. Rows 1 and 2 are ONE 12-frame cycle facing screen RIGHT in exact side view, read left-to-right then next row. Rows 3 and 4 are ONE 12-frame cycle facing screen UPPER-RIGHT at shallow isometric angle 26.6 degrees: clearly see rear/flank and rider back, nose upper-right tail lower-left. Rows 5 and 6 are ONE 12-frame cycle facing LOWER-RIGHT at shallow isometric angle 26.6 degrees: clearly see front/flank and rider chest, nose lower-right tail upper-left. Each two-row group must have exactly the same direction/scale across all 12 cells. Fixed camera elevated 25 degrees, whole rider and horse plus spear and tail fit in every cell with transparent margin. Each cell register rider torso and horse ribcage at exactly same coordinates, avoid overall sliding/sizing/morphing. Spear tip y=8%, lowest planted hoof y=91%, body horizontally centered. Small natural head nod and soft cape settling only; no body squashing or rolling. Leave >=5% transparent gutters all sides. Light constant, anatomy and materials constant. No text, frame numbers, lines, shadows, ground, backgrounds or isolated loose pieces.",
+    "axial": "Create a production animation sprite sheet matching the EXACT mounted commander appearance in references: Chinese male commander, dark steel/brass lamellar, red cape/plume, upright long spear, chestnut horse, black mane/tail, restrained red-gold tack, realistic painted isometric miniature. The old atlas reference is ONLY character/camera reference; REPLACE its unnatural legs completely. Public-domain Muybridge reference supplies ONLY grounded four-beat WALK biomechanics, not its artwork/labels/rider. Exactly FOUR anatomically connected horse legs, normal equine knees/hocks, small solid single dark hoof caps, clear near/far legs with natural occlusion; no fused front legs, no extra toes, human feet, bent rubber sticks or dangling stumps. Grounded four-beat WALK, never galloping, hopping or trotting: at least two feet support the horse at all times; each foreleg and hindleg in turn extends and plants, bears weight, pushes back, then bends/reaches forward. All 12 phases equal time: left hind contact/load, left fore passes and contacts, right hind passes and contacts, right fore passes and contacts, left hind passes into next cycle. Advance phases continuously, not random poses. OUTPUT EXACTLY SIX COLUMNS and EIGHT ROWS of equal SQUARE cells: 48 full-body sprites in 1536x2048 transparent PNG. Each successive PAIR of rows is one distinct view, twelve sequential frames read row-major. Rows1-2: STRICT FRONT, horse toward screen BOTTOM, symmetric chest/head, rider face, four legs seen in correct depth. Rows3-4: STRICT REAR, horse toward screen TOP, rump and rider back, head partly hidden behind rider. Rows5-6: STEEP UPPER-RIGHT at 63.4 degrees, almost REAR view with narrow right flank, spine nearly vertical, mostly rump/back, nose slightly right and farther UP than tail. Rows7-8: STEEP LOWER-RIGHT at 63.4 degrees, almost FRONT view with narrow flank, mostly chest/face, nose slightly right and farther DOWN than rump. These steep views are NOT side/45-degree views. Exactly SAME camera, body shape and registration within each 12-frame pair; only limbs, slight head nod and cape move. All horse/rider/spear/tail intact inside cell, scale matches reference. Root centered x=50%, spear tip y=8%, planted hoof baseline y=91%, transparent gutters >=5% each side. Realistic anatomy and distinct support phase are more important than decorative detail. No baked shadow/floor, gridlines, text, numbers, labels, outline or background. GENUINE transparent alpha."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "tool": "内置 image_gen",
+  "heroId": 1016,
+  "name": "刘备",
+  "purpose": "将拘谨作揖的旧立绘改为挺拔、沉稳、有主公气度的五星武将形象，沿用纸本水墨设色风格。",
+  "source": "assets/resources/ui/hero/card_1016.png",
+  "output": "assets/resources/ui/hero/card_1016_lord_v2.png",
+  "prompt": "Use case: stylized-concept. Redesign the supplied Liu Bei portrait for a high-quality Three Kingdoms strategy game. Image 1 is the old illustration and a reference ONLY for historical ink-and-gouache rendering and the restrained parchment palette. Completely replace the deferential hunched bow, clasped hands, plain sagging robes and doorway setting. Paint ONE unmistakable Liu Bei as a dignified, charismatic middle-aged Han Chinese lord and commander: handsome mature oval face, prominent but natural earlobes, expressive intelligent eyes, well-groomed short moustache and elegant pointed beard, tidy black hair gathered into a topknot with a restrained gilt-and-jade Han hair crown. His gaze is calm, resolute and benevolent, chin level, shoulders open, strong upright posture, no old frail expression or obsequious smile. Three-quarter portrait from crown to just above the knees; torso facing slightly to the right, face toward the viewer. He fills the card confidently, face large and readable in the upper third. Luxurious deep jade-green silk brocade outer robe with subtly embroidered gold cloud patterns, structured broad shoulders over restrained dark bronze lamellar shoulder/chest protection, elegant ivory inner collar, substantial jade belt clasp, immaculate rich layered fabric with flowing but controlled folds. Not rags, not patched clothes, not an exaggerated fantasy emperor costume. His right hand rests naturally on one of two distinct fully sheathed straight swords at his waist, the left hand holds a small closed rolled military dispatch at waist level, hands separate, relaxed and anatomically correct; both sword hilts and sheaths are clear, no weapons crossing his face. Heroic bearing comes from stature and composition, not shouting. Soft sweeping green cloak provides a bold clean silhouette. Background: an understated elevated Han palace terrace, pale morning mist and distant Shu mountain ridges, one distant muted military standard; background low contrast and clearly subordinate, no dark vertical pillar slicing through the figure. Refined fine-brush Chinese historical illustration with realistic anatomy, hand-painted gouache color, crisp precise facial features, subtle ivory paper grain, controlled ink contours and warm angled light on the face and bronze. Deep green, antique gold, ivory and warm charcoal with clean tonal separation. Sophisticated collectible character artwork, avoid dusty flat beige overall, coarse scratchy noise, muddy face, photographic skin, glossy 3D and anime. Composition: full-bleed vertical 350:480 ratio at high resolution, head with generous top margin, face centered about 28 percent down; important face, hands and character details in central 80 percent, above the lower 20 percent occupied by game card UI. No frame, no border, no stars, no faction badge, no UI, no text, no writing, no lettering, no watermark. Opaque artwork. Exactly one person, one head, two arms and two hands, correct fingers. The final image must read instantly as a five-star sovereign leader, not a servant making a bow.",
+  "postprocess": [
+    "resize 350x480 bicubic"
+  ],
+  "assetSettings": {
+    "filter": "linear",
+    "wrap": "clamp",
+    "mipmap": false,
+    "pivot": {
+      "x": 0.5,
+      "y": 0.5
+    }
+  },
+  "integration": "通过 GeneralPortrait.ts 统一解析刘备画像新版本，保持配置表原资源标识。"
+}

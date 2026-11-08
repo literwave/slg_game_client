@@ -19,6 +19,7 @@ class Node {
     components = new Map();
     getComponent(type) { return this.components.get(type); }
     setPosition(position) { this.position = position; }
+    destroy() { this.isValid = false; this.parent = null; }
 }
 class Sprite extends Component { spriteFrame = null; }
 class SpriteFrame { constructor(name) { this.name = name; this.isValid = true; } }
@@ -85,7 +86,8 @@ const { MapResType } = proxyModule;
 const proxy = new proxyModule.default();
 proxy.initData();
 command.proxy = proxy;
-const BaseLayer = load('assets/scripts/map/MapBaseLayerLogic.ts', { './MapCommand': asDefault(MapCommand) }).default;
+const BaseLayer = load('assets/scripts/map/MapBaseLayerLogic.ts', { './MapCommand': asDefault(MapCommand),
+    './WorldMapArt': asDefault({ unbindTree() {} }) }).default;
 
 test('portrait clears the old image and ignores out-of-order loads, including cached switches', () => {
     const cache = new Map();
@@ -191,7 +193,8 @@ test('area retirement does not synchronously pool nodes; re-entry reuses each no
     let drained = 0;
     while (current.recycleOneItem()) drained++;
     assert.equal(drained, 99);
-    assert.equal(current._itemPool.size(), 100);
+    assert.equal(current._itemPool.size(), 64);
+    assert.equal(originals.filter(node => !node.isValid).length, 36, 'idle pool is bounded');
     assert.equal(current._retiredItems.size, 0);
     assert.equal(current.removeItem(999, 0), false, 'late network deletion is harmless');
 });
@@ -208,7 +211,7 @@ test('new areas reuse retired nodes instead of growing the live allocation on re
     assert.equal(current._itemMap.size, 1);
     current.removeArea(39);
     while (current.recycleOneItem()) {}
-    assert.equal(current._itemPool.size(), 100);
+    assert.equal(current._itemPool.size(), 64);
 });
 
 test('area visibility stays within map boundaries and old areas leave on far jumps', () => {
@@ -268,10 +271,14 @@ test('adding/removing a bookmark updates visible and retiring areas without per-
 let now = 0;
 const sceneImports = { ...shared, '../core/CoreEvent': { CoreEvent }, '../map/MapProxy': proxyModule,
     '../map/MapCommand': asDefault(MapCommand), '../map/MapUtil': asDefault(MapUtil) };
-for (const name of ['MapBaseLayerLogic', 'MapResBuildLogic', 'MapBuildTipsLogic', 'MapCityLogic', 'MapLogic',
+for (const name of ['MapBaseLayerLogic', 'MapResBuildLogic', 'MapBuildTipsLogic', 'MapCityLogic', 'MapLogic', 'MapArmyLogic',
     'MapResLogic', 'MapFacilityBuildLogic', 'MapBuildTagLogic', 'MapSysCityLogic', 'WorldMapArt', 'WorldLandscape', 'WorldCampaign']) {
     sceneImports[`../map/${name}`] = asDefault(class {});
 }
+sceneImports['../map/WorldMapArt'] = asDefault({ updateStreaming() {}, unbindTree() {}, visibleState: { pending: 0, error: null } });
+sceneImports['../core/AssetLoadQueue'] = asDefault({ pauseBackground() {} });
+sceneImports['../map/PlayerCityAppearance'] = {};
+sceneImports['../map/GateGeometry'] = {};
 const MapScene = load('assets/scripts/scene/MapScene.ts', sceneImports, { now: () => now }).default;
 test('all map layers share a bounded recycle budget and still populate cells', () => {
     const scene = new MapScene();

@@ -1,0 +1,50 @@
+{
+  "purpose": "连续攻城：原创步兵与骑将八方向16帧、32帧墙面特效",
+  "reference": "https://sgz.ejoy.com/gonglue/detail-4142.html",
+  "assets": [
+    "assets/resources/ui/march/siege-infantry-v1.png",
+    "assets/resources/ui/march/siege-commander-v1.png",
+    "assets/resources/ui/march/siege-infantry-between-v1.png",
+    "assets/resources/ui/march/siege-commander-between-v1.png",
+    "assets/resources/ui/march/siege-impact-v2.png"
+  ],
+  "playback": {
+    "directions": [
+      "r",
+      "ru",
+      "u",
+      "lu",
+      "l",
+      "ld",
+      "d",
+      "rd"
+    ],
+    "framesPerDirection": 16,
+    "fps": 16,
+    "arrangement": "8x8关键帧与8x8中间帧交错播放；每格160像素；逐帧落脚锚点",
+    "effects": "8x4，每格192像素：撞击/烟/火/土尘；墙面位置由地图占地计算",
+    "preload": "地图可交互后，通过已有后台单路队列逐张加载"
+  },
+  "prompts": [
+    {
+      "name": "siege_infantry_v1",
+      "prompt": "Use case: historical-scene. Create a BRAND NEW production sprite sheet for an isometric Three Kingdoms strategy game. GENUINE transparent RGBA background. Square canvas, exactly 8 equal columns by 8 equal rows (64 separate sprites), no drawn grid and no text. Every cell has the SAME single adult male Chinese spear infantryman with dark iron lamellar armor, restrained brass trim, dark indigo skirt, steel helmet with a short dark-red plume, leather boots, one long intact wooden spear. Polished realistic miniature game art, sharp readable silhouette, natural warm light, weathered materials, not cartoon, no glow. Camera orthographic isometric looking down about 30 degrees. Eight rows are eight distinct facing directions: row1 screen right, row2 upper-right with back/side visible, row3 away toward screen top with back visible, row4 upper-left with back/side visible, row5 screen left, row6 lower-left with front/side visible, row7 toward screen bottom with front visible, row8 lower-right with front/side visible. Within EACH row, columns1-8 are one continuous spear THRUST attack loop: ready, brace, draw spear back, push forward, fully extended thrust, hold contact, retract, ready again. Feet stay fixed on same two ground contact points in every frame; action in arms shoulders torso. Same head size and body proportions all cells, entire spear tip and butt and red plume must stay inside its own cell with generous transparent gutter; hands anatomically correct gripping shaft, spear straight continuous no broken ends, no extra spear. Center soldier root at same normalized point per cell, ground contact at 86 percent cell height. Spear occupies horizontal or foreshortened diagonal to match heading, never points in wrong direction. New art, not a contact sheet of existing assets. Empty transparency outside sprites, absolutely no background scenery, no tile bases, no baked text, no borders, no checkerboard pixels. High consistency, all 64 frames visible."
+    },
+    {
+      "name": "siege_commander_v1",
+      "prompt": "Use case: historical-scene. Create a BRAND NEW isometric Three Kingdoms mounted commander COMMAND animation sprite sheet, transparent RGBA background. Square canvas with exactly 8 equal columns and 8 equal rows, 64 isolated frames, no text or visible grid. Same male Chinese general on same dark bay horse in every cell. Dark iron-and-bronze lamellar armor, dark red cloak, steel helmet with red plume, restrained cloth and realistic weathered textures. One spear held in right hand. Premium realistic hand-painted 3D game miniature, orthographic isometric camera 30 degrees overhead; no cartoon proportions, no glowing magic. Eight rows facing: right, upper-right(back/side), up(back), upper-left(back/side), left, lower-left(front/side), down(front), lower-right(front/side). Each row columns1-8 form gentle command attack loop: steady ready, raise spear slightly, lean forward with horse lowering head, point spear toward attack direction, brief hold, recover, settle cloak, ready. Horse stays planted with all four hooves correct and stable in SAME location, no walking and no rearing; character must never morph. Keep entire horse tail plume and spear within each cell with generous transparent margin, no inter-cell overlap. Uniform scale and bounding box; ground contact at 86 percent cell height; consistent lighting from upper left across all views. Continuous straight weapon with correct grip, no extra limbs. All 64 distinct cells and all eight directions must be present. Background is genuinely empty transparent pixels, no terrain, no shadow base, no labels, no numbers, no watermark."
+    },
+    {
+      "name": "siege_impacts_v2",
+      "prompt": "Use case: stylized-concept. Generate a brand new TRANSPARENT game particle flipbook texture atlas, NOT an illustration of a building or a battlefield. Exactly 8 columns and 4 rows of equal SQUARE cells (32 cells), landscape 2:1 canvas. Each tiny effect is ISOLATED with at least 20 percent empty margin on ALL four sides of its cell. No effect may extend into a neighboring cell. No wall, no bricks, no stone slab, no floor, no soil base, no solid objects except a few very small flying particle specks. Absolutely empty transparent alpha background.\nRow 1: eight chronological frames of a compact amber spark plus pale tan dust impact: very small contact, spray, dust puff, puff expands, dissipates, thin wisps, faint traces, almost empty. No fireball.\nRow 2: eight chronological frames of a small soft CHARCOAL smoke puff in midair: emerging, rolling, expanding, billowing, dispersing, thinner, fading, very faint. Realistically shaded, semitransparent feathery texture, full puff stays within central 60% cell area at all times, no floor.\nRow 3: eight frames of a looping SMALL orange flame: pure tongues of orange and soft golden fire and 2-3 embers ONLY, absolutely no wood, stone, wall, smoke backdrop or floor. Keep height and root fixed, warm low-saturation fire with proper alpha edges.\nRow 4: eight chronological frames of a LOW FLAT isometric TAN DUST puff: contact wisps, expand, scatter, spread, thin, fade, faint, almost empty. No solid terrain beneath.\nConsistent professional realistic painterly VFX, earth-toned historical strategy game, not magical, no neon, no symbols. Effect centers aligned consistently per row, mostly transparent cells, generous separation. Do not draw grid, labels, numbering, checkerboard, backdrop, borders or watermark. All 32 effects separated cleanly, no cropping. Transparent edges must remain color-neutral without red/yellow/green fringe."
+    },
+    {
+      "name": "siege_infantry_between_v1",
+      "prompt": "Edit the attached animation sprite sheet to create its IN-BETWEEN companion sheet for a strategy game. EXACTLY 8 columns by 8 rows on transparent background, identical square cells, no labels, no outlines, no grid drawn, no shadows outside each cell. Preserve the original infantry spearman's identity, costume, scale, materials, painterly realistic isometric style and the eight viewing directions row by row. Each output cell must be a NEW genuinely intermediate pose: output column 1 = half way between reference columns 1 and 2, column 2 = half way between reference 2 and 3, ... column 7 between 7 and 8, column 8 between 8 and 1 for a seamless loop. Smooth anatomically plausible attack motion with unchanged weapon lengths. Move hands, arms, shoulders and weapon with coordinated weight shifts, all parts physically connected. Keep feet/horse hooves registered at EXACTLY the same ground pivot and consistent body scale as the corresponding reference cell; do not move the character randomly around the cell. All eight rows contain the SAME action seen from eight directions, preserving the reference row direction. Keep spear points and capes completely inside the cell with generous transparent margins. Output crisp neutral clean alpha edges without red/yellow edge halos, no checkerboard baked in. Entire complete 8x8 sprite atlas, transparent background."
+    },
+    {
+      "name": "siege_commander_between_v1",
+      "prompt": "Edit the attached animation sprite sheet to create its IN-BETWEEN companion sheet for a strategy game. EXACTLY 8 columns by 8 rows on transparent background, identical square cells, no labels, no outlines, no grid drawn, no shadows outside each cell. Preserve the original mounted commander on a dark horse's identity, costume, scale, materials, painterly realistic isometric style and the eight viewing directions row by row. Each output cell must be a NEW genuinely intermediate pose: output column 1 = half way between reference columns 1 and 2, column 2 = half way between reference 2 and 3, ... column 7 between 7 and 8, column 8 between 8 and 1 for a seamless loop. Smooth anatomically plausible attack motion with unchanged weapon lengths. Move hands, arms, shoulders and weapon with coordinated weight shifts, all parts physically connected. Keep feet/horse hooves registered at EXACTLY the same ground pivot and consistent body scale as the corresponding reference cell; do not move the character randomly around the cell. All eight rows contain the SAME action seen from eight directions, preserving the reference row direction. Keep spear points and capes completely inside the cell with generous transparent margins. Output crisp neutral clean alpha edges without red/yellow edge halos, no checkerboard baked in. Entire complete 8x8 sprite atlas, transparent background."
+    }
+  ]
+}

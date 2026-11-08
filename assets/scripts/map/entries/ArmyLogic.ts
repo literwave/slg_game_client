@@ -7,6 +7,13 @@ import { aoiTroopMotion, MarchMotion, MarchPath } from '../../world/MarchPath';
 import MarchPlayback from '../../world/MarchPlayback';
 import MarchFormation from './MarchFormation';
 import type { TroopData } from '../../general/TroopProxy';
+import { TroopStateEnum } from '../../config/enum/TroopStateEnum';
+import SiegeEffect from './SiegeEffect';
+import { siegePhase, siegeWallContact } from './SiegeContact';
+import CityCommand from '../../world/CityCommand';
+import WorldCampaign from '../WorldCampaign';
+import { cityFootprintRadius } from '../CityFootprint';
+import { idKey } from '../../network/pto/ProtocolCommand';
 
 export default class ArmyLogic {
     public data: ArmyData = null;
@@ -28,9 +35,15 @@ export default class ArmyLogic {
     private playback: MarchPlayback = null;
     private formation: MarchFormation = null;
     private formationLayer: Node = null;
+    private siegeTarget: Vec2 | null = null;
+    private siegeEffect: SiegeEffect | null = null;
+    private siegeCityId = '';
+    private siegeRadius = 1;
     public setFormationLayer(layer: Node): void { this.formationLayer = layer; }
 
     public clear() {
+        this.siegeEffect?.destroy(); this.siegeEffect = null; this.siegeTarget = null;
+        this.siegeCityId = '';
         this.formation?.destroy(); this.formation = null; this.playback = null;
         this.data = null;
         this.aniNode = null;
@@ -88,6 +101,7 @@ export default class ArmyLogic {
     }
 
     public setArmyData(data: ArmyData, aniNode: Node, arrowNode: Node): void {
+        this.siegeEffect?.destroy(); this.siegeEffect = null; this.siegeTarget = null; this.siegeCityId = '';
         this.formation?.destroy(); this.formation = null; this.playback = null;
         this.march = null; this.marchPath = null;
         this.routeGraphics = null; this.routePixels = [];
@@ -146,6 +160,8 @@ export default class ArmyLogic {
     }
 
     public setMarchData(march: MarchInfo, aniNode: Node, arrowNode: Node): void {
+        this.siegeTarget = null; this.siegeCityId = ''; this.formation?.setSiegeTarget(null);
+        this.siegeEffect?.update(null, 0);
         const marker = aniNode.getChildByName('WorldTroopMarker'); if (marker) marker.active = false;
         this.setMotion(march, aniNode, arrowNode, new Color(230, 202, 126, 185));
     }
@@ -154,9 +170,22 @@ export default class ArmyLogic {
         const motion = aoiTroopMotion(entity);
         if (!motion) { aniNode.active = arrowNode.active = false; return; }
         // 其他玩家不一定是敌方，只用不同颜色区别于本人，不推断同盟/敌对关系。
-        const color = own ? new Color(111, 190, 233, 230) : new Color(237, 188, 98, 230);
+        const sieging = entity.troopState === TroopStateEnum.SIEGE;
+        this.siegeTarget = sieging && Number.isFinite(entity.targetPos?.x) && Number.isFinite(entity.targetPos?.y)
+            ? new Vec2(entity.targetPos.x, entity.targetPos.y) : null;
+        this.siegeCityId = this.siegeTarget ? idKey(entity.targetId) : '';
+        if (this.siegeTarget) {
+            const city = CityCommand.getInstance().cities.get(this.siegeCityId);
+            const configured = WorldCampaign.config?.cities.find(c => c.x === this.siegeTarget.x && c.y === this.siegeTarget.y);
+            this.siegeRadius = configured?.footprintRadius ?? (WorldCampaign.gateAt(this.siegeTarget.x, this.siegeTarget.y)
+                ? 1 : cityFootprintRadius(city?.level || 1));
+            if (!this.siegeEffect) this.siegeEffect = new SiegeEffect(aniNode);
+        }
+        const color = sieging ? new Color(228, 142, 99, 230)
+            : own ? new Color(111, 190, 233, 230) : new Color(237, 188, 98, 230);
         if (!this.formation) this.formation = new MarchFormation(aniNode, this.formationLayer);
         this.formation.configure(troop, own);
+        this.formation.setSiegeTarget(this.siegeTarget);
         this.setMotion(motion, aniNode, arrowNode, color);
         let marker = aniNode.getChildByName('WorldTroopMarker');
         if (!marker) {
@@ -216,12 +245,22 @@ export default class ArmyLogic {
         this.aniNode.active = true; this.aniNode.setPosition(pixel.x, pixel.y, 0);
         this.arrowNode.active = sample.moving;
         this.drawRemainingMarchRoute(pixel);
+        let hit: Vec2 | null = null;
+        if (this.siegeTarget && !sample.moving) {
+            const contact = siegeWallContact(sample.position, this.siegeTarget, this.siegeRadius);
+            hit = MapUtil.mapCellToPixelPoint(new Vec2(contact.x, contact.y)).subtract(pixel);
+            hit.y += 22; // 受击点抬到墙脚上方，不向城心凭空投射。
+        }
+        const city = this.siegeTarget ? CityCommand.getInstance().cities.get(this.siegeCityId) : undefined;
         if (this.formation) {
             const cellX = Math.round(sample.position.x), cellY = Math.round(sample.position.y);
             const occupying = !sample.moving && !!WorldCommand.getInstance()
                 .occupyCountdownAt(cellX, cellY, DateUtil.getServerTime() / 1000);
-            this.formation.setGuarding(occupying);
+            this.formation.setGuarding(!this.siegeTarget && occupying);
             this.formation.update(this.playback, sample);
+            const volley = this.formation.getSiegeVolley();
+            this.siegeEffect?.update(hit, volley.seconds, siegePhase(city),
+                city?.durabilityMax > 0 ? city.durability / city.durabilityMax : 1, volley.sources);
             this.marching = sample.moving;
             return point;
         }

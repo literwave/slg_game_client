@@ -1,0 +1,3868 @@
+{
+  "generator": "built-in image_gen",
+  "cell": {
+    "width": 192,
+    "height": 192,
+    "groundY": 178
+  },
+  "atlas": {
+    "columns": 10,
+    "rows": 7,
+    "order": [
+      "r:0..11",
+      "ru:0..11",
+      "u:0..11",
+      "rd:0..11",
+      "d:0..11",
+      "idle:r,ru,u,rd,d",
+      "5 transparent unused cells"
+    ]
+  },
+  "prompts": {
+    "marchGuardRPrompt": "Create a production transparent PNG sprite sheet of exactly TWELVE genuinely different sequential WALK animation frames of THIS SAME tiny armored Chinese spearman from the reference image. Same polished painted 3D game sprite, blue tunic, steel armor, gold trim, red helmet plume, brown boots, straight upright long spear. FIXED CAMERA, FIXED RIGHT-FACING SIDE VIEW in EVERY frame, matching reference; never turn body toward or away from viewer. Layout precisely SIX equal columns and TWO equal rows (12 total cells), read row-major left to right: first row phases 0,1,2,3,4,5, second row phases 6,7,8,9,10,11. One complete seamless full alternating 2-step WALK cycle: left contact, left load, right leg passing, right swing, right extension, right precontact, right contact, right load, left leg passing, left swing, left extension, left precontact. Feet actually exchange fore/aft positions; knees and ankles flex naturally, lifted heel and toe roll, mild opposite arm swing, spear held stable. NO duplicated standing poses. Uniform scale, baseline and stable torso/pelvis position, walk in place. All 12 complete figures including entire spear and plume lie strictly inside their cells with transparent gutters. No shadows/no ground/no background/no panels/no gridlines/no text. Exact 6 by 2 cells, landscape canvas 1536 x 512. Consistency across all frames is paramount. This is animation, not character variations.",
+    "marchGuardRUPrompt": "Create a production transparent PNG sprite sheet of exactly TWELVE sequential WALK animation frames of THIS SAME tiny armored Chinese spearman. Blue cloth, steel lamellar armor and gold edges, red helmet plume, brown boots, long upright spear. ALL TWELVE FRAMES face the IDENTICAL UP-RIGHT / REAR THREE-QUARTER direction as the reference, walking away toward upper right. His BACK is visible throughout, face barely visible in side edge. Do not rotate body to pure back or profile; camera is locked. Exactly SIX equal columns, TWO equal rows, twelve frames total. Read frames 0-5 across top, 6-11 across bottom. ONE continuous alternating two-step walk in place, showing contact, load, passing, lift, swing, precontact, opposite contact, load, passing, lift, swing, precontact. Distinct feet and knee action in each frame, not twelve idle poses. Feet exchange along same diagonal travel axis; tiny armor/cape/plume secondary motion. Stable pelvis and scale, baseline identical, complete spear including point fits inside each cell with generous transparent padding. Same anatomy, same proportions, same weapon, same equipment in every frame. Clear toy-size isometric strategy game sprite rendering matching reference. Transparent background ONLY, no ground plane, no fake checkerboard, no text or cell borders. Exact 6x2 layout, 1536x512 wide canvas.",
+    "marchGuardRDPrompt": "Produce exactly TWELVE animation poses of this exact Chinese armored spearman, in a transparent sprite sheet with SIX columns and TWO rows. Match reference character precisely: red plume on steel helmet, blue cloth skirt, steel lamellar plates with gold edge, brown boots, long straight vertical spear. FIXED DOWN-RIGHT / FRONT THREE-QUARTER view, FACE and CHEST visible in ALL TWELVE frames, moving diagonally toward lower-right viewer. Never rotate to side or rear. Camera locked. Twelve temporal frames of ONE full alternating two-step WALK loop in place, in row major order (top row frames0-5, bottom row6-11). Distinct grounded gait: left heel contact, weight transfer, right foot passes, right foot lifts, right foot extends, right heel approaches ground, right heel contacts, weight transfer, left foot passes, left foot lifts, left foot extends, left heel approaches ground. No repeated stationary poses. Feet and knees articulate along fixed diagonal direction, slight counter-swing of free arm, spear stable and full-length. Uniform torso center, scale, and foot contact baseline; each full sprite entirely inside equal cell with transparent margins, including spear point. Do not crop weapon or boots. Matching polished isometric game sprite, not a sketch. Alpha transparent background, no shadow ground, no labels, no grid, no panels. Landscape canvas1536x512, 6x2 equal cells."
+  },
+  "recipes": [
+    {
+      "kind": "commander",
+      "dir": "r",
+      "n": 0,
+      "slot": 0,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.9090909090909091,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 19,
+          "y": 10,
+          "width": 179,
+          "height": 189
+        },
+        {
+          "type": "resize",
+          "width": 163,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 11,
+          "top": 9,
+          "right": 18,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "r",
+      "n": 1,
+      "slot": 1,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.9090909090909091,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 231,
+          "y": 11,
+          "width": 177,
+          "height": 188
+        },
+        {
+          "type": "resize",
+          "width": 161,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 13,
+          "top": 10,
+          "right": 18,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "r",
+      "n": 2,
+      "slot": 2,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.9090909090909091,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 441,
+          "y": 10,
+          "width": 176,
+          "height": 188
+        },
+        {
+          "type": "resize",
+          "width": 160,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 12,
+          "top": 10,
+          "right": 20,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "r",
+      "n": 3,
+      "slot": 3,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.9090909090909091,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 653,
+          "y": 10,
+          "width": 174,
+          "height": 188
+        },
+        {
+          "type": "resize",
+          "width": 158,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 13,
+          "top": 10,
+          "right": 21,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "r",
+      "n": 4,
+      "slot": 4,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.9090909090909091,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 864,
+          "y": 11,
+          "width": 172,
+          "height": 187
+        },
+        {
+          "type": "resize",
+          "width": 156,
+          "height": 170,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 15,
+          "top": 11,
+          "right": 21,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "r",
+      "n": 5,
+      "slot": 5,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.9090909090909091,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1077,
+          "y": 10,
+          "width": 170,
+          "height": 188
+        },
+        {
+          "type": "resize",
+          "width": 155,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 16,
+          "top": 10,
+          "right": 21,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "r",
+      "n": 6,
+      "slot": 6,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.9090909090909091,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 28,
+          "y": 219,
+          "width": 173,
+          "height": 190
+        },
+        {
+          "type": "resize",
+          "width": 157,
+          "height": 173,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 14,
+          "top": 8,
+          "right": 21,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "r",
+      "n": 7,
+      "slot": 7,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.9090909090909091,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 244,
+          "y": 218,
+          "width": 165,
+          "height": 191
+        },
+        {
+          "type": "resize",
+          "width": 150,
+          "height": 174,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 20,
+          "top": 7,
+          "right": 22,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "r",
+      "n": 8,
+      "slot": 8,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.9090909090909091,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 452,
+          "y": 220,
+          "width": 164,
+          "height": 188
+        },
+        {
+          "type": "resize",
+          "width": 149,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 19,
+          "top": 10,
+          "right": 24,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "r",
+      "n": 9,
+      "slot": 9,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.9090909090909091,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 662,
+          "y": 219,
+          "width": 163,
+          "height": 189
+        },
+        {
+          "type": "resize",
+          "width": 148,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 19,
+          "top": 9,
+          "right": 25,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "r",
+      "n": 10,
+      "slot": 10,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.9090909090909091,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 873,
+          "y": 222,
+          "width": 162,
+          "height": 186
+        },
+        {
+          "type": "resize",
+          "width": 147,
+          "height": 169,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 20,
+          "top": 12,
+          "right": 25,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "r",
+      "n": 11,
+      "slot": 11,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.9090909090909091,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1083,
+          "y": 221,
+          "width": 161,
+          "height": 187
+        },
+        {
+          "type": "resize",
+          "width": 146,
+          "height": 170,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 22,
+          "top": 11,
+          "right": 24,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "ru",
+      "n": 0,
+      "slot": 12,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8900523560209425,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 50,
+          "y": 427,
+          "width": 126,
+          "height": 195
+        },
+        {
+          "type": "resize",
+          "width": 112,
+          "height": 174,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 39,
+          "top": 7,
+          "right": 41,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "ru",
+      "n": 1,
+      "slot": 13,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8900523560209425,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 261,
+          "y": 428,
+          "width": 125,
+          "height": 193
+        },
+        {
+          "type": "resize",
+          "width": 111,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 40,
+          "top": 9,
+          "right": 41,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "ru",
+      "n": 2,
+      "slot": 14,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8900523560209425,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 468,
+          "y": 427,
+          "width": 126,
+          "height": 193
+        },
+        {
+          "type": "resize",
+          "width": 112,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 39,
+          "top": 9,
+          "right": 41,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "ru",
+      "n": 3,
+      "slot": 15,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8900523560209425,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 675,
+          "y": 428,
+          "width": 129,
+          "height": 193
+        },
+        {
+          "type": "resize",
+          "width": 115,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 38,
+          "top": 9,
+          "right": 39,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "ru",
+      "n": 4,
+      "slot": 16,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8900523560209425,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 891,
+          "y": 429,
+          "width": 122,
+          "height": 192
+        },
+        {
+          "type": "resize",
+          "width": 109,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 42,
+          "top": 10,
+          "right": 41,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "ru",
+      "n": 5,
+      "slot": 17,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8900523560209425,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1096,
+          "y": 429,
+          "width": 127,
+          "height": 192
+        },
+        {
+          "type": "resize",
+          "width": 113,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 39,
+          "top": 10,
+          "right": 40,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "ru",
+      "n": 6,
+      "slot": 18,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8900523560209425,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 50,
+          "y": 639,
+          "width": 129,
+          "height": 187
+        },
+        {
+          "type": "resize",
+          "width": 115,
+          "height": 166,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 38,
+          "top": 14,
+          "right": 39,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "ru",
+      "n": 7,
+      "slot": 19,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8900523560209425,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 262,
+          "y": 640,
+          "width": 127,
+          "height": 185
+        },
+        {
+          "type": "resize",
+          "width": 113,
+          "height": 165,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 40,
+          "top": 16,
+          "right": 39,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "ru",
+      "n": 8,
+      "slot": 20,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8900523560209425,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 472,
+          "y": 639,
+          "width": 126,
+          "height": 188
+        },
+        {
+          "type": "resize",
+          "width": 112,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 40,
+          "top": 13,
+          "right": 40,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "ru",
+      "n": 9,
+      "slot": 21,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8900523560209425,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 676,
+          "y": 640,
+          "width": 133,
+          "height": 184
+        },
+        {
+          "type": "resize",
+          "width": 118,
+          "height": 164,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 37,
+          "top": 17,
+          "right": 37,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "ru",
+      "n": 10,
+      "slot": 22,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8900523560209425,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 891,
+          "y": 639,
+          "width": 128,
+          "height": 182
+        },
+        {
+          "type": "resize",
+          "width": 114,
+          "height": 162,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 41,
+          "top": 19,
+          "right": 37,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "ru",
+      "n": 11,
+      "slot": 23,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8900523560209425,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1099,
+          "y": 640,
+          "width": 133,
+          "height": 184
+        },
+        {
+          "type": "resize",
+          "width": 118,
+          "height": 164,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 39,
+          "top": 17,
+          "right": 35,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "u",
+      "n": 0,
+      "slot": 24,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7522123893805309,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 109,
+          "y": 16,
+          "width": 95,
+          "height": 229
+        },
+        {
+          "type": "resize",
+          "width": 71,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "top": 8,
+          "right": 60,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "u",
+      "n": 1,
+      "slot": 25,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7522123893805309,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 365,
+          "y": 16,
+          "width": 94,
+          "height": 229
+        },
+        {
+          "type": "resize",
+          "width": 71,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "top": 8,
+          "right": 60,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "u",
+      "n": 2,
+      "slot": 26,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7522123893805309,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 622,
+          "y": 15,
+          "width": 93,
+          "height": 230
+        },
+        {
+          "type": "resize",
+          "width": 70,
+          "height": 173,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 62,
+          "top": 7,
+          "right": 60,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "u",
+      "n": 3,
+      "slot": 27,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7522123893805309,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 878,
+          "y": 16,
+          "width": 92,
+          "height": 227
+        },
+        {
+          "type": "resize",
+          "width": 69,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 62,
+          "top": 10,
+          "right": 61,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "u",
+      "n": 4,
+      "slot": 28,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7522123893805309,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1131,
+          "y": 15,
+          "width": 95,
+          "height": 230
+        },
+        {
+          "type": "resize",
+          "width": 71,
+          "height": 173,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 59,
+          "top": 7,
+          "right": 62,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "u",
+      "n": 5,
+      "slot": 29,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7522123893805309,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1387,
+          "y": 15,
+          "width": 97,
+          "height": 225
+        },
+        {
+          "type": "resize",
+          "width": 73,
+          "height": 169,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 59,
+          "top": 11,
+          "right": 60,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "u",
+      "n": 6,
+      "slot": 30,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7522123893805309,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 105,
+          "y": 272,
+          "width": 99,
+          "height": 222
+        },
+        {
+          "type": "resize",
+          "width": 74,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 58,
+          "top": 13,
+          "right": 60,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "u",
+      "n": 7,
+      "slot": 31,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7522123893805309,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 367,
+          "y": 272,
+          "width": 92,
+          "height": 228
+        },
+        {
+          "type": "resize",
+          "width": 69,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 62,
+          "top": 9,
+          "right": 61,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "u",
+      "n": 8,
+      "slot": 32,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7522123893805309,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 623,
+          "y": 272,
+          "width": 92,
+          "height": 228
+        },
+        {
+          "type": "resize",
+          "width": 69,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 62,
+          "top": 9,
+          "right": 61,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "u",
+      "n": 9,
+      "slot": 33,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7522123893805309,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 879,
+          "y": 272,
+          "width": 92,
+          "height": 228
+        },
+        {
+          "type": "resize",
+          "width": 69,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 62,
+          "top": 9,
+          "right": 61,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "u",
+      "n": 10,
+      "slot": 34,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7522123893805309,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1136,
+          "y": 272,
+          "width": 90,
+          "height": 228
+        },
+        {
+          "type": "resize",
+          "width": 68,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 63,
+          "top": 9,
+          "right": 61,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "u",
+      "n": 11,
+      "slot": 35,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7522123893805309,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1390,
+          "y": 272,
+          "width": 93,
+          "height": 228
+        },
+        {
+          "type": "resize",
+          "width": 70,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "top": 9,
+          "right": 61,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "rd",
+      "n": 0,
+      "slot": 36,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8947368421052632,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 20,
+          "y": 843,
+          "width": 158,
+          "height": 193
+        },
+        {
+          "type": "resize",
+          "width": 141,
+          "height": 173,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 25,
+          "top": 8,
+          "right": 26,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "rd",
+      "n": 1,
+      "slot": 37,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8947368421052632,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 233,
+          "y": 843,
+          "width": 154,
+          "height": 194
+        },
+        {
+          "type": "resize",
+          "width": 138,
+          "height": 174,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 27,
+          "top": 7,
+          "right": 27,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "rd",
+      "n": 2,
+      "slot": 38,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8947368421052632,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 444,
+          "y": 843,
+          "width": 153,
+          "height": 190
+        },
+        {
+          "type": "resize",
+          "width": 137,
+          "height": 170,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 28,
+          "top": 11,
+          "right": 27,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "rd",
+      "n": 3,
+      "slot": 39,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8947368421052632,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 654,
+          "y": 842,
+          "width": 150,
+          "height": 191
+        },
+        {
+          "type": "resize",
+          "width": 134,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 29,
+          "top": 10,
+          "right": 29,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "rd",
+      "n": 4,
+      "slot": 40,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8947368421052632,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 864,
+          "y": 846,
+          "width": 150,
+          "height": 190
+        },
+        {
+          "type": "resize",
+          "width": 134,
+          "height": 170,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 30,
+          "top": 11,
+          "right": 28,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "rd",
+      "n": 5,
+      "slot": 41,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8947368421052632,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1073,
+          "y": 846,
+          "width": 149,
+          "height": 190
+        },
+        {
+          "type": "resize",
+          "width": 133,
+          "height": 170,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 29,
+          "top": 11,
+          "right": 30,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "rd",
+      "n": 6,
+      "slot": 42,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8947368421052632,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 26,
+          "y": 1055,
+          "width": 152,
+          "height": 183
+        },
+        {
+          "type": "resize",
+          "width": 136,
+          "height": 164,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 27,
+          "top": 17,
+          "right": 29,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "rd",
+      "n": 7,
+      "slot": 43,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8947368421052632,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 236,
+          "y": 1055,
+          "width": 151,
+          "height": 190
+        },
+        {
+          "type": "resize",
+          "width": 135,
+          "height": 170,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 27,
+          "top": 11,
+          "right": 30,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "rd",
+      "n": 8,
+      "slot": 44,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8947368421052632,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 443,
+          "y": 1054,
+          "width": 154,
+          "height": 189
+        },
+        {
+          "type": "resize",
+          "width": 138,
+          "height": 169,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 24,
+          "top": 12,
+          "right": 30,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "rd",
+      "n": 9,
+      "slot": 45,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8947368421052632,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 656,
+          "y": 1057,
+          "width": 148,
+          "height": 186
+        },
+        {
+          "type": "resize",
+          "width": 132,
+          "height": 166,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 29,
+          "top": 14,
+          "right": 31,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "rd",
+      "n": 10,
+      "slot": 46,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8947368421052632,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 866,
+          "y": 1056,
+          "width": 147,
+          "height": 185
+        },
+        {
+          "type": "resize",
+          "width": 132,
+          "height": 166,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 30,
+          "top": 15,
+          "right": 30,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "rd",
+      "n": 11,
+      "slot": 47,
+      "target": "db://assets/art-source/march-walk12/commander-angles-clean.png",
+      "scale": 0.8947368421052632,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1073,
+          "y": 1055,
+          "width": 149,
+          "height": 190
+        },
+        {
+          "type": "resize",
+          "width": 133,
+          "height": 170,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 29,
+          "top": 11,
+          "right": 30,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "d",
+      "n": 0,
+      "slot": 48,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7456140350877193,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 94,
+          "y": 522,
+          "width": 100,
+          "height": 232
+        },
+        {
+          "type": "resize",
+          "width": 75,
+          "height": 173,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 58,
+          "top": 7,
+          "right": 59,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "d",
+      "n": 1,
+      "slot": 49,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7456140350877193,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 352,
+          "y": 522,
+          "width": 97,
+          "height": 230
+        },
+        {
+          "type": "resize",
+          "width": 72,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 59,
+          "top": 9,
+          "right": 61,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "d",
+      "n": 2,
+      "slot": 50,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7456140350877193,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 610,
+          "y": 522,
+          "width": 101,
+          "height": 230
+        },
+        {
+          "type": "resize",
+          "width": 75,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 9,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "d",
+      "n": 3,
+      "slot": 51,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7456140350877193,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 867,
+          "y": 523,
+          "width": 99,
+          "height": 231
+        },
+        {
+          "type": "resize",
+          "width": 74,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 8,
+          "right": 58,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "d",
+      "n": 4,
+      "slot": 52,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7456140350877193,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1124,
+          "y": 522,
+          "width": 97,
+          "height": 232
+        },
+        {
+          "type": "resize",
+          "width": 72,
+          "height": 173,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "top": 7,
+          "right": 59,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "d",
+      "n": 5,
+      "slot": 53,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7456140350877193,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1379,
+          "y": 522,
+          "width": 100,
+          "height": 232
+        },
+        {
+          "type": "resize",
+          "width": 75,
+          "height": 173,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 7,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "d",
+      "n": 6,
+      "slot": 54,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7456140350877193,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 97,
+          "y": 778,
+          "width": 103,
+          "height": 232
+        },
+        {
+          "type": "resize",
+          "width": 77,
+          "height": 173,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 59,
+          "top": 7,
+          "right": 56,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "d",
+      "n": 7,
+      "slot": 55,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7456140350877193,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 354,
+          "y": 778,
+          "width": 101,
+          "height": 226
+        },
+        {
+          "type": "resize",
+          "width": 75,
+          "height": 169,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 12,
+          "right": 57,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "d",
+      "n": 8,
+      "slot": 56,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7456140350877193,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 610,
+          "y": 779,
+          "width": 100,
+          "height": 227
+        },
+        {
+          "type": "resize",
+          "width": 75,
+          "height": 169,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 11,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "d",
+      "n": 9,
+      "slot": 57,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7456140350877193,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 866,
+          "y": 779,
+          "width": 96,
+          "height": 229
+        },
+        {
+          "type": "resize",
+          "width": 72,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "top": 9,
+          "right": 59,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "d",
+      "n": 10,
+      "slot": 58,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7456140350877193,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1121,
+          "y": 779,
+          "width": 96,
+          "height": 221
+        },
+        {
+          "type": "resize",
+          "width": 72,
+          "height": 165,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 15,
+          "right": 60,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "commander",
+      "dir": "d",
+      "n": 11,
+      "slot": 59,
+      "target": "db://assets/art-source/march-walk12/commander-axial.png",
+      "scale": 0.7456140350877193,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1378,
+          "y": 779,
+          "width": 96,
+          "height": 231
+        },
+        {
+          "type": "resize",
+          "width": 72,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 8,
+          "right": 60,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "r",
+      "n": 0,
+      "slot": 0,
+      "target": "db://assets/art-source/march-walk12/guard-r.png",
+      "scale": 0.5105105105105106,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 95,
+          "y": 7,
+          "width": 185,
+          "height": 337
+        },
+        {
+          "type": "resize",
+          "width": 94,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 49,
+          "top": 7,
+          "right": 49,
+          "bottom": 13,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "r",
+      "n": 1,
+      "slot": 1,
+      "target": "db://assets/art-source/march-walk12/guard-r.png",
+      "scale": 0.5105105105105106,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 474,
+          "y": 7,
+          "width": 156,
+          "height": 337
+        },
+        {
+          "type": "resize",
+          "width": 80,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 7,
+          "right": 55,
+          "bottom": 13,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "r",
+      "n": 2,
+      "slot": 2,
+      "target": "db://assets/art-source/march-walk12/guard-r.png",
+      "scale": 0.5105105105105106,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 850,
+          "y": 8,
+          "width": 142,
+          "height": 336
+        },
+        {
+          "type": "resize",
+          "width": 72,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 63,
+          "top": 8,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "r",
+      "n": 3,
+      "slot": 3,
+      "target": "db://assets/art-source/march-walk12/guard-r.png",
+      "scale": 0.5105105105105106,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1196,
+          "y": 7,
+          "width": 159,
+          "height": 333
+        },
+        {
+          "type": "resize",
+          "width": 81,
+          "height": 170,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 53,
+          "top": 10,
+          "right": 58,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "r",
+      "n": 4,
+      "slot": 4,
+      "target": "db://assets/art-source/march-walk12/guard-r.png",
+      "scale": 0.5105105105105106,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1536,
+          "y": 7,
+          "width": 203,
+          "height": 337
+        },
+        {
+          "type": "resize",
+          "width": 104,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 42,
+          "top": 7,
+          "right": 46,
+          "bottom": 13,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "r",
+      "n": 5,
+      "slot": 5,
+      "target": "db://assets/art-source/march-walk12/guard-r.png",
+      "scale": 0.5105105105105106,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1897,
+          "y": 7,
+          "width": 196,
+          "height": 337
+        },
+        {
+          "type": "resize",
+          "width": 100,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 41,
+          "top": 7,
+          "right": 51,
+          "bottom": 13,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "r",
+      "n": 6,
+      "slot": 6,
+      "target": "db://assets/art-source/march-walk12/guard-r.png",
+      "scale": 0.5105105105105106,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 101,
+          "y": 370,
+          "width": 169,
+          "height": 334
+        },
+        {
+          "type": "resize",
+          "width": 86,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 48,
+          "top": 9,
+          "right": 58,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "r",
+      "n": 7,
+      "slot": 7,
+      "target": "db://assets/art-source/march-walk12/guard-r.png",
+      "scale": 0.5105105105105106,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 479,
+          "y": 370,
+          "width": 151,
+          "height": 335
+        },
+        {
+          "type": "resize",
+          "width": 77,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 56,
+          "top": 9,
+          "right": 59,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "r",
+      "n": 8,
+      "slot": 8,
+      "target": "db://assets/art-source/march-walk12/guard-r.png",
+      "scale": 0.5105105105105106,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 854,
+          "y": 370,
+          "width": 138,
+          "height": 335
+        },
+        {
+          "type": "resize",
+          "width": 70,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 65,
+          "top": 9,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "r",
+      "n": 9,
+      "slot": 9,
+      "target": "db://assets/art-source/march-walk12/guard-r.png",
+      "scale": 0.5105105105105106,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1204,
+          "y": 370,
+          "width": 150,
+          "height": 333
+        },
+        {
+          "type": "resize",
+          "width": 77,
+          "height": 170,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 62,
+          "top": 10,
+          "right": 53,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "r",
+      "n": 10,
+      "slot": 10,
+      "target": "db://assets/art-source/march-walk12/guard-r.png",
+      "scale": 0.5105105105105106,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1553,
+          "y": 370,
+          "width": 177,
+          "height": 334
+        },
+        {
+          "type": "resize",
+          "width": 90,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 54,
+          "top": 9,
+          "right": 48,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "r",
+      "n": 11,
+      "slot": 11,
+      "target": "db://assets/art-source/march-walk12/guard-r.png",
+      "scale": 0.5105105105105106,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1919,
+          "y": 370,
+          "width": 159,
+          "height": 335
+        },
+        {
+          "type": "resize",
+          "width": 81,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 55,
+          "top": 9,
+          "right": 56,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "ru",
+      "n": 0,
+      "slot": 12,
+      "target": "db://assets/art-source/march-walk12/guard-ru.png",
+      "scale": 0.5279503105590062,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 121,
+          "y": 18,
+          "width": 159,
+          "height": 314
+        },
+        {
+          "type": "resize",
+          "width": 84,
+          "height": 166,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 58,
+          "top": 14,
+          "right": 50,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "ru",
+      "n": 1,
+      "slot": 13,
+      "target": "db://assets/art-source/march-walk12/guard-ru.png",
+      "scale": 0.5279503105590062,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 486,
+          "y": 16,
+          "width": 157,
+          "height": 312
+        },
+        {
+          "type": "resize",
+          "width": 83,
+          "height": 165,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 15,
+          "right": 49,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "ru",
+      "n": 2,
+      "slot": 14,
+      "target": "db://assets/art-source/march-walk12/guard-ru.png",
+      "scale": 0.5279503105590062,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 851,
+          "y": 14,
+          "width": 153,
+          "height": 317
+        },
+        {
+          "type": "resize",
+          "width": 81,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "top": 12,
+          "right": 50,
+          "bottom": 13,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "ru",
+      "n": 3,
+      "slot": 15,
+      "target": "db://assets/art-source/march-walk12/guard-ru.png",
+      "scale": 0.5279503105590062,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1213,
+          "y": 8,
+          "width": 154,
+          "height": 318
+        },
+        {
+          "type": "resize",
+          "width": 81,
+          "height": 168,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 12,
+          "right": 51,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "ru",
+      "n": 4,
+      "slot": 16,
+      "target": "db://assets/art-source/march-walk12/guard-ru.png",
+      "scale": 0.5279503105590062,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1579,
+          "y": 7,
+          "width": 150,
+          "height": 319
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 168,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 62,
+          "top": 11,
+          "right": 51,
+          "bottom": 13,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "ru",
+      "n": 5,
+      "slot": 17,
+      "target": "db://assets/art-source/march-walk12/guard-ru.png",
+      "scale": 0.5279503105590062,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1945,
+          "y": 5,
+          "width": 145,
+          "height": 326
+        },
+        {
+          "type": "resize",
+          "width": 77,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 63,
+          "top": 7,
+          "right": 52,
+          "bottom": 13,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "ru",
+      "n": 6,
+      "slot": 18,
+      "target": "db://assets/art-source/march-walk12/guard-ru.png",
+      "scale": 0.5279503105590062,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 129,
+          "y": 374,
+          "width": 152,
+          "height": 323
+        },
+        {
+          "type": "resize",
+          "width": 80,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 9,
+          "right": 52,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "ru",
+      "n": 7,
+      "slot": 19,
+      "target": "db://assets/art-source/march-walk12/guard-ru.png",
+      "scale": 0.5279503105590062,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 491,
+          "y": 374,
+          "width": 152,
+          "height": 317
+        },
+        {
+          "type": "resize",
+          "width": 80,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "top": 12,
+          "right": 51,
+          "bottom": 13,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "ru",
+      "n": 8,
+      "slot": 20,
+      "target": "db://assets/art-source/march-walk12/guard-ru.png",
+      "scale": 0.5279503105590062,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 853,
+          "y": 373,
+          "width": 152,
+          "height": 319
+        },
+        {
+          "type": "resize",
+          "width": 80,
+          "height": 168,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "top": 11,
+          "right": 51,
+          "bottom": 13,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "ru",
+      "n": 9,
+      "slot": 21,
+      "target": "db://assets/art-source/march-walk12/guard-ru.png",
+      "scale": 0.5279503105590062,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1213,
+          "y": 369,
+          "width": 155,
+          "height": 317
+        },
+        {
+          "type": "resize",
+          "width": 82,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 12,
+          "right": 50,
+          "bottom": 13,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "ru",
+      "n": 10,
+      "slot": 22,
+      "target": "db://assets/art-source/march-walk12/guard-ru.png",
+      "scale": 0.5279503105590062,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1579,
+          "y": 369,
+          "width": 150,
+          "height": 309
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 163,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "top": 16,
+          "right": 52,
+          "bottom": 13,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "ru",
+      "n": 11,
+      "slot": 23,
+      "target": "db://assets/art-source/march-walk12/guard-ru.png",
+      "scale": 0.5279503105590062,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1938,
+          "y": 368,
+          "width": 154,
+          "height": 323
+        },
+        {
+          "type": "resize",
+          "width": 81,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 9,
+          "right": 51,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "u",
+      "n": 0,
+      "slot": 24,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.748898678414097,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 92,
+          "y": 11,
+          "width": 106,
+          "height": 231
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 173,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 7,
+          "right": 56,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "u",
+      "n": 1,
+      "slot": 25,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.748898678414097,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 354,
+          "y": 11,
+          "width": 100,
+          "height": 231
+        },
+        {
+          "type": "resize",
+          "width": 75,
+          "height": 173,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "top": 7,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "u",
+      "n": 2,
+      "slot": 26,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.748898678414097,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 606,
+          "y": 11,
+          "width": 104,
+          "height": 231
+        },
+        {
+          "type": "resize",
+          "width": 78,
+          "height": 173,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 7,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "u",
+      "n": 3,
+      "slot": 27,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.748898678414097,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 861,
+          "y": 11,
+          "width": 105,
+          "height": 224
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 168,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 12,
+          "right": 56,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "u",
+      "n": 4,
+      "slot": 28,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.748898678414097,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1119,
+          "y": 11,
+          "width": 103,
+          "height": 219
+        },
+        {
+          "type": "resize",
+          "width": 77,
+          "height": 164,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 58,
+          "top": 16,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "u",
+      "n": 5,
+      "slot": 29,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.748898678414097,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1377,
+          "y": 11,
+          "width": 101,
+          "height": 225
+        },
+        {
+          "type": "resize",
+          "width": 76,
+          "height": 169,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 59,
+          "top": 12,
+          "right": 57,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "u",
+      "n": 6,
+      "slot": 30,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.748898678414097,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 97,
+          "y": 268,
+          "width": 103,
+          "height": 222
+        },
+        {
+          "type": "resize",
+          "width": 77,
+          "height": 166,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 59,
+          "top": 14,
+          "right": 56,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "u",
+      "n": 7,
+      "slot": 31,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.748898678414097,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 353,
+          "y": 268,
+          "width": 103,
+          "height": 218
+        },
+        {
+          "type": "resize",
+          "width": 77,
+          "height": 163,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 59,
+          "top": 17,
+          "right": 56,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "u",
+      "n": 8,
+      "slot": 32,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.748898678414097,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 607,
+          "y": 269,
+          "width": 104,
+          "height": 215
+        },
+        {
+          "type": "resize",
+          "width": 78,
+          "height": 161,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 19,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "u",
+      "n": 9,
+      "slot": 33,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.748898678414097,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 862,
+          "y": 268,
+          "width": 106,
+          "height": 217
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 163,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 56,
+          "top": 18,
+          "right": 57,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "u",
+      "n": 10,
+      "slot": 34,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.748898678414097,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1118,
+          "y": 270,
+          "width": 105,
+          "height": 216
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 162,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 56,
+          "top": 18,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "u",
+      "n": 11,
+      "slot": 35,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.748898678414097,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1379,
+          "y": 268,
+          "width": 101,
+          "height": 223
+        },
+        {
+          "type": "resize",
+          "width": 76,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 59,
+          "top": 13,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "rd",
+      "n": 0,
+      "slot": 36,
+      "target": "db://assets/art-source/march-walk12/guard-rd.png",
+      "scale": 0.5074626865671642,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 108,
+          "y": 10,
+          "width": 174,
+          "height": 338
+        },
+        {
+          "type": "resize",
+          "width": 88,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 8,
+          "right": 47,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "rd",
+      "n": 1,
+      "slot": 37,
+      "target": "db://assets/art-source/march-walk12/guard-rd.png",
+      "scale": 0.5074626865671642,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 474,
+          "y": 10,
+          "width": 170,
+          "height": 338
+        },
+        {
+          "type": "resize",
+          "width": 86,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 8,
+          "right": 49,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "rd",
+      "n": 2,
+      "slot": 38,
+      "target": "db://assets/art-source/march-walk12/guard-rd.png",
+      "scale": 0.5074626865671642,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 836,
+          "y": 10,
+          "width": 170,
+          "height": 337
+        },
+        {
+          "type": "resize",
+          "width": 86,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 9,
+          "right": 49,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "rd",
+      "n": 3,
+      "slot": 39,
+      "target": "db://assets/art-source/march-walk12/guard-rd.png",
+      "scale": 0.5074626865671642,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1199,
+          "y": 10,
+          "width": 169,
+          "height": 337
+        },
+        {
+          "type": "resize",
+          "width": 86,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 9,
+          "right": 49,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "rd",
+      "n": 4,
+      "slot": 40,
+      "target": "db://assets/art-source/march-walk12/guard-rd.png",
+      "scale": 0.5074626865671642,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1562,
+          "y": 10,
+          "width": 168,
+          "height": 331
+        },
+        {
+          "type": "resize",
+          "width": 85,
+          "height": 168,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 12,
+          "right": 50,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "rd",
+      "n": 5,
+      "slot": 41,
+      "target": "db://assets/art-source/march-walk12/guard-rd.png",
+      "scale": 0.5074626865671642,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1923,
+          "y": 9,
+          "width": 169,
+          "height": 337
+        },
+        {
+          "type": "resize",
+          "width": 86,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 56,
+          "top": 9,
+          "right": 50,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "rd",
+      "n": 6,
+      "slot": 42,
+      "target": "db://assets/art-source/march-walk12/guard-rd.png",
+      "scale": 0.5074626865671642,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 111,
+          "y": 371,
+          "width": 171,
+          "height": 339
+        },
+        {
+          "type": "resize",
+          "width": 87,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 55,
+          "top": 7,
+          "right": 50,
+          "bottom": 13,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "rd",
+      "n": 7,
+      "slot": 43,
+      "target": "db://assets/art-source/march-walk12/guard-rd.png",
+      "scale": 0.5074626865671642,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 474,
+          "y": 371,
+          "width": 171,
+          "height": 338
+        },
+        {
+          "type": "resize",
+          "width": 87,
+          "height": 172,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 8,
+          "right": 48,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "rd",
+      "n": 8,
+      "slot": 44,
+      "target": "db://assets/art-source/march-walk12/guard-rd.png",
+      "scale": 0.5074626865671642,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 836,
+          "y": 372,
+          "width": 170,
+          "height": 331
+        },
+        {
+          "type": "resize",
+          "width": 86,
+          "height": 168,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 12,
+          "right": 49,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "rd",
+      "n": 9,
+      "slot": 45,
+      "target": "db://assets/art-source/march-walk12/guard-rd.png",
+      "scale": 0.5074626865671642,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1196,
+          "y": 372,
+          "width": 172,
+          "height": 333
+        },
+        {
+          "type": "resize",
+          "width": 87,
+          "height": 169,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 11,
+          "right": 48,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "rd",
+      "n": 10,
+      "slot": 46,
+      "target": "db://assets/art-source/march-walk12/guard-rd.png",
+      "scale": 0.5074626865671642,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1554,
+          "y": 373,
+          "width": 176,
+          "height": 335
+        },
+        {
+          "type": "resize",
+          "width": 89,
+          "height": 170,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 55,
+          "top": 10,
+          "right": 48,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "rd",
+      "n": 11,
+      "slot": 47,
+      "target": "db://assets/art-source/march-walk12/guard-rd.png",
+      "scale": 0.5074626865671642,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1922,
+          "y": 372,
+          "width": 171,
+          "height": 337
+        },
+        {
+          "type": "resize",
+          "width": 87,
+          "height": 171,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 58,
+          "top": 9,
+          "right": 47,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "d",
+      "n": 0,
+      "slot": 48,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.7692307692307693,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 91,
+          "y": 527,
+          "width": 105,
+          "height": 225
+        },
+        {
+          "type": "resize",
+          "width": 81,
+          "height": 173,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 55,
+          "top": 7,
+          "right": 56,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "d",
+      "n": 1,
+      "slot": 49,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.7692307692307693,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 347,
+          "y": 528,
+          "width": 103,
+          "height": 217
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 56,
+          "top": 13,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "d",
+      "n": 2,
+      "slot": 50,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.7692307692307693,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 604,
+          "y": 527,
+          "width": 103,
+          "height": 217
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 56,
+          "top": 13,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "d",
+      "n": 3,
+      "slot": 51,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.7692307692307693,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 861,
+          "y": 527,
+          "width": 103,
+          "height": 217
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 56,
+          "top": 13,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "d",
+      "n": 4,
+      "slot": 52,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.7692307692307693,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1116,
+          "y": 527,
+          "width": 104,
+          "height": 215
+        },
+        {
+          "type": "resize",
+          "width": 80,
+          "height": 165,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 56,
+          "top": 15,
+          "right": 56,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "d",
+      "n": 5,
+      "slot": 53,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.7692307692307693,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1372,
+          "y": 527,
+          "width": 102,
+          "height": 217
+        },
+        {
+          "type": "resize",
+          "width": 78,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 56,
+          "top": 13,
+          "right": 58,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "d",
+      "n": 6,
+      "slot": 54,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.7692307692307693,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 92,
+          "y": 783,
+          "width": 103,
+          "height": 217
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 55,
+          "top": 13,
+          "right": 58,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "d",
+      "n": 7,
+      "slot": 55,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.7692307692307693,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 348,
+          "y": 783,
+          "width": 103,
+          "height": 217
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 56,
+          "top": 13,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "d",
+      "n": 8,
+      "slot": 56,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.7692307692307693,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 604,
+          "y": 783,
+          "width": 103,
+          "height": 210
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 162,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 56,
+          "top": 19,
+          "right": 57,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "d",
+      "n": 9,
+      "slot": 57,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.7692307692307693,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 861,
+          "y": 783,
+          "width": 103,
+          "height": 216
+        },
+        {
+          "type": "resize",
+          "width": 79,
+          "height": 166,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 57,
+          "top": 14,
+          "right": 56,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "d",
+      "n": 10,
+      "slot": 58,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.7692307692307693,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1117,
+          "y": 783,
+          "width": 104,
+          "height": 205
+        },
+        {
+          "type": "resize",
+          "width": 80,
+          "height": 158,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 56,
+          "top": 23,
+          "right": 56,
+          "bottom": 11,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "kind": "guard",
+      "dir": "d",
+      "n": 11,
+      "slot": 59,
+      "target": "db://assets/art-source/march-walk12/guard-axial.png",
+      "scale": 0.7692307692307693,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1372,
+          "y": 783,
+          "width": 104,
+          "height": 217
+        },
+        {
+          "type": "resize",
+          "width": 80,
+          "height": 167,
+          "fit": "stretch",
+          "interpolation": "bicubic"
+        },
+        {
+          "type": "padding",
+          "left": 55,
+          "top": 13,
+          "right": 57,
+          "bottom": 12,
+          "background": "#00000000"
+        }
+      ]
+    }
+  ]
+}

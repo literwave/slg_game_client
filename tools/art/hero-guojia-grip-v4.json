@@ -1,0 +1,42 @@
+{
+  "tool": "内置 image_gen",
+  "heroId": 1027,
+  "name": "郭嘉",
+  "purpose": "将左手夹持竹简改成掌心向上托举，并整体校正前臂、手腕和拇指朝向。",
+  "source": "assets/resources/ui/hero/card_1027_strategist_v3.png",
+  "sourceSha256": "cbc56658305c2b954a5ef486cf5a4ed8a5a77388cfa019c903868b7fea588c90",
+  "output": "assets/resources/ui/hero/card_1027_strategist_v4.png",
+  "outputSha256": "ec2518c33b9b9d6ebfd30d1153881b25568cd51a10e56f1fc946083ec4d8710e",
+  "revisions": [
+    {
+      "step": "整体重绘伸出前臂与掌心托举姿势",
+      "prompt": "Correct the anatomy and gesture in this existing Guo Jia game portrait. The user rejected the current hand as unnatural. This is a structural pose correction, not merely smoother fingers.\n\nKeep the same recognizable mature male Chinese strategist, stern face with mustache and small beard, black scholar cap, seated posture, navy silk robes, the resting hand on the chair at image left, map table, oil lamp, tent, distant army and warm sunset. Maintain the refined painted ink-and-gouache historical Three Kingdoms game-art style and the original vertical 350:480 composition. Opaque full illustration, no transparency, no lettering, no card frame or UI.\n\nREPLACE the outstretched arm's distal forearm, wrist and LEFT HAND on the RIGHT side of the image with a clearly DIFFERENT, natural gesture of offering a rolled bamboo dispatch. It must visibly differ from the current awkward end-pinching grip. Reconstruct the connected arm from sleeve to wrist to palm. Bend the elbow slightly and let the wrist stay relaxed and aligned with the forearm. The left palm faces upward, visibly supporting the WEIGHT of the bamboo roll from below near its middle/inner third. Place the roll diagonally ACROSS the palm, so it rests securely on the broad palm and gently curled fingers; the hand must NOT pinch the left end of the roll along the cylinder's axis. Show a little of the upward-facing palm. Four fingers form one natural relaxed supporting curve beneath the roll, with correct proximal joints and varied lengths; fingers may be naturally occluded. One anatomically correctly placed left thumb opposes them gently from the side, NOT stretched as a parallel second prong along the top of the cylinder. Exactly one left hand, one thumb and four fingers, correct thumb-side anatomy, no mirrored right hand. Do not splay or twist the wrist, no claw shape, no hand shaped like a clamp, no fused fingers, no extra digits, no repeated row of knuckles, no floating roll. Keep the adult male hand in proportion to the face. Use convincing small contact shadows.\n\nAllow the hand, cuff and scroll to shift slightly down and inward in order to make this natural; do not preserve the wrong grip. The offering motion should look effortless and credible, as if a real seated strategist is passing a substantial rolled document to someone. The bamboo roll remains a single complete compact cylinder with subtle bindings and the small red seal, wholly inside the image with breathing room. Keep all unrelated parts of the source painting as faithful as possible. Return the complete corrected illustration.",
+      "review": "托举姿势成立，但拇指朝向仍偏成右手，未接入项目。"
+    },
+    {
+      "step": "校正左手拇指与四指的对应关系",
+      "prompt": "Edit this supplied full Guo Jia portrait. Critical anatomy correction: the outstretched hand on the RIGHT of the image belongs to his LEFT ARM, but the current palm-up hand has a RIGHT-HAND thumb layout. Correct that mirror-hand error. Preserve the relaxed underhand offering gesture, and preserve the same painting, male character, face, clothing, other resting hand, table, tent and sunset. Keep the complete 350:480 vertical composition with opaque background, no text, no UI.\n\nRedraw ONLY the extended LEFT forearm, wrist, left hand and its immediate grip on the bamboo roll, making the joint connections unambiguous and natural. This is a real LEFT palm: when the wrist comes from screen left and fingertips extend toward screen right, with the palm visible to us, the THUMB IS ON THE LOWER / NEAR SIDE OF THE HAND, NOT on the upper / far side. Remove the existing raised thumb above the left end of the scroll entirely. Put the single LEFT THUMB along the lower near-facing side of the roll, emerging correctly from the thumb pad of the palm, gently opposing the fingers. The four longer fingers support and curl around the FAR side of the bamboo cylinder, with their knuckles and tips partially occluded by it; do not draw four fingers as a row beside the thumb on the near edge. The broad palm supports the roll from below. Slightly re-angle the bamboo roll, palm and cuff if needed for a genuinely plausible left-handed grip. Do not simply mirror the disconnected hand: reconstruct the continuous left wrist, palm and digits as one sound anatomical unit connected to the sleeve. Keep the wrist straight with the forearm and the grip relaxed. Exactly five correctly attached digits, no extra thumb, no floating fingertips, no twisted wrist, no pinching the end of the cylinder. Real weight and believable contact shadows. Keep the hand and rolled bamboo proportional, fully in frame. Preserve the rolled document, its binding and red seal. This is a restrained human offering gesture, not a dramatic pose.\n\nKeep the warm painterly historical Chinese game illustration style, and everything outside this small arm-and-hand region extremely faithful to the reference. Return only the full corrected portrait.",
+      "review": "拇指转到近侧，但竹简上缘露出的整排指尖影响识读，继续收敛。"
+    },
+    {
+      "step": "清理背面露指并保留自然遮挡",
+      "prompt": "Make a final small anatomy cleanup to the outstretched LEFT hand at the right of this supplied painting. Preserve the full illustration, character, face, other hand, style, colors and composition. Keep the new correct LEFT-hand layout: palm up under the bamboo roll, thumb on the lower near-facing side, relaxed wrist continuous with the forearm. Do not revert to a thumb above the left end of the roll.\n\nThe current four fingertips sticking up in a row ABOVE the far upper edge of the bamboo roll look like a second disconnected hand. REMOVE ALL those protruding fingertip bumps above the scroll. A normal relaxed supporting hand does not need to display all five digits. Repaint the far/top outline of the scroll and the immediate background cleanly. The left hand remains visible UNDER the roll with one natural thumb lightly stabilizing its near-facing lower surface and a coherent gently curved palm. Let the four supporting fingers curl underneath and away on the far side, largely OCCLUDED by the roll; show only small anatomically connected portions below/behind it as needed. Do NOT add any new finger, fingertip, nail or knuckle. The physical contact must feel secure and effortless, like a real human supporting a rolled document in one upturned left palm. Preserve the single bamboo cylinder and red seal, the hand's current natural size and location, the sleeve and straight wrist. No pinching the end, no fork/clamp shape, no disconnected hand pieces, no long fingers reaching over the whole top of the cylinder. This is a subtle cleanup, not a new pose. Return the complete opaque vertical portrait without text or UI.",
+      "review": "采用此稿：竹简由掌心托住，拇指在近侧，远侧手指自然被遮挡，手腕连贯。"
+    }
+  ],
+  "postprocess": [
+    "Cocos Image Core: resize 350x480 bicubic"
+  ],
+  "assetSettings": {
+    "filter": "linear",
+    "wrap": "clamp",
+    "mipmap": false,
+    "pivot": {
+      "x": 0.5,
+      "y": 0.5
+    }
+  },
+  "integration": "GeneralPortrait.ts 将稳定标识 ui/hero/card_1027 解析到 strategist_v4；其他武将画像映射不变。",
+  "review": "检查生成大图及导入后的 350x480 卡面尺寸；竹简、手掌及袖口完整，无多余露指。保持人物和场景主体，生成过程存在少量绘画细节变化。"
+}
+

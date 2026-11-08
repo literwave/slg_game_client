@@ -2,19 +2,16 @@
   {
     "Id": 1,
     "Name": "自由加入",
-    "Enum": "FREE",
     "Desc": "直接加入"
   },
   {
     "Id": 2,
     "Name": "需审批",
-    "Enum": "APPLY",
     "Desc": "提交申请，官员/盟主审批"
   },
   {
     "Id": 3,
     "Name": "禁止加入",
-    "Enum": "CLOSED",
     "Desc": "不接受新成员"
   }
 ]

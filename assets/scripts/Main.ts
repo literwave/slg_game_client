@@ -1,3 +1,4 @@
+import { preloadSiegeSheet, SIEGE_SHEETS } from './map/entries/SiegeAnimationLibrary';
 import { _decorator, Component, Prefab, Node, instantiate, TiledMapAsset, JsonAsset, AudioSource, assert, Camera, SpriteFrame, screen, view, director, Director } from 'cc';
 const { ccclass, property } = _decorator;
 
@@ -11,7 +12,6 @@ import LoginCommand from "./login/LoginCommand";
 import MapCommand from "./map/MapCommand";
 import WorldMapArt from './map/WorldMapArt';
 import MapUICommand from "./map/ui/MapUICommand";
-import MapUILogic from './map/ui/MapUILogic';
 import { HttpManager } from "./network/http/HttpManager";
 import { NetEvent } from "./network/socket/NetInterface";
 import { NetManager } from "./network/socket/NetManager";
@@ -35,14 +35,15 @@ import ProgressionCommand from './progression/ProgressionCommand';
 import BuildCommand from './build/BuildCommand';
 import LotteryCommand from './general/LotteryCommand';
 import InventoryCommand from './inventory/InventoryCommand';
-import InventoryIconCache from './inventory/InventoryIconCache';
 import ChatCommand from './chat/ChatCommand';
-import ChatIconCache from './chat/ChatIconCache';
 import RankCommand from './rank/RankCommand';
 import OtherUserCommand from './login/OtherUserCommand';
 import MailCommand from './mail/MailCommand';
 import UnionCommand from './union/UnionCommand';
 import BattleCommand from './battle/BattleCommand';
+import AssetLoadQueue, { AssetPriority, AssetRequestCancelled } from './core/AssetLoadQueue';
+import InventoryIconCache from './inventory/InventoryIconCache';
+import { itemIconPath } from './common/ItemPresentation';
 
 @ccclass('Main')
 export default class Main extends Component {
@@ -79,18 +80,13 @@ export default class Main extends Component {
     private _enteringMap = false;
     private _mapReady = false;
     private _mapUiReady = false;
-    private _heroAssetsReady = false;
-    private _skillAssetsReady = false;
-    private _headAssetsReady = false;
-    private _inventoryAssetsReady = false;
-    private _chatAssetsReady = false;
     private _finishingLoading = false;
     private _heroRequest: Promise<boolean> | null = null;
-    private _heroWarmupTimer: ReturnType<typeof setTimeout> | null = null;
     private _mapPreparation: Generator<void, void, unknown> | null = null;
     private _afterLoadingDraw: (() => void) | null = null;
     private _cityStateRequested = false;
     private _cityStateTimer: ReturnType<typeof setTimeout> | null = null;
+    private _backgroundAssetKeys = new Set<string>();
 
 
     protected onLoad(): void {
@@ -203,7 +199,7 @@ export default class Main extends Component {
         }
         const logic = this.ensureReconnectLogic();
         if (!logic) {
-            this.showTopToast('网络连接已断开，正在尝试重连');
+            this.showTopToast('重连中');
             return;
         }
         this._reconnectNode.setSiblingIndex(this.topLayer() + 20);
@@ -219,7 +215,7 @@ export default class Main extends Component {
     private onServerReconnectFailed(): void {
         // 加载页和战场使用同一退出流程，清掉旧会话后直接回登录，无需再点确认。
         EventMgr.emit(LogicEvent.enterLogin);
-        this.showTopToast('连接未能恢复，已返回登录，请检查网络后重试');
+        this.showTopToast('连接中断，已返回登录');
     }
 
     private ensureReconnectLogic(): ReconnectLogic | null {
@@ -227,7 +223,8 @@ export default class Main extends Component {
             return this._reconnectLogic;
         }
         this._reconnectNode = new Node('Reconnect');
-        this._reconnectNode.layer = this.node.layer;
+        // Canvas 在 default 层，重连遮罩必须由最高层 UI 相机绘制。
+        this._reconnectNode.layer = this.node.getChildByName('UI Camera')?.getComponent(Camera)?.visibility || this.node.layer;
         this._reconnectNode.setParent(this.node);
         this._reconnectNode.setSiblingIndex(this.topLayer() + 20);
         this._reconnectLogic = this._reconnectNode.addComponent(ReconnectLogic);
@@ -251,20 +248,15 @@ export default class Main extends Component {
         }
         let dataList: LoadData[] = [];
         // INDEX 0: 地图数据
-        dataList.push(new LoadData("world/map", LoadDataType.FILE, TiledMapAsset));
-        // INDEX 1: 配置目录 (包含 Hero.json, mapRes_0.json 等)
-        dataList.push(new LoadData("config", LoadDataType.DIR, JsonAsset));
+        dataList.push(new LoadData("world/map-geometry", LoadDataType.FILE, JsonAsset));
+        // 原始配置仍为编辑源；启动只取合并后的表和紧凑地图，避免 37 次独立资源请求。
+        dataList.push(new LoadData("world/boot-configs", LoadDataType.FILE, JsonAsset));
         // 四枚轻量专用侧栏图标随入场加载，第一次切页直接取缓存。
         dataList.push(new LoadData("ui/sidebar", LoadDataType.DIR, SpriteFrame));
 
         this._enteringMap = true;
         this._mapReady = false;
         this._mapUiReady = false;
-        this._heroAssetsReady = false;
-        this._skillAssetsReady = false;
-        this._headAssetsReady = false;
-        this._inventoryAssetsReady = false;
-        this._chatAssetsReady = false;
         this._finishingLoading = false;
         this._cityStateRequested = false;
         const generation = ++this._loadGeneration;
@@ -297,7 +289,13 @@ export default class Main extends Component {
                                     return;
                                 }
                                 this.logMapEntryStage('地图文件与配置就绪');
-                                this._mapPreparation = this.prepareMap(datas[0] as TiledMapAsset, datas[1] as JsonAsset[]);
+                                const boot = datas[1] as JsonAsset;
+                                if (boot?.json?.version !== 1 || !boot.json.tables?.mapRes_0) {
+                                    this.failMapLoading(new Error('战场配置版本无效'));
+                                    return;
+                                }
+                                const tables = Object.keys(boot.json.tables).map(name => ({ name, json: boot.json.tables[name] }));
+                                this._mapPreparation = this.prepareMap(datas[0] as JsonAsset, tables);
                             }, this);
                     } catch (error) {
                         this.failMapLoading(error);
@@ -311,33 +309,30 @@ export default class Main extends Component {
     }
 
     protected update(): void {
-        if (!this._mapPreparation) return;
         try {
             // 每个渲染帧只推进一次，让进度条和骑将始终有刷新机会。
-            if (this._mapPreparation.next().done) this._mapPreparation = null;
+            if (this._mapPreparation?.next().done) this._mapPreparation = null;
+            if (this._enteringMap && this._mapReady && this._mapUiReady) this.tryFinishLoading();
         } catch (error) {
             this.failMapLoading(error);
         }
     }
 
-    private *prepareMap(tiledMap: TiledMapAsset, configAssets: JsonAsset[]): Generator<void, void, unknown> {
-        if (!tiledMap || !Array.isArray(configAssets)) throw new Error('战场启动资源不完整');
+    private *prepareMap(geometry: JsonAsset, configAssets: Array<{ name: string; json: any }>): Generator<void, void, unknown> {
+        if (!geometry?.json?.header || !Array.isArray(configAssets)) throw new Error('战场启动资源不完整');
+        const tiledMap = new TiledMapAsset();
+        tiledMap.tmxXmlStr = geometry.json.header + '</map>';
         const configs = ConfigManager.getInstance();
         configs.loadConfigs(configAssets);
-        this.prepareInventoryAssets();
-        this.prepareChatAssets();
         // 建筑面板使用设施适配层，必须在创建地图/UI 前装入两张建筑表。
         // 等级仍从 Build 推送读取，不能用配置中的初始等级覆盖服务端存档。
         MapUICommand.getInstance().proxy.setAllFacilityCfg(configAssets);
         SkillCommand.getInstance().proxy.initSkillConfig(configs.getConfig('Skill') || []);
-        this.prepareSkillAssets();
         const heroJson = configs.getConfig('Hero');
         LoginCommand.getInstance().headIcons.initConfig(configs.getConfig('HeadIcon'), heroJson);
-        this.prepareHeadIcons();
         const basicCfg = configs.getConfig('Global');
         MapUICommand.getInstance().proxy.setBasic({ json: basicCfg });
         if (heroJson) GeneralCommand.getInstance().proxy.initHeroConfig(heroJson, basicCfg);
-        this.prepareHeroAssets();
         EventMgr.emit(CoreEvent.mapLoadProgress, 0.72, '正在整理山河地形…');
         yield;
 
@@ -371,13 +366,9 @@ export default class Main extends Component {
         EventMgr.emit(CoreEvent.mapLoadProgress, 0.9, '正在部署城池与资源…');
         yield;
 
-        // 常用面板在遮罩下准备并提交渲染帧，避免首点时创建整页卡片和上传图片。
-        while (!this._heroAssetsReady || !this._skillAssetsReady || !this._headAssetsReady || !this._inventoryAssetsReady || !this._chatAssetsReady) yield;
-        EventMgr.emit(CoreEvent.mapLoadProgress, 0.99, '正在准备常用界面…');
-        const ui = this._mapUIScene.getComponent(MapUILogic);
-        if (ui) yield* ui.prepareCommonPanels();
+        // 隐藏窗口不参与首屏：只等待已经创建的 HUD 和当前地图视野。
         this._mapUiReady = true;
-        this.logMapEntryStage('界面与图片预热就绪');
+        this.logMapEntryStage('主界面就绪');
         this.tryFinishLoading();
     }
 
@@ -407,26 +398,6 @@ export default class Main extends Component {
 
     private tryFinishLoading(): void {
         if (!this._enteringMap || this._finishingLoading || !this._mapReady || !this._mapUiReady) return;
-        if (!this._heroAssetsReady) {
-            EventMgr.emit(CoreEvent.mapLoadProgress, 0.98, '正在准备武将画像…');
-            return;
-        }
-        if (!this._skillAssetsReady) {
-            EventMgr.emit(CoreEvent.mapLoadProgress, 0.98, '正在准备技能图标…');
-            return;
-        }
-        if (!this._headAssetsReady) {
-            EventMgr.emit(CoreEvent.mapLoadProgress, 0.98, '正在准备头像…');
-            return;
-        }
-        if (!this._inventoryAssetsReady) {
-            EventMgr.emit(CoreEvent.mapLoadProgress, 0.98, '正在准备背包物品…');
-            return;
-        }
-        if (!this._chatAssetsReady) {
-            EventMgr.emit(CoreEvent.mapLoadProgress, 0.98, '正在准备聊天图标…');
-            return;
-        }
         // 地图和资源已就绪即可通知服务器；遮罩保留到真实主城等级到达，
         // 避免先露出 level=0 的默认城图，再在玩家眼前切换等级外观。
         if (!this._cityStateRequested) {
@@ -448,89 +419,12 @@ export default class Main extends Component {
             else EventMgr.emit(CoreEvent.mapLoadProgress, 0.99, '正在准备主城…');
             return;
         }
+        // 主城等级推送可能在首屏之后到达，仍等待当前等级图片真正就绪。
+        if (WorldMapArt.visibleState.error) { this.failMapLoading(WorldMapArt.visibleState.error); return; }
+        if (WorldMapArt.visibleState.pending > 0) return;
         if (this._cityStateTimer !== null) clearTimeout(this._cityStateTimer);
         this._cityStateTimer = null;
         this.finishLoading();
-    }
-
-    private prepareInventoryAssets(): void {
-        const generation = this._loadGeneration;
-        const isCurrent = () => this.isValid && this._enteringMap && generation === this._loadGeneration;
-        const rows = ConfigManager.getInstance().getConfig('Item');
-        if (!Array.isArray(rows) || !rows.length) throw new Error('未找到物品配置 Item');
-        InventoryIconCache.prepare(rows.map(row => Number(row.Id)), isCurrent).then(() => {
-            if (!isCurrent()) return;
-            this._inventoryAssetsReady = true;
-            this.tryFinishLoading();
-        }).catch(error => {
-            if (isCurrent()) this.failMapLoading(error);
-        });
-    }
-
-    private prepareChatAssets(): void {
-        const generation = this._loadGeneration;
-        const isCurrent = () => this.isValid && this._enteringMap && generation === this._loadGeneration;
-        ChatIconCache.prepare(isCurrent).then(() => {
-            if (!isCurrent()) return;
-            this._chatAssetsReady = true;
-            this.tryFinishLoading();
-        }).catch(error => {
-            if (isCurrent()) this.failMapLoading(error);
-        });
-    }
-
-    private prepareHeadIcons(): void {
-        const generation = this._loadGeneration;
-        const isCurrent = () => this.isValid && this._enteringMap && generation === this._loadGeneration;
-        LoginCommand.getInstance().headIcons.preloadIcons(isCurrent).then(() => {
-            if (!isCurrent()) return;
-            this._headAssetsReady = true;
-            this.tryFinishLoading();
-        }).catch(error => {
-            if (isCurrent()) this.failMapLoading(error);
-        });
-    }
-
-    private prepareSkillAssets(): void {
-        const generation = this._loadGeneration;
-        const isCurrent = () => this.isValid && this._enteringMap && generation === this._loadGeneration;
-        SkillCommand.getInstance().proxy.preloadSkillIcons(isCurrent).then(() => {
-            if (!isCurrent()) return;
-            this._skillAssetsReady = true;
-            this.tryFinishLoading();
-        }).catch(error => {
-            if (isCurrent()) this.failMapLoading(error);
-        });
-    }
-
-    private prepareHeroAssets(): void {
-        const generation = this._loadGeneration;
-        let settled = false;
-        const isCurrent = () => !settled && this.isValid && generation === this._loadGeneration;
-        const finish = () => {
-            if (!isCurrent()) return;
-            settled = true;
-            if (this._heroWarmupTimer !== null) clearTimeout(this._heroWarmupTimer);
-            this._heroWarmupTimer = null;
-            this._heroAssetsReady = true;
-            this.tryFinishLoading();
-        };
-        // 网络/图片异常不阻塞进图，界面打开时仍可按需重试。
-        this._heroWarmupTimer = setTimeout(() => {
-            if (isCurrent()) console.warn('武将预加载超时，剩余画像将按需加载');
-            finish();
-        }, 10000);
-        (this._heroRequest || Promise.resolve(false)).then((ready) => {
-            if (!isCurrent()) return;
-            if (!ready) {
-                finish();
-                return;
-            }
-            return GeneralCommand.getInstance().proxy.preloadMyPortraits(isCurrent).then(finish);
-        }).catch((error) => {
-            console.warn('武将预加载未完成:', error);
-            finish();
-        });
     }
 
     private finishLoading(): void {
@@ -567,6 +461,43 @@ export default class Main extends Component {
         RewardCommand.getInstance().setUIReady();
         SystemOpenCommand.getInstance().setUIReady();
         this.logMapEntryStage('地图可操作（完整进图）');
+        console.info('[MapEntry] 首屏资源', WorldMapArt.statistics);
+        this.warmAssetsAfterLogin();
+    }
+
+    /** 首屏可操作后渐进加载整套功能图片；与界面预载共用单路后台队列。 */
+    private warmAssetsAfterLogin(): void {
+        const generation = this._loadGeneration;
+        const proxy = GeneralCommand.getInstance().proxy;
+        const skills = SkillCommand.getInstance().proxy;
+        const heads = LoginCommand.getInstance().headIcons;
+        AssetLoadQueue.pauseBackground(1500);
+        const isCurrent = () => this.isValid && generation === this._loadGeneration && !!this._mapScene;
+        const enqueued = new Set<string>();
+        const enqueue = (key: string, load: () => Promise<unknown>) => {
+            if (enqueued.has(key)) return;
+            enqueued.add(key); this._backgroundAssetKeys.add(key);
+            void AssetLoadQueue.request(key, () => isCurrent() ? load() : Promise.resolve(null), AssetPriority.Background)
+                .catch(error => {
+                    if (isCurrent() && !(error instanceof AssetRequestCancelled)) console.warn('[MapEntry] 后台预载未完成', key, error);
+                }).then(() => { if (generation === this._loadGeneration) this._backgroundAssetKeys.delete(key); });
+        };
+        // 先准备武将首页，再补齐背包、技能、头像和余下武将，不等待打开界面。
+        const owned = proxy.getUseGenerals();
+        for (const hero of owned.slice(0, 6)) enqueue(`hero-warm:${hero.hero_type}`, () => proxy.loadGeneralTex(hero.hero_type));
+        for (const name of SIEGE_SHEETS) enqueue(`siege-warm:${name}`, () => preloadSiegeSheet(name));
+        for (const item of ConfigManager.getInstance().getConfig('Item') || []) {
+            const path = itemIconPath(item.Id);
+            if (path) enqueue(`item-warm:${path}`, () => InventoryIconCache.load(item.Id));
+        }
+        for (const skill of skills.skillConfs) {
+            const path = skills.getIconPath(skill.cfgId);
+            if (path) enqueue(`skill-warm:${path}`, () => skills.loadSkillIcon(skill.cfgId));
+        }
+        for (const head of heads.configs) enqueue(`head-warm:${heads.getIconPath(head.id)}`, () => heads.loadIcon(head.id));
+        for (const hero of owned) enqueue(`hero-warm:${hero.hero_type}`, () => proxy.loadGeneralTex(hero.hero_type));
+        for (const hero of proxy.getGeneralAllCfg().values()) enqueue(`hero-warm:${hero.id}`, () => proxy.loadGeneralTex(hero.id));
+        console.info(`[MapEntry] 后台图片预载已排队：${enqueued.size} 项`);
     }
 
     private logMapEntryStage(stage: string): void {
@@ -579,22 +510,17 @@ export default class Main extends Component {
             this._afterLoadingDraw = null;
         }
         this._loadGeneration++;
+        for (const key of this._backgroundAssetKeys) AssetLoadQueue.cancel(key, AssetPriority.Background);
+        this._backgroundAssetKeys.clear();
         this._mapPreparation = null;
         this._enteringMap = false;
         this._mapReady = false;
         this._mapUiReady = false;
-        this._heroAssetsReady = false;
-        this._skillAssetsReady = false;
-        this._headAssetsReady = false;
-        this._inventoryAssetsReady = false;
-        this._chatAssetsReady = false;
         this._finishingLoading = false;
         this._heroRequest = null;
         this._cityStateRequested = false;
         if (this._cityStateTimer !== null) clearTimeout(this._cityStateTimer);
         this._cityStateTimer = null;
-        if (this._heroWarmupTimer !== null) clearTimeout(this._heroWarmupTimer);
-        this._heroWarmupTimer = null;
         if (this._loadingNode) {
             if (this._loadingNode.isValid) {
                 this._loadingNode.destroy();

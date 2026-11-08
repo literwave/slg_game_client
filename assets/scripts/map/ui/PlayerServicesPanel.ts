@@ -214,7 +214,7 @@ export default class PlayerServicesPanel extends Component {
         const entry = (row: any) => [row?.rank || 0, idKey(row?.uid), row?.name || '', String(row?.score ?? '—'), row?.headIcon || 0];
         const role = LoginCommand.getInstance().proxy.getRoleData();
         return JSON.stringify([this.rankType, this.page, this.rowWidth, this.scroll.node.getComponent(UITransform).height,
-            cmd.sessionReady, snapshot ? snapshot.rankList.map(entry) : null, entry(snapshot?.selfRank), role?.name, role?.headIcon]);
+            cmd.sessionReady, snapshot ? snapshot.rankList.map(entry) : null, entry(snapshot?.selfRank), idKey(role?.userId), role?.name, role?.headIcon]);
     }
 
     /** 查询中/超时只切换翻页按钮状态，不销毁头像、名次和分数节点。 */
@@ -293,8 +293,9 @@ export default class PlayerServicesPanel extends Component {
             button.setPosition((i - 1) * tabStep, 0); taskTab(button, i === this.taskType - 1);
         });
         taskTabRail(this.filters, this.rowWidth);
+        // 可领取（1）排在进行中（0）前；同状态仍按配置顺序和任务 ID 稳定排列。
         const tasks = current.filter(task => task.taskType === this.taskType).sort((a, b) =>
-            a.state - b.state || taskPresentation(a).order - taskPresentation(b).order || a.taskId - b.taskId);
+            b.state - a.state || taskPresentation(a).order - taskPresentation(b).order || a.taskId - b.taskId);
         const pending = cmd.requestInFlight(S.c2s_req_task_list);
         const ongoing = tasks.filter(task => task.state === 0).length, ready = tasks.length - ongoing;
         this.footerText(pending ? '正在同步任务…' : [ongoing ? `${ongoing} 项进行中` : '', ready ? `${ready} 项待领取` : ''].filter(Boolean).join(' · '), true);
@@ -429,6 +430,11 @@ export default class PlayerServicesPanel extends Component {
         selfRow.setPosition(0, 16, 0);
         rankRow(selfRow, this.rowWidth, { ...self, name: alliance ? self?.name || '我的同盟' : role?.name || '我',
             headIcon: alliance ? 0 : role?.headIcon }, metric, true, alliance);
+        if (!alliance && hasId(role?.userId)) {
+            const uid = role.userId;
+            selfRow.addComponent(Button).transition = Button.Transition.NONE;
+            selfRow.on(Button.EventType.CLICK, () => EventMgr.emit(E.openPlayerProfile, uid), this);
+        }
         const columns = this.make('RankColumns', this.content, this.rowWidth, 36);
         columns.setPosition(0, -18, 0); this.contentHeight = 40;
         rankColumns(columns, this.rowWidth, metric, alliance);

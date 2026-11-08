@@ -24,6 +24,7 @@ export default class MapLogic extends Component {
     protected _orthoHeight:number = DEFAULT_MAP_HEIGHT;
     private _targetHeight = DEFAULT_MAP_HEIGHT;
     private _zooming = false;
+    private _preserveLocatedScale = false;
     private _zoomAnchor = new Vec2();
     private _zoomLevel = 1;
     // 显式定位时，全图也以目标为中心；下一次主动缩放再恢复总览居中。
@@ -47,6 +48,8 @@ export default class MapLogic extends Component {
     private _activeTouchId: number = null;
     private _touchOrigin = new Vec2();
     private _inputNode: Node = null;
+    private _followMapTarget: (() => Vec2 | null) = null;
+    private _followCenterDirty = false;
 
     protected _touchAniNode: Node = null;
     protected _centerPoint: Vec2 = null;
@@ -73,7 +76,10 @@ export default class MapLogic extends Component {
 
     }
 
+    protected onDisable(): void { this.stopFollowing(); }
+
     protected onDestroy(): void {
+        this.stopFollowing();
         EventMgr.targetOff(this);
         if (isValid(this._inputNode)) this._inputNode.targetOff(this);
         view.off('canvas-resize', this.onViewportResize, this);
@@ -187,19 +193,23 @@ export default class MapLogic extends Component {
     }
 
     private zoomToStage(index: number, anchor: Vec2, preserveFocus = false): void {
+        if (!preserveFocus) this._preserveLocatedScale = false;
         if (!preserveFocus) this._wholeMapFocus = null;
         this.flushPendingCameraMove();
         const stages = this.zoomHeights();
         this._zoomLevel = Math.max(0, Math.min(stages.length - 1, index));
         this._targetHeight = stages[this._zoomLevel];
-        this._zoomAnchor.set(anchor.x, anchor.y);
+        // 跟随时围绕部队缩放，鼠标位置不能把镜头从部队身上拉走。
+        const size = view.getVisibleSize(), origin = view.getVisibleOrigin();
+        this._zoomAnchor.set(this._followMapTarget ? origin.x + size.width / 2 : anchor.x,
+            this._followMapTarget ? origin.y + size.height / 2 : anchor.y);
         this._zooming = Math.abs(this._targetHeight - this._mapCamera.orthoHeight) > .01;
         if (this._zooming) EventMgr.emit(LogicEvent.moveMap);
-        else if (this.isWholeMapView()) this.focusMapPoint(this.wholeMapCell());
+        else if (this.isWholeMapView() && !this._followMapTarget) this.focusMapPoint(this.wholeMapCell());
     }
 
     private resumeZoomStage(): void {
-        if (this._zooming || this._cityReturnHeight !== null) return;
+        if (this._zooming || this._cityReturnHeight !== null || this._preserveLocatedScale) return;
         const size = view.getVisibleSize(), origin = view.getVisibleOrigin();
         this.zoomToStage(this._zoomLevel, new Vec2(origin.x + size.width / 2, origin.y + size.height / 2), true);
     }
@@ -217,6 +227,39 @@ export default class MapLogic extends Component {
         }
     }
 
+    /** 读取地图像素位置；在部队更新之后移动镜头，和实际行军画面保持同一进度。 */
+    public followMapTarget(position: () => Vec2 | null): void {
+        this._followMapTarget = position;
+        this._followCenterDirty = false;
+    }
+
+    public stopFollowing(): void {
+        this._followMapTarget = null;
+        this._followCenterDirty = false;
+    }
+
+    protected lateUpdate(): void {
+        if (!this._followMapTarget || !this._mapCamera || !this._tiledMap || this._isTouch) return;
+        const position = this._followMapTarget();
+        if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) {
+            this.stopFollowing();
+            return;
+        }
+        const point = this.clampCameraPoint(position.x, position.y), camera = this._mapCamera.node.position;
+        if (Math.abs(point.x - camera.x) > .001 || Math.abs(point.y - camera.y) > .001) {
+            this._pendingCameraX = point.x; this._pendingCameraY = point.y;
+            this.applyPendingCameraMove();
+            this._followCenterDirty = true;
+        }
+        // 镜头逐帧跟随，地图分块与 AOI 沿用原有节流，不逐帧刷新或请求。
+        const now = Date.now();
+        if (this._followCenterDirty && now - this._lastCenterSyncTime >= 80) {
+            this._lastCenterSyncTime = now;
+            this.syncCenterMapCellPoint();
+            this._followCenterDirty = false;
+        }
+    }
+
     private stepZoom(dt: number): boolean {
         if (!this._zooming) return false;
         const before = this.viewPointToWorldPoint(this._zoomAnchor);
@@ -230,7 +273,8 @@ export default class MapLogic extends Component {
         const camera = this._mapCamera.node.position;
         const clamped = this.clampCameraPoint(camera.x + before.x - after.x, camera.y + before.y - after.y);
         // 接近全图档时逐步居中，保证最大档看到整张地图而非只看到一侧。
-        const whole = this.isWholeMapView() ? Math.max(0, Math.min(1, (height / this.maximumZoomHeight() - .65) / .35)) : 0;
+        const whole = this.isWholeMapView() && !this._followMapTarget
+            ? Math.max(0, Math.min(1, (height / this.maximumZoomHeight() - .65) / .35)) : 0;
         if (whole > 0) {
             const center = MapUtil.mapCellToPixelPoint(this.wholeMapCell());
             clamped.x += (center.x - clamped.x) * whole;
@@ -289,6 +333,7 @@ export default class MapLogic extends Component {
                 delta.set(dx, dy);
             }
             if (delta.x != 0 || delta.y != 0) {
+                this.stopFollowing();
                 this._isMove = true;
                 // 全图只允许选区放大；拖动仍记为手势，松手不能误触发选区点击。
                 if (this.isWholeMapView()) return;
@@ -320,7 +365,7 @@ export default class MapLogic extends Component {
         this._touchOrigin.set(touch.x, touch.y);
         this._isTouch = true;
         this.flushPendingCameraMove();
-        if (this._cityReturnHeight === null) {
+        if (this._cityReturnHeight === null && !this._preserveLocatedScale) {
             this._zoomLevel = this.nearestZoomIndex(this._zooming ? this._targetHeight : this._mapCamera.orthoHeight);
             this._targetHeight = this.zoomHeights()[this._zoomLevel];
         }
@@ -346,6 +391,7 @@ export default class MapLogic extends Component {
             let mapPoint: Vec2 = MapUtil.worldPixelToMapCellPoint(touchLocation1);
             // 云层区域不派发地图地块点击。
             if (!MapUtil.isVaildCellPoint(mapPoint)) { this.resumeZoomStage(); return; }
+            this.stopFollowing();
             if (this._cmd.proxy.strategic) {
                 const overview = this._tiledMap.node.getComponent(WorldStrategicMap), pixel = this.worldToMapPixelPoint(touchLocation1);
                 const home = overview?.pickHome?.(pixel), city = home ? null : overview?.pickCity?.(pixel);
@@ -463,10 +509,13 @@ export default class MapLogic extends Component {
     }
 
     public scrollToMapPoint(point: Vec2, focus?: 'player-city' | 'preserve-zoom'): void {
+        this.stopFollowing();
         if (focus === 'preserve-zoom') {
+            // 队伍定位冻结眼前倍率，包括未结束的滚轮/捏合动画；下一次主动缩放才切档。
+            this._zooming = false;
+            this._targetHeight = this._mapCamera.orthoHeight;
+            this._preserveLocatedScale = true;
             if (this._cityReturnHeight === null) {
-                // 列表定位只移动镜头。正在缩放时继续原来的倍率变化，但把锚点移到目标中心。
-                if (!this._zooming) this._targetHeight = this._mapCamera.orthoHeight;
                 this._zoomLevel = this.nearestZoomIndex(this._targetHeight);
                 this._wholeMapFocus = this._zoomLevel === WHOLE_MAP_ZOOM_LEVEL ? point.clone() : null;
                 const size = view.getVisibleSize(), origin = view.getVisibleOrigin();
@@ -475,6 +524,7 @@ export default class MapLogic extends Component {
             this.focusMapPoint(point);
             return;
         }
+        this._preserveLocatedScale = false;
         if (this._cityReturnHeight === null) {
             this._wholeMapFocus = null;
             // 主城入口直接使用可操作的近景档，不沿用全图/区域档或滚轮的未完成目标。
@@ -530,10 +580,10 @@ export default class MapLogic extends Component {
             this._mapCamera.orthoHeight = this.cityViewHeight();
             this.scrollToMapPoint(this._cityFocusPoint);
         } else if (this._mapCamera) {
-            this._targetHeight = this.zoomHeights()[this._zoomLevel];
+            this._targetHeight = this._preserveLocatedScale ? this._mapCamera.orthoHeight : this.zoomHeights()[this._zoomLevel];
             this._mapCamera.orthoHeight = this._targetHeight;
             this._zooming = false;
-            if (this.isWholeMapView() && this._tiledMap && this._cmd) {
+            if (this.isWholeMapView() && !this._followMapTarget && this._tiledMap && this._cmd) {
                 this.focusMapPoint(this.wholeMapCell());
                 return;
             }

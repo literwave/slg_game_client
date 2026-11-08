@@ -1,0 +1,62 @@
+{
+  "generator": "built-in imagegen",
+  "baseRecipe": "cavalry-trot-v3-recipes.json",
+  "prompts": [
+    {
+      "direction": "steepRear",
+      "reference": "assets/art-source/cavalry-trot-v3/candidate-1.png",
+      "prompt": "Production game animation sprite sheet EDIT. Use reference ONLY for the SAME character and rendering: Chinese mounted commander in dark steel lamellar armor, red cape/plume, upright long spear, chestnut horse, restrained red/gold tack. This is an ADDITIONAL STEEP DIAGONAL view, distinctly DIFFERENT from reference. Exact 6 columns x 2 rows of 12 full-body sequential natural trot cycle poses, transparent background, no text/gridlines/floor/shadows. All twelve cells same scale and fixed anatomy and camera, one horse+rider each, four horse legs and four solid single keratin hooves, normal knees and hocks. Natural alternating diagonal leg-pairs load, push, bend, pass, extend, land; correct hoof cups, no toes, claws, floating bits or extra limbs. Keep spear, torso and rider registered at the SAME coordinates in each cell. No overall drift, no changes in horse shape/equipment. Use a 1536x512 output (six 256px cells wide, two high). Transparent margins, spear and legs wholly contained. Fixed slightly elevated orthographic game camera. Camera angle is critical: NEARLY STRAIGHT REAR view with SMALL rotation toward screen right, NOT the reference's side-rear view. Horse travels AWAY from viewer toward UPPER-RIGHT at a STEEP 63-degree screen angle from horizontal (movement vector +1 right, -2 up). See mostly full rear rump and rider back; only a narrow sliver of the right flank, far horse head barely peeking above/right. Projected spine is almost vertical. Nose is far up and slightly right of tail, not sticking out far to the right. Body strongly foreshortened in depth: silhouette width roughly half that of a full side view. Each of all 12 cells must remain this exact almost-rear steep diagonal view. Four correctly alternating trotting hooves. Ground baseline consistent, allow naturally lifted feet. Row-major frames progress continuously and loop."
+    },
+    {
+      "direction": "steepFront",
+      "reference": "assets/art-source/cavalry-trot-v3/candidate-4.png",
+      "prompt": "Production game animation sprite sheet EDIT. Use reference ONLY for the SAME character and rendering: Chinese mounted commander in dark steel lamellar armor, red cape/plume, upright long spear, chestnut horse, restrained red/gold tack. This is an ADDITIONAL STEEP DIAGONAL view, distinctly DIFFERENT from reference. Exact 6 columns x 2 rows of 12 full-body sequential natural trot cycle poses, transparent background, no text/gridlines/floor/shadows. All twelve cells same scale and fixed anatomy and camera, one horse+rider each, four horse legs and four solid single keratin hooves, normal knees and hocks. Natural alternating diagonal leg-pairs load, push, bend, pass, extend, land; correct hoof cups, no toes, claws, floating bits or extra limbs. Keep spear, torso and rider registered at the SAME coordinates in each cell. No overall drift, no changes in horse shape/equipment. Use a 1536x512 output (six 256px cells wide, two high). Transparent margins, spear and legs wholly contained. Fixed slightly elevated orthographic game camera. Camera angle is critical: NEARLY STRAIGHT FRONT view with SMALL rotation toward screen right, NOT the reference's side-front view. Horse travels TOWARD viewer and LOWER-RIGHT at a STEEP 63-degree screen angle from horizontal (movement vector +1 right, +2 down). See almost symmetric frontal horse chest and face, both front legs, rider face/chest, only a NARROW sliver of the left flank. Projected spine is almost vertical. Nose is near lower-right in front of chest, NOT sticking out far to the right. Rump is far upper-left partly hidden behind chest. Body strongly foreshortened in depth: silhouette width roughly half that of a full side view. Each of all 12 cells must remain this exact almost-frontal steep diagonal view. Four correctly alternating trotting hooves. Ground baseline consistent, allow naturally lifted feet. Row-major frames progress continuously and loop."
+    }
+  ],
+  "sourceGrid": {
+    "columns": 6,
+    "rows": 2,
+    "cellSize": 362
+  },
+  "registration": [
+    {
+      "file": "steep-rear",
+      "top": 2,
+      "left": 3,
+      "start": 65
+    },
+    {
+      "file": "steep-front",
+      "top": 0,
+      "left": 3,
+      "start": 77
+    }
+  ],
+  "operations": "Crop fixed 362² cell, resize uniformly to 182², pad to 192² with per-direction left/top. Do not trim individual frames.",
+  "atlas": {
+    "file": "assets/resources/ui/march/commander_march_walk12_v4.png",
+    "columns": 10,
+    "rows": 9,
+    "cellSize": 192,
+    "baseSlots": [
+      0,
+      59
+    ],
+    "idleSlots": [
+      60,
+      64
+    ],
+    "steepRearSlots": [
+      65,
+      76
+    ],
+    "steepFrontSlots": [
+      77,
+      88
+    ],
+    "emptySlots": [
+      89,
+      89
+    ]
+  }
+}

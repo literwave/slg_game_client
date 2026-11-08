@@ -1,6 +1,7 @@
 import { Button, Color, Graphics, Label, Node, Sprite, UITransform, Widget, view } from 'cc';
 import ListLogic from '../../utils/ListLogic';
 import { styleGeneralPageBackground } from './GeneralPageBackground';
+import { generalRosterLayout } from '../../general/GeneralRosterFilter';
 
 const mutedInk = new Color(179, 169, 145, 255);
 const paper = new Color(239, 230, 205, 255);
@@ -132,7 +133,8 @@ function control(node: Node | null, caption: string, x: number, y: number,
 }
 
 /** 少量武将居中陈列，完整收藏采用滚动网格。 */
-export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0, refreshList = true): void {
+export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0, refreshList = true,
+    filtered = false, availableCount = itemCount): void {
     const content = root.getChildByName('New Node');
     const contentTransform = content?.getComponent(UITransform);
     if (!content || !contentTransform) return;
@@ -140,8 +142,9 @@ export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0, re
     if (size.width <= 0 || size.height <= 0) return;
     const width = size.width;
     const height = size.height;
-    const left = -width / 2 + 64;
-    const right = width / 2 - 64;
+    const layout = generalRosterLayout(width, height, !!content.getChildByName('convertBtn')?.active);
+    const left = -layout.bodyWidth / 2;
+    const right = layout.bodyWidth / 2;
     const top = height / 2;
     const bottom = -height / 2;
     contentTransform.setContentSize(width, height);
@@ -152,33 +155,36 @@ export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0, re
     const title = labelStyle(content.getChildByName('titleLab'), 34, 128, 0, top - 50,
         paper, Label.HorizontalAlign.CENTER);
     if (title) title.fontFamily = 'serif';
-    const counterY = width < 900 ? top - 87 : top - 50;
+    const counterY = width < 640 ? top - 87 : top - 50;
     labelStyle(content.getChildByName('New Label'), 14, 92, left + 46, counterY,
         mutedInk, Label.HorizontalAlign.LEFT);
     labelStyle(content.getChildByName('cntLab'), 17, 104, left + 142, counterY,
         paper, Label.HorizontalAlign.LEFT);
 
     control(content.getChildByName('New Button'), '', width / 2 - 44, top - 50, 56, 'close');
-    control(content.getChildByName('tujianBtn'), '图鉴', right - 72, bottom + 44, 144, 'book');
-    control(content.getChildByName('convertBtn'), '转换', left + 60, bottom + 44, 120, 'none');
+    control(content.getChildByName('tujianBtn'), '图鉴', right - layout.buttonWidth / 2,
+        layout.footerY, layout.buttonWidth, 'book');
+    control(content.getChildByName('convertBtn'), '转换', 0, layout.footerY, layout.buttonWidth, 'none');
 
     const scroll = content.getChildByName('New ScrollView');
     const viewport = scroll?.getChildByName('view');
-    const showcase = itemCount > 0 && itemCount <= 3;
+    const showcase = itemCount > 0 && itemCount <= 3 && availableCount <= 3 && !filtered;
     let cardWidth = 0;
     let cardHeight = 0;
     let columnCount = 1;
     let gap = 16;
-    let listHeight = Math.max(1, height - 190);
+    let listHeight = layout.listHeight;
     if (scroll && viewport) {
-        let listWidth = Math.max(1, width - 144);
+        let listWidth = layout.bodyWidth;
         const list = scroll.getComponent(ListLogic);
         const card = list?.itemPrefab?.data?.getComponent(UITransform);
         if (list && card) {
-            gap = showcase ? 40 : 16;
+            gap = showcase ? Math.min(40, width * .04) : width < 640 ? 12 : 16;
             list.scale = showcase ? Math.max(.1, Math.min(.8,
-                Math.max(1, height - 240) / card.height,
-                Math.max(1, listWidth - gap * (itemCount - 1)) / (card.width * itemCount))) : .5;
+                listHeight / card.height,
+                Math.max(1, listWidth - gap * (itemCount - 1)) / (card.width * itemCount)))
+                : Math.max(.1, Math.min(.5, listHeight / card.height,
+                    width < 640 ? (listWidth - gap) / (2 * card.width) : .5));
             cardWidth = card.width * list.scale;
             cardHeight = card.height * list.scale;
             list.autoColumnCount = false;
@@ -191,7 +197,7 @@ export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0, re
                 listHeight = cardHeight;
             }
         }
-        scroll.setPosition(0, -6, 0);
+        scroll.setPosition(0, layout.listY, 0);
         scroll.getComponent(UITransform)?.setContentSize(listWidth, listHeight);
         viewport.getComponent(UITransform)?.setContentSize(listWidth, listHeight);
         viewport.getChildByName('content')?.getComponent(UITransform)?.setContentSize(listWidth, listHeight);
@@ -206,11 +212,11 @@ export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0, re
         hintNode.addComponent(Label);
         content.addChild(hintNode);
     }
-    const hintY = showcase ? -listHeight / 2 - 40 : bottom + 44;
+    const hintY = itemCount === 0 ? layout.listY : layout.listY - listHeight / 2 - 28;
     const hint = labelStyle(hintNode, 14, Math.min(320, width - 128), 0, hintY, mutedInk);
-    if (hint) hint.string = itemCount === 0 ? '暂无可用武将' :
+    if (hint) hint.string = itemCount === 0 ? filtered ? '暂无符合条件的武将' : listType === 1 ? '暂无可上阵武将' : '暂无武将' :
         (listType === 0 ? '点击武将查看详情' : '点击选择武将');
-    hintNode.active = showcase || itemCount === 0;
+    hintNode.active = itemCount === 0 || showcase && layout.listHeight - listHeight > 80;
 
     const g = drawing(content, 'RosterRules', width, height);
     if (!g) return;
@@ -219,7 +225,7 @@ export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0, re
     g.strokeColor = new Color(174, 146, 98, 150);
     for (const direction of [-1, 1]) {
         g.moveTo(direction * 68, top - 50);
-        g.lineTo(direction * 156, top - 50);
+        g.lineTo(direction * Math.min(156, width / 2 - 84), top - 50);
         g.moveTo(direction * (width / 2 - 26), top - 26);
         g.lineTo(direction * (width / 2 - 26), top - 46);
         g.moveTo(direction * (width / 2 - 26), top - 26);
@@ -231,7 +237,7 @@ export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0, re
         g.stroke();
     }
     g.strokeColor = new Color(174, 146, 98, 65);
-    const separatorY = top - (width < 900 ? 112 : 94);
+    const separatorY = layout.headerBottom;
     g.moveTo(left, separatorY);
     g.lineTo(right, separatorY);
     g.stroke();
@@ -239,14 +245,14 @@ export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0, re
         for (let index = 0; index < columnCount; index++) {
             const x = (index - (columnCount - 1) / 2) * (cardWidth + gap);
             g.fillColor = new Color(13, 15, 12, 95);
-            g.rect(x - cardWidth / 2 - 8, -cardHeight / 2 - 20, cardWidth + 16, cardHeight + 24);
+            g.rect(x - cardWidth / 2 - 8, layout.listY - cardHeight / 2 - 14, cardWidth + 16, cardHeight + 24);
             g.fill();
             g.strokeColor = new Color(180, 149, 94, 125);
             g.lineWidth = 1;
             for (const sx of [-1, 1]) {
                 for (const sy of [-1, 1]) {
                     const cornerX = x + sx * (cardWidth / 2 + 12);
-                    const cornerY = -6 + sy * (cardHeight / 2 + 12);
+                    const cornerY = layout.listY + sy * (cardHeight / 2 + 12);
                     g.moveTo(cornerX - sx * 16, cornerY);
                     g.lineTo(cornerX, cornerY);
                     g.lineTo(cornerX, cornerY - sy * 16);

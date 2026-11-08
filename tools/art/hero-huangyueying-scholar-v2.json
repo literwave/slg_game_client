@@ -1,0 +1,22 @@
+{
+  "tool": "内置 image_gen",
+  "heroId": 1020,
+  "name": "黄月英",
+  "purpose": "将粗布围裙、俯身劳作的旧形象重绘为衣着精致、神情从容的机关才女，保留机关模型和设计图纸作为角色辨识点。",
+  "source": "assets/resources/ui/hero/card_1020.png",
+  "output": "assets/resources/ui/hero/card_1020_scholar_v2.png",
+  "prompt": "Use case: stylized-concept.\nAsset type: Huang Yueying character portrait for a premium Three Kingdoms strategy game, full-bleed vertical 350:480 ratio.\nInput image: the existing Huang Yueying illustration is the reference for her adult facial identity, intelligent eyes and Chinese ink-and-gouache painting style. Redesign her costume, posture, surroundings and presentation completely. Preserve the character's identity as a brilliant inventor and scholar while giving her the refined presence of a cultivated aristocratic woman.\nSubject: one beautiful adult Han Chinese woman in her late twenties, recognizable delicate oval face, expressive thoughtful eyes, composed and quietly confident expression with a subtle knowing smile. Head raised, level chin, upright graceful posture, open shoulders. Three-quarter view, looking toward the viewer rather than bending down over work. Realistic elegant anatomy and natural mature features; not childlike or a generic doll face.\nHair and attire: glossy black hair neatly arranged in an elegant high coiffure, secured with one exquisite pale-jade and antique-gold hairpin and a few carefully arranged strands. Small refined earrings. A tailored warm honey-gold silk scholar's outer robe with tasteful fine geometric brocade borders, ivory crossed inner collar and inner sleeves, rich deep forest-green lapels and a neatly structured sash with a pale-jade clasp. Beautiful controlled silk folds and fitted wrist cuffs suitable for handling a small instrument. Immaculate layered garments, graceful and affluent without an oversized crown or theatrical royal costume. No apron, coarse work cloth, patched fabric, rolled-up ragged sleeves, exposed work trousers or muddy boots.\nPose and identifying props: she stands calmly beside a polished dark-wood study table. Her right hand holds a half-rolled ivory engineering drawing at mid-torso, with just a few delicate ink mechanism diagrams and NO readable writing. Her left hand rests lightly beside a small ingenious geared wooden mechanism model on the table, as if explaining the design, not struggling to build it. The small model has finely fitted dark wood, one clear bronze toothed wheel and a straight axle, simple readable construction, no chaotic pile of parts. Her face is the primary focus; the invention is a distinctive secondary focal point. Exactly two arms and two natural hands, well-defined wrists and correct fingers. Keep BOTH entire hands, the scroll and the main mechanism wheel above 70 percent of image height so the card's bottom text panel will not cover them. No hand or tool crossing the face.\nSetting: an orderly scholar's studio with a soft-focus carved wooden lattice window, distant bamboo foliage, a restrained scroll shelf and warm daylight. Quiet spacious background with clear pale space around her head and silhouette. The feeling is thoughtful scholarship and elegant invention. No village yard, crude shed, grain baskets, spinning-wheel labor, heaps of sawdust or rough workbench. No extra people, steam, goggles or Western steampunk machinery.\nArt direction: refined Chinese historical fine-brush ink-and-gouache illustration with expressive hand-painted character detail, delicate silk sheen, subtle paper texture and confident clean contours. Warm honey gold, ivory, deep forest green, antique bronze and muted ink gray. Rich clear values and a luminous face, carefully controlled detail rather than a coarse scratchy filter or muddy beige cast. Avoid glossy 3D, modern photography, anime, garish magical effects and excessive glitter.\nComposition: character from above the hairpin to the hips, large readable face in the upper third with modest safe top margin. Face, hair ornaments, hands and invention inside the central 80 percent; leave the lowest 22 percent for less important fabric and tabletop beneath the game's nameplate overlay. Opaque full-bleed high-resolution artwork at 350:480 aspect ratio. No frame, border, faction badge, stars, text, letters, UI, logo or watermark.",
+  "postprocess": [
+    "resize 350x480 bicubic"
+  ],
+  "assetSettings": {
+    "filter": "linear",
+    "wrap": "clamp",
+    "mipmap": false,
+    "pivot": {
+      "x": 0.5,
+      "y": 0.5
+    }
+  },
+  "integration": "通过 GeneralPortrait.ts 统一解析黄月英新版画像，保持配置表原资源标识。"
+}

@@ -10,7 +10,7 @@ export const SYSTEM_CITY_ARTS = [
     { name: '河东都城', x: 594, y: 664, near: 'city-hedong-v1', far: 'city-overview-hedong-v1' },
     { name: '关中都城', x: 310, y: 500, near: 'city-guanzhong-v1', far: 'city-overview-guanzhong-v1' },
     { name: '河内都城', x: 594, y: 335, near: 'city-henei-v1', far: 'city-overview-henei-v1' },
-    { name: '洛阳', x: 500, y: 500, near: 'capital-imperial-v2', far: 'city-overview-capital-v4' },
+    { name: '洛阳', x: 500, y: 500, near: 'city-luoyang-imperial-v4', far: 'city-overview-capital-v4', anchorY: .44 },
 ];
 const cityArtByPosition = new Map(SYSTEM_CITY_ARTS.map(city => [city.x + ',' + city.y, city]));
 const cityArtByName = new Map(SYSTEM_CITY_ARTS.map(city => [city.name, city]));
@@ -32,8 +32,8 @@ export function cityArtWidth(level: number, tileWidth = 200): number {
 }
 
 /** 对齐城墙四角所在的地面中心，不能沿用旧堡垒素材的下部锚点。 */
-export function cityArtAnchorY(level: number): number {
-    return level >= 8 ? .52 : .5;
+export function cityArtAnchorY(level: number, city?: CityArtIdentity): number {
+    return cityAppearance(city)?.anchorY ?? (level >= 8 ? .52 : .5);
 }
 
 /** 近景绘制和 Alpha 拾取共用同一城池贴图，避免换图后沿用旧轮廓。 */

@@ -12,7 +12,10 @@ export class LogicEvent {
     public static updatePlayerCityTiles = "updatePlayerCityTiles";
     public static selectPlayerCity = "selectPlayerCity";
     public static updateMarches = "updateMarches";
+    public static updateMarchRoute = "updateMarchRoute";
     public static updateWorldEntities = "updateWorldEntities";
+    public static updateAllianceCities = "updateAllianceCities";
+    public static allianceCityOccupied = "allianceCityOccupied";
     public static battleStarted = "battleStarted";
     public static battleFinished = "battleFinished";
     public static battleSkipped = "battleSkipped";
@@ -82,6 +85,7 @@ export class LogicEvent {
     public static openGeneralDes:string = "open_general_des";
     public static openGeneralChoose:string = "open_general_choose";
     public static openArmySelectUi:string = "open_army_select_ui";
+    public static openCityTroops:string = "open_city_troops";
     public static openDrawResult:string = "open_draw_result";
     public static chatReadChanged = 'chat_read_changed';
     public static chatSendResult = 'chat_send_result';

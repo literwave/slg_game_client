@@ -22,6 +22,7 @@ function fixture() {
     let afterDraw;
     const tasks = [], operations = [];
     const Main = load('assets/scripts/Main.ts', {
+        './map/WorldMapArt': { default: { prepare: () => Promise.resolve() } },
         './login/LoginCommand': { default: { getInstance: () => ({ beginMapLoading: () => operations.push('role-data') }) } },
         './general/GeneralCommand': { default: { getInstance: () => ({ beginLoading() {
             operations.push('heroes'); return Promise.resolve(false);

@@ -3,13 +3,15 @@ const { ccclass, property } = _decorator;
 
 import { ArmyCmd } from "../../general/ArmyProxy";
 import MapCommand from "../MapCommand";
-import ArmySelectItemLogic from "./ArmySelectItemLogic";
+import ArmySelectItemLogic, { TroopOrderAction } from "./ArmySelectItemLogic";
 import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
 import TroopCommand from '../../general/TroopCommand';
 import MapUtil from '../MapUtil';
-import WorldCommand from '../../world/WorldCommand';
+import WorldCommand, { MarchTargetType } from '../../world/WorldCommand';
+import CityCommand from '../../world/CityCommand';
+import WorldCampaign from '../WorldCampaign';
 import { isResourceLandCell } from '../../world/ResourceLand';
 import Modal from '../../utils/Modal';
 import RightInfoNodeLogic from './RightInfoNodeLogic';
@@ -24,7 +26,7 @@ export default class ArmySelectNodeLogic extends Component {
     armyContainer: Node = null;
     @property(Prefab)
     itemPrefab: Prefab = null;
-    private resourceTarget: { x: number; y: number; action: 'occupy' | 'move' } | null = null;
+    private resourceTarget: { x: number; y: number; action: TroopOrderAction } | null = null;
     private panel: Node = null;
     private scroll: ScrollView = null;
     private viewport: Node = null;
@@ -35,7 +37,7 @@ export default class ArmySelectNodeLogic extends Component {
     private primaryButton: Node = null;
     private secondaryButton: Node = null;
     private state: 'list' | 'empty' | 'loading' | 'error' | 'invalid' = 'loading';
-    private primaryAction: 'dispatch' | 'formation' | 'retry' | 'choose' | 'none' = 'none';
+    private primaryAction: 'dispatch' | 'formation' | 'retry' | 'routeRetry' | 'choose' | 'none' = 'none';
     private selectedTroopIdx = 0;
     private targetRevision = 0;
     private hiddenSidebar: { node: Node; active: boolean }[] = [];
@@ -51,11 +53,13 @@ export default class ArmySelectNodeLogic extends Component {
         EventMgr.on(LogicEvent.closeArmyAelectUi, this.close, this);
         for (const event of [LogicEvent.updateTroopList, LogicEvent.troopListState, LogicEvent.troopEditState,
             LogicEvent.updateMarches, LogicEvent.updateMyGenerals, LogicEvent.protocolRequestChanged,
-            LogicEvent.updateCity, LogicEvent.updateCitys]) {
+            LogicEvent.updateCity, LogicEvent.updateCitys, LogicEvent.updateAllianceCities, LogicEvent.updateMyRole]) {
             EventMgr.on(event, this.queueRefresh, this);
         }
         EventMgr.on(LogicEvent.updateWorldEntities, this.onTargetEntitiesChanged, this);
+        EventMgr.on(LogicEvent.updateMarchRoute, this.onRouteChanged, this);
         view.on('canvas-resize', this.onResize, this);
+        this.schedule(this.refreshMovingRoute, 3);
     }
 
     protected onEnable(): void {
@@ -75,12 +79,14 @@ export default class ArmySelectNodeLogic extends Component {
     }
 
     protected onDisable(): void {
+        WorldCommand.getInstance().clearMarchRoute();
         this.scroll?.stopAutoScroll();
         for (const entry of this.hiddenSidebar) if (entry.node.isValid) entry.node.active = entry.active;
         this.hiddenSidebar = [];
     }
 
     protected onDestroy(): void {
+        WorldCommand.getInstance().clearMarchRoute();
         EventMgr.targetOff(this);
         view.off('canvas-resize', this.onResize, this);
     }
@@ -96,14 +102,18 @@ export default class ArmySelectNodeLogic extends Component {
         this.node.active = false;
     }
 
-    public setData(cmd: number | 'move', x: number, y: number): void {
+    public setData(cmd: number | 'move' | 'attackCity' | 'redeploy', x: number, y: number): void {
         this.targetRevision++;
         const map = MapCommand.getInstance();
         const id = MapUtil.getIdByCellPoint(x, y), cell = map.proxy.getResData(id);
-        // 移动按坐标，资源占领按实体；两种操作都只使用新版 World 部队。
+        // 所有地图指令都使用新版 World 部队，攻城使用服务端城池实体。
         const occupiable = !!cell && (cell.isEmpty || isResourceLandCell(cell)) && !map.cityProxy.getCity(id);
         this.resourceTarget = cmd === 'move' ? { x, y, action: 'move' }
+            : cmd === 'attackCity' ? { x, y, action: 'attackCity' }
+            : cmd === 'redeploy' ? { x, y, action: 'redeploy' }
             : cmd === ArmyCmd.Attack && occupiable ? { x, y, action: 'occupy' } : null;
+        const cities = CityCommand.getInstance();
+        if ((cmd === 'attackCity' || cmd === 'redeploy') && !cities.loaded && !cities.loading) cities.requestList();
         this.layoutPanel();
         if (this.resourceTarget) TroopCommand.getInstance().requestTroops();
         this.refreshTroops(true);
@@ -144,11 +154,19 @@ export default class ArmySelectNodeLogic extends Component {
         const world = WorldCommand.getInstance();
         const blocked = (!empty && !isResourceLandCell(cell)) || !!map.cityProxy.getCity(id);
         const issue = action === 'move' ? map.moveTargetIssue(x, y)
+            : action === 'attackCity' ? world.cityAttackIssue(x, y)
+            : action === 'redeploy' ? world.cityRedeployIssue(x, y)
             : blocked ? '目标已变更，请重新选择空地或资源地'
             : map.campaignBlockReason(x, y) || (empty ? world.emptyLandIssue(x, y) : world.resourceLandIssue(x, y, cell.type, cell.level));
         const resourceName = { 52: '林地', 53: '铁矿', 54: '石料', 55: '粮田' }[cell?.type] || '资源地';
-        if (this.targetLabel) this.targetLabel.string = action === 'move' ? `目的地  ·  ${x}, ${y}`
+        if (this.targetLabel) this.targetLabel.string = action === 'move' ? `${WorldCampaign.landmark(x, y) || '目的地'}  ·  ${x}, ${y}`
+            : (action === 'attackCity' || action === 'redeploy') ? `${WorldCampaign.landmark(x, y) || '城池'}  ·  ${x}, ${y}`
             : `${empty ? '空地' : `${cell?.level || ''}级${resourceName}`}  ·  ${x}, ${y}`;
+        if ((action === 'attackCity' || action === 'redeploy') && !CityCommand.getInstance().at(x, y)) {
+            const cities = CityCommand.getInstance();
+            this.showStatus(cities.loading ? '正在同步城池…' : '城池同步失败', cities.loading ? 'loading' : 'error');
+            return;
+        }
         if (issue) { this.showStatus(issue, 'invalid'); return; }
         if (!command.listReady) {
             this.showStatus(command.listLoading ? '正在同步部队…' : '部队同步失败', command.listLoading ? 'loading' : 'error');
@@ -193,6 +211,7 @@ export default class ArmySelectNodeLogic extends Component {
         }
         if (this.stateArt) this.stateArt.active = state === 'empty' && !!text;
         if (text) {
+            WorldCommand.getInstance().clearMarchRoute();
             this.clearItems(); this.itemCount = 0; this.selectedTroopIdx = 0;
             this.layoutPanel(); this.sizeContent(0, 0);
         }
@@ -203,7 +222,33 @@ export default class ArmySelectNodeLogic extends Component {
             const logic = item.getComponent(ArmySelectItemLogic);
             if (logic) logic.setSelected(item.name === `Troop${this.selectedTroopIdx}`);
         }
+        this.updateRoute();
+        this.onRouteChanged();
+    }
+
+    private updateRoute(force = false): void {
+        const world = WorldCommand.getInstance(), target = this.resourceTarget;
+        if (this.state !== 'list' || !target || !this.selectedItem() || this.selectedItem().selectionIssue) {
+            world.clearMarchRoute(); return;
+        }
+        const targetType = target.action === 'move' ? MarchTargetType.Move
+            : target.action === 'attackCity' ? MarchTargetType.AttackCity
+            : target.action === 'redeploy' ? MarchTargetType.Redeploy : MarchTargetType.OccupyResource;
+        world.previewMarchRoute(this.selectedTroopIdx, targetType, { x: target.x, y: target.y }, force);
+    }
+
+    private onRouteChanged(): void {
+        if (!this.node.activeInHierarchy) return;
+        this.selectedItem()?.setRoutePreview(WorldCommand.getInstance().marchRoute);
         this.layoutActions();
+    }
+
+    private refreshMovingRoute(): void {
+        if (!this.node.activeInHierarchy) return;
+        const world = WorldCommand.getInstance();
+        if (world.marchRoute?.status === 'ready' && world.marches.get(this.selectedTroopIdx)?.state === 1) {
+            this.updateRoute(true);
+        }
     }
 
     private selectedItem(): ArmySelectItemLogic | null {
@@ -211,15 +256,19 @@ export default class ArmySelectNodeLogic extends Component {
     }
 
     private onPrimary(): void {
+        if (this.primaryAction === 'routeRetry') { AudioManager.instance.playClick(); this.updateRoute(true); return; }
         if (this.primaryAction === 'formation') { this.openFormation(); return; }
         if (this.primaryAction === 'choose') { this.onClickBack(); return; }
         if (this.primaryAction === 'retry') {
             AudioManager.instance.playClick();
+            if (this.resourceTarget?.action === 'attackCity' || this.resourceTarget?.action === 'redeploy') CityCommand.getInstance().requestList();
             TroopCommand.getInstance().requestTroops(true);
             this.refreshTroops();
             return;
         }
-        if (this.primaryAction === 'dispatch') this.selectedItem()?.dispatchOrder();
+        if (this.primaryAction === 'dispatch' && WorldCommand.getInstance().marchRoute?.status === 'ready') {
+            this.selectedItem()?.dispatchOrder();
+        }
     }
 
     private onSecondary(): void {
@@ -266,8 +315,15 @@ export default class ArmySelectNodeLogic extends Component {
                 text = leader ? '补充兵力' : '前往编队';
                 if (cityReady && command.listReady && !command.editingTroopIdx) this.primaryAction = 'formation';
             } else {
-                text = this.resourceTarget?.action === 'move' ? '确认移动' : '确认出征';
-                if (troop && !issue) this.primaryAction = 'dispatch';
+                text = this.resourceTarget?.action === 'redeploy' ? '确认调动'
+                    : this.resourceTarget?.action === 'move' ? '确认移动'
+                    : this.resourceTarget?.action === 'attackCity' ? '确认攻城' : '确认出征';
+                if (troop && !issue) {
+                    const route = WorldCommand.getInstance().marchRoute;
+                    if (route?.status === 'ready') this.primaryAction = 'dispatch';
+                    else if (route?.status === 'error') { text = '重试路线'; this.primaryAction = 'routeRetry'; }
+                    else text = route?.status === 'unreachable' ? '无法到达' : '寻路中…';
+                }
             }
         }
         const y = -height / 2 + 34, secondaryWidth = 88, gap = 10;
@@ -357,7 +413,9 @@ export default class ArmySelectNodeLogic extends Component {
         inkSurface(this.panel, 'Surface', width, height, C.ink, C.line);
         const title = this.panel.getChildByName('Label')?.getComponent(Label);
         textStyle(title, -18, height / 2 - 25, width - 64, 18, C.text);
-        if (title) title.string = this.resourceTarget?.action === 'move' ? '调动部队' : '出征部队';
+        if (title) title.string = this.resourceTarget?.action === 'redeploy' ? '调动部队'
+            : this.resourceTarget?.action === 'move' ? '移动部队'
+            : this.resourceTarget?.action === 'attackCity' ? '攻城部队' : '出征部队';
         panelButton(this.panel.getChildByName('btnClose'), '', width / 2 - 30, height / 2 - 27, 40, 40, false, true);
         textStyle(this.targetLabel, 0, height / 2 - 50, width - 28, 13, C.gold, Label.HorizontalAlign.LEFT, 22);
         headerRule(this.panel, width - 24, height / 2 - 66);

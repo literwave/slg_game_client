@@ -1,0 +1,24 @@
+{
+  "tool": "内置 image_gen",
+  "heroId": 1027,
+  "name": "郭嘉",
+  "purpose": "修正画面右侧伸出、握竹简的左手：拇指轻压上侧，其余手指自然包住下侧，掌根与手腕连续。",
+  "source": "assets/resources/ui/hero/card_1027_strategist_v2.png",
+  "sourceSha256": "aa12ac512ed152180da0e759efa5b923eba41871cafcaf645f65f0d7249b4e89",
+  "output": "assets/resources/ui/hero/card_1027_strategist_v3.png",
+  "prompt": "Edit the supplied Guo Jia illustration with a narrowly localized anatomy correction. Keep the existing painting and composition, same seated mature male Chinese strategist, exact same face, stern expression, black scholar cap, hair, blue robes, other hand resting on chair, bamboo map table, lamp, tent and sunset background. Do not redesign or restyle the character. Full opaque vertical painting, aspect ratio 350:480, no text or UI.\n\nThe ONLY correction is the outstretched LEFT HAND on the RIGHT SIDE of the picture gripping the horizontal rolled bamboo dispatch, plus its immediate wrist transition. In the reference this hand is just below his shoulder line, around x=220..292 y=128..190 on the 350x480 composition. The current thumb and curled fingers fuse into an awkward claw and the wrist/palm connection is twisted. Redraw that specific hand with clear believable adult male anatomy and a relaxed but secure grasp. The forearm enters from the indigo sleeve on the left, the wrist continues naturally straight into the heel of the palm without twisting or a sharp kink. The bamboo roll is supported across the palm: ONE naturally bent thumb rests gently across the UPPER visible surface; index and middle fingers wrap smoothly underneath the cylindrical roll, ring and little fingers curl alongside and are partly occluded, with coherent joints and knuckle spacing. Five fingers total, but only anatomically appropriate portions visible. No extra thumb, no doubled finger, no melted fingers, no palm spikes, no long clawlike digits, no disconnected fingertip. Do not put every finger on top of the roll. Keep the hand the same natural size, with proportional palm and short sturdy fingers, realistic warm skin tone, restrained tendons and joints. Make hand-object contact obvious with a small natural contact shadow.\n\nPreserve the bamboo roll's horizontal orientation, original location, cylinder shape, warm bamboo strips, binding and red wax seal. Preserve the same arm extension and sleeve drape. Keep the complete hand and scroll inside the image. The correction must blend with the original painted ink-and-gouache brush texture and warm lighting, not a photorealistic pasted-in hand. Everything outside the grip and small wrist area must remain as close to the supplied original as possible. Return only the corrected entire portrait.",
+  "postprocess": [
+    "Cocos Image Core: resize 350x480 bicubic"
+  ],
+  "assetSettings": {
+    "filter": "linear",
+    "wrap": "clamp",
+    "mipmap": false,
+    "pivot": {
+      "x": 0.5,
+      "y": 0.5
+    }
+  },
+  "integration": "GeneralPortrait.ts 将稳定标识 ui/hero/card_1027 解析到 strategist_v3，统一用于列表、编队、详情及奖励立绘。",
+  "review": "检查生成原图及 350x480 游戏尺寸：握持关系清晰，拇指单一，指节与掌根连贯，竹简完整且落在原构图位置。"
+}

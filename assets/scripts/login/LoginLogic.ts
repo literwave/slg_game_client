@@ -267,7 +267,7 @@ export default class LoginLogic extends Component {
     private onServerReconnecting(state: { attempt?: number }): void {
         if (!this.enterStarted || this.mapReached) return;
         this.reconnectAttempt = state.attempt || 1;
-        this.enterLogic?.setStage(0.35, `连接中断，正在重连（${this.reconnectAttempt}/${MAX_RECONNECT_ATTEMPTS}）`);
+        this.enterLogic?.setStage(0.35, '重连中');
     }
 
     private backToLogin(): void {
@@ -333,7 +333,7 @@ export default class LoginLogic extends Component {
         this.enterLogic.onBack = () => this.backToLogin();
         this.enterLogic.play(loginData.account || this.accountName, this.selectedServerName);
         this.enterLogic.setStage(0.35, this.reconnectAttempt
-            ? `连接中断，正在重连（${this.reconnectAttempt}/${MAX_RECONNECT_ATTEMPTS}）` : '正在连接服务器并验证身份');
+            ? '重连中' : '正在连接服务器并验证身份');
         this.overlayShown = true;
     }
 

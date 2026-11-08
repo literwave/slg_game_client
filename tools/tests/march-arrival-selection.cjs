@@ -5,7 +5,13 @@ const file = path.resolve(__dirname, '../../assets/scripts/map/MapClickUILogic.t
 const source = fs.readFileSync(file, 'utf8'), ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
 const cls = ast.statements.find(ts.isClassDeclaration);
 const names = ['placeGroundSelection', 'onDisable', 'onDestroy'];
-const text = 'class Selection {\n' + cls.members.filter(n => names.includes(n.name?.getText(ast))).map(n => n.getText(ast)).join('\n') + '\n}; module.exports=Selection;';
+// 选框层级已提取为共享方法，回归须执行真实 helper，不能只截取调用方。
+const highlightFile = path.resolve(__dirname, '../../assets/scripts/map/TileHighlight.ts');
+const highlight = ts.createSourceFile(highlightFile, fs.readFileSync(highlightFile, 'utf8'), ts.ScriptTarget.Latest, true);
+const helper = highlight.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === 'placeGroundHighlight');
+assert.ok(helper, '缺少实际地面选框方法');
+const text = helper.getText(highlight).replace(/^export\s+/, '') + '\nclass Selection {\n'
+    + cls.members.filter(n => names.includes(n.name?.getText(ast))).map(n => n.getText(ast)).join('\n') + '\n}; module.exports=Selection;';
 const compiled = ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText;
 const mod = { exports: {} };
 new Function('module', 'EventMgr', 'LogicEvent', compiled)(mod, { emit() {}, targetOff() {} }, {});

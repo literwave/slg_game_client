@@ -132,4 +132,7 @@ Get-ChildItem $configDst -Filter *.json | ForEach-Object { New-AssetMeta $_.Full
 Get-ChildItem $protoDst -Filter *.proto | ForEach-Object { New-AssetMeta $_.FullName "text" "1.0.1" }
 New-AssetMeta $netPbDst "json" "2.0.1"
 
+# 启动包始终由本次同步后的本地配置生成，避免正式表已更新而客户端仍使用旧快照。
+& (Join-Path $PSScriptRoot 'prepare-streaming-data.ps1')
+
 Write-Host "Synced config, $($enumFiles.Count) TypeScript enums, net_pb.json, and proto from external/game_common"

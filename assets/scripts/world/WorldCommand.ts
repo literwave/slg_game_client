@@ -7,21 +7,38 @@ import LoginCommand from '../login/LoginCommand';
 import { resourceLandForCell } from './ResourceLand';
 import { TargetTypeEnum } from '../config/enum/TargetTypeEnum';
 import { EntityTypeEnum } from '../config/enum/EntityTypeEnum';
+import { TroopStateEnum } from '../config/enum/TroopStateEnum';
+import CityCommand from './CityCommand';
 
 /** 路径中的p_pos_f保留小数；只有目的格和视野中心使用整数坐标。 */
 export interface WorldPosition { x: number; y: number; }
+export interface MarchRoutePreview {
+    troopIdx: number; targetType: number; targetPos: WorldPosition;
+    status: 'loading' | 'ready' | 'unreachable' | 'error';
+    path: WorldPosition[]; costTime: number;
+}
+type RouteSelection = MarchRoutePreview & { originVersion: string };
+interface RouteRequest { selection: RouteSelection; expired: boolean; }
 /** 与 game_common 的 TargetType 配置一致；坐标移动不需要实体 ID。 */
 export enum MarchTargetType {
     ReturnCity = TargetTypeEnum.RETURN_CITY, AttackMonster = TargetTypeEnum.ATTACK_MONSTER,
     OccupyResource = TargetTypeEnum.OCCUPY_RES_LAND, Move = TargetTypeEnum.MOVE,
+    AttackCity = TargetTypeEnum.ATTACK_CITY, Redeploy = TargetTypeEnum.REDEPLOY,
 }
 export interface MarchInfo {
     troopIdx: number; targetType: number; targetId: number | string;
     startPos: WorldPosition; endPos: WorldPosition; startTime: number; endTime: number;
     state: number; path: WorldPosition[];
+    /** 与行军 state 分开；攻城期间 state=2、troopState=SIEGE。 */
+    troopState?: TroopStateEnum;
 }
 export interface WorldEntity {
     entityId: number | string; entityType: number; ownerId: number | string; cfgId: number;
+    allianceId?: number | string;
+    troopState?: TroopStateEnum;
+    troopIdx?: number;
+    targetId?: number | string;
+    targetPos?: WorldPosition;
     pos: WorldPosition; path: WorldPosition[]; startTime: number; endTime: number;
     /** 主城的玩家名/城名；由 AOI enter/update 同步。其他实体可不填。 */
     name?: string;
@@ -40,8 +57,12 @@ export default class WorldCommand extends ProtocolCommand {
     private reconcileSnapshot: (() => void) | null = null;
     private pathRequests = new Map<string, WorldEntity>();
     private failedPaths = new Map<string, string>();
+    private routeSelection: RouteSelection | null = null;
+    private routeRequests = new Map<string, RouteRequest[]>();
+    get marchRoute(): MarchRoutePreview | null { return this.routeSelection; }
     constructor() {
         super();
+        CityCommand.getInstance();
         this.listen(S.s2c_req_march_list, d => {
             if (!Array.isArray(d.marchList) || !d.marchList.every(row => row && uint(row.troopIdx))) return;
             const reconcile = this.reconcileSnapshot;
@@ -99,11 +120,13 @@ export default class WorldCommand extends ProtocolCommand {
             }
             this.notifyEntities();
         });
+        this.listen(S.s2c_req_march_route, this.receiveMarchRoute);
+        EventMgr.on(E.updateMyRole, this.refreshMarchRoute, this);
         EventMgr.on(E.updateCityPosition, this.focus, this);
         EventMgr.on(E.mapEenterChange, this.focus, this);
         this.reconcileOnNotice(['目标不存在', '此处不能占领', '城池范围内不能占领', '等级不足',
             '不能攻打同盟领地', '资源尚未恢复', '已有部队在占领', '已有部队驻守', '已有部队在采集',
-            '目标无法到达'], 'march:', () => this.requestMarches());
+            '目标无法到达', '城池不存在', '请先加入联盟', '不能攻打本盟城池', '只能调动至本盟城池', '城池归属已变化，调动取消', '部队已在调动或驻留'], 'march:', () => this.requestMarches());
     }
     protected reset(): void {
         this.marches.clear(); this.entities.clear(); this.focusPos = null; this.lastFocus = '';
@@ -111,6 +134,7 @@ export default class WorldCommand extends ProtocolCommand {
         this.focusTimer = null;
         this.reconcileSnapshot = null;
         this.pathRequests.clear(); this.failedPaths.clear();
+        this.routeRequests.clear(); this.clearMarchRoute();
         this.notifyMarches();
         this.notifyEntities();
     }
@@ -118,13 +142,95 @@ export default class WorldCommand extends ProtocolCommand {
         this.requestMarches();
         this.focus(this.focusPos || LoginCommand.getInstance().proxy.getRoleData()?.cityPos);
     }
-    private notifyMarches(): void { EventMgr.emit(E.updateMarches, this.marches.values()); }
+    private notifyMarches(): void {
+        this.refreshMarchRoute();
+        EventMgr.emit(E.updateMarches, this.marches.values());
+    }
     private notifyEntities(): void { EventMgr.emit(E.updateWorldEntities, Array.from(this.entities.values())); }
+    private routeKey(route: { troopIdx: number; targetType: number; targetPos: WorldPosition }): string {
+        return `${route.troopIdx}:${route.targetType}:${route.targetPos?.x}:${route.targetPos?.y}`;
+    }
+    private routeOriginVersion(troopIdx: number): string {
+        const march = this.marches.get(troopIdx), home = LoginCommand.getInstance().proxy.getRoleData()?.cityPos;
+        return march ? JSON.stringify([march.state, march.troopState, march.targetType, idKey(march.targetId),
+            march.startTime, march.endTime, march.startPos, march.endPos, march.path]) : `${home?.x}:${home?.y}`;
+    }
+    private notifyMarchRoute(): void { EventMgr.emit(E.updateMarchRoute, this.marchRoute); }
+    clearMarchRoute(): void {
+        if (!this.routeSelection) return;
+        this.routeSelection = null; this.notifyMarchRoute();
+        // 保留在途请求用于吸收迟到回包；关闭面板后不能被旧回包重新画出路线。
+    }
+    private refreshMarchRoute(): void {
+        const route = this.routeSelection;
+        if (route && route.originVersion !== this.routeOriginVersion(route.troopIdx)) {
+            this.previewMarchRoute(route.troopIdx, route.targetType, route.targetPos, true);
+        }
+    }
+    /** 预览不修改真实行军；普通列表刷新去重，换目标/部队重新查询。 */
+    previewMarchRoute(troopIdx: number, targetType: number, targetPos: WorldPosition, force = false): boolean {
+        if (!this.ready || !uint(troopIdx) || !this.validPos(targetPos) || [1, 2, 3, 4, 5, 6].indexOf(targetType) < 0) {
+            this.clearMarchRoute(); return false;
+        }
+        const key = this.routeKey({ troopIdx, targetType, targetPos }), originVersion = this.routeOriginVersion(troopIdx);
+        if (!force && this.routeSelection && this.routeKey(this.routeSelection) === key
+            && this.routeSelection.originVersion === originVersion) return true;
+        const selection: RouteSelection = { troopIdx, targetType, targetPos: { ...targetPos }, originVersion,
+            status: 'loading', path: [], costTime: 0 };
+        this.routeSelection = selection; this.notifyMarchRoute();
+        return this.sendMarchRoute(selection);
+    }
+    private sendMarchRoute(selection: RouteSelection): boolean {
+        const key = this.routeKey(selection), queue = this.routeRequests.get(key) || [];
+        if (queue.some(request => !request.expired)) return true;
+        // 协议没有序号。同键超时记录按发送顺序保留，迟到回包不能冒充重试结果。
+        if (queue.length >= 4) { selection.status = 'error'; this.notifyMarchRoute(); return false; }
+        const request: RouteRequest = { selection, expired: false };
+        queue.push(request); this.routeRequests.set(key, queue);
+        const sent = this.request(S.c2s_req_march_route, {
+            troopIdx: selection.troopIdx, targetType: selection.targetType, targetPos: selection.targetPos,
+        }, `march-route:${key}`, () => {
+            request.expired = true;
+            if (this.routeSelection === selection) {
+                selection.status = 'error'; this.notifyMarchRoute();
+            } else if (this.routeSelection?.status === 'loading' && this.routeKey(this.routeSelection) === key) {
+                this.sendMarchRoute(this.routeSelection);
+            }
+        }, true);
+        if (!sent) {
+            queue.splice(queue.indexOf(request), 1);
+            if (!queue.length) this.routeRequests.delete(key);
+            selection.status = 'error'; this.notifyMarchRoute();
+        }
+        return sent;
+    }
+    private receiveMarchRoute(data: any): void {
+        if (!uint(data.troopIdx) || !this.validPos(data.targetPos)) return;
+        const key = this.routeKey(data), queue = this.routeRequests.get(key), request = queue?.shift();
+        if (!request) return;
+        if (!queue.length) this.routeRequests.delete(key);
+        if (!request.expired) this.finish(`march-route:${key}`);
+        const selection = this.routeSelection;
+        if (request.expired || selection !== request.selection) {
+            if (selection?.status === 'loading' && this.routeKey(selection) === key) this.sendMarchRoute(selection);
+            return;
+        }
+        if (selection.originVersion !== this.routeOriginVersion(selection.troopIdx)) {
+            this.refreshMarchRoute(); return;
+        }
+        const cost = Number(data.costTime || 0), path = data.path || [];
+        if (Array.isArray(path) && !path.length && cost === 0) selection.status = 'unreachable';
+        else if (this.validPath(path) && Number.isFinite(cost) && cost >= 0) {
+            selection.path = path.map(p => ({ x: p.x, y: p.y }));
+            selection.costTime = cost; selection.status = 'ready';
+        } else selection.status = 'error';
+        this.notifyMarchRoute();
+    }
     private pathVersion(entity: WorldEntity): string {
         return `${entity.entityType}:${idKey(entity.ownerId)}:${entity.startTime}:${entity.endTime}`;
     }
     private isMovingEntity(entity: WorldEntity): boolean {
-        return entity?.entityType === EntityTypeEnum.TROOP && Number.isFinite(entity.startTime)
+        return entity?.entityType === EntityTypeEnum.TROOP && entity.troopState !== TroopStateEnum.SIEGE && Number.isFinite(entity.startTime)
             && Number.isFinite(entity.endTime) && entity.endTime > entity.startTime && entity.startTime > 0;
     }
     private validPath(path: WorldPosition[]): boolean {
@@ -157,8 +263,9 @@ export default class WorldCommand extends ProtocolCommand {
         return sent;
     }
     march(troopIdx: number, targetType: number, targetId: number | string, targetPos: WorldPosition): boolean {
+        if (this.marches.get(troopIdx)?.troopState === TroopStateEnum.SIEGE && targetType !== MarchTargetType.ReturnCity) return false;
         const coordinateTarget = targetType === MarchTargetType.ReturnCity || targetType === MarchTargetType.Move;
-        if (!uint(troopIdx) || [1, 2, 3, 4].indexOf(targetType) < 0 || !this.validPos(targetPos) || (!coordinateTarget && !hasId(targetId))) return false;
+        if (!uint(troopIdx) || [1, 2, 3, 4, 5, 6].indexOf(targetType) < 0 || !this.validPos(targetPos) || (!coordinateTarget && !hasId(targetId))) return false;
         if (coordinateTarget) targetId = 0;
         return this.request(S.c2s_march, { troopIdx, targetType, targetId, targetPos }, `march:${troopIdx}`, () => this.requestMarches());
     }
@@ -169,12 +276,28 @@ export default class WorldCommand extends ProtocolCommand {
             && current.endPos?.x === targetPos.x && current.endPos?.y === targetPos.y) return false;
         return this.march(troopIdx, MarchTargetType.Move, 0, targetPos);
     }
+    cityRedeployIssue(x: number, y: number): string {
+        if (!this.ready) return '连接尚未恢复，请稍后重试';
+        if (!this.validPos({ x, y })) return '调动坐标无效';
+        const city = CityCommand.getInstance().at(x, y);
+        if (!city) return '城池情报尚未同步';
+        const allianceId = LoginCommand.getInstance().proxy.getRoleData()?.allianceId;
+        return hasId(allianceId) && idKey(city.allianceId) === idKey(allianceId) ? '' : '只能调动至本盟城池';
+    }
+    redeployTroop(troopIdx: number, x: number, y: number): boolean {
+        if (this.cityRedeployIssue(x, y)) return false;
+        const city = CityCommand.getInstance().at(x, y), current = this.marches.get(troopIdx);
+        if ((current?.state === 1 || current?.state === 2) && current.targetType === MarchTargetType.Redeploy
+            && idKey(current.targetId) === idKey(city.entityId)) return false;
+        return this.march(troopIdx, MarchTargetType.Redeploy, city.entityId, { x, y });
+    }
     cancelMarch(troopIdx: number): boolean {
         return uint(troopIdx) && this.request(S.c2s_cancel_march, { troopIdx }, `march:${troopIdx}`, () => this.requestMarches());
     }
     isTroopAtHome(troopIdx: number): boolean {
         const current = this.marches.get(troopIdx);
         if (!current) return true;
+        if (current.troopState === TroopStateEnum.SIEGE) return false;
         const city = LoginCommand.getInstance().proxy.getRoleData()?.cityPos;
         return current.state !== 1 && this.validPos(city) && current.endPos?.x === city.x && current.endPos?.y === city.y;
     }
@@ -236,6 +359,22 @@ export default class WorldCommand extends ProtocolCommand {
     occupyResourceLand(troopIdx: number, x: number, y: number): boolean {
         if (!this.validPos({ x, y })) return false;
         return this.march(troopIdx, MarchTargetType.OccupyResource, this.resourceLandEntityId(x, y), { x, y });
+    }
+    cityAttackIssue(x: number, y: number): string {
+        if (!this.validPos({ x, y })) return '城池坐标无效';
+        if (!this.sessionReady) return '连接尚未恢复';
+        const allianceId = LoginCommand.getInstance().proxy.getRoleData()?.allianceId;
+        if (!hasId(allianceId)) return '请先加入同盟';
+        const command = CityCommand.getInstance(), city = command.at(x, y);
+        if (!city) return command.loaded ? '城池情报不存在，请重新选择' : '城池情报同步中';
+        if (hasId(city.allianceId) && idKey(city.allianceId) === idKey(allianceId)) return '已由本盟占领';
+        return '';
+    }
+    /** 使用服务端城池实体，路径和城外接敌点由服务端判定，不套用资源地占领规则。 */
+    attackCity(troopIdx: number, x: number, y: number): boolean {
+        if (this.cityAttackIssue(x, y)) return false;
+        const city = CityCommand.getInstance().at(x, y);
+        return this.march(troopIdx, MarchTargetType.AttackCity, city.entityId, { x, y });
     }
     /** 地图格子坐标，250ms 合并拖动上报；不用像素坐标代替格坐标。 */
     focus(pos: WorldPosition): void {

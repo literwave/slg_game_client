@@ -7,6 +7,13 @@ import ArmyCommand from "../../general/ArmyCommand";
 import { GeneralConfig, GeneralData } from "../../general/GeneralProxy";
 import { TroopData } from "../../general/TroopProxy";
 import WorldCommand, { MarchTargetType } from '../../world/WorldCommand';
+import CityCommand from '../../world/CityCommand';
+import LoginCommand from '../../login/LoginCommand';
+import WorldCampaign from '../WorldCampaign';
+import { idKey } from '../../network/pto/ProtocolCommand';
+import { siegePhase } from '../entries/SiegeContact';
+import { buildMarchPath, sampleMarchPath } from '../../world/MarchPath';
+import { TroopStateEnum } from '../../config/enum/TroopStateEnum';
 import { MapCityData } from "../MapCityProxy";
 import MapCommand from "../MapCommand";
 import DateUtil from "../../utils/DateUtil";
@@ -14,8 +21,8 @@ import GeneralHeadLogic from "./GeneralHeadLogic";
 import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
-import { commandAction, commandStat } from './RightSidebarView';
-import { troopSidebarCard, troopSidebarDetail } from './TroopSidebarCard';
+import { commandAction, commandStat, CommandGlyph } from './RightSidebarView';
+import { troopSidebarCard, troopSidebarDetail, troopSidebarRoute, TroopRoutePoints } from './TroopSidebarCard';
 
 @ccclass('RightArmyItemLogic')
 export default class RightArmyItemLogic extends Component {
@@ -51,6 +58,7 @@ export default class RightArmyItemLogic extends Component {
         EventMgr.on(LogicEvent.updateGeneral, this.onUpdateGeneral, this);
         EventMgr.on(LogicEvent.updateTroop, this.onUpdateTroop, this);
         EventMgr.on(LogicEvent.updateMarches, this.onUpdateGeneral, this);
+        EventMgr.on(LogicEvent.updateAllianceCities, this.onUpdateGeneral, this);
         EventMgr.on(LogicEvent.updateWorldEntities, this.onOccupationChanged, this);
         EventMgr.on(LogicEvent.protocolRequestChanged, this.onUpdateGeneral, this);
         EventMgr.on(LogicEvent.updateMyRole, this.onUpdateGeneral, this);
@@ -63,6 +71,9 @@ export default class RightArmyItemLogic extends Component {
         EventMgr.targetOff(this);
         this.headIcon?.node.off(Button.EventType.CLICK, this.onClickPortrait, this);
         this.detailButton?.node.off(Button.EventType.CLICK, this.onClickPortrait, this);
+        const route = this.bottomNode?.getChildByName('RoutePoints');
+        route?.getChildByName('Origin')?.targetOff(this);
+        route?.getChildByName('Destination')?.targetOff(this);
         this._data = null;
         this._troop = null;
     }
@@ -79,12 +90,17 @@ export default class RightArmyItemLogic extends Component {
                 const left = Math.max(0, march.endTime * 1000 - DateUtil.getServerTime());
                 const occupation = march.targetType === MarchTargetType.OccupyResource && march.state === 2
                     && world.occupyCountdownAt(march.endPos.x, march.endPos.y, DateUtil.getServerTime() / 1000);
-                if (occupation) {
+                if (march.troopState === TroopStateEnum.SIEGE) {
+                    const phase = siegePhase(CityCommand.getInstance().cities.get(idKey(march.targetId)));
+                    const text = phase === 'wall' ? '拆城' : '交战';
+                    this.labelPos.string = left > 0 ? `${text} ${DateUtil.converSecondStr(left)}` : `${text}结算中`;
+                } else if (occupation) {
                     const remaining = Math.max(0, occupation.endTime - DateUtil.getServerTime() / 1000);
                     this.labelPos.string = remaining > 0 ? `占领中 ${DateUtil.converSecondStr(Math.ceil(remaining) * 1000)}`
                         : `驻留 (${march.endPos.x}, ${march.endPos.y})`;
                 } else if (march.state === 1) {
                     this.labelPos.string = `${march.targetType === MarchTargetType.ReturnCity ? '回城'
+                        : march.targetType === MarchTargetType.Redeploy ? '调动'
                         : march.targetType === MarchTargetType.Move ? '移动' : '行军'} ${DateUtil.converSecondStr(left)}`;
                 } else {
                     this.labelPos.string = `驻留 (${march.endPos.x}, ${march.endPos.y})`;
@@ -142,8 +158,82 @@ export default class RightArmyItemLogic extends Component {
             return;
         }
         AudioManager.instance.playClick();
+        this.locateDeployedTroop();
         this.bottomNode.active = !this.bottomNode.active;
         this.layoutItem();
+    }
+
+    /** 列表在视野之外仍可定位；传递编队编号，让镜头持续跟随本人部队。 */
+    private locateDeployedTroop(): void {
+        if (!this._troop) return;
+        const world = WorldCommand.getInstance();
+        const march = world.marches.get(this._troop.troopIdx);
+        if (!march || world.isTroopAtHome(this._troop.troopIdx)) return;
+        const position = sampleMarchPath(march, buildMarchPath(march), DateUtil.getServerTime())?.position;
+        if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)
+            || position.x < 0 || position.y < 0 || position.x >= 1000 || position.y >= 1000) return;
+        EventMgr.emit(LogicEvent.scrollToMap, position.x, position.y, 'preserve-zoom', this._troop.troopIdx);
+    }
+
+    private routePoints(): TroopRoutePoints | null {
+        const cell = (point: { x: number; y: number } | null | undefined) => point
+            && Number.isFinite(point.x) && Number.isFinite(point.y)
+            && point.x >= 0 && point.y >= 0 && point.x < 1000 && point.y < 1000
+            ? { x: Math.floor(point.x), y: Math.floor(point.y) } : null;
+        const present = (origin: TroopRoutePoints['origin'], destination: TroopRoutePoints['destination'], target: number): TroopRoutePoints | null => {
+            if (!origin && !destination) return null;
+            const home = cell(LoginCommand.getInstance().proxy.getRoleData()?.cityPos);
+            const isHome = (point: TroopRoutePoints['origin']) => !!point && !!home && point.x === home.x && point.y === home.y;
+            const landmark = (point: TroopRoutePoints['origin']) => point ? WorldCampaign.landmark(point.x, point.y) : '';
+            const originLandmark = landmark(origin), destinationLandmark = landmark(destination);
+            let order = '进军', destinationName = '行军地', destinationIcon: CommandGlyph = 'flag';
+            switch (target) {
+                case MarchTargetType.ReturnCity: order = '回城'; destinationName = '主城'; destinationIcon = 'home'; break;
+                case MarchTargetType.AttackCity: order = '攻城'; destinationName = '城池'; destinationIcon = 'city'; break;
+                case MarchTargetType.Redeploy: order = '调动'; destinationName = '驻地'; destinationIcon = 'city'; break;
+                case MarchTargetType.AttackMonster: order = '讨伐'; destinationName = '敌营'; destinationIcon = 'attack'; break;
+                case MarchTargetType.OccupyResource: order = '攻占'; destinationName = '资源地'; destinationIcon = 'land'; break;
+            }
+            return {
+                origin, destination, order,
+                originName: isHome(origin) ? '主城' : originLandmark || '驻地',
+                destinationName: isHome(destination) ? '主城' : destinationLandmark || destinationName,
+                originIcon: isHome(origin) ? 'home' : originLandmark ? 'city' : 'flag',
+                destinationIcon: isHome(destination) ? 'home' : destinationLandmark ? 'city' : destinationIcon,
+            };
+        };
+        if (this._troop) {
+            const world = WorldCommand.getInstance(), march = world.marches.get(this._troop.troopIdx);
+            if (!march || world.isTroopAtHome(this._troop.troopIdx)) return null;
+            const origin = cell(march.startPos) || cell(march.path?.[0]);
+            const city = march.targetType === MarchTargetType.AttackCity || march.targetType === MarchTargetType.Redeploy
+                ? CityCommand.getInstance().cities.get(idKey(march.targetId)) : null;
+            const destination = cell(city?.pos) || cell(march.endPos) || cell(march.path?.[march.path.length - 1]);
+            return present(origin, destination, march.targetType);
+        }
+        if (!this._data || this._data.state <= 0) return null;
+        // 旧 ArmyData 已在接包时处理回城方向，不能在显示层再交换起终点。
+        const origin = cell({ x: this._data.fromX, y: this._data.fromY });
+        const destination = cell({ x: this._data.toX, y: this._data.toY });
+        const target = this._data.cmd === ArmyCmd.Return ? MarchTargetType.ReturnCity
+            : this._data.cmd === ArmyCmd.Transfer ? MarchTargetType.Redeploy : MarchTargetType.Move;
+        const points = present(origin, destination, target);
+        if (points && this._data.cmd === ArmyCmd.Attack) points.order = '出征';
+        if (points && this._data.cmd === ArmyCmd.Garrison) points.order = '驻防';
+        if (points && this._data.cmd === ArmyCmd.Reclaim) points.order = '屯田';
+        return points;
+    }
+
+    private onClickOrigin(): void { this.locateRoutePoint('origin'); }
+    private onClickDestination(): void { this.locateRoutePoint('destination'); }
+
+    private locateRoutePoint(which: 'origin' | 'destination'): void {
+        // 点击时重新读取最新指令，避免折返/改道后仍跳到上一次展开的坐标。
+        const point = this.routePoints()?.[which];
+        if (!point) return;
+        AudioManager.instance.playClick();
+        // 不附带 troopIdx：定位固定坐标并结束跟随，保留用户眼前的缩放比例。
+        EventMgr.emit(LogicEvent.scrollToMap, point.x, point.y, 'preserve-zoom');
     }
 
     private bindPortraitAction(): void {
@@ -201,9 +291,18 @@ export default class RightArmyItemLogic extends Component {
         const showSetting = !!this.btnSetting?.active;
         const showBack = !!this.btnBack?.active;
         const padding = 8, statHeight = 30, actionHeight = 34, actionGap = 6;
-        ui.height = padding * 2 + statHeight + (showSetting || showBack ? actionGap + actionHeight : 0);
-        const statY = ui.height / 2 - padding - statHeight / 2;
+        const route = this.routePoints(), routeHeight = route ? 50 : 0;
+        ui.height = padding * 2 + routeHeight + statHeight + (showSetting || showBack ? actionGap + actionHeight : 0);
+        const statY = ui.height / 2 - padding - routeHeight - statHeight / 2;
         const actionY = -ui.height / 2 + padding + actionHeight / 2;
+        const routeNode = troopSidebarRoute(this.bottomNode, route, ui.width - 24, ui.height / 2 - padding - 22);
+        if (route && routeNode) {
+            for (const [name, handler] of [['Origin', this.onClickOrigin], ['Destination', this.onClickDestination]] as const) {
+                const button = routeNode.getChildByName(name);
+                button.off(Button.EventType.CLICK, handler, this);
+                button.on(Button.EventType.CLICK, handler, this);
+            }
+        }
         const background = this.bottomNode.getComponent(Sprite);
         if (background) background.enabled = false;
         const hasHeroes = this._troop ? this._troop.getSortedHeroes().length > 0 : !!this._firstGeneral;
@@ -286,8 +385,8 @@ export default class RightArmyItemLogic extends Component {
         const occupyLeft = march && march.targetType === MarchTargetType.OccupyResource && march.state === 2
             && world.occupyCountdownAt(march.endPos.x, march.endPos.y, DateUtil.getServerTime() / 1000);
         const troopState = leaderIdx <= 0 ? '待配置' : !march || world.isTroopAtHome(this._troop.troopIdx) ? '待命'
-            : occupyLeft ? '占领中'
-            : march.state === 1 ? (march.targetType === MarchTargetType.ReturnCity ? '回城中' : '行军中') : '驻留';
+            : march.troopState === TroopStateEnum.SIEGE ? '攻城中' : occupyLeft ? '占领中'
+            : march.state === 1 ? (march.targetType === MarchTargetType.ReturnCity ? '回城中' : march.targetType === MarchTargetType.Redeploy ? '调动中' : '行军中') : '驻留';
         const state = this._data ? ArmyCommand.getInstance().getArmyStateDes(this._data).replace(/[\[\]【】]/g, '') : troopState;
         const heroes = this._troop ? [0, 1, 2].map(slot => this._troop.getHeroIdxAt(slot))
             : (this._data?.generals || []).map(id => GeneralCommand.getInstance().proxy.getMyGeneral(id)?.cfgId || 0);

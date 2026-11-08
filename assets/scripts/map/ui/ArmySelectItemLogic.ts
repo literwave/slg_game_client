@@ -11,11 +11,17 @@ import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
 import { TroopData } from '../../general/TroopProxy';
 import TroopCommand from '../../general/TroopCommand';
-import WorldCommand from '../../world/WorldCommand';
+import WorldCommand, { MarchTargetType } from '../../world/WorldCommand';
+import type { MarchRoutePreview } from '../../world/WorldCommand';
+import { TroopStateEnum } from '../../config/enum/TroopStateEnum';
+import CityCommand from '../../world/CityCommand';
+import { idKey } from '../../network/pto/ProtocolCommand';
 import MapCommand from '../MapCommand';
 import MapUtil from '../MapUtil';
 import { isResourceLandCell } from '../../world/ResourceLand';
 import { hideSprite, inkSurface, ManagementColors as C, place, textStyle } from './ManagementStyle';
+
+export type TroopOrderAction = 'occupy' | 'move' | 'attackCity' | 'redeploy';
 
 @ccclass('ArmySelectItemLogic')
 export default class ArmySelectItemLogic extends Component {
@@ -48,7 +54,7 @@ export default class ArmySelectItemLogic extends Component {
     protected _toY: number = 0;
     private troopIdx = 0;
     private resourceEntityId: number | string = 0;
-    private action: 'occupy' | 'move' = 'occupy';
+    private action: TroopOrderAction = 'occupy';
     public onSelected: ((troopIdx: number) => void) | null = null;
     private selected = false;
     private rowWidth = 280;
@@ -87,6 +93,30 @@ export default class ArmySelectItemLogic extends Component {
             const map = MapCommand.getInstance();
             const cell = map.proxy.getResData(MapUtil.getIdByCellPoint(this._toX, this._toY));
             const troop = TroopCommand.getInstance().proxy.getTroop(this.troopIdx);
+            if (this.action === 'attackCity') {
+                const issue = world.cityAttackIssue(this._toX, this._toY) || this.troopIssue(troop);
+                if (issue) { EventMgr.emit(LogicEvent.showToast, issue); return; }
+                const city = CityCommand.getInstance().at(this._toX, this._toY);
+                if (idKey(city?.entityId) !== idKey(this.resourceEntityId)) {
+                    EventMgr.emit(LogicEvent.showToast, '城池已变更，请重新选择'); return;
+                }
+                if (!world.attackCity(this.troopIdx, this._toX, this._toY)) {
+                    EventMgr.emit(LogicEvent.showToast, '攻城指令未发出，请重试'); return;
+                }
+                EventMgr.emit(LogicEvent.closeArmyAelectUi); return;
+            }
+            if (this.action === 'redeploy') {
+                const issue = world.cityRedeployIssue(this._toX, this._toY) || this.troopIssue(troop);
+                if (issue) { EventMgr.emit(LogicEvent.showToast, issue); return; }
+                const city = CityCommand.getInstance().at(this._toX, this._toY);
+                if (idKey(city?.entityId) !== idKey(this.resourceEntityId)) {
+                    EventMgr.emit(LogicEvent.showToast, '城池已变更，请重新选择'); return;
+                }
+                if (!world.redeployTroop(this.troopIdx, this._toX, this._toY)) {
+                    EventMgr.emit(LogicEvent.showToast, '调动指令未发出，请重试'); return;
+                }
+                EventMgr.emit(LogicEvent.closeArmyAelectUi); return;
+            }
             if (this.action === 'move') {
                 const issue = map.moveTargetIssue(this._toX, this._toY) || this.troopIssue(troop);
                 if (issue) { EventMgr.emit(LogicEvent.showToast, issue); return; }
@@ -186,11 +216,12 @@ export default class ArmySelectItemLogic extends Component {
         // console.log("setArmyData", arguments);
         this.updateItem();
     }
-    public setTroopData(troop: TroopData, x: number, y: number, action: 'occupy' | 'move' = 'occupy'): void {
+    public setTroopData(troop: TroopData, x: number, y: number, action: TroopOrderAction = 'occupy'): void {
         this._data = null; this.troopIdx = troop.troopIdx; this._toX = x; this._toY = y;
         this.action = action;
         const world = WorldCommand.getInstance();
-        this.resourceEntityId = action === 'occupy' ? world.resourceLandEntityId(x, y) : 0;
+        this.resourceEntityId = (action === 'attackCity' || action === 'redeploy') ? CityCommand.getInstance().at(x, y)?.entityId || 0
+            : action === 'occupy' ? world.resourceLandEntityId(x, y) : 0;
         const proxy = GeneralCommand.getInstance().proxy;
         const heroes = [0, 1, 2].map(pos => proxy.getMyGeneral(troop.getHeroIdxAt(pos)));
         const name = (index: number) => heroes[index] ? proxy.getGeneralCfg(heroes[index].cfgId)?.name || '武将' : '';
@@ -202,7 +233,7 @@ export default class ArmySelectItemLogic extends Component {
         const reason = this.troopIssue(troop);
         this.tipNode.active = !!reason;
         this.labelTip.string = reason;
-        this.labelState.string = reason ? '' : action === 'move' ? '移动  ›' : '出征  ›';
+        this.labelState.string = reason ? '' : action === 'redeploy' ? '调动  •' : action === 'move' ? '移动  ›' : action === 'attackCity' ? '攻城  ›' : '出征  ›';
         this.labelName.string = `部队${troop.troopIdx}${name(0) ? ' · ' + name(0) : ''}`;
         this.labelLv.string = heroes[0] ? `Lv.${heroes[0].level}` : '';
         this.headIcon.node.active = !!heroes[0];
@@ -222,9 +253,15 @@ export default class ArmySelectItemLogic extends Component {
         if (!world.sessionReady) return '连接尚未恢复，请稍后重试';
         if (world.requestInFlight(`march:${troop.troopIdx}`)) return '指令处理中，请稍候';
         const march = world.marches.get(troop.troopIdx);
+        if (march?.troopState === TroopStateEnum.SIEGE) return '攻城中，请先撤回';
         const sameEnd = march?.endPos?.x === this._toX && march?.endPos?.y === this._toY;
-        if (march?.state === 1 && sameEnd) return '正前往此处';
-        if (this.action === 'move' && march?.state === 2 && sameEnd) return '已抵达此处';
+        // 攻城终点在城外，必须按实体判断，不能拿接敌点与城中心比较。
+        const sameTarget = this.action === 'attackCity' ? march?.targetType === MarchTargetType.AttackCity
+            && idKey(march.targetId) === idKey(this.resourceEntityId)
+            : this.action === 'redeploy' ? march?.targetType === MarchTargetType.Redeploy
+                && idKey(march.targetId) === idKey(this.resourceEntityId) : sameEnd;
+        if (march?.state === 1 && sameTarget) return '正前往此处';
+        if ((this.action === 'move' || this.action === 'redeploy') && march?.state === 2 && sameTarget) return '已抵达此处';
         const leader = troop.getHeroIdxAt(0);
         if (!leader) return '主将未上阵，请先编队';
         return troop.getSoldier(leader).count > 0 ? '' : '主将兵力不足，请先配兵';
@@ -236,8 +273,18 @@ export default class ArmySelectItemLogic extends Component {
 
     public setSelected(selected: boolean): void {
         this.selected = selected;
-        this.labelState.string = selected ? '已选中' : this.action === 'move' ? '可调动' : '可出征';
+        this.labelState.string = selected ? '已选中' : this.action === 'redeploy' ? '可调动' : this.action === 'move' ? '可移动' : this.action === 'attackCity' ? '可攻城' : '可出征';
         this.layoutRow(this.rowWidth, this.rowHeight);
+    }
+
+    public setRoutePreview(route: MarchRoutePreview | null): void {
+        if (!this.selected || this.selectionIssue || !route || route.troopIdx !== this.troopIdx) return;
+        const seconds = Math.max(1, Math.ceil(route.costTime));
+        const mm = ('0' + Math.floor(seconds / 60) % 60).slice(-2);
+        const ss = ('0' + seconds % 60).slice(-2);
+        this.labelState.string = route.status === 'ready'
+            ? (seconds >= 3600 ? `${Math.floor(seconds / 3600)}:${mm}:${ss}` : `${mm}:${ss}`)
+            : route.status === 'loading' ? '寻路中…' : route.status === 'unreachable' ? '无法到达' : '寻路失败';
     }
 
     /** 紧凑纵向队列：主将、兵力、副将和状态在同一行卡片内读完。 */

@@ -29,6 +29,10 @@ class TestNode {
     setPosition(x, y) { this.x = x; this.y = y; }
 }
 class TestGraphics { clear() {} moveTo() {} lineTo() {} close() {} fill() {} }
+class OwnershipView {
+    setCity(data, top, corners) { Object.assign(this, { data, top, corners }); }
+    clear() { this.data = null; }
+}
 const transform = new UITransform();
 const spriteNode = { getComponent: () => transform,
     setPosition(x, y) { this.x = x; this.y = y; }, setScale(x, y) { this.sx = x; this.sy = y; } };
@@ -42,7 +46,11 @@ const campaign = { config: { width:1000, height:1000 }, gateAt: () => currentGat
 const artNames = [], artHashes = new Set();
 const logicType = load('assets/scripts/map/entries/ResLogic.ts', {
     cc, '../MapProxy': { MapResType: { WOOD: 52, IRON: 53, STONE: 54, GRAIN: 55, SYS_FORTRESS: 50 } },
-    '../WorldMapArt': { default: { apply(sprite, name) {
+    '../CityOwnershipView': { default: OwnershipView },
+    '../WorldMapArt': { default: { size(name) {
+        const png = fs.readFileSync(path.join(root, 'assets/resources/ui/world', name + '.png'));
+        return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
+    }, apply(sprite, name) {
         const png = fs.readFileSync(path.join(root, 'assets/resources/ui/world', name + '.png'));
         artNames.push(name);
         if (name.includes('_lv')) artHashes.add(require('node:crypto').createHash('sha256').update(png).digest('hex'));
@@ -84,6 +92,7 @@ console.log(`PASS ${checked} real resource/level combinations fit inside the til
 for (const axis of ['x','y']) {
     currentGate = { x:40,y:50,level:8,axis,crossing:'bridge',bridgeSpan:12 };
     logic.setResourceData({type:50,...currentGate});
+    assert.equal(logic.node.getComponent(OwnershipView).data, currentGate, '桥关归属层绑定当前实体');
     assert.equal(artNames.at(-1),'river_pass_citadel');
     assert.equal(transform.anchorX,geometry.BRIDGE_ANCHOR_X);
     assert.equal(transform.anchorY,geometry.BRIDGE_ANCHOR_Y);
@@ -100,6 +109,7 @@ for (const axis of ['x','y']) {
     assert.equal(hit(.88,.86),false,'transparent water below bridge must not intercept clicks');
     currentGate=null;
     logic.setResourceData({type:52,level:3,x:40,y:50});
+    assert.equal(logic.node.getComponent(OwnershipView).data, null, '复用成资源地时清理旧桥关归属');
     assert.equal(spriteNode.sx,1); assert.equal(spriteNode.sy,1);
     assert.equal(transform.anchorX,.5); assert.equal(transform.anchorY,.5);
 }

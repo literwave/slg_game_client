@@ -27,7 +27,11 @@ const project = p => ({ x: (p.x - p.y) * 100, y: -(p.x + p.y) * 50 });
 const stubs = {
     'utils/DateUtil': { default: { getServerTime: () => serverStart + mono, monotonicNow: () => mono } },
     'map/MapUtil': { default: { mapCellToPixelPoint: project } },
-    'map/entries/MarchFormation': { default: class { configure() {} setGuarding() {} resetTrail() {} update() {} destroy() {} } },
+    'map/entries/MarchFormation': { default: class { configure() {} setGuarding() {} setSiegeTarget() {} resetTrail() {} update() {} getSiegeVolley() { return { seconds: 0, sources: [] }; } destroy() {} } },
+    'map/entries/SiegeEffect': { default: class {} },
+    'map/WorldCampaign': { default: { config: null, gateAt: () => null } },
+    'world/CityCommand': { default: { getInstance: () => ({ cities: new Map() }) } },
+    'network/pto/ProtocolCommand': { idKey: id => String(id ?? 0) },
     'world/WorldCommand': { default: { getInstance: () => ({ occupyCountdownAt: () => null }) } },
 };
 function load(name) {

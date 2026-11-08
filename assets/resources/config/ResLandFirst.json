@@ -1,0 +1,1032 @@
+[
+  {
+    "Type": 1,
+    "Level": 1,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 3000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 1500
+      }
+    ]
+  },
+  {
+    "Type": 1,
+    "Level": 2,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 5000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 2500
+      }
+    ]
+  },
+  {
+    "Type": 1,
+    "Level": 3,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 8000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 4000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 1500
+      }
+    ]
+  },
+  {
+    "Type": 1,
+    "Level": 4,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 12000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 6000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 2500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 10
+      }
+    ]
+  },
+  {
+    "Type": 1,
+    "Level": 5,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 18000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 9000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 4000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 20
+      }
+    ]
+  },
+  {
+    "Type": 1,
+    "Level": 6,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 25000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 12000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 6000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 30
+      }
+    ]
+  },
+  {
+    "Type": 1,
+    "Level": 7,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 35000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 16000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 9000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 40
+      }
+    ]
+  },
+  {
+    "Type": 1,
+    "Level": 8,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 48000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 22000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 13000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 60
+      }
+    ]
+  },
+  {
+    "Type": 1,
+    "Level": 9,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 65000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 30000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 18000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 80
+      }
+    ]
+  },
+  {
+    "Type": 1,
+    "Level": 10,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 90000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 40000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 25000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 120
+      }
+    ]
+  },
+  {
+    "Type": 2,
+    "Level": 1,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 3000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 1500
+      }
+    ]
+  },
+  {
+    "Type": 2,
+    "Level": 2,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 5000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 2500
+      }
+    ]
+  },
+  {
+    "Type": 2,
+    "Level": 3,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 8000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 4000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 1500
+      }
+    ]
+  },
+  {
+    "Type": 2,
+    "Level": 4,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 12000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 6000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 2500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 10
+      }
+    ]
+  },
+  {
+    "Type": 2,
+    "Level": 5,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 18000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 9000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 4000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 20
+      }
+    ]
+  },
+  {
+    "Type": 2,
+    "Level": 6,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 25000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 12000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 6000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 30
+      }
+    ]
+  },
+  {
+    "Type": 2,
+    "Level": 7,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 35000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 16000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 9000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 40
+      }
+    ]
+  },
+  {
+    "Type": 2,
+    "Level": 8,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 48000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 22000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 13000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 60
+      }
+    ]
+  },
+  {
+    "Type": 2,
+    "Level": 9,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 65000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 30000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 18000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 80
+      }
+    ]
+  },
+  {
+    "Type": 2,
+    "Level": 10,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 90000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 40000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 25000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 120
+      }
+    ]
+  },
+  {
+    "Type": 3,
+    "Level": 1,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 3000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 1500
+      }
+    ]
+  },
+  {
+    "Type": 3,
+    "Level": 2,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 5000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 2500
+      }
+    ]
+  },
+  {
+    "Type": 3,
+    "Level": 3,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 8000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 4000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 750
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 750
+      }
+    ]
+  },
+  {
+    "Type": 3,
+    "Level": 4,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 12000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 6000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 1250
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 1250
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 10
+      }
+    ]
+  },
+  {
+    "Type": 3,
+    "Level": 5,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 18000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 9000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 2000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 2000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 20
+      }
+    ]
+  },
+  {
+    "Type": 3,
+    "Level": 6,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 25000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 12000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 3000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 3000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 30
+      }
+    ]
+  },
+  {
+    "Type": 3,
+    "Level": 7,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 35000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 16000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 4500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 4500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 40
+      }
+    ]
+  },
+  {
+    "Type": 3,
+    "Level": 8,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 48000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 22000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 6500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 6500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 60
+      }
+    ]
+  },
+  {
+    "Type": 3,
+    "Level": 9,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 65000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 30000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 9000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 9000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 80
+      }
+    ]
+  },
+  {
+    "Type": 3,
+    "Level": 10,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 90000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 40000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 12500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 12500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 120
+      }
+    ]
+  },
+  {
+    "Type": 4,
+    "Level": 1,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 3000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 750
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 750
+      }
+    ]
+  },
+  {
+    "Type": 4,
+    "Level": 2,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 5000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 1250
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 1250
+      }
+    ]
+  },
+  {
+    "Type": 4,
+    "Level": 3,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 8000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 2000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 2000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 1500
+      }
+    ]
+  },
+  {
+    "Type": 4,
+    "Level": 4,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 12000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 3000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 3000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 2500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 10
+      }
+    ]
+  },
+  {
+    "Type": 4,
+    "Level": 5,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 18000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 4500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 4500
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 4000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 20
+      }
+    ]
+  },
+  {
+    "Type": 4,
+    "Level": 6,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 25000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 6000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 6000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 6000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 30
+      }
+    ]
+  },
+  {
+    "Type": 4,
+    "Level": 7,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 35000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 8000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 8000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 9000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 40
+      }
+    ]
+  },
+  {
+    "Type": 4,
+    "Level": 8,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 48000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 11000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 11000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 13000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 60
+      }
+    ]
+  },
+  {
+    "Type": 4,
+    "Level": 9,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 65000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 15000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 15000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 18000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 80
+      }
+    ]
+  },
+  {
+    "Type": 4,
+    "Level": 10,
+    "Reward": [
+      {
+        "reward_type": 1,
+        "item_id": 4,
+        "item_count": 90000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 1,
+        "item_count": 20000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 2,
+        "item_count": 20000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 3,
+        "item_count": 25000
+      },
+      {
+        "reward_type": 1,
+        "item_id": 100,
+        "item_count": 120
+      }
+    ]
+  }
+]

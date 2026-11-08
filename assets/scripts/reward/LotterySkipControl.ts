@@ -23,6 +23,8 @@ export default class LotterySkipControl {
         place(this.label.node, 17, 0, 114, 30);
         this.node.on(Toggle.EventType.TOGGLE, this.changed, this);
         this.unwatch = watchLotteryAnimation(skip => { this.render(skip); onChange?.(skip); });
+        // 后台预热的父组件可能从未触发 onLoad，不能仅依赖它的 onDestroy 清理订阅。
+        this.node.on(Node.EventType.NODE_DESTROYED, this.dispose, this);
         this.render(skipsLotteryAnimation());
     }
 
@@ -47,6 +49,9 @@ export default class LotterySkipControl {
         if (this.disposed) return;
         this.disposed = true;
         this.unwatch();
-        if (isValid(this.node, true)) this.node.off(Toggle.EventType.TOGGLE, this.changed, this);
+        if (isValid(this.node, true)) {
+            this.node.off(Toggle.EventType.TOGGLE, this.changed, this);
+            this.node.off(Node.EventType.NODE_DESTROYED, this.dispose, this);
+        }
     }
 }

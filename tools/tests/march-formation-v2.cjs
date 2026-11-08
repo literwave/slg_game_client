@@ -22,11 +22,11 @@ class AnimationClip {
     addRef() {}
 }
 class Animation {
-    clips = new Map(); states = new Map(); plays = 0;
+    clips = new Map(); states = new Map(); plays = 0; stops = 0;
     addClip(clip) { this.clips.set(clip.name, clip); }
     play(name) { this.current = name; this.stopped = false; this.plays++; }
     pause() { this.paused = true; }
-    stop() { this.stopped = true; }
+    stop() { this.stopped = true; this.stops++; }
     getState(name) {
         if (!this.states.has(name)) {
             const clip = this.clips.get(name), state = { duration: clip.duration, time: 0 };
@@ -117,14 +117,37 @@ async function main() {
     assert.equal(f.members.length, 7);
     assert.equal(f.members.filter(m => m.lag === 0).length, 1, '多武将部队仍由一个视觉主将领队');
     assert.ok(f.members.every(m => m.sprite.node.active && m.moving && m.sprite.node.scale.x === -1), '资源完成后直接进入当前左行朝向');
-    assert.equal(loads.length, 7, '图集在多支部队之间共享，半跪步兵与骑将分别加载一次');
-    assert.ok(loads.includes('ui/march/guard_march_cycle/spriteFrame'), '步兵必须使用包含收腿、换脚阶段的新图集');
+    assert.equal(loads.length, 7, '骑马步行动作、分段腿、独立站姿、步兵及驻守图集在多支部队之间共享');
+    assert.ok(loads.includes('ui/march/guard_march_walk12/spriteFrame'), '步兵必须使用完整十二帧步态');
+    assert.ok(loads.includes('ui/march/commander_walk_grounded_primary_v6/spriteFrame'), '骑将必须使用重绘朝向和四蹄的十二帧步态');
+    assert.ok(!loads.some(name => /march_(sheet|diagonal|front_walk|side_walk)|guard_march_cycle/.test(name)),
+        '增加动作帧后不能继续加载旧的整张补丁图集');
     assert.equal(loads.filter(name => name === 'ui/march/guard_defend_sheet/spriteFrame').length, 1,
         '半跪持盾图集只能共享加载一次');
     for (const kind of ['cavalry', 'infantry']) {
         const set = await load('map/entries/MarchAnimationLibrary').loadMarchAnimations(kind);
         assert.equal(set.clips.length, 8); assert.equal(set.idleFrames.length, 8);
         assert.deepEqual(set.mirrored, [false, false, false, true, true, true, false, false]);
+        if (kind === 'cavalry') {
+            const { selectMarchWalkView } = load('map/entries/MarchAnimationLibrary');
+            assert.equal(set.walkViews.length, 12, '侧斜与陡斜分开，共十二个真实朝向');
+            for (const view of set.walkViews) {
+                assert.equal(view.frames.length, 12);
+                assert.equal(view.clip.duration, .96, '骑马各视角保持同一四拍周期');
+            }
+            const pick = (degree, previous) => selectMarchWalkView(set.walkViews, degree * Math.PI / 180, previous);
+            const diagonal = pick(-26.6), steep = pick(-56);
+            assert.equal(diagonal.clip.name, 'cavalry_walk_rd');
+            assert.equal(steep.clip.name, 'cavalry_walk_steep_rd', '截图中的陡斜路线不能仍用侧身图');
+            assert.equal(pick(-124).clip.name, 'cavalry_walk_steep_ld');
+            assert.equal(pick(-124).mirrored, true);
+            assert.equal(pick(56).clip.name, 'cavalry_walk_steep_ru');
+            assert.equal(pick(124).clip.name, 'cavalry_walk_steep_lu');
+            assert.equal(pick(-44, steep), steep, '切换边界有防抖余量');
+            assert.equal(pick(-40, steep), diagonal, '真正转弯后切回侧斜');
+            assert.equal(pick(179).clip.name, 'cavalry_walk_l');
+            assert.equal(pick(-179).clip.name, 'cavalry_walk_l', '跨越角度零点不反复切换');
+        }
         const guardColumns = kind === 'cavalry' ? 4 : 3;
         const guardIndices = kind === 'cavalry' ? [0, 1, 2, 1, 0, 7, 6, 7] : [0, 1, 2, 1, 0, 3, 4, 3];
         for (const [i, index] of guardIndices.entries()) {
@@ -135,22 +158,48 @@ async function main() {
                 '占领必须使用真正半跪姿势，不能把站立图片压扁');
         }
         for (const [i, row] of [0, 1, 2, 1, 0, 3, 4, 3].entries()) {
-            const repairedFront = kind === 'cavalry' && (i === 5 || i === 7);
-            const repairedSide = kind === 'cavalry' && (i === 0 || i === 4);
-            assert.equal(set.clips[i].frames.length, repairedSide ? 10 : repairedFront ? 8 : 6);
-            assert.equal(set.clips[i].duration, .75, '骑将和护卫共享周期，转向不改变步态时间');
-            if (repairedFront) assert.ok(set.clips[i].frames.every(f => f.name.startsWith('commander_march_front_walk_')),
-                '前斜向只能使用含落地支撑与换蹄的新八帧');
-            if (repairedSide) assert.ok(set.clips[i].frames.every(f => f.name.startsWith('commander_march_side_walk_')),
-                '左右侧向必须使用交替换蹄的新十帧，不能仍沿用旧前腿姿势');
-            assert.equal(set.idleFrames[i].rect.x, 6 * 256);
-            const separateDiagonal = kind === 'cavalry' && i % 2;
-            assert.equal(set.idleFrames[i].rect.y, (separateDiagonal ? i < 4 ? 0 : 1 : row) * 256);
-            assert.equal(set.idleFrames[i].name.includes('_diagonal_'), !!separateDiagonal, '骑将的四个斜向不能再使用偏侧面的原行');
-            set.clips[i].frames.forEach(frame => { assert.equal(frame.rect.width, 256); assert.equal(frame.rect.height, 256); });
+            assert.equal(set.clips[i].frames.length, 12);
+            assert.equal(new Set(set.clips[i].frames).size, 12, '十二帧必须对应不同图片切片');
+            assert.equal(set.clips[i].duration, kind === 'cavalry' ? .96 : .75, '骑马和步兵分别使用适合自己的周期，转向不重置');
+            assert.equal(set.idleFrames[i].rect.x, row * 192);
+            assert.equal(set.idleFrames[i].rect.y, kind === 'cavalry' ? 0 : 6 * 192);
+            assert.ok(!set.walkFrames[i].includes(set.idleFrames[i]), '停止使用独立站姿，不冻结抬脚帧');
+            set.clips[i].frames.forEach((frame, phase) => {
+                if (kind === 'cavalry') {
+                    const axial = row === 2 || row === 4;
+                    const start = [0,12,12,24,0][row], slot = start + phase;
+                    const w=axial?148:209,h=axial?222:209;
+                    assert.equal(frame.rect.x,slot%6*w+.5);
+                    assert.equal(frame.rect.y,Math.floor(slot/6)*h+.5);
+                    assert.equal(frame.rect.width,w-1);assert.equal(frame.rect.height,h-1);
+                    assert.equal(frame.originalSize.width,frame.originalSize.height,'portrait cells must not stretch the horse sideways');
+                    assert.ok(frame.originalSize.height>h,'virtual gutters preserve the feet and spear');
+                } else {
+                    const slot=row*12+phase;
+                    assert.equal(frame.rect.x,slot%10*192);assert.equal(frame.rect.y,Math.floor(slot/10)*192);
+                    assert.equal(frame.rect.width,192);assert.equal(frame.rect.height,192);
+                }
+                assert.ok(frame.texture.width <= 2048 && frame.texture.height <= 2048);
+                assert.equal(frame.packable, false, '运行时小帧不能重复进入动态图集');
+            });
         }
     }
-    console.log('PASS 七张图集真实尺寸、共享加载、八方向镜像、独立站姿与半跪驻守姿势');
+    console.log('PASS 七张共享图集、十二帧切片、骑马独立周期、正背面比例、站姿与驻守姿势');
+
+    const rigFormation = create(); await tick();
+    update(rigFormation, 1, 0, true);
+    const rigMember = rigFormation.members[0], rig = rigMember.walkRig;
+    assert.ok(rig.ready && rig.root.active && !rigMember.sprite.enabled, '浅前斜显示分段步态，不能叠加旧前腿');
+    for (const phase of [0, .125, .25, .375, .5, .625, .75, .875]) {
+        rig.sample(phase);
+        for (const leg of rig.legs) assert.equal(leg.hoof.angle, 0, '蹄底独立于小腿转角，不能卷成钩');
+    }
+    rigFormation.resetTrail(); update(rigFormation, 0, 1, true);
+    assert.ok(rig.root.active && rigMember.sprite.node.scale.x === -1, '左前斜镜像同一完整骨骼');
+    rigFormation.resetTrail(); update(rigFormation, 1, -1, true);
+    assert.ok(!rig.root.active && rigMember.sprite.enabled, '侧向恢复原图，不残留前腿节点');
+    rigFormation.destroy();
+    console.log('PASS 前蹄独立平底、浅前斜/镜像接入、其他视角恢复和安全回收');
     const guards = f.members.filter(m => m.lag > 0);
     for (let i = 0; i < 90; i++) {
         update(f, -1, 1, true);
@@ -159,11 +208,72 @@ async function main() {
     }
     const steps = new Set();
     for (let i = 0; i < 60; i++) { update(f, -1, 1, true); steps.add(guards[0].sprite.spriteFrame.name); }
-    assert.equal(steps.size, 6, '统一时钟仍播放全部六个步态，不是冻结画面');
+    assert.equal(steps.size, 12, '统一时钟播放全部十二个步态，不是复制帧或冻结画面');
     update(f, 1, 0, true);
     for (const m of guards) assert.ok(Math.abs(m.animation.getState(m.clip).time - f.gaitTime % .75) < 1e-9,
         '队员依次转弯时沿用全队相位，不从第一帧重新起步');
     console.log('PASS 整队同步步频、完整步态采样、转向保持相位');
+
+    // 使用真实配置速度验证：回城与调动同样跑动，路线进度和到达时刻仍各自服从服务端。
+    const targetTypes = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/TargetType.json'), 'utf8'));
+    const runStart = now;
+    const runners = [1, 6, 4].map(targetType => {
+        const speed = targetTypes[targetType].Speed, formation = create(), playback = new Playback();
+        const points = [{ x: 10, y: 10 }, { x: 10, y: 13 }, { x: 13, y: 13 }];
+        if (targetType === 1) points.reverse();
+        const motion = { targetType, state: 1, startTime: runStart / 1000, endTime: runStart / 1000 + 6 / speed,
+            startPos: points[0], endPos: points[2], path: points };
+        playback.setMotion(motion, runStart, runStart);
+        formation.update(playback, playback.sample(runStart));
+        return { targetType, speed, formation, playback, motion, frames: new Set() };
+    });
+    await tick();
+    for (let step = 0; step < 100; step++) {
+        now += 16;
+        for (const r of runners) {
+            if (step === 30) {
+                const gait = r.formation.gaitTime;
+                assert.equal(r.playback.setMotion(r.motion, now, now), false);
+                r.formation.configure(troop, true);
+                assert.equal(r.formation.gaitTime, gait, '重复同步不能重置跑步相位');
+            }
+            r.formation.update(r.playback, r.playback.sample(now));
+            assert.ok(Math.abs(r.playback.distance - (now - runStart) / 1000 * r.speed) < 1e-8,
+                '跑动表现不能加快服务器路径插值或缩短倒计时');
+            for(const member of r.formation.members){
+                const state=member.animation.getState(member.clip);
+                assert.ok(Math.abs(state.time-r.formation.gaitTime%state.duration)<1e-9,'shared monotonic clock with species-specific cycle');
+                if(member.kind==='cavalry'){
+                    assert.equal(member.sprite.node.position.y,0,'do not add synthetic horse bounce');
+                    assert.ok(member.sprite.node.angle===0,'do not roll the whole horse around its planted feet');
+                    assert.equal(member.sprite.node.scale.y,1,'do not squash horse legs');
+                }
+            }
+            r.frames.add(r.formation.members[1].sprite.spriteFrame.name);
+        }
+    }
+    assert.ok(Math.abs(runners[0].formation.gaitTime - runners[1].formation.gaitTime) < 1e-8,
+        '回城与调动必须使用相同跑步节奏');
+    assert.ok(runners[0].formation.gaitTime > runners[2].formation.gaitTime * 1.3,
+        '快行军必须实际加快动作，不能只是更快地平移站姿');
+    for (const r of runners) assert.equal(r.frames.size, 12, '跑动仍覆盖完整十二张动作帧');
+    while (now < runStart + 10400) {
+        now += 16;
+        for (const r of runners) {
+            r.formation.update(r.playback, r.playback.sample(now));
+            assert.ok(r.formation.members.every(m => m.sprite.color === undefined
+                && m.sprite.node.getComponent(UITransform).anchorY === 18 / 256),
+                '快行军不改变透明度、亮度和落脚锚点');
+        }
+    }
+    for (const r of runners) {
+        assert.deepEqual(r.playback.sample(now).position, r.motion.endPos);
+        assert.ok(r.formation.members.every(m => !m.moving && m.sprite.spriteFrame === m.animations.idleFrames[m.facing]));
+        assert.equal(r.formation.dustVisible, false);
+        assert.equal(r.motion.state, 1, '收步不能修改服务器状态');
+        r.formation.destroy();
+    }
+    console.log('PASS 回城/调动同速跑步、完整十二帧、重复推送不断步、服务端路程与时长不变、拐弯到城收步');
     const members = f.members.slice(); f.configure(troop, true);
     assert.deepEqual(f.members, members, '重复业务推送不重建角色');
     for (const [facing, [dx, dy]] of [[1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1], [0, 1], [1, 1], [1, 0]].entries()) {
@@ -181,9 +291,53 @@ async function main() {
         }
         const ordered = formation.root.children.slice(1).map(n => n.position.y);
         assert.deepEqual(ordered, ordered.slice().sort((a, b) => b - a), '人物按落脚点遮挡排序');
+        formation.setSiegeTarget(new Vec2(10 + dx, 10 + dy));
+        await tick();
+        for (let i=0;i<160;i++) update(formation,0,0,false);
+        const fixedFeet=formation.members.map(m=>[m.foot.x,m.foot.y]);
+        const attackPoses=new Set(),commandPoses=new Set();
+        const clock=formation.siegeStartedAt;
+        formation.setSiegeTarget(new Vec2(10 + dx, 10 + dy));
+        assert.equal(formation.siegeStartedAt,clock,'repeat server push must not reset a volley');
+        const stopCounts=formation.members.map(m=>m.animation.stops);
+        for(let i=0;i<240;i++) {
+            update(formation,0,0,false);
+            assert.deepEqual(formation.members.map(m=>[m.foot.x,m.foot.y]),fixedFeet,'feet stay planted after deploying');
+            assert.equal(formation.getSiegeVolley().sources.length,6);
+            for(const member of formation.members) {
+                assert.equal(member.facing,facing);assert.equal(member.moving,false);
+                if(member.kind==='cavalry') {
+                    assert.equal(member.siegePose,true,'mounted commander must visibly give orders');
+                    assert.ok(member.sprite.spriteFrame.name.startsWith('siege-commander-v2_'));
+                    assert.equal(member.sprite.node.scale.x,(member.siegeMirrored?-1:1)*member.sprite.node.scale.y);
+                    assert.equal(member.sprite.color.a,255);
+                    commandPoses.add(member.sprite.spriteFrame.name);
+                } else {
+                    assert.equal(member.siegePose,true);assert.equal(member.sprite.color.a,255);
+                    assert.equal(member.sprite.node.scale.x,member.sprite.node.scale.y);
+                    attackPoses.add(member.sprite.spriteFrame.name);
+                }
+            }
+        }
+        assert.equal(attackPoses.size,8,'complete throw/recovery sequence');
+        assert.equal(commandPoses.size,8,'commander must raise, point and recover during every siege cycle');
+        assert.ok(formation.getSiegeVolley().sources.every(source=>source.index>=0),'commander never creates a fake projectile');
+        formation.members.forEach((m,i)=>assert.equal(m.animation.stops,stopCounts[i],'no repeated animation stop'));
+        const groundFeet=formation.members.map(m=>({x:m.foot.x/256-m.foot.y/128,y:-m.foot.x/256-m.foot.y/128}));
+        const rank=p=>(p.x-10)*forward.x+(p.y-10)*forward.y;
+        assert.ok(groundFeet.slice(1).every(p=>rank(p)>rank(groundFeet[0])),'commander behind both infantry ranks');
+        formation.setSiegeTarget(new Vec2(10-dx,10-dy));
+        assert.equal(formation.siegeStartedAt,null,'retarget restarts preparation');
+        assert.equal(formation.getSiegeVolley().sources.length,0);
+        formation.setSiegeTarget(null);update(formation,dx,dy,true);
+        assert.equal(formation.getSiegeVolley().sources.length,0,'retreat immediately cancels all projectiles');
+        assert.ok(formation.members.every(m=>!m.siegePose));
+        for(const m of formation.members) {
+            assert.equal(m.sprite.color.r,255);assert.equal(m.sprite.node.getComponent(UITransform).anchorY,18/256);
+        }
         formation.destroy();
     }
-    console.log('PASS 八方向地面间距、单主将护卫阵形、深度排序、重复推送稳定');
+    console.log('PASS 八方向展开两排、主将后置、稳定落脚、投掷八帧、重复推送与撤退取消');
     // 直线行军即使高速或改变帧率，也不能因单人追赶滤波额外拉长阵形。
     for (const [speed, frameMs] of [[.25, 16], [4, 16], [8, 33]]) {
         const compact = create(); await tick();
@@ -254,6 +408,14 @@ async function main() {
     assert.equal(jitter.members[0].animation.plays, before, '朝向边界的小幅变化不反复切动画');
     angle(Math.atan(.5) * 180 / Math.PI);
     assert.equal(jitter.members[0].facing, 1, '等距地图右上行军必须能从水平朝向转入');
+    angle(-56);
+    assert.equal(jitter.members[0].clip, 'cavalry_walk_steep_rd', '实际编队沿陡斜路径选用补充朝向');
+    assert.equal(jitter.members[0].sprite.node.scale.x, 1);
+    assert.ok(Math.abs(jitter.members[0].animation.getState(jitter.members[0].clip).time - jitter.gaitTime % .75) < 1e-9,
+        '跨入补充视角也不能重置跑步节奏');
+    angle(-124);
+    assert.equal(jitter.members[0].clip, 'cavalry_walk_steep_ld');
+    assert.equal(jitter.members[0].sprite.node.scale.x, -1, '陡斜左行需要正确镜像');
     console.log('PASS 折线转弯、到达收队、停驻稳定、扬尘停止、朝向边界防抖');
     for (const data of [troop, null]) {
         const defense = create(data); await tick();
@@ -298,6 +460,22 @@ async function main() {
         defense.destroy();
     }
     console.log('PASS 四/六护卫居中防御、四面朝外、格内哨位、平滑展开、原地待机和撤离收队');
+    const siege = create(); await tick();
+    siege.setSiegeTarget(new Vec2(12,10)); await tick();
+    for(let i=0;i<160;i++) update(siege);
+    const rows=await load('map/entries/SiegeAnimationLibrary').loadSiegeUnit();
+    assert.equal(rows.length,8);assert.ok(rows.every(row=>row.length===8));
+    assert.equal(new Set(rows.flat().map(f=>f.image.name)).size,64);
+    for(const row of rows) for(const frame of row) {
+        assert.ok(frame.image.rect.x>=0&&frame.image.rect.x+frame.image.rect.width<=1280);
+        assert.ok(frame.image.rect.y>=0&&frame.image.rect.y+frame.image.rect.height<=1280);
+    }
+    assert.equal(loads.filter(x=>x.includes('siege-')).length,2,'share the infantry and commander atlases across troops');
+    siege.setSiegeTarget(null); update(siege,1,0,true);
+    assert.ok(siege.members.every(m=>!m.siegePose&&m.sprite.node.getComponent(UITransform).anchorY===18/256));
+    siege.destroy();
+    const delayed=create();delayed.setSiegeTarget(new Vec2(12,10));delayed.destroy();await tick();
+    console.log('PASS infantry and commander slices, shared load, return to marching, delayed-load disposal');
     const zero = create({ ...troop, getSoldier: () => ({ count: 0 }) }); assert.equal(zero.members.length, 1);
     const unknown = create(null); assert.equal(unknown.members.length, 5);
     const disposed = create(), bodies = disposed.members.map(m => m.sprite.node); disposed.destroy(); await tick();

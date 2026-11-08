@@ -25691,66 +25691,24 @@
     "contentNode": {
       "__id__": 1132
     },
-    "armySettingPrefab": {
-      "__uuid__": "6cc810a6-066b-484a-b3af-8d9955dee69d",
-      "__expectedType__": "cc.Prefab"
-    },
+    "armySettingPrefab": null,
     "dialog": {
       "__uuid__": "483456ba-0bfe-4339-8a1e-91b20a426fea",
       "__expectedType__": "cc.Prefab"
     },
-    "generalPrefab": {
-      "__uuid__": "e68ad7c0-fbe6-4d0b-b5bd-395140c227d5",
-      "__expectedType__": "cc.Prefab"
-    },
-    "generalDesPrefab": {
-      "__uuid__": "c13713b5-3941-439e-95a8-0ba72d16b86f",
-      "__expectedType__": "cc.Prefab"
-    },
-    "cityAboutPrefab": {
-      "__uuid__": "cb8a794b-4b28-4a41-8d81-0d0ab47ccf3b",
-      "__expectedType__": "cc.Prefab"
-    },
-    "armySelectPrefab": {
-      "__uuid__": "8aa291a0-ef19-4a5f-a5b0-418019b76568",
-      "__expectedType__": "cc.Prefab"
-    },
-    "drawPrefab": {
-      "__uuid__": "caa42f17-b55a-4e53-a93c-ef584f7e9c66",
-      "__expectedType__": "cc.Prefab"
-    },
-    "drawResultrefab": {
-      "__uuid__": "beaeae3e-8e1d-460d-bc0b-aef75a9adb95",
-      "__expectedType__": "cc.Prefab"
-    },
-    "unionPrefab": {
-      "__uuid__": "1e9b4c9f-a438-4925-8e8b-5bfbc5d19ed6",
-      "__expectedType__": "cc.Prefab"
-    },
-    "transFormPrefab": {
-      "__uuid__": "e24a8bb9-9f6d-4e5e-9ba9-df59e493ee4b",
-      "__expectedType__": "cc.Prefab"
-    },
-    "generalConvertPrefab": {
-      "__uuid__": "65571b75-0767-47bf-9258-6c4a46346649",
-      "__expectedType__": "cc.Prefab"
-    },
-    "generalRosterPrefab": {
-      "__uuid__": "cac2ae01-2405-40a0-a0bc-48583fd78b9c",
-      "__expectedType__": "cc.Prefab"
-    },
-    "skillPrefab": {
-      "__uuid__": "fc371bc9-5d60-4fd6-8990-b69c9020498c",
-      "__expectedType__": "cc.Prefab"
-    },
-    "skillInfoPrefab": {
-      "__uuid__": "d1861182-3e2c-4c8e-ba82-6bd63952b7ba",
-      "__expectedType__": "cc.Prefab"
-    },
-    "cloudAniPrefab": {
-      "__uuid__": "c9155be2-3848-4076-bba7-800f6ec3d653",
-      "__expectedType__": "cc.Prefab"
-    },
+    "generalPrefab": null,
+    "generalDesPrefab": null,
+    "cityAboutPrefab": null,
+    "armySelectPrefab": null,
+    "drawPrefab": null,
+    "drawResultrefab": null,
+    "unionPrefab": null,
+    "transFormPrefab": null,
+    "generalConvertPrefab": null,
+    "generalRosterPrefab": null,
+    "skillPrefab": null,
+    "skillInfoPrefab": null,
+    "cloudAniPrefab": null,
     "widgetNode": {
       "__id__": 154
     },
@@ -25798,10 +25756,7 @@
       "__uuid__": "183f78e0-9d4e-457f-bf2c-e28197516f05@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
-    "settingPrefab": {
-      "__uuid__": "2627c7e2-3663-4760-bd6b-9b0c85a2a189",
-      "__expectedType__": "cc.Prefab"
-    },
+    "settingPrefab": null,
     "settingsMenuIcon": {
       "__uuid__": "e8b93e5f-3d85-4886-bf87-59f93896450a@f9941",
       "__expectedType__": "cc.SpriteFrame"

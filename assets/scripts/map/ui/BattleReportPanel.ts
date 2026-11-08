@@ -1,7 +1,7 @@
 import { _decorator, BlockInputEvents, Button, Color, Component, Label, Mask, Node,
     SafeArea, ScrollView, Sprite, UITransform, Widget } from 'cc';
 import BattleCommand, { ReportInfo } from '../../battle/BattleCommand';
-import { reportKind, reportLayout, reportResult, reportTime } from '../../battle/ReportPresentation';
+import { matchesReportCategory, ReportCategory, reportKind, reportLayout, reportResult, reportTime } from '../../battle/ReportPresentation';
 import { ServerConfig as S } from '../../config/ServerConfig';
 import { LogicEvent as E } from '../../common/LogicEvent';
 import { EventMgr } from '../../utils/EventMgr';
@@ -15,7 +15,7 @@ import { reportDispatchCard, reportEmptyState, reportFilters, reportReadAll, rep
 import { caption, inkSurface, ManagementColors as C, panelButton, place } from './ManagementStyle';
 const { ccclass } = _decorator;
 const WIN = new Color(135, 185, 139), LOSS = new Color(208, 121, 103);
-const FILTERS: Array<[number, string]> = [[0, '全部'], [4, '资源地'], [1, '讨伐'], [2, '攻城'], [3, '防守']];
+const FILTERS: Array<[ReportCategory, string]> = [['all', '全部'], ['pve', '讨伐'], ['pvp', '对战']];
 
 @ccclass('BattleReportPanel')
 export default class BattleReportPanel extends Component {
@@ -26,7 +26,7 @@ export default class BattleReportPanel extends Component {
     private detail: ScrollView;
     private metrics = reportLayout(1280, 720);
     private selected = '';
-    private category = 0;
+    private category: ReportCategory = 'all';
     private page: 'summary' | 'replay' = 'summary';
     private detailKey = '';
     private detailLocation = '';
@@ -132,7 +132,8 @@ export default class BattleReportPanel extends Component {
     }
     private flushRender(): void { this.queued = false; if (this.node.activeInHierarchy) this.render(); }
     private render(): void {
-        const c = BattleCommand.getInstance(), m = this.metrics, rows = c.getReports(this.category);
+        const c = BattleCommand.getInstance(), m = this.metrics;
+        const rows = c.getReports().filter(brief => matchesReportCategory(brief, this.category));
         const status = this.panel.getChildByName('Status').getComponent(Label);
         status.string = !c.sessionReady ? '连接已断开，等待重新连接' : c.loadError || (c.loading ? '正在同步战报…'
             : `${c.getReports().length} 封${c.unreadCount ? ` · ${c.unreadCount} 未读` : ''}`);
@@ -194,7 +195,8 @@ export default class BattleReportPanel extends Component {
         const detailPending = c.requestInFlight(`detail:${this.selected}`), replayPending = c.requestInFlight(`replay:${this.selected}`);
         const m = this.metrics, width = m.detailWidth;
         const key = JSON.stringify([width, m.bodyHeight, this.selected, this.category, this.page, info, replay, detailPending, replayPending,
-            c.sessionReady, c.loading, c.loadError, c.getReports(this.category).length]);
+            c.sessionReady, c.loading, c.loadError,
+            c.getReports().filter(brief => matchesReportCategory(brief, this.category)).length]);
         if (key === this.detailKey) return;
         const location = `${width}:${m.bodyHeight}:${this.selected}:${this.page}`, reset = location !== this.detailLocation;
         this.detailKey = key; this.detailLocation = location;
@@ -203,7 +205,8 @@ export default class BattleReportPanel extends Component {
         inkSurface(this.detail.node, 'Surface', width, m.bodyHeight, C.inset, C.line);
         let y = -8;
         if (!brief) {
-            reportEmptyState(root, width, m.bodyHeight, 0, c.getReports(this.category).length ? '点选左侧军报' : '战斗结束后收录军报');
+            const hasReports = c.getReports().some(brief => matchesReportCategory(brief, this.category));
+            reportEmptyState(root, width, m.bodyHeight, 0, hasReports ? '点选左侧军报' : '战斗结束后收录军报');
         } else {
             const dateWidth=width-176;
             caption(root, 'Date', reportTime(brief.time), -width/2+18+dateWidth/2, y-12, dateWidth, 12, C.muted);

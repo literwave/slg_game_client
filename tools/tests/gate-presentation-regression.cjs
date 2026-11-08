@@ -93,12 +93,13 @@ const artCalls = [], ui = new UITransform();
 const node = { getComponent: () => ui, setPosition(x, y) { this.position = { x, y }; }, setScale(x, y) { this.scale = { x, y }; } };
 const world = { config: campaign, gateAt: (x, y) => campaign.gates.find(g => g.x === x && g.y === y) };
 const Res = load('assets/scripts/map/entries/ResLogic.ts', { cc,
+    '../CityOwnershipView': { default: class {} },
     '../MapProxy': { MapResType: { SYS_FORTRESS: 50, WOOD: 52, IRON: 53, STONE: 54, GRAIN: 55 } },
     '../WorldMapArt': { default: { apply(sprite, name, width) { artCalls.push({ name, width }); } } },
     '../WorldCampaign': { default: world }, '../GateGeometry': geometry,
     '../MapUtil': { default: { tileSize: { width: 200, height: 100 } } }, '../ResourceFootprint': {}, '../ui/ManagementStyle': {},
 }).default;
-const res = new Res(); res.node = { getChildByName: () => null }; res.spr = { node };
+const res = new Res(); res.node = { getChildByName: () => null, getComponent: () => ({ clear() {}, setCity() {} }) }; res.spr = { node };
 res.setResourceData({ ...hangu, type: 50 });
 assert.deepEqual(artCalls.at(-1), { name: geometry.GATE_ART, width: 760 });
 assert.equal(ui.anchorX, geometry.GATE_ANCHOR_X);
@@ -118,6 +119,7 @@ console.log('PASS 关城使用独立立绘，普通要塞与对象池缩放正�
 const mapUtil = { tileSize: { width: 200, height: 100 }, getIdByCellPoint: (x, y) => y * 1000 + x, isVaildCellPoint: p => p.x >= 0 && p.y >= 0 && p.x < 1000 && p.y < 1000,
     mapCellToPixelPoint: p => new Vec2((p.x - p.y) * 100, -(p.x + p.y) * 50) };
 const Touch = load('assets/scripts/map/MapTouchLogic.ts', { cc, './MapClickUILogic': {}, './MapCommand': {}, './MapUtil': { default: mapUtil },
+    './MapArmyLogic': { default: class {} }, './MapLogic': { default: class {} },
     './WorldCampaign': { default: world }, './GateGeometry': geometry,
     './SystemCityGeometry': cityGeometry,
     './WorldLandscape': { default: class {} }, './WorldMapArt': { default: {} }, './ui/ManagementStyle': {}, './TileHighlight': {},
@@ -125,7 +127,7 @@ const Touch = load('assets/scripts/map/MapTouchLogic.ts', { cc, './MapClickUILog
 }).default;
 const touch = new Touch(); let selected, blocked;
 const target = { ...hangu, type: 50 }, mountain = new Vec2(hangu.x + 2, hangu.y);
-touch.node = { getComponentInChildren: () => ({ blockerAt: () => mountain }) };
+touch.node = { getComponent: () => null, getComponentInChildren: () => ({ blockerAt: () => mountain }) };
 touch._cmd = { cityProxy: { getCity: () => null }, buildProxy: { getBuild: () => null }, proxy: {
     getSysCityResData: () => null, getResData: id => id === mapUtil.getIdByCellPoint(hangu.x, hangu.y) ? target : null } };
 touch.showClickUINode = data => { selected = data; }; touch.showBlocked = point => { blocked = point; };
@@ -156,7 +158,7 @@ for (const [art, shape] of Object.entries(cityShapes.SYSTEM_CITY_SILHOUETTES)) {
 }
 assert.equal(cityGeometry.systemCityHit(52.847260336071486, -549.7916714350358, 10), true, '截图中城门道路的实际点击必须选中洛阳');
 touch._cmd.cityProxy.getCity = () => null;
-touch.node = { getComponentInChildren: () => null };
+touch.node = { getComponent: () => null, getComponentInChildren: () => null };
 for (const city of campaign.cities) {
     const radius = cityFootprint.cityFootprintRadius(city.level), id = mapUtil.getIdByCellPoint(city.x, city.y);
     const cityData = { ...city, id, type: 51, isEmpty: false };
@@ -167,7 +169,7 @@ for (const city of campaign.cities) {
     const shape = cityShapes.SYSTEM_CITY_SILHOUETTES[art], width = cityFootprint.cityArtWidth(city.level);
     const center = mapUtil.mapCellToPixelPoint(city), height = width * shape.height / shape.width;
     const pointer = (u, v) => new Vec2(center.x + (u - .5) * width,
-        center.y + (1 - cityFootprint.cityArtAnchorY(city.level) - v) * height);
+        center.y + (1 - cityFootprint.cityArtAnchorY(city.level, city) - v) * height);
     // 每城楼顶位置不同；从新原画的上、中、下轮廓取真实不透明采样点。
     const samples = [.12, .5, .9].map(v => {
         const row = Math.floor(v * shape.rows.length), columns = [];
@@ -206,12 +208,15 @@ for (const city of campaign.cities) {
             if (Math.abs(x) <= logicalRadius && Math.abs(y) <= logicalRadius) continue;
             const pixel = mapUtil.mapCellToPixelPoint({ x: city.x + x, y: city.y + y });
             const dx = pixel.x - centerPixel.x, dy = pixel.y - centerPixel.y;
-            if (!cityGeometry.systemCityHit(dx, dy, level, 200, city) &&
-                cityGeometry.systemCityOverlapsTile(dx, dy, level, 200, 100, city)) { edge = [x, y]; break; }
+            const wallPoint = [[-60, 0], [60, 0], [0, -30], [0, 30]]
+                .find(([sx, sy]) => cityGeometry.systemCityHit(dx + sx, dy + sy, level, 200, city));
+            if (!cityGeometry.systemCityHit(dx, dy, level, 200, city) && wallPoint) {
+                edge = [x, y, wallPoint]; break;
+            }
         }
     }
     assert.ok(edge, label + ' 存在跨格轮廓');
-    const [offsetX, offsetY] = edge;
+    const [offsetX, offsetY, wallOffset] = edge;
     const id = mapUtil.getIdByCellPoint(city.x, city.y), center = mapUtil.mapCellToPixelPoint(city);
     const ground = { x: city.x + offsetX, y: city.y + offsetY, type: 0, isEmpty: true };
     const pixel = mapUtil.mapCellToPixelPoint(ground);
@@ -219,18 +224,23 @@ for (const city of campaign.cities) {
     const radius = cityFootprint.cityFootprintRadius(level);
     assert.ok(Math.abs(offsetX) > radius || Math.abs(offsetY) > radius, '复现格必须在逻辑占地以外');
     assert.equal(cityGeometry.systemCityHit(pixel.x - center.x, pixel.y - center.y, level, 200, city), false, label + ' 的落点在透明区');
-    assert.equal(cityGeometry.systemCityOverlapsTile(pixel.x - center.x, pixel.y - center.y, level, 200, 100, city), true, label + ' 的整格与城图相交');
+    const wallPointer = new Vec2(pixel.x + wallOffset[0], pixel.y + wallOffset[1]);
+    assert.equal(cityGeometry.systemCityHit(wallPointer.x - center.x, wallPointer.y - center.y, level, 200, city), true, label + ' 格内仍有城墙投影');
     touch._cmd.proxy.getSysCityResData = () => null;
     touch._cmd.proxy.getResData = key => key === id ? cityData : ground;
     touch._cmd.buildProxy.getBuild = () => null;
     selected = null; touch.onTouchMap(new Vec2(ground.x, ground.y), pixel, pixel);
-    assert.equal(selected, cityData, label + ' 不再弹空地选框');
+    assert.equal(selected, ground, label + ' 草地落点选择外围空地');
+    touch.onTouchMap(new Vec2(ground.x, ground.y), pixel, wallPointer);
+    assert.equal(selected, cityData, label + ' 直接点击城墙仍选择城池');
     // 脚本坐标定位保持原规则，防止纯视觉判定污染行军与地图逻辑。
     selected = null; touch.onTouchMap(new Vec2(ground.x, ground.y), pixel);
     assert.equal(selected, ground, '没有实际指针的坐标定位不扩大城池占地');
     const ownedCity = { ...cityData, rid: '9007199254740993' };
     touch._cmd.buildProxy.getBuild = key => key === id ? ownedCity : null;
     touch.onTouchMap(new Vec2(ground.x, ground.y), pixel, pixel);
+    assert.equal(selected, ground, '城池归属不扩大外围拾取区域');
+    touch.onTouchMap(new Vec2(ground.x, ground.y), pixel, wallPointer);
     assert.equal(selected, ownedCity, '边缘选中城池保留服务器归属');
     touch._cmd.buildProxy.getBuild = () => null;
     const resource = { ...ground, type: 55, isEmpty: false };
@@ -244,11 +254,11 @@ for (const city of campaign.cities) {
     touch._cmd.buildProxy.getBuild = () => null;
 }
 for (const level of [4, 7, 10]) {
-    assert.equal(cityGeometry.systemCityOverlapsTile(10000, 10000, level), false, '远处空地保持可点');
-    assert.equal(cityGeometry.systemCityOverlapsTile(NaN, 0, level), false);
-    assert.equal(cityGeometry.systemCityOverlapsTile(0, 0, level, 0, 100), false);
+    assert.equal(cityGeometry.systemCityHit(10000, 10000, level), false, '远处空地保持可点');
+    assert.equal(cityGeometry.systemCityHit(NaN, 0, level), false);
+    assert.equal(cityGeometry.systemCityHit(0, 0, level, 0), false);
 }
-console.log('PASS 城门道路和西北边缘整格拾取，资源地、已占领地、服务端归属与坐标定位保持正确');
+console.log('PASS 十城边缘按落点拾取，外围草地、资源地、已占领地、服务端归属与坐标定位保持正确');
 
 
 for (const gate of campaign.gates.filter(g=>g.crossing==='bridge')) {
@@ -274,6 +284,8 @@ for (const gate of campaign.gates.filter(g=>g.crossing==='bridge')) {
 console.log('PASS 6 座桥关桥头/桥墩真实点击路由，周边空地/资源/领地与归属保持正确');
 
 const Strategic = load('assets/scripts/map/WorldStrategicMap.ts', {
+    '../world/CityCommand': {}, '../login/LoginCommand': {}, '../utils/EventMgr': {}, '../common/LogicEvent': {},
+    './CityOwnership': {}, './CityMapPresentation': {},
     cc: { ...cc, view: { getVisibleSize: () => ({ width: 1280, height: 720 }) } },
     './MapCommand': {}, './MapUtil': { default: mapUtil }, './WorldCampaign': { default: world },
     './WorldMapArt': {}, './GateGeometry': geometry, './ui/ManagementStyle': {},

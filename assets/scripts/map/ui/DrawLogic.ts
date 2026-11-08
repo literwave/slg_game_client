@@ -39,7 +39,10 @@ export default class DrawLogic extends Component {
     private skip: LotterySkipControl;
     private layingOut = false;
 
-    protected onLoad(): void {
+    protected onLoad(): void { this.prepareView(); }
+
+    public prepareView(): void {
+        if (this.panel) return;
         // 旧 Modal 会在每次打开时重新启用带招募背景的 mask。
         // 新弹窗已有独立遮罩和输入阻挡，不再启用旧背景。
         const legacyModal = this.node.getComponent(Modal);
@@ -76,6 +79,7 @@ export default class DrawLogic extends Component {
         this.node.on(Node.EventType.SIZE_CHANGED, this.layout, this);
         this.safe.on(Node.EventType.SIZE_CHANGED, this.layout, this);
         this.layout();
+        this.refresh();
     }
 
     protected onEnable(): void {

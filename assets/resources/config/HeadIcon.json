@@ -154,5 +154,149 @@
     "HeroId": 1026,
     "Icon": "ui/head_icon/avatar_1026",
     "Sort": 26
+  },
+  {
+    "Id": 1027,
+    "HeroId": 1027,
+    "Icon": "ui/head_icon/avatar_1027",
+    "Sort": 27
+  },
+  {
+    "Id": 1028,
+    "HeroId": 1028,
+    "Icon": "ui/head_icon/avatar_1028",
+    "Sort": 28
+  },
+  {
+    "Id": 1029,
+    "HeroId": 1029,
+    "Icon": "ui/head_icon/avatar_1029",
+    "Sort": 29
+  },
+  {
+    "Id": 1030,
+    "HeroId": 1030,
+    "Icon": "ui/head_icon/avatar_1030",
+    "Sort": 30
+  },
+  {
+    "Id": 1031,
+    "HeroId": 1031,
+    "Icon": "ui/head_icon/avatar_1031",
+    "Sort": 31
+  },
+  {
+    "Id": 1032,
+    "HeroId": 1032,
+    "Icon": "ui/head_icon/avatar_1032",
+    "Sort": 32
+  },
+  {
+    "Id": 1033,
+    "HeroId": 1033,
+    "Icon": "ui/head_icon/avatar_1033",
+    "Sort": 33
+  },
+  {
+    "Id": 1034,
+    "HeroId": 1034,
+    "Icon": "ui/head_icon/avatar_1034",
+    "Sort": 34
+  },
+  {
+    "Id": 1035,
+    "HeroId": 1035,
+    "Icon": "ui/head_icon/avatar_1035",
+    "Sort": 35
+  },
+  {
+    "Id": 1036,
+    "HeroId": 1036,
+    "Icon": "ui/head_icon/avatar_1036",
+    "Sort": 36
+  },
+  {
+    "Id": 1037,
+    "HeroId": 1037,
+    "Icon": "ui/head_icon/avatar_1037",
+    "Sort": 37
+  },
+  {
+    "Id": 1038,
+    "HeroId": 1038,
+    "Icon": "ui/head_icon/avatar_1038",
+    "Sort": 38
+  },
+  {
+    "Id": 1039,
+    "HeroId": 1039,
+    "Icon": "ui/head_icon/avatar_1039",
+    "Sort": 39
+  },
+  {
+    "Id": 1040,
+    "HeroId": 1040,
+    "Icon": "ui/head_icon/avatar_1040",
+    "Sort": 40
+  },
+  {
+    "Id": 1041,
+    "HeroId": 1041,
+    "Icon": "ui/head_icon/avatar_1041",
+    "Sort": 41
+  },
+  {
+    "Id": 1042,
+    "HeroId": 1042,
+    "Icon": "ui/head_icon/avatar_1042",
+    "Sort": 42
+  },
+  {
+    "Id": 1043,
+    "HeroId": 1043,
+    "Icon": "ui/head_icon/avatar_1043",
+    "Sort": 43
+  },
+  {
+    "Id": 1044,
+    "HeroId": 1044,
+    "Icon": "ui/head_icon/avatar_1044",
+    "Sort": 44
+  },
+  {
+    "Id": 1045,
+    "HeroId": 1045,
+    "Icon": "ui/head_icon/avatar_1045",
+    "Sort": 45
+  },
+  {
+    "Id": 1046,
+    "HeroId": 1046,
+    "Icon": "ui/head_icon/avatar_1046",
+    "Sort": 46
+  },
+  {
+    "Id": 1047,
+    "HeroId": 1047,
+    "Icon": "ui/head_icon/avatar_1047",
+    "Sort": 47
+  },
+  {
+    "Id": 1048,
+    "HeroId": 1048,
+    "Icon": "ui/head_icon/avatar_1048",
+    "Sort": 48
+  },
+  {
+    "Id": 1049,
+    "HeroId": 1049,
+    "Icon": "ui/head_icon/avatar_1049",
+    "Sort": 49
+  },
+  {
+    "Id": 1050,
+    "HeroId": 1050,
+    "Icon": "ui/head_icon/avatar_1050",
+    "Sort": 50
   }
 ]

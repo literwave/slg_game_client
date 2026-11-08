@@ -198,6 +198,9 @@ export default class LotteryCommand {
         request.timedOut = true;
         this._loaded = false;
         this._error = '点将响应较慢，正在核对结果';
+        console.warn('[Lottery] 点将回包等待超时', {
+            count: request.count, before: request.before, current: this._lotteryTimes,
+        });
         this.changed();
         this.requestInfo();
     }
@@ -219,7 +222,12 @@ export default class LotteryCommand {
         if (!this.ready || !proto.isReady() || !proto.getIdByMsgType(name)) return false;
         const bytes = proto.encode(name, payload);
         if (!bytes) return false;
-        try { NetManager.getInstance().send({ name, msg: bytes }); return true; }
+        try {
+            // WebSocket 尚未关闭回调时，底层也可能拒绝发送；不能当作成功进入十秒等待。
+            const sent = NetManager.getInstance().send({ name, msg: bytes }) !== false;
+            if (!sent) console.warn('[Lottery] 协议未发出', name);
+            return sent;
+        }
         catch (error) { console.warn('点将请求发送失败', error); return false; }
     }
 }

@@ -67,7 +67,11 @@ export default class ListLogic extends Component {
     private _items:any = [];
     private _datas:any = null;
 
-    protected onLoad():void{
+    protected onLoad():void { this.prepareView(); }
+
+    /** 可在不可见的窗口中初始化；正式激活时复用列表节点和卡片缓存。 */
+    public prepareView():void {
+        if (this._itemPool) return;
         this._updateTimer = 0;//上次更新间隔时间
         this._curIndex = -1;
         this._newOffset = 0;
@@ -101,7 +105,7 @@ export default class ListLogic extends Component {
 
 
     protected onDestroy():void {
-        this._itemPool.clear();
+        this._itemPool?.clear();
         this._items.length = 0;
         this._datas = null;
     }

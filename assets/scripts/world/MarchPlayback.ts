@@ -15,6 +15,9 @@ export default class MarchPlayback {
     private initialized = false;
     private correction: { x: number; y: number; started: number } | null = null;
 
+    /** 服务端路径长度 / 行军时长，仅供表现层匹配步频，不改写移动速度。 */
+    get cellsPerSecond(): number { return this.speed; }
+
     setMotion(motion: MarchMotion, serverNowMs: number, monoMs: number): boolean {
         const key = JSON.stringify([motion.state, motion.startTime, motion.endTime, motion.path, motion.startPos, motion.endPos]);
         if (key === this.signature) return false;
@@ -53,7 +56,7 @@ export default class MarchPlayback {
 
     sample(monoMs: number): MarchSample | null {
         if (!this.initialized) return null;
-        const dt = Math.min(.1, Math.max(0, (monoMs - this.lastMono) / 1000));
+        const dt = Math.max(0, (monoMs - this.lastMono) / 1000);
         this.lastMono = monoMs;
         this.distance = Math.min(this.endDistance, this.distance + dt * this.speed);
         const sample = sampleMarchDistance(this.path, this.distance, this.distance < this.endDistance - .00001);

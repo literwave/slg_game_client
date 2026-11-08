@@ -169,6 +169,14 @@ export default class PlayerCityGround {
         this.profiles = data.json; this.effect = effect;
     }
 
+    static releaseArt(art: string): void {
+        for (const [key, material] of this.materials) if (key.startsWith(`${art}:`)) {
+            material.destroy(); this.materials.delete(key);
+        }
+        const texture = this.textures.get(art);
+        if (texture) { texture.image?.destroy(); texture.destroy(); this.textures.delete(art); }
+    }
+
     static apply(sprite: Sprite, art: string, width: number, height: number, footprintHeight: number, sourceHeight: number): void {
         const profile = this.profiles.find(p => p.art === art);
         if (!profile || !this.effect) throw new Error(`主城地基校准缺失：${art}`);

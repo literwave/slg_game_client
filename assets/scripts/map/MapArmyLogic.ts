@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Prefab, NodePool, instantiate } from 'cc';
+import { _decorator, Component, Node, Prefab, NodePool, instantiate, Color, Graphics, UITransform, Vec2 } from 'cc';
 const { ccclass, property } = _decorator;
 
 import ArmyCommand from "../general/ArmyCommand";
@@ -12,10 +12,16 @@ import { CoreEvent } from '../core/CoreEvent';
 import WorldCommand from '../world/WorldCommand';
 import LoginCommand from '../login/LoginCommand';
 import { hasId, idKey } from '../network/pto/ProtocolCommand';
-import { aoiTroopMotion } from '../world/MarchPath';
+import { aoiTroopMotion, buildMarchPath, sampleMarchPath } from '../world/MarchPath';
+import type { MarchPath } from '../world/MarchPath';
+import DateUtil from '../utils/DateUtil';
 import TroopCommand from '../general/TroopCommand';
 import type { WorldEntity, MarchInfo } from '../world/WorldCommand';
 import MapDepthLayer from './MapDepthLayer';
+import { TroopStateEnum } from '../config/enum/TroopStateEnum';
+import OwnMarchRoute from './OwnMarchRoute';
+import CityCommand from '../world/CityCommand';
+import { deployedEntityCity } from './CityDeployment';
 
 @ccclass('MapArmyLogic')
 export default class MapArmyLogic extends Component {
@@ -32,6 +38,10 @@ export default class MapArmyLogic extends Component {
     private aoiArmies = new Map<string, ArmyLogic>();
     private troopBindings = new Map<string, number>();
     private depthLayer: MapDepthLayer = null;
+    private routePreviewNode: Node = null;
+    private cameraMarch: MarchInfo = null;
+    private cameraPath: MarchPath = null;
+    private offscreenRoutes = new Map<number, OwnMarchRoute>();
 
     protected onLoad(): void {
         EventMgr.on(LogicEvent.updateArmyList, this.onUpdateArmyList, this);
@@ -41,7 +51,10 @@ export default class MapArmyLogic extends Component {
         EventMgr.on(LogicEvent.updateMarches, this.syncWorldEntities, this);
         EventMgr.on(LogicEvent.updateTroopList, this.syncWorldEntities, this);
         EventMgr.on(LogicEvent.updateMyGenerals, this.syncWorldEntities, this);
+        EventMgr.on(LogicEvent.updateAllianceCities, this.syncWorldEntities, this);
         EventMgr.on(CoreEvent.gameReady, this.syncWorldEntities, this);
+        EventMgr.on(LogicEvent.updateMarchRoute, this.drawRoutePreview, this);
+        EventMgr.on(CoreEvent.gameReady, this.drawRoutePreview, this);
         this.initArmys();
         this.syncWorldEntities();
 
@@ -50,6 +63,7 @@ export default class MapArmyLogic extends Component {
 
     protected onDestroy(): void {
         EventMgr.targetOff(this);
+        this.routePreviewNode?.destroy(); this.routePreviewNode = null;
         this._armyPool.clear();
         this._arrowPool.clear();
         this._armyLogics.forEach((logic:ArmyLogic) => {
@@ -58,6 +72,8 @@ export default class MapArmyLogic extends Component {
         this.aoiArmies.forEach(logic => logic.destroy());
         this.aoiArmies.clear();
         this.troopBindings.clear();
+        this.cameraMarch = null; this.cameraPath = null;
+        this.offscreenRoutes.forEach(route => route.destroy()); this.offscreenRoutes.clear();
     }
 
     protected update():void {
@@ -65,9 +81,42 @@ export default class MapArmyLogic extends Component {
             logic.update();
         });
         if (MapUtil.areaCellSize) this.aoiArmies.forEach(logic => logic.update());
+        if (MapUtil.areaCellSize) this.offscreenRoutes.forEach(route => route.update());
     }
 
     protected lateUpdate(): void { this.depthLayer?.update(); }
+
+    /** 优先跟随已绘制的本人部队；视野外用行军快照定位以便拉取该处 AOI。 */
+    public troopMapPosition(troopIdx: number): Vec2 | null {
+        const world = WorldCommand.getInstance(), march = world.marches.get(troopIdx);
+        if (!march || world.isTroopAtHome(troopIdx)) return null;
+        for (const [id, index] of this.troopBindings) {
+            if (index !== troopIdx) continue;
+            const node = this.aoiArmies.get(id)?.aniNode;
+            if (node?.isValid && node.activeInHierarchy) return new Vec2(node.position.x, node.position.y);
+        }
+        if (march !== this.cameraMarch) {
+            this.cameraMarch = march; this.cameraPath = buildMarchPath(march);
+        }
+        const point = sampleMarchPath(march, this.cameraPath, DateUtil.getServerTime())?.position;
+        if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y) || point.x < 0 || point.y < 0
+            || point.x >= MapUtil.mapSize.width || point.y >= MapUtil.mapSize.height) return null;
+        return MapUtil.mapCellToPixelPoint(new Vec2(point.x, point.y));
+    }
+
+    public pickTroop(point: Vec2): number | null {
+        let selected: number | null = null, nearest = Infinity;
+        for (const [id, idx] of this.troopBindings) {
+            const node = this.aoiArmies.get(id)?.aniNode;
+            if (!node?.isValid || !node.activeInHierarchy) continue;
+            const dx = point.x - node.position.x, dy = point.y - node.position.y - 20;
+            const distance = dx * dx + dy * dy;
+            if (Math.abs(dx) <= 45 && Math.abs(dy) <= 55 && distance < nearest) {
+                nearest = distance; selected = idx;
+            }
+        }
+        return selected;
+    }
 
     private attachMarch(logic: ArmyLogic): void {
         if (!this.depthLayer) this.depthLayer = MapDepthLayer.forLayer(this.parentLayer);
@@ -76,15 +125,51 @@ export default class MapArmyLogic extends Component {
         logic.setFormationLayer(this.depthLayer?.troops || null);
     }
 
+    private drawRoutePreview(): void {
+        const route = WorldCommand.getInstance().marchRoute;
+        if (!route || route.status !== 'ready' || !MapUtil.areaCellSize || !this.parentLayer) {
+            if (this.routePreviewNode) this.routePreviewNode.active = false;
+            return;
+        }
+        if (!this.depthLayer) this.depthLayer = MapDepthLayer.forLayer(this.parentLayer);
+        if (!this.routePreviewNode) {
+            const node = this.routePreviewNode = new Node('MarchRoutePreview'); node.layer = this.parentLayer.layer;
+            node.parent = this.depthLayer?.routes || this.parentLayer;
+            node.addComponent(UITransform); node.addComponent(Graphics);
+        }
+        this.routePreviewNode.active = true;
+        const g = this.routePreviewNode.getComponent(Graphics); g.clear();
+        const points = route.path.map(p => MapUtil.mapCellToPixelPoint(new Vec2(p.x, p.y)));
+        if (points.length < 2) return;
+        // 路线位于地面层，保留服务端拐点；不移动镜头，不代替真实部队行军线。
+        for (const [width, color] of [[6, new Color(42, 35, 22, 150)], [3, new Color(243, 205, 118, 235)]] as const) {
+            g.lineWidth = width; g.strokeColor = color;
+            g.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y);
+            g.stroke();
+        }
+        g.lineWidth = 2;
+        const first = points[0], last = points[points.length - 1];
+        g.ellipse(first.x, first.y, 7, 4); g.stroke();
+        g.moveTo(last.x, last.y + 7); g.lineTo(last.x + 12, last.y);
+        g.lineTo(last.x, last.y - 7); g.lineTo(last.x - 12, last.y); g.lineTo(last.x, last.y + 7); g.stroke();
+    }
+
     private syncWorldEntities(): void {
         // 地图加载完成前可能已经收到列表，gameReady 会再次使用缓存进行同步。
         if (!MapUtil.areaCellSize || !this.parentLayer) return;
-        // 地图实体全部以 AOI 为准，march_list 仅用于本人部队面板与操作状态。
+        // 地图实体全部以 AOI 为准；本人 march_list 还用于视野外的路线，不据此生成部队。
         // AOI 没有 troopIdx；仅在完整路径和时间戳唯一匹配本人 march 时关联编队。
         // 不拆 entityId，不按列表顺序/同一驻留坐标猜身份，也不重复生成地图实体。
-        const entities = Array.from(WorldCommand.getInstance().entities.values())
-            .filter(e => hasId(e.entityId) && !!aoiTroopMotion(e));
+        const world = WorldCommand.getInstance(), cities = CityCommand.getInstance().cities;
         const ownerId = LoginCommand.getInstance().proxy.getRoleData()?.userId;
+        const entities = Array.from(world.entities.values()).filter(e => {
+            if (!hasId(e.entityId) || !aoiTroopMotion(e)) return false;
+            const own = hasId(ownerId) && idKey(ownerId) === idKey(e.ownerId);
+            const idx = e.troopIdx || this.troopBindings.get(idKey(e.entityId));
+            // 城内驻留由城池队伍入口承载；回收整个队形，独立深度层的小兵也不能残留。
+            return !deployedEntityCity(e, cities, own && idx ? world.marches.get(idx) : undefined);
+        });
         const current = new Set(entities.map(e => idKey(e.entityId)));
         for (const [id, logic] of this.aoiArmies) {
             if (current.has(id)) continue;
@@ -101,6 +186,8 @@ export default class MapArmyLogic extends Component {
                 this.aoiArmies.set(id, logic);
             }
             const own = hasId(ownerId) && idKey(ownerId) === idKey(entity.ownerId);
+            // 新协议明确带部队编号；重登时从攻城/驻留快照也能绑定本人编队。
+            if (own && Number.isInteger(entity.troopIdx) && entity.troopIdx > 0) this.troopBindings.set(id, entity.troopIdx);
             if (own && !this.troopBindings.has(id)) {
                 const candidates = WorldCommand.getInstance().marches.values().filter(m => this.matchesMarch(entity, m));
                 if (candidates.length === 1 && entities.filter(e => idKey(e.ownerId) === idKey(ownerId)
@@ -113,10 +200,35 @@ export default class MapArmyLogic extends Component {
             const troop = troopIdx ? TroopCommand.getInstance().proxy.getTroop(troopIdx) : null;
             // 本人行军优先用 s2c_march 折线；AOI 更新偶发丢 path 时不要退成起终点直线
             const march = troopIdx ? WorldCommand.getInstance().marches.get(troopIdx) : null;
-            const view = own && march?.state === 1 && Array.isArray(march.path) && march.path.length >= 2
+            const view = own && march?.state === 1 && entity.troopState !== TroopStateEnum.SIEGE && Array.isArray(march.path) && march.path.length >= 2
                 ? { ...entity, path: march.path, startTime: march.startTime, endTime: march.endTime }
                 : entity;
             logic.setWorldEntity(view, own, logic.aniNode, logic.arrowNode, troop);
+        }
+        this.syncOffscreenRoutes();
+    }
+
+    private syncOffscreenRoutes(): void {
+        // 镜头在目的城池时，赶来的部队可能尚未进入 AOI，但本人完整行军路线已知。
+        // 进入 AOI 后交还 ArmyLogic 绘制，避免同一路线叠画；到达/攻城/回城结束即清理。
+        const represented = new Set(this.troopBindings.values());
+        const wanted = new Map(WorldCommand.getInstance().marches.values()
+            .filter(march => march.state === 1 && march.troopState !== TroopStateEnum.SIEGE
+                && !represented.has(march.troopIdx) && Array.isArray(march.path) && march.path.length >= 2
+                && march.path.every(p => p && Number.isFinite(p.x) && Number.isFinite(p.y)
+                    && p.x >= 0 && p.y >= 0 && p.x < MapUtil.mapSize.width && p.y < MapUtil.mapSize.height))
+            .map(march => [march.troopIdx, march] as const));
+        for (const [idx, route] of this.offscreenRoutes) if (!wanted.has(idx)) {
+            route.destroy(); this.offscreenRoutes.delete(idx);
+        }
+        if (wanted.size && !this.depthLayer) this.depthLayer = MapDepthLayer.forLayer(this.parentLayer);
+        for (const [idx, march] of wanted) {
+            let route = this.offscreenRoutes.get(idx);
+            if (!route) {
+                route = new OwnMarchRoute(this.depthLayer?.routes || this.parentLayer, idx);
+                this.offscreenRoutes.set(idx, route);
+            }
+            route.setMarch(march);
         }
     }
 

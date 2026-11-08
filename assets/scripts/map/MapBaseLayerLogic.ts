@@ -2,6 +2,7 @@ import { _decorator, Component, Node, Prefab, NodePool, instantiate } from 'cc';
 const { ccclass, property } = _decorator;
 
 import MapCommand from "./MapCommand";
+import WorldMapArt from './WorldMapArt';
 
 @ccclass('MapBaseLayerLogic')
 export default class MapBaseLayerLogic extends Component {
@@ -73,13 +74,13 @@ export default class MapBaseLayerLogic extends Component {
         const list = this._itemMap.get(areaIndex);
         if (list && list.has(id)) {
             let item: Node = list.get(id);
-            this._itemPool.put(item);
+            this.recycleNode(item);
             list.delete(id);
             return true;
         }
         const retired = this.takeRetiredItem(areaIndex, id);
         if (retired) {
-            this._itemPool.put(retired);
+            this.recycleNode(retired);
             return true;
         }
         return false;
@@ -128,8 +129,15 @@ export default class MapBaseLayerLogic extends Component {
         const [areaId, list] = area.value;
         const id = list.keys().next().value;
         const item = this.takeRetiredItem(areaId, id);
-        this._itemPool.put(item);
+        this.recycleNode(item);
         return true;
+    }
+
+    private recycleNode(item: Node): void {
+        WorldMapArt.unbindTree(item);
+        // 池中的节点不保留流式纹理，最多缓存一批近期可复用对象。
+        if (this._itemPool.size() >= 64) item.destroy();
+        else this._itemPool.put(item);
     }
 
     public addArea(areaIndex: number): void {

@@ -14,6 +14,7 @@ import { LogicEvent } from '../common/LogicEvent';
 import WorldCampaign from './WorldCampaign';
 import LoginCommand from '../login/LoginCommand';
 import WorldCommand from '../world/WorldCommand';
+import CityCommand from '../world/CityCommand';
 import MapMarkCommand from '../world/MapMarkCommand';
 import BuildCommand from '../build/BuildCommand';
 import { isResourceLandCell } from '../world/ResourceLand';
@@ -226,7 +227,9 @@ export default class MapCommand {
         if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0
             || x >= MapUtil.mapSize.width || y >= MapUtil.mapSize.height) return '移动坐标无效';
         const id = MapUtil.getIdByCellPoint(x, y), cell = this.proxy.getResData(id);
-        if (this.cityProxy.getCity(id) || this.proxy.getSysCityResData(x, y)) return '城池占地不能作为移动终点';
+        if (this.cityProxy.getCity(id)) return '城池占地不能作为移动终点';
+        // 城池调动使用 REDEPLOY 和实体 ID，普通 MOVE 仍只接受野外坐标。
+        if (CityCommand.getInstance().at(x, y) || this.proxy.getSysCityResData(x, y)) return '城池占地不能作为移动终点';
         if (!cell || !cell.isEmpty && !isResourceLandCell(cell)) return '请选择空地或可通行的资源地';
         return this.campaignBlockReason(x, y, false);
     }
@@ -251,6 +254,8 @@ export default class MapCommand {
         const myId = role?.userId || this.cityProxy.myId;
         const unionId = role?.allianceId ?? this.cityProxy.myUnionId;
         return WorldCampaign.reachable(home ? WorldCampaign.regionAt(home.x, home.y) : -1, gate => {
+            const city = CityCommand.getInstance().at(gate.x, gate.y);
+            if (city) return !!unionId && String(unionId) !== '0' && String(city.allianceId) === String(unionId);
             const build = this.buildProxy.getBuild(MapUtil.getIdByCellPoint(gate.x, gate.y));
             return !!build && (build.rid > 0 && String(build.rid) === String(myId)
                 || unionId && String(unionId) !== '0' && String(build.unionId) === String(unionId));
@@ -265,8 +270,7 @@ export default class MapCommand {
         if (!res || res.type === 0 && !res.isEmpty && !this.proxy.getSysCityResData(x, y)
             && !this.cityProxy.getCity(MapUtil.getIdByCellPoint(x, y))) return '山脉和河流不可通行，请寻找关隘或渡口';
         if (!WorldCampaign.canTarget(x, y, this.campaignReachable(), attackGate)) {
-            const region = WorldCampaign.config.regions[WorldCampaign.regionAt(x, y)];
-            return `尚未打通前往${region?.name || '该州'}的路线，请与同盟先攻占沿途关隘`;
+            return '路线未通，先攻占沿途关隘';
         }
         return '';
     }

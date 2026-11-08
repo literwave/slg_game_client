@@ -2,25 +2,26 @@
   {
     "Id": 1,
     "Name": "打怪",
-    "Enum": "ATTACK_MONSTER",
     "Desc": "攻打怪物组"
   },
   {
     "Id": 2,
     "Name": "攻打玩家",
-    "Enum": "ATTACK_PLAYER",
     "Desc": "攻打玩家部队/主城（预留）"
   },
   {
     "Id": 3,
     "Name": "防守",
-    "Enum": "DEFEND",
     "Desc": "防守战报（预留）"
   },
   {
     "Id": 4,
     "Name": "占领资源地",
-    "Enum": "OCCUPY_RES_LAND",
     "Desc": "占领资源地战报"
+  },
+  {
+    "Id": 5,
+    "Name": "攻城",
+    "Desc": "攻打联盟城池；守军为 NPC，战报归属攻方玩家"
   }
 ]

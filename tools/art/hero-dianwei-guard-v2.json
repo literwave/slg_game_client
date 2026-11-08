@@ -1,0 +1,22 @@
+{
+  "tool": "内置 image_gen",
+  "heroId": 1009,
+  "name": "典韦",
+  "purpose": "重绘双戟与握持结构，采用稳重护卫站姿、厚重甲胄和简洁背景，保证卡牌缩小后轮廓清晰。",
+  "source": "assets/resources/ui/hero/card_1009.png",
+  "output": "assets/resources/ui/hero/card_1009_guard_v2.png",
+  "prompt": "Use case: stylized-concept.\nAsset type: full-bleed portrait illustration for a five-star Dian Wei character card in a Three Kingdoms strategy game, vertical 350:480 aspect ratio.\nInput image: the existing Dian Wei illustration is a reference for the Chinese historical ink-and-gouache art direction and character identity. Redesign the pose, weapons and background completely.\nPrimary request: portray Dian Wei as a formidable, disciplined personal bodyguard with immense physical strength and a clear, imposing silhouette. A mature Han Chinese warrior with a broad square face, thick strong neck, powerful shoulders, close-trimmed rugged beard and mustache, dark hair tied firmly in a compact topknot, stern focused eyes. Realistic, dignified facial anatomy; no grimace. His body is stocky and muscular, naturally proportioned, not a giant tiny-headed fantasy monster.\nPose and weapons: upright, firmly planted defensive stance, torso in a restrained three-quarter turn with the face looking toward the viewer. Frame from above the topknot to the upper thighs. Open shoulders, no deep lunge or violently twisted torso. Exactly two arms and two clearly separated hands, both completely visible above the lower 25 percent of the illustration. Each hand grips exactly ONE of a matched pair of short, heavy iron ji halberds. One weapon along each outer side of his body, the shafts angled gently outward, their compact pointed steel heads clearly separated against the background near shoulder height. Two distinct straight wooden shafts, each with one practical historical steel spear point and one short side blade, no sprawling fantasy axe heads. The weapons do not cross each other, his face, or his forearms. Each wrist, thumb and grip is anatomically correct and unmistakable. Keep both weapon heads inside the image with comfortable margins.\nCostume: substantial blackened-steel Han lamellar cuirass with clean layered construction, restrained antique-bronze fittings, solid fitted shoulder armor, dark indigo inner garments, neatly bound forearms and a muted oxblood waist sash. Strong large armor forms, few carefully placed battle scratches, no shredded rags, no piles of muddy fur. Broad muscular bare forearms between sleeves and bracers. He must read as an elite armored bodyguard, not a ragged brawler.\nBackground: an understated fortified military gate in cool smoky gray, a subdued distant command banner, soft battlefield haze. Architecture is low-detail and low-contrast, with open pale space around the head and weapon heads. No burning doorway, no flames wrapping around the image, no swarms of soldiers, no spears cutting across the subject. Warm side light illuminates the face, hands and selective metal edges, strong separation from the quiet background.\nStyle: premium Chinese historical collectible game painting, refined ink outlines and richly controlled gouache, realistic anatomy, crisp expressive face, elegant brushwork, subtle paper texture. Deep blue-black, antique bronze, restrained burgundy and warm ivory highlights. Rich tonal depth, balanced saturation, not uniformly brown or noisy. No photorealistic photography, glossy 3D, anime, cheap scratchy filter or oversharpened texture.\nComposition: one character, large readable face near the upper third, face and hands unobstructed, modest top margin. Character occupies the central 80 percent. All key facial and weapon details above the bottom 22 percent reserved for an in-game nameplate overlay. Full-bleed opaque artwork, no blank borders, no card frame, no text, no faction badge, no stars, no UI, no letters, no watermark. Generate high resolution at the specified 350:480 portrait ratio.",
+  "postprocess": [
+    "resize 350x480 bicubic"
+  ],
+  "assetSettings": {
+    "filter": "linear",
+    "wrap": "clamp",
+    "mipmap": false,
+    "pivot": {
+      "x": 0.5,
+      "y": 0.5
+    }
+  },
+  "integration": "通过 GeneralPortrait.ts 统一解析典韦新版画像，保持配置表原资源标识。"
+}

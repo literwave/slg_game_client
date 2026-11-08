@@ -2,19 +2,16 @@
   {
     "Id": 1,
     "Name": "盟主",
-    "Enum": "LEADER",
     "Desc": "联盟创建者/盟主"
   },
   {
     "Id": 2,
     "Name": "官员",
-    "Enum": "OFFICER",
     "Desc": "可审批申请、踢成员、改设置"
   },
   {
     "Id": 3,
     "Name": "成员",
-    "Enum": "MEMBER",
     "Desc": "普通成员"
   }
 ]

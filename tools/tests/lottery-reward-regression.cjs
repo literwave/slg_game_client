@@ -11,6 +11,7 @@ function test(name, run) { run(); passed++; console.log('PASS ' + name); }
 function harness() {
     const modules = new Map(), timers = new Map(), sent = [], results = [], generic = [], images = [], errors = [];
     let serial = 0, proto;
+    const transport = { accept: true };
     const storage = new Map();
     const proxy = { hasItemCount: () => true, getItemCount: () => 1000 };
     const cc = { Component: class { isValid = true; node = { isValid: true }; unscheduleAllCallbacks() {} }, Color: class {}, JsonAsset: class {},
@@ -25,7 +26,9 @@ function harness() {
         if (key === 'map/ui/ManagementStyle') return { ManagementColors: {} };
         if (key === 'login/LoginCommand') return { default: { getInstance: () => ({ proxy }) } };
         if (key === 'network/socket/NetManager') return { NetManager: { getInstance: () => ({ send(packet) {
+            if (!transport.accept) return false;
             sent.push({ name: packet.name, data: proto.decode(packet.name, packet.msg) });
+            return true;
         } }) } };
         if (modules.has(key)) return modules.get(key).exports;
         const mod = { exports: {} }; modules.set(key, mod);
@@ -52,7 +55,7 @@ function harness() {
     events.on(E.lotteryResult, r => results.push(plain(r)), results); events.on(E.showReward, r => generic.push(plain(r)), generic);
     const receive = (name, data = {}) => events.emit(name, proto.decode(name, proto.encode(name, data)));
     const login = () => { receive(S.s2c_user_login_ok); receive(S.s2c_client_load_ok); receive(S.s2c_req_user_lottery_info, { lotteryTimes: 0 }); };
-    return { cmd, S, E, events, results, generic, sent, timers, receive, login, proxy, load, images, proto, storage, modules, errors };
+    return { cmd, S, E, events, results, generic, sent, timers, receive, login, proxy, load, images, proto, storage, modules, errors, transport };
 }
 const rewards = [{ rewardType: 3, itemId: 1001, itemCount: 1 }, { rewardType: 1, itemId: 11001, itemCount: 15 }, { rewardType: 1, itemId: 1, itemCount: 300 }];
 test('新协议 rewardList 无损进入专属结果，不等待通用奖励推送', () => {
@@ -68,6 +71,20 @@ test('点将期间其它通用奖励照常展示，不展示类型不弹窗', ()
     h.receive(h.S.s2c_show_reward, { rewardList: rewards, showTypeList: [1] });
     h.receive(h.S.s2c_show_reward, { rewardList: rewards, showTypeList: [0] });
     assert.equal(h.generic.length, 1); assert.equal(h.results.length, 0); assert.equal(h.cmd.pending, true);
+});
+test('底层发送失败立即解除等待，不伪装为后端十秒超时', () => {
+    const h = harness(); h.login(); const before = h.sent.length;
+    h.transport.accept = false;
+    assert.equal(h.cmd.draw(10), false);
+    assert.equal(h.cmd.pending, false); assert.equal(h.cmd.canDraw, true);
+    assert.equal(h.timers.size, 0); assert.equal(h.sent.length, before);
+    assert.match(h.cmd.error, /未发送/);
+    assert.equal(h.cmd.requestInfo(), false);
+    assert.equal(h.cmd.loading, false); assert.equal(h.timers.size, 0);
+    h.transport.accept = true;
+    assert.equal(h.cmd.draw(1), true);
+    h.receive(h.S.s2c_user_lottery, { useLotteryTimes: 1, lotteryTimes: 1, rewardList: rewards });
+    assert.equal(h.cmd.pending, false); assert.equal(h.results.length, 1);
 });
 test('重复回包只展示一次，下一次相同奖励正常展示', () => {
     const h = harness(); h.login(); h.cmd.draw(1);
@@ -181,6 +198,38 @@ test('续抽道具不足与异常时保留当前结果，恢复后可继续操�
     assert.equal(ui.canRepeat(1), true);
     h.proxy.getItemCount = () => 0; assert.equal(ui.canRepeat(1), false);
     h.events.emit(h.E.enterLogin); assert.equal(h.cmd.canDraw, false);
+});
+test('结果页续抽发送失败保留奖励并立即恢复按钮，恢复连接只发送新的主动请求', () => {
+    const h = harness(); h.login(); const ui = footerWindow(h), previous = ui.result;
+    h.events.on(h.E.lotteryChanged, ui.refreshActions, ui);
+    h.transport.accept = false;
+    ui.repeatDraw(10);
+    for (let i = 0; i < 120; i++) ui.update(.1);
+    assert.equal(ui.continuation, null); assert.equal(ui.result, previous);
+    assert.equal(h.cmd.pending, false); assert.equal(h.timers.size, 0);
+    assert.doesNotMatch(ui.repeatStatus.string, /正在点将|正在核对/);
+    assert.match(ui.repeatStatus.string, /未发送/); assert.equal(ui.canRepeat(10), true);
+    assert.equal(h.sent.filter(packet => packet.name === h.S.c2s_user_lottery).length, 0);
+    h.transport.accept = true;
+    ui.repeatDraw(1);
+    assert.equal(h.sent.filter(packet => packet.name === h.S.c2s_user_lottery).length, 1);
+});
+
+test('点将和核对都超时后退出等待，重新核对前禁止重复扣费', () => {
+    const h = harness(); h.login(); const ui = footerWindow(h);
+    h.events.on(h.E.lotteryChanged, ui.refreshActions, ui);
+    ui.repeatDraw(10);
+    const fireNext = () => { const [id, timeout] = h.timers.entries().next().value; h.timers.delete(id); timeout(); };
+    fireNext();
+    assert.equal(h.cmd.pending, false); assert.equal(h.cmd.loading, true);
+    fireNext();
+    assert.equal(h.cmd.loading, false); assert.equal(h.cmd.pending, false);
+    assert.equal(ui.feedbackWaiting, false); assert.equal(ui.retryInfo.active, true);
+    assert.equal(h.cmd.draw(10), false); assert.equal(h.timers.size, 0);
+    assert.equal(h.sent.filter(packet => packet.name === h.S.c2s_user_lottery).length, 1);
+    h.cmd.requestInfo();
+    h.receive(h.S.s2c_req_user_lottery_info, { lotteryTimes: 0 });
+    assert.equal(h.cmd.canDraw, true); assert.match(h.cmd.error, /未完成/);
 });
 test('续抽超时只核对计数，迟到奖励直接更新原窗且不重复扣费', () => {
     const h = harness(); h.login(); const { ui } = resultWindow(h), previous = ui.result;

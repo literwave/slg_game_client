@@ -1,11 +1,13 @@
-import { Color, EffectAsset, Graphics, JsonAsset, Node, resources, Sprite, SpriteFrame, UITransform } from 'cc';
+import { Color, EffectAsset, Graphics, isValid, JsonAsset, Node, resources, Sprite, SpriteFrame, UITransform } from 'cc';
+import AssetLoadQueue, { AssetPriority, AssetRequestCancelled } from '../core/AssetLoadQueue';
 import { cityArtAsset, cityArtWidth, cityOverviewAsset, CityArtIdentity, SYSTEM_CITY_ARTS } from './CityFootprint';
 import { GATE_ART, BRIDGE_ART } from './GateGeometry';
 import { PLAYER_CITY_MAX_LEVEL } from './PlayerCityAppearance';
 import PlayerCityGround from './PlayerCityGround';
 
 const CITY_ASSETS = [...new Set([...[4, 7, 10].map(level => cityArtAsset(level)),
-    ...[4, 7, 10].map(level => cityOverviewAsset(level)), ...SYSTEM_CITY_ARTS.flatMap(city => [city.near, city.far])])];
+    ...[4, 7, 10].map(level => cityOverviewAsset(level)),
+    ...([] as string[]).concat(...SYSTEM_CITY_ARTS.map(city => [city.near, city.far]))])];
 
 export const MAP_BOOKMARK_ART = 'map-bookmark-v2';
 
@@ -21,11 +23,22 @@ export function worldArtNames(): string[] {
     return [...new Set(names)];
 }
 
-/** 地图专用原创素材；入图时一次准备，地块复用时不再发起异步加载。 */
+export const WORLD_CORE_ART = ['plains', 'water', 'mountain_ridge_connected', 'mountain_shoulder',
+    'mountain_massif_natural', 'mountain_saddle_natural', MAP_BOOKMARK_ART];
+
+interface ArtBinding { name: string; ready?: () => void; }
+
+/** 地形常驻，建筑和资源图按可见节点请求；坐标与点击几何始终独立于贴图。 */
 export default class WorldMapArt {
     private static pending: Promise<void> = null;
     private static progress = 0;
     private static frames = new Map<string, SpriteFrame>();
+    private static bindings = new Map<Sprite, ArtBinding>();
+    private static lastUsed = new Map<string, number>();
+    private static loading = new Map<string, Promise<SpriteFrame>>();
+    private static failures = new Map<string, { error: Error; at: number }>();
+    private static sizes: Record<string, [number, number]> = {};
+    private static nextSweep = 0;
     static effect: EffectAsset = null;
     static landscape: any = null;
     static campaign: any = null;
@@ -45,23 +58,21 @@ export default class WorldMapArt {
     static prepare(): Promise<void> {
         if (this.pending) return this.pending;
         let imageProgress = 0, metadataDone = 0, active = true;
-        const report = () => { if (active) this.progress = Math.min(.99, imageProgress * .9 + metadataDone / 4 * .1); };
+        const report = () => { if (active) this.progress = Math.min(.99, imageProgress * .7 + metadataDone / 5 * .3); };
         const metadataReady = () => { metadataDone++; report(); };
         this.pending = Promise.all([
             PlayerCityGround.prepare().then(metadataReady),
-            new Promise<void>((resolve, reject) => resources.load(
-                worldArtNames().map(name => `ui/world/${name}/spriteFrame`), SpriteFrame,
-                (finished, total) => { imageProgress = Math.max(imageProgress, total > 0 ? Math.min(1, finished / total) : 0); report(); },
-                (error, frames) => {
-                    if (error) return reject(error);
-                    frames.forEach(frame => {
-                        if (frame.name === 'county' || CITY_ASSETS.includes(frame.name) || frame.name.startsWith('player_city_lv')
-                            || frame.name.startsWith('mountain_') || frame.name === BRIDGE_ART) frame.packable = false;
-                        this.frames.set(frame.name, frame);
-                    });
-                    imageProgress = 1; report();
-                    resolve();
-                })),
+            Promise.all(WORLD_CORE_ART.map(name => this.ensure(name).then(() => {
+                imageProgress += 1 / WORLD_CORE_ART.length; report();
+            }))),
+            new Promise<void>((resolve, reject) => resources.load('world/art-sizes', JsonAsset, (error, config) => {
+                if (error) return reject(error);
+                this.sizes = config.json;
+                for (const name of worldArtNames()) {
+                    if (!this.sizes[name]?.every(n => Number.isFinite(n) && n > 0)) return reject(new Error(`地图尺寸信息缺失：${name}`));
+                }
+                metadataReady(); resolve();
+            })),
             new Promise<void>((resolve, reject) => resources.load('effects/world-landscape', EffectAsset, (error, effect) => {
                 if (error) return reject(error);
                 this.effect = effect;
@@ -81,14 +92,7 @@ export default class WorldMapArt {
                 resolve();
             })),
         ]).then(() => {
-            for (const name of ['plains', 'water', 'mountain_ridge_connected', 'mountain_shoulder', 'mountain_massif_natural', 'mountain_saddle_natural',
-                'town', 'county', 'capital', 'fort', GATE_ART, BRIDGE_ART, MAP_BOOKMARK_ART, 'forest', 'iron', 'quarry', 'grain',
-                'wild_forest', 'wild_iron', 'wild_quarry', 'wild_grain']) this.frame(name);
-            for (const name of CITY_ASSETS) this.frame(name);
-            for (const resource of ['forest', 'iron', 'quarry', 'grain']) {
-                for (let level = 1; level <= 10; level++) this.frame(`${resource}_lv${level}`);
-            }
-            for (let level = 1; level <= PLAYER_CITY_MAX_LEVEL; level++) this.frame(`player_city_lv${level}`);
+            for (const name of WORLD_CORE_ART) this.frame(name);
             active = false; this.progress = 1;
         }).catch(error => { active = false; this.pending = null; this.progress = 0; throw error; });
         return this.pending;
@@ -101,13 +105,121 @@ export default class WorldMapArt {
         return frame;
     }
 
-    static apply(sprite: Sprite, name: string, width: number): void {
-        const frame = this.frame(name);
-        sprite.spriteFrame = frame;
+    static size(name: string): { width: number; height: number } {
+        name = name === 'capital' ? cityArtAsset(10) : name;
+        const size = this.sizes[name];
+        if (!size) throw new Error(`地图尺寸信息缺失：${name}`);
+        return { width: size[0], height: size[1] };
+    }
+
+    static ensure(name: string, priority = AssetPriority.Visible): Promise<SpriteFrame> {
+        name = name === 'capital' ? cityArtAsset(10) : name;
+        this.lastUsed.set(name, Date.now());
+        const cached = this.frames.get(name);
+        if (cached?.isValid) return Promise.resolve(cached);
+        const request = AssetLoadQueue.request(`world:${name}`, () => new Promise<SpriteFrame>((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error(`地图图片加载超时：${name}`)), 15000);
+            resources.load(`ui/world/${name}/spriteFrame`, SpriteFrame, (error, frame) => {
+                clearTimeout(timer);
+                if (error || !frame?.isValid) { reject(error || new Error(`地图图片无效：${name}`)); return; }
+                // 流式纹理不能进入常驻动态合图，否则离开视野后仍无法释放显存。
+                frame.packable = false;
+                if (!this.frames.has(name)) { frame.addRef(); this.frames.set(name, frame); }
+                this.failures.delete(name);
+                this.lastUsed.set(name, Date.now());
+                resolve(frame);
+            });
+        }), priority);
+        if (!this.loading.has(name)) {
+            this.loading.set(name, request);
+            void request.then(() => this.loading.delete(name), error => {
+                this.loading.delete(name);
+                if (!(error instanceof AssetRequestCancelled)) {
+                    this.failures.set(name, { error, at: Date.now() });
+                    console.warn(`[WorldArt] ${name}`, error);
+                }
+            });
+        }
+        return request;
+    }
+
+    static apply(sprite: Sprite, name: string, width: number, ready?: () => void): void {
+        name = name === 'capital' ? cityArtAsset(10) : name;
+        const size = this.size(name);
+        const binding: ArtBinding = { name, ready };
+        this.bindings.set(sprite, binding);
+        sprite.customMaterial = null;
+        sprite.spriteFrame = null;
         sprite.sizeMode = Sprite.SizeMode.CUSTOM;
         sprite.type = Sprite.Type.SIMPLE;
         sprite.color = Color.WHITE;
-        sprite.node.getComponent(UITransform).setContentSize(width, width * frame.originalSize.height / frame.originalSize.width);
+        sprite.node.getComponent(UITransform).setContentSize(width, width * size.height / size.width);
+        this.bind(sprite, binding);
+    }
+
+    private static bind(sprite: Sprite, binding: ArtBinding): void {
+        const apply = (frame: SpriteFrame) => {
+            if (!isValid(sprite, true) || this.bindings.get(sprite) !== binding) return;
+            sprite.spriteFrame = frame;
+            binding.ready?.();
+        };
+        const frame = this.frames.get(binding.name);
+        if (frame?.isValid) { this.lastUsed.set(binding.name, Date.now()); apply(frame); return; }
+        if (sprite.node.activeInHierarchy) void this.ensure(binding.name).then(apply, () => {});
+    }
+
+    static unbindTree(node: Node): void {
+        for (const sprite of node.getComponentsInChildren(Sprite)) {
+            if (!this.bindings.delete(sprite)) continue;
+            sprite.customMaterial = null;
+            sprite.spriteFrame = null;
+        }
+    }
+
+    /** 首屏只等待当前可见对象，隐藏的战略缩略图不会阻塞进图。 */
+    static get visibleState(): { pending: number; error: Error | null } {
+        const names = new Set<string>();
+        for (const [sprite, binding] of this.bindings) {
+            if (isValid(sprite, true) && sprite.node.activeInHierarchy && !sprite.spriteFrame?.isValid) names.add(binding.name);
+        }
+        return { pending: names.size, error: [...names].map(name => this.failures.get(name)?.error).find(Boolean) || null };
+    }
+
+    static updateStreaming(): void {
+        const now = Date.now(), used = new Set(WORLD_CORE_ART);
+        for (const [sprite, binding] of this.bindings) {
+            if (!isValid(sprite, true)) { this.bindings.delete(sprite); continue; }
+            if (!sprite.node.activeInHierarchy) continue;
+            used.add(binding.name); this.lastUsed.set(binding.name, now);
+            if (!sprite.spriteFrame?.isValid && !this.loading.has(binding.name)
+                && now - (this.failures.get(binding.name)?.at || 0) > 5000) this.bind(sprite, binding);
+        }
+        if (now < this.nextSweep) return;
+        this.nextSweep = now + 5000;
+        let bytes = this.statistics.textureBytes;
+        const idle = [...this.frames.keys()].filter(name => !used.has(name))
+            .sort((a, b) => (this.lastUsed.get(a) || 0) - (this.lastUsed.get(b) || 0));
+        for (const name of idle) {
+            if (bytes <= 96 * 1024 * 1024 && now - (this.lastUsed.get(name) || 0) < 30000) continue;
+            for (const [sprite, binding] of this.bindings) if (binding.name === name) {
+                sprite.customMaterial = null; sprite.spriteFrame = null;
+            }
+            PlayerCityGround.releaseArt(name);
+            const frame = this.frames.get(name);
+            bytes -= frame.originalSize.width * frame.originalSize.height * 4;
+            this.frames.delete(name); this.lastUsed.delete(name);
+            frame.decRef();
+        }
+    }
+
+    static prefetch(names: string[]): void {
+        for (const name of new Set(names)) void this.ensure(name, AssetPriority.Background).catch(() => {});
+    }
+
+    static get statistics() {
+        let textureBytes = 0;
+        for (const frame of this.frames.values()) textureBytes += frame.originalSize.width * frame.originalSize.height * 4;
+        return { loaded: this.frames.size, available: worldArtNames().length, textureBytes, pending: this.loading.size };
     }
 
     static factionColor(data: any, owner: any): Color | null {

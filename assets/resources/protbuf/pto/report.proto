@@ -6,8 +6,9 @@ package Report;
 import "common.proto";
 
 // 战报简要（列表 / 推送）
-// reportType → ReportType.Id（1打怪 2攻打玩家 3防守）
-// targetType → TargetType.Id（行军目标：打怪/占领资源地等）
+// reportType → ReportType.Id（1打怪 2攻打玩家 3防守 4占领资源地 5攻城）
+// targetType → TargetType.Id（行军目标：打怪/占领资源地/攻打城池等）
+// 攻城时 targetId 为城池实体 id，守军是 NPC
 // result: 1胜 2负
 message p_report_brief {
 	int64 reportId = 1;

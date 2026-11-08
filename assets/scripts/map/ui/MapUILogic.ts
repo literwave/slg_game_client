@@ -19,6 +19,8 @@ import GeneralInfoLogic from "./GeneralInfoLogic";
 import BattleReportPanel from './BattleReportPanel';
 import MapCampaignFeedback from './MapCampaignFeedback';
 import DrawRLogic from "./DrawRLogic";
+import DrawLogic from './DrawLogic';
+import ListLogic from '../../utils/ListLogic';
 import { GeneralData } from "../../general/GeneralProxy";
 import SkillLogic from "./SkillLogic";
 import { SkillConf } from "../../config/skill/Skill";
@@ -50,9 +52,18 @@ import ChatCommand from '../../chat/ChatCommand';
 import PlayerProfilePanel from './PlayerProfilePanel';
 import { CloudAni } from '../../cloud/CloudAni';
 import { panelButton } from './ManagementStyle';
+import LazyPanelLoader from './LazyPanelLoader';
+import WorldMapArt from '../WorldMapArt';
+import CityTroopsPanel from './CityTroopsPanel';
 
 @ccclass('MapUILogic')
 export default class MapUILogic extends Component {
+    private _panelLoader: LazyPanelLoader = null;
+
+    private deferPanel(key: string, open: () => void): boolean {
+        if (!this._panelLoader) this._panelLoader = new LazyPanelLoader(this, () => this.contentNode);
+        return this._panelLoader.defer(key, open);
+    }
 
     @property(SpriteFrame)
     innerCityIcon: SpriteFrame = null;
@@ -212,6 +223,7 @@ export default class MapUILogic extends Component {
     private _chatStrip: MapChatStrip | null = null;
 
     protected onLoad(): void {
+        this.schedule(() => this._panelLoader?.sweep(), 5);
 
         EventMgr.on(CoreEvent.gameReady, this.onGameReady, this);
         // 被顶号需要立即处理，普通界面事件等加载结束再接入。
@@ -252,6 +264,8 @@ export default class MapUILogic extends Component {
     private onGameReady(): void {
         if (this._uiListenersReady || !this.isValid) return;
         this._uiListenersReady = true;
+        if (!this._panelLoader) this._panelLoader = new LazyPanelLoader(this, () => this.contentNode);
+        this.warmPanelsAfterLogin();
         EventMgr.on(LogicEvent.openCityAbout, this.openCityAbout, this);
         EventMgr.on(LogicEvent.closeCityAbout, this.closeCityAbout, this);
         EventMgr.on(LogicEvent.openFacility, this.openFacility, this);
@@ -265,6 +279,7 @@ export default class MapUILogic extends Component {
         EventMgr.on(LogicEvent.openGeneralDes, this.openGeneralDes, this);
         EventMgr.on(LogicEvent.openGeneralChoose, this.openGeneralChoose, this);
         EventMgr.on(LogicEvent.openArmySelectUi, this.onOpenArmySelectUI, this);
+        EventMgr.on(LogicEvent.openCityTroops, this.openCityTroops, this);
         EventMgr.on(LogicEvent.openDrawResult, this.openDrawR, this);
         EventMgr.on(LogicEvent.openGeneralConvert, this.onOpenGeneralConvert, this);
         EventMgr.on(LogicEvent.openGeneralRoster, this.onOpenGeneralRoster, this);
@@ -290,6 +305,35 @@ export default class MapUILogic extends Component {
         if (Number(unionId) > 0) {
             UnionCommand.getInstance().unionApplyList(unionId);
         }
+    }
+
+    private warmPanelsAfterLogin(): void {
+        this._panelLoader.prefetchAll((key, node) => {
+            for (const list of node.getComponentsInChildren(ListLogic)) list.prepareView();
+            if (key === 'generalPrefab') node.getComponent(GeneralListLogic)?.prepareView();
+            if (key === 'skillPrefab') node.getComponent(SkillLogic)?.prepareView();
+            if (key === 'drawPrefab') node.getComponent(DrawLogic)?.prepareView();
+        });
+        // 与 Prefab 预热一样保持不可见，只准备已有快照的首屏，不调用 show/open。
+        void this._panelLoader.warmView('inventory', async () => {
+            if (this._inventoryPanel?.isValid) return;
+            const node = new Node('InventoryPanel'); node.layer = this.node.layer; node.active = false;
+            this.contentNode.addChild(node);
+            this._inventoryPanel = node.addComponent(InventoryPanel);
+            await this._inventoryPanel.prepareView();
+        }).catch(() => {});
+        void this._panelLoader.warmView('cityBuildings', () => {
+            if (this._facilityNode?.isValid) return;
+            const node = new Node('CityBuildingPanel'); node.layer = this.node.layer; node.active = false;
+            this.contentNode.addChild(node); this._facilityNode = node;
+            node.addComponent(CityBuildingPanel).prepareView();
+        }).catch(() => {});
+        void this._panelLoader.warmView('battleReports', () => {
+            if (this._warReportNode?.isValid) return;
+            const node = new Node('BattleReportPanel'); node.layer = this.node.layer; node.active = false;
+            this.contentNode.addChild(node); this._warReportNode = node;
+            node.addComponent(BattleReportPanel).prepareView();
+        }).catch(() => {});
     }
 
     protected robLoginUI(): void {
@@ -395,6 +439,8 @@ export default class MapUILogic extends Component {
 
 
     protected onDestroy(): void {
+        this._panelLoader?.dispose();
+        WorldMapArt.unbindTree(this.node);
         // 子节点会先于父组件销毁。先释放全局监听，不能因访问已销毁节点而跳过清理。
         EventMgr.targetOff(this);
         this._uiListenersReady = false;
@@ -614,7 +660,8 @@ export default class MapUILogic extends Component {
             node.active = false;
             const settings = node.getComponent(Setting);
             if (!settings) { node.destroy(); throw new Error('[MapUI] 设置组件缺失'); }
-            settings.setExitButton(exit);
+            // HUD 保存隐藏模板；窗口闲置回收时只销毁副本，下一次仍能创建退出入口。
+            settings.setExitButton(instantiate(exit));
             node.parent = this.contentNode;
             this._settingNode = node;
         }
@@ -622,6 +669,7 @@ export default class MapUILogic extends Component {
     }
 
     public onClickSetting(): void {
+        if (this.deferPanel('settingPrefab', () => this.onClickSetting())) return;
         AudioManager.instance.playClick();
         this.closeMoreMenu();
         const settings = this.ensureSettingsPanel();
@@ -727,6 +775,7 @@ export default class MapUILogic extends Component {
     }
 
     protected openArmySetting(cityId: number, order: number, onReturn?: () => void): void {
+        if (this.deferPanel('armySettingPrefab', () => this.openArmySetting(cityId, order, onReturn))) return;
         if (this._armySettingNode == null) {
             this._armySettingNode = instantiate(this.armySettingPrefab);
             this._armySettingNode.parent = this.contentNode;
@@ -747,58 +796,8 @@ export default class MapUILogic extends Component {
         this.openGeneral([]);
     }
 
-    /** 每个常用窗口单独提交一帧，首点时复用结构；不触发业务操作。 */
-    public *prepareCommonPanels(): Generator<void, void, unknown> {
-        yield* this.prepareGeneralPanels();
-        if (!this.contentNode) return;
-        if (!this._facilityNode) {
-            this._facilityNode = new Node('CityBuildingPanel'); this._facilityNode.layer = this.node.layer;
-            this.contentNode.addChild(this._facilityNode); this._facilityNode.addComponent(CityBuildingPanel);
-        }
-        this._facilityNode.getComponent(CityBuildingPanel).prepareView();
-        yield;
-        this._facilityNode.active = false;
-        if (!this._warReportNode) {
-            this._warReportNode = new Node('BattleReports'); this._warReportNode.layer = this.node.layer;
-            this.contentNode.addChild(this._warReportNode); this._warReportNode.addComponent(BattleReportPanel);
-        }
-        this._warReportNode.getComponent(BattleReportPanel).prepareView();
-        yield;
-        this._warReportNode.active = false;
-        if (!this._chatNode) {
-            this._chatNode = new Node('ChatPanel'); this._chatNode.layer = this.node.layer;
-            this.contentNode.addChild(this._chatNode); this._chatNode.addComponent(ChatLogic);
-        }
-        this._chatNode.getComponent(ChatLogic).prepareView();
-        yield;
-        this._chatNode.active = false;
-    }
-
-    /** 进场遮罩下分帧准备常用武将页，不发送编队或武将操作请求。 */
-    public *prepareGeneralPanels(): Generator<void, void, unknown> {
-        if (!this.generalPrefab || !this.contentNode) return;
-        if (!this._generalNode) {
-            this._generalNode = instantiate(this.generalPrefab);
-            this._generalNode.parent = this.contentNode;
-        }
-        this._generalNode.getComponent(GeneralListLogic).prepareView();
-        yield;
-        this._generalNode.active = false;
-
-        const general = GeneralCommand.getInstance().proxy.getUseGenerals()[0];
-        if (!general || !this.generalDesPrefab) return;
-        if (!this._generalDesNode) {
-            this._generalDesNode = instantiate(this.generalDesPrefab);
-            this._generalDesNode.parent = this.contentNode;
-        }
-        yield;
-        this._generalDesNode.getComponent(GeneralInfoLogic).setData(
-            GeneralCommand.getInstance().proxy.getGeneralCfg(general.hero_type), general);
-        yield;
-        this._generalDesNode.active = false;
-    }
-
     protected openGeneral(data: number[], type: number = 0, position: number = 0): void {
+        if (this.deferPanel('generalPrefab', () => this.openGeneral(data, type, position))) return;
         if (this._generalNode == null) {
             this._generalNode = instantiate(this.generalPrefab);
             this._generalNode.parent = this.contentNode;
@@ -820,7 +819,17 @@ export default class MapUILogic extends Component {
     }
 
     /**打开军队选择界面*/
-    protected onOpenArmySelectUI(cmd: number | 'move', x: number, y: number): void {
+    private openCityTroops(cityId: number | string): void {
+        let node = this.contentNode.getChildByName('CityTroopsPanel');
+        if (!node) {
+            node = new Node('CityTroopsPanel'); node.layer = this.contentNode.layer;
+            node.addComponent(UITransform); this.contentNode.addChild(node); node.addComponent(CityTroopsPanel);
+        }
+        node.setSiblingIndex(this.topLayer()); node.getComponent(CityTroopsPanel).show(cityId);
+    }
+
+    protected onOpenArmySelectUI(cmd: number | 'move' | 'attackCity' | 'redeploy', x: number, y: number): void {
+        if (this.deferPanel('armySelectPrefab', () => this.onOpenArmySelectUI(cmd, x, y))) return;
         if (this._armySelectNode == null) {
             this._armySelectNode = instantiate(this.armySelectPrefab);
             this._armySelectNode.parent = this.contentNode;
@@ -836,6 +845,7 @@ export default class MapUILogic extends Component {
      * 武将详情
      */
     protected openGeneralDes(cfgData: any, curData: any): void {
+        if (this.deferPanel('generalDesPrefab', () => this.openGeneralDes(cfgData, curData))) return;
         if (this._generalDesNode == null) {
             this._generalDesNode = instantiate(this.generalDesPrefab);
             this._generalDesNode.parent = this.contentNode;
@@ -851,6 +861,7 @@ export default class MapUILogic extends Component {
      * 城市
      */
     protected openCityAbout(data: any): void {
+        if (this.deferPanel('cityAboutPrefab', () => this.openCityAbout(data))) return;
 
         if (this._cityAboutNode == null) {
             this._cityAboutNode = instantiate(this.cityAboutPrefab);
@@ -955,6 +966,7 @@ export default class MapUILogic extends Component {
      * 招募
      */
     protected openDraw(): void {
+        if (this.deferPanel('drawPrefab', () => this.openDraw())) return;
         AudioManager.instance.playClick();
         if (this._drawNode == null) {
             this._drawNode = instantiate(this.drawPrefab);
@@ -973,6 +985,7 @@ export default class MapUILogic extends Component {
      * @param data 
      */
     protected openDrawR(data: any): void {
+        if (this.deferPanel('drawResultrefab', () => this.openDrawR(data))) return;
         if (this._drawResultNode == null) {
             this._drawResultNode = instantiate(this.drawResultrefab);
             this._drawResultNode.parent = this.contentNode;
@@ -986,6 +999,7 @@ export default class MapUILogic extends Component {
 
 
     protected openUnion(): void {
+        if (this.deferPanel('unionPrefab', () => this.openUnion())) return;
         AudioManager.instance.playClick();
         if (this._unionNode == null) {
             this._unionNode = instantiate(this.unionPrefab);
@@ -1028,6 +1042,7 @@ export default class MapUILogic extends Component {
 
 
     protected openTr(): void {
+        if (this.deferPanel('transFormPrefab', () => this.openTr())) return;
         AudioManager.instance.playClick();
         if (this._transFormNode == null) {
             this._transFormNode = instantiate(this.transFormPrefab);
@@ -1040,6 +1055,7 @@ export default class MapUILogic extends Component {
     }
 
     protected onOpenGeneralConvert(): void {
+        if (this.deferPanel('generalConvertPrefab', () => this.onOpenGeneralConvert())) return;
         AudioManager.instance.playClick();
         console.log("onOpenGeneralConvert");
         if (this._generalConvertNode == null) {
@@ -1055,6 +1071,7 @@ export default class MapUILogic extends Component {
     }
 
     protected onOpenGeneralRoster(): void {
+        if (this.deferPanel('generalRosterPrefab', () => this.onOpenGeneralRoster())) return;
         AudioManager.instance.playClick();
         console.log("onOpenGeneralRoster");
         if (this._generalRosterNode == null) {
@@ -1073,6 +1090,7 @@ export default class MapUILogic extends Component {
     }
 
     protected onOpenSkill(type: number = 0, general: GeneralData = null, skillPos: number = -1): void {
+        if (this.deferPanel('skillPrefab', () => this.onOpenSkill(type, general, skillPos))) return;
         console.log("onOpenSkill", type, general, skillPos);
         if (this._skillNode == null) {
             this._skillNode = instantiate(this.skillPrefab);
@@ -1085,6 +1103,7 @@ export default class MapUILogic extends Component {
     }
 
     protected onCloseSkill() {
+        this._panelLoader?.cancel();
         AudioManager.instance.playClick();
         if (this._skillNode) {
             this._skillNode.active = false;
@@ -1092,6 +1111,7 @@ export default class MapUILogic extends Component {
     }
 
     protected onOpenSkillInfo(cfg: Skill, type: number = 0, general: GeneralData = null, skillPos: number = -1) {
+        if (this.deferPanel('skillInfoPrefab', () => this.onOpenSkillInfo(cfg, type, general, skillPos))) return;
         console.log("onOpenSkillInfo", cfg, type, general, skillPos);
         AudioManager.instance.playClick();
         if (this._skillInfoNode == null) {
@@ -1261,21 +1281,39 @@ export default class MapUILogic extends Component {
     }
 
     private initGMShortcuts(): void {
-        const card = this.gmPanel?.getChildByName('GMCard') || this.gmPanel;
+        const card = this.gmPanel?.getChildByName('GMCard');
         if (!card || card.getChildByName('GMShortcuts')) return;
+        const tipBox = card.getChildByName('TipBox');
+        const tipTransform = tipBox?.getComponent(UITransform);
+        const tipHeader = tipBox?.getChildByName('TipHeader');
+        const messageTransform = this.gmTipLabel?.node.getComponent(UITransform);
+        if (!tipBox || !tipTransform || !tipHeader || !messageTransform
+            || this.gmTipLabel.node.parent !== tipBox) {
+            console.warn('GM 指令台缺少反馈区域，无法排列快捷指令');
+            return;
+        }
+        const contentWidth = tipTransform.width;
+        // Keep 12 pixels between coordinates, shortcuts, and feedback.
+        tipBox.setPosition(0, -198);
+        tipTransform.setContentSize(contentWidth, 100);
+        tipHeader.setPosition(-contentWidth / 2 + 24, 36);
+        this.gmTipLabel.node.setPosition(0, -12);
+        messageTransform.setContentSize(contentWidth - 48, 68);
         const row = new Node('GMShortcuts');
         row.layer = card.layer;
         card.addChild(row);
-        const width = 112;
+        row.addComponent(UITransform).setContentSize(contentWidth, 36);
+        row.setPosition(0, -118);
         const gap = 8;
-        const start = -((this._gmShortcuts.length - 1) * (width + gap)) / 2;
+        const width = (contentWidth - gap * (this._gmShortcuts.length - 1)) / this._gmShortcuts.length;
+        const start = -(contentWidth - width) / 2;
         this._gmShortcuts.forEach((item, index) => {
             const node = new Node(item.command);
             node.layer = row.layer;
             row.addChild(node);
             node.addComponent(UITransform);
             node.addComponent(Button);
-            panelButton(node, item.label, start + index * (width + gap), -148, width, 36);
+            panelButton(node, item.label, start + index * (width + gap), 0, width, 36);
             node.on(Button.EventType.CLICK, () => {
                 AudioManager.instance.playClick();
                 this.executeGMCommand(item.command);
@@ -1460,6 +1498,11 @@ export default class MapUILogic extends Component {
         }
 
         if (this._cloudAniNode == null) {
+            if (!this.cloudAniPrefab?.isValid) {
+                if (!this._panelLoader) this._panelLoader = new LazyPanelLoader(this, () => this.contentNode);
+                this._panelLoader.prefetch('cloudAniPrefab');
+                return;
+            }
             this._cloudAniNode = instantiate(this.cloudAniPrefab);
             this._cloudAniNode.active = false;
             this._cloudAniNode.parent = this.contentNode;

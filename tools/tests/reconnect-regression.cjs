@@ -299,7 +299,7 @@ test('进入过渡页后手动返回会取消尚未执行的网关连接', () =>
     assert.equal(f.sockets.length, 0); assert.equal(p.enterStarted, false);
 });
 
-test('加载页显示真实重试次数；三次失败直接切回登录并停止请求', () => {
+test('加载页仅显示简短重连状态；三次失败直接切回登录并停止请求', () => {
     const f = fixture(), p = f.page(), stages = [];
     p.enterLogic = { setStage: (_progress, text) => stages.push(text), hide() {} };
     p.showEnterOverlay = () => {};
@@ -313,7 +313,8 @@ test('加载页显示真实重试次数；三次失败直接切回登录并停�
     p.beginEnterWorld(); f.advance(500);
     for (let i = 0; i < 4; i++) { f.sockets.at(-1).fail(); if (i < 3) f.advance(f.retries.at(-1).retryDelayMs); }
     assert.equal(loginEntries, 1); assert.match(toast, /返回登录/);
-    assert.ok(stages.some(s => s.includes('1/3'))); assert.ok(stages.some(s => s.includes('3/3')));
+    assert.equal(stages.filter(s => s === '重连中').length, 3);
+    assert.deepEqual(f.retries.map(s => s.attempt), [1, 2, 3]);
     assert.equal(p.enterStarted, false); f.advance(60000);
     assert.equal(f.sockets.length, 4); assert.equal(f.timers.size, 0);
 });

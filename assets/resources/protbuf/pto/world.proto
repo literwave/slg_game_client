@@ -14,6 +14,7 @@ message p_troop_pos {
 // 部队信息
 message p_troop_info {
 	uint32 troopIdx = 1;
+	uint32 troopState = 3;              // TroopState：0在城/1行军/2停留/3采集/4攻城中
 	map<uint32, p_troop_pos> posMap = 2;  // 位置 -> 英雄+兵力
 }
 
@@ -42,18 +43,24 @@ message s2c_sync_troop {
 }
 
 // ---------- 行军 ----------
-// targetType → TargetType.Id（1回城 2打怪 3占领资源地 4移动）
+// targetType → TargetType.Id（1回城 2打怪 3占领资源地 4移动 5攻打城池 6调动）
+// 攻打城池：targetId 为城池实体 id，规则见 city.proto。须已入盟；多个联盟可同时打同一座城
+// 调动：targetId 为本盟已占领的城池实体 id。不战斗，速度为普通行军的 2 倍。
+// 到达后这条行军保留，state=2，部队停在该城，下一支出发从这里走；不进入城池守军
+// 同时 City.p_city_info.deployCount 加 1，并用 s2c_sync_city 推给能看到这座城的人
 // state: 1行军中 2已到达
 // 耗时按路径格数 / TargetType.Speed（每秒移动格数，number，按 targetType 取）计算 endTime
 message p_march_info {
 	uint32 troopIdx = 1;
 	uint32 targetType = 2;
-	int64 targetId = 3;            // 目标实体 id（怪物组实例等），回城可 0
+	int64 targetId = 3;            // 目标实体 id（怪物组、城池等）；回城、移动为 0
 	Common.p_pos startPos = 4;
 	Common.p_pos endPos = 5;
 	double startTime = 6;
 	double endTime = 7;
 	uint32 state = 8;
+	uint32 troopState = 10;            // TroopState；state 仍只表示行军/到达
+	// 攻城中 state=2，startTime/endTime 为服务器攻城阶段时间，到期由服务端结算
 	repeated Common.p_pos_f path = 9;   // 拐点，含起点和终点
 }
 
@@ -93,21 +100,29 @@ message s2c_req_march_list {
 }
 
 // ---------- AOI ----------
-// 视野内实体；entityType → EntityType.Id（1主城 2行军部队 3怪物组 4资源地）
+// 视野内实体；entityType → EntityType.Id（1主城 2行军部队 3怪物组 4资源地 5联盟城池）
 // 主城额外填 name、level；改名/主城升级时用 s2c_aoi_update 同步
 // 资源地占领中：startTime/endTime 为占领倒计时（时长 Global.Id=19 秒），到期完成占领
 // 奖励只在倒计时结束时发放，且只有首占（ResLandFirst，按类型+等级）；非首占无奖励
+// 联盟城池：ownerId=0；allianceId 为占领联盟（0 中立）；name 为联盟名，中立为空
+// cfgId=cityType*100+level，level 为城池等级。城防和剩余队数不在这里，走 city.proto
 message p_aoi_entity {
 	int64 entityId = 1;
 	uint32 entityType = 2;
 	Common.p_pos pos = 3;
-	int64 ownerId = 4;             // 主城/部队所属玩家，怪物为 0
-	uint32 cfgId = 5;              // 配置 id（如 MonsterGroup.Id）
+	int64 ownerId = 4;             // 主城/部队所属玩家；怪物、联盟城池为 0
+	uint32 cfgId = 5;              // 配置 id（如 MonsterGroup.Id；联盟城池为 cityType*100+level）
 	repeated Common.p_pos_f path = 6;  // 仅行军中的部队填，含起点终点
 	double startTime = 7;          // 行军起点时间；资源地占领中为倒计时起点
 	double endTime = 8;            // 行军到达时间；资源地占领中为倒计时终点
-	string name = 9;               // 主城：玩家名/城名
-	uint32 level = 10;             // 主城：主城建筑等级（BuildingDetail.Id=1），非角色等级
+	string name = 9;               // 主城：玩家名/城名；联盟城池：占领联盟名
+	uint32 level = 10;             // 主城：主城建筑等级（BuildingDetail.Id=1）；联盟城池：城池等级
+	uint32 troopState = 12;        // 部队状态，攻城时为 4，path 为空
+	uint32 troopIdx = 13;          // 所属玩家的部队编号
+	int64 targetId = 14;           // 攻城目标实体 id
+	Common.p_pos targetPos = 15;   // 攻城目标格心，用于朝向
+	// 攻城中 startTime/endTime 是攻城阶段时间，不是行军时间
+	int64 allianceId = 11;         // 联盟城池的占领联盟，0=中立；其他实体为 0
 }
 
 // 客户端上报视野中心（拖地图等）
@@ -165,7 +180,7 @@ message s2c_del_mark {
 }
 
 // ---------- 行军路线 ----------
-// 按实体查询行军路径。path 与 p_march_info.path 相同：拐点，含起点和终点
+// 按实体查询已经在走的行军路径。path 与 p_march_info.path 相同：拐点，含起点和终点
 message c2s_req_march_path {
 	int64 entityId = 1;
 }
@@ -173,4 +188,21 @@ message c2s_req_march_path {
 message s2c_req_march_path {
 	int64 entityId = 1;
 	repeated Common.p_pos_f path = 2;
+}
+
+// 打开行军界面时预览路线，不出发。起点是该部队当前位置，终点是 targetPos。
+// 打哪座城、哪只怪在确认出发时由 c2s_march 的 targetId 决定，预览不需要。
+// path 为拐点，含起点和终点。costTime 为路径格数 / TargetType.Speed，单位秒。走不通时 path 为空、costTime 为 0。
+message c2s_req_march_route {
+	uint32 troopIdx = 1;
+	uint32 targetType = 2;         // TargetType.Id，用来取速度
+	Common.p_pos targetPos = 3;    // 终点格子
+}
+
+message s2c_req_march_route {
+	uint32 troopIdx = 1;
+	uint32 targetType = 2;
+	Common.p_pos targetPos = 3;
+	repeated Common.p_pos_f path = 4;   // 拐点，含起点和终点
+	double costTime = 5;
 }

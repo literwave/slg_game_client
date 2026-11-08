@@ -34,6 +34,7 @@ const campaign = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/wo
 const imports = { cc, './entries/ResLogic': { default: Res }, './WorldCampaign': { default: {
     gateAt: (x, y) => campaign.gates.find(g => g.x === x && g.y === y) } },
     './MapCommand': { default: { getInstance: () => ({}) } }, './MapProxy': { MapResType: { SYS_FORTRESS: 50, WOOD: 52, GRAIN: 55 } },
+    './WorldMapArt': { default: { unbindTree() {} } },
     './MapUtil': { default: { mapCellToPixelPoint: p => new Vec((p.x - p.y) * 100, -(p.x + p.y) * 50) } },
     '../world/WorldCommand': {}, '../login/LoginCommand': {}, '../network/pto/ProtocolCommand': {},
     '../common/LogicEvent': {}, '../utils/EventMgr': { EventMgr: { targetOff() {} } }, '../utils/DateUtil': {}, './LandClaimView': {} };

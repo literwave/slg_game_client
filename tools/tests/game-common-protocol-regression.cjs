@@ -450,6 +450,7 @@ test('战报展示兼容资源地和未知类型，战损区分伤兵与阵亡�
     config.loadConfigs(['ReportType', 'Hero', 'Monster', 'Skill'].map(name => ({ name, json: JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config', name + '.json'), 'utf8')) })));
     const p = h.load('battle/ReportPresentation');
     assert.equal(p.reportKind({ reportType: 4 }), '占领资源地'); assert.equal(p.reportKind({ reportType: 999 }), '战斗记录');
+    assert.equal(p.reportKind({ reportType: 5 }), '攻城', '客户端同步新增的攻城战报名称');
     assert.deepEqual(plain(p.soldierTotals({ units: [{ beforeSoldier: { count: 100, hurtCount: 10 }, afterSoldier: { count: 60, hurtCount: 30 } }] })), { before: 100, after: 60, hurt: 30, lost: 20 });
     assert.equal(p.soldierTotals({ units: [] }), null);
     const lines = p.replayLines({ fromSide: 1, fromPos: 0, actType: 1, effects: [{ targetSide: 2, targetPos: 2, flags: 2, value: 500 }] }, { atkSide: { units: [] }, defSide: { units: [] } });
@@ -458,6 +459,21 @@ test('战报展示兼容资源地和未知类型，战损区分伤兵与阵亡�
         const m = p.reportLayout(width, height); assert.ok(m.width * m.scale <= width - 27); assert.ok(m.height * m.scale <= height - 27);
         assert.ok(m.bodyHeight > 0 && m.detailWidth > 0); assert.equal(m.narrow, width < 760);
     }
+});
+
+test('战报讨伐合并全部 NPC 战斗，对战合并玩家攻守，未知类型仍在全部中', () => {
+    const h = harness(), p = h.load('battle/ReportPresentation');
+    const reports = [5, 3, 4, 2, 1, 999].map((reportType, i) => ({
+        reportType, reportId: String(BigInt(big) + BigInt(i)), time: 100 - i, isRead: i % 2 === 0,
+    }));
+    const before = JSON.stringify(reports);
+    const filtered = category => reports.filter(r => p.matchesReportCategory(r, category));
+    assert.deepEqual(filtered('pve').map(r => r.reportType), [5, 4, 1], '攻城守军和资源地不能漏掉');
+    assert.deepEqual(filtered('pvp').map(r => r.reportType), [3, 2], '玩家攻守属于同一分类');
+    assert.deepEqual(filtered('all'), reports, '全部保留未来新增类型');
+    assert.equal(new Set([...filtered('pve'), ...filtered('pvp')]).size, 5, '两类不重叠');
+    assert.equal(JSON.stringify(reports), before, '筛选保留时间排序、大整数 ID 和已读状态');
+    assert.equal(filtered('pvp')[0], reports[1], '筛选继续使用原始战报');
 });
 
 test('榜单按类型/页缓存，未上榜 rank=0 保留；建筑只在推送后升级', () => {
@@ -832,5 +848,273 @@ test('四类排行榜由生成的枚举支持，未知类型拒绝发送', () =>
         assert.equal(h.rank.pages.get(`${type}:1:20`).rankList[0].score, other);
     }
     assert.equal(h.rank.requestRank(5), false);
+});
+test('联盟城池协议保留长 ID，城破榜单与下一轮榜单分离', () => {
+    const h = harness(); h.authenticate();
+    const city = h.load('world/CityCommand').default.getInstance();
+    const info = { entityId: other, cityType: 3, level: 8, pos: { x: 12, y: 20 }, allianceId: big,
+        allianceName: '山河', durability: 999, durabilityMax: 2000, teamLeft: 2, teamCount: 4 };
+    assert.equal(city.requestList(), true);
+    h.receive(h.S.s2c_req_city_list, { cityList: [info] });
+    assert.equal(city.cities.get(other).allianceId, big);
+    assert.equal(city.requestInfo(other), true);
+    h.receive(h.S.s2c_req_city_info, { cityInfo: info, rankList: [{ rank: 1, uid: big, name: '主公', allianceId: big, damage: other }] });
+    assert.equal(city.ranks.get(other)[0].damage, other);
+    let occupation;
+    h.events.on(h.E.allianceCityOccupied, value => occupation = value, city);
+    h.receive(h.S.s2c_city_occupy, { cityInfo: { ...info, durability: 2000, teamLeft: 4 }, breakUid: big,
+        rankList: [{ rank: 1, uid: big, damage: other }], rewardList: [{ rewardType: 1, itemId: 4, itemCount: 100 }] });
+    assert.equal(city.cities.get(other).teamLeft, 4);
+    assert.equal(city.ranks.has(other), false);
+    assert.equal(occupation.rewardList[0].itemCount, 100);
+    h.disconnect(); assert.equal(city.cities.size, 0);
+    assert.equal(city.requestInfo(other), false);
+});
+test('攻城沿用行军协议，联盟 AOI 不冒充玩家主城', () => {
+    const h = harness(); h.authenticate();
+    const types = h.load('world/WorldCommand').MarchTargetType;
+    assert.equal(types.AttackCity, 5);
+    assert.equal(h.world.march(1, types.AttackCity, other, { x: 12, y: 20 }), true);
+    assert.equal(h.sent.at(-1).data.targetId, other);
+    h.receive(h.S.s2c_aoi_enter, { entities: [{ entityId: other, entityType: 5, ownerId: 0,
+        allianceId: big, cfgId: 308, level: 8, name: '山河', pos: { x: 12, y: 20 } }] });
+    assert.equal(h.world.entities.get(other).allianceId, big);
+    assert.equal(h.world.entities.get(other).ownerId, 0);
+});
+test('地图就绪自动请求城池，断线后清除旧归属和加载状态', () => {
+    const h = harness(), city = h.load('world/CityCommand').default.getInstance();
+    assert.equal(city.requestList(), false);
+    h.authenticate(); h.loaded();
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_city_list).length, 1);
+    assert.equal(city.loading, true);
+    assert.equal(city.requestList(), false, '在途城池列表不能重复请求');
+    h.receive(h.S.s2c_req_city_list, { cityList: [{ entityId: other, pos: { x: 500, y: 500 }, allianceId: big }] });
+    assert.equal(city.loaded, true); assert.equal(city.loading, false);
+    assert.equal(city.at(500, 500).entityId, other);
+    h.disconnect();
+    assert.equal(city.loaded, false); assert.equal(city.at(500, 500), undefined);
+    h.authenticate(); h.loaded();
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_req_city_list).length, 2);
+});
+
+test('攻城使用权威实体与城中心，未入盟、本盟、重复指令和无情报不能下令', () => {
+    const h = harness(); h.authenticate();
+    const city = h.load('world/CityCommand').default.getInstance();
+    const info = { entityId: other, cityType: 4, level: 8, pos: { x: 500, y: 500 }, allianceId: 0,
+        durability: 40000, durabilityMax: 40000, teamLeft: 12, teamCount: 12 };
+    h.receive(h.S.s2c_req_city_list, { cityList: [info] });
+    assert.equal(h.world.cityAttackIssue(500, 500), '请先加入同盟');
+    assert.equal(h.world.attackCity(1, 500, 500), false);
+    h.role.allianceId = big;
+    assert.equal(h.world.attackCity(1, 501, 500), false, '不能用城池占地边缘猜实体 ID');
+    assert.equal(h.world.attackCity(1, 500, 500), true);
+    assert.deepEqual(plain(h.sent.at(-1).data), { troopIdx: 1, targetType: 5, targetId: other, targetPos: { x: 500, y: 500 } });
+    const count = h.sent.length;
+    assert.equal(h.world.attackCity(1, 500, 500), false); assert.equal(h.sent.length, count);
+    h.receive(h.S.s2c_march, { marchInfo: { troopIdx: 1, targetType: 5, targetId: other, state: 1, endPos: { x: 504, y: 500 } } });
+    h.receive(h.S.s2c_sync_city, { cityInfo: { ...info, allianceId: big } });
+    assert.equal(h.world.cityAttackIssue(500, 500), '已由本盟占领');
+    assert.equal(h.world.attackCity(2, 500, 500), false);
+    h.disconnect(); assert.equal(h.world.attackCity(2, 500, 500), false);
+});
+
+// 执行真实 UI 方法，隔离渲染；覆盖点击路由到最终 protobuf 请求，避免只测底层 march。
+function uiMethods(file, names, deps) {
+    const filename = path.join(scripts, file + '.ts');
+    const ast = ts.createSourceFile(filename, fs.readFileSync(filename, 'utf8'), ts.ScriptTarget.Latest, true);
+    const methods = ast.statements.find(ts.isClassDeclaration).members.filter(m => names.includes(m.name?.getText(ast)));
+    assert.equal(methods.length, names.length);
+    const code = ts.transpileModule('class UI {' + methods.map(m => m.getText(ast)).join('\n') + '}', {
+        compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.None }, reportDiagnostics: true,
+    });
+    assert.equal(code.diagnostics.length, 0);
+    return new Function(...Object.keys(deps), code.outputText + '\nreturn UI;')(...Object.values(deps));
+}
+
+test('城池点击、选队和确认攻城贯通，选队不发兵，城外终点和归属变更均重验', () => {
+    const h = harness(); h.authenticate(); h.role.allianceId = big;
+    const CityCommand = h.load('world/CityCommand').default, city = CityCommand.getInstance();
+    const info = { entityId: other, cityType: 4, level: 8, pos: { x: 500, y: 500 }, allianceId: 0,
+        durability: 40000, durabilityMax: 40000, teamLeft: 12, teamCount: 12 };
+    h.receive(h.S.s2c_req_city_list, { cityList: [info] });
+    const cell = { type: 51, x: 500, y: 500, name: '洛阳' };
+    const map = { proxy: { getResData: () => cell }, cityProxy: { getCity: () => null },
+        campaignBlockReason: () => { throw Error('攻城不能套用旧资源格限制'); } };
+    const troop = { troopIdx: 1, getHeroIdxAt: () => 1001, getSoldier: () => ({ count: 1000 }) };
+    const troops = { listReady: true, editingTroopIdx: 0, requestTroops() {}, proxy: { getTroop: () => troop, getTroops: () => [] } };
+    const deps = {
+        EventMgr: h.events, LogicEvent: h.E, AudioManager: { instance: { playClick() {} } },
+        MapCityData: class {}, MapResType: { SYS_CITY: 51 }, ArmyCmd: { Attack: 1 },
+        MapCommand: { getInstance: () => map }, MapUtil: { getIdByCellPoint: (x, y) => y * 1000 + x },
+        WorldCampaign: { gateAt: () => null, landmark: () => '洛阳' },
+        CityCommand, WorldCommand: h.load('world/WorldCommand').default,
+        MarchTargetType: h.load('world/WorldCommand').MarchTargetType,
+        TroopStateEnum: h.load('config/enum/TroopStateEnum').TroopStateEnum,
+        TroopCommand: { getInstance: () => troops }, isResourceLandCell: () => false,
+        idKey: String, hasId: h.load('network/pto/ProtocolCommand').hasId,
+        LoginCommand: { getInstance: () => ({ proxy: { getRoleData: () => h.role } }) },
+    };
+    const Click = uiMethods('map/MapClickUILogic', ['isAllianceCityTarget', 'onClickOccupy', 'onClickMove', 'updateAllianceCityInfo'], deps);
+    const Select = uiMethods('map/ui/ArmySelectNodeLogic', ['setData', 'refreshTroops', 'onPrimary'], deps);
+    const Item = uiMethods('map/ui/ArmySelectItemLogic', ['onClickItem', 'dispatchOrder', 'troopIssue', 'selectionIssue'], deps);
+    const click = new Click(), selector = new Select(), item = new Item();
+    Object.assign(click, { _data: cell, node: { parent: {} }, btnOccupy: { node: { active: false } }, btnMove: { node: { active: false } },
+        bgMain: {}, labelLunxian: {}, labelSoldierCnt: {}, labelUnion: {}, labelYield: {}, durableNode: {}, labelDurable: {}, progressBarDurable: {} });
+    click.updateAllianceCityInfo();
+    assert.equal(click.btnOccupy.node.active, true);
+    assert.equal(click.labelYield.string, '守军  12 / 12 队');
+    assert.equal(click.labelDurable.string, '城防  40000 / 40000');
+    Object.assign(selector, { node: { activeInHierarchy: true }, targetRevision: 0, layoutPanel() {}, resourceEntityKey: () => '',
+        targetLabel: {}, showStatus(text, state) { this.statusText = text; this.state = state; } });
+    h.events.on(h.E.openArmySelectUi, (cmd, x, y) => selector.setData(cmd, x, y), selector);
+    click.onClickOccupy();
+    assert.equal(selector.resourceTarget.action, 'attackCity');
+    assert.equal(selector.state, 'empty', '城池进入正常选队空状态，不能被资源类型判断拦截');
+    assert.equal(selector.targetLabel.string, '洛阳  ·  500, 500');
+    assert.equal(click.node.parent, null);
+    Object.assign(item, { troopIdx: 1, action: selector.resourceTarget.action, _toX: 500, _toY: 500, resourceEntityId: other,
+        onSelected: idx => selector.selectedTroopIdx = idx });
+    item.onClickItem();
+    assert.equal(selector.selectedTroopIdx, 1); assert.equal(h.sent.length, 0, '选队只改选择');
+    selector.primaryAction = 'dispatch'; selector.selectedItem = () => item;
+    selector.onPrimary();
+    assert.equal(h.sent.length, 0, '路线未返回前不能确认出征');
+    h.world.previewMarchRoute(1, 5, { x: 500, y: 500 });
+    assert.equal(h.sent.at(-1).name, h.S.c2s_req_march_route);
+    h.receive(h.S.s2c_req_march_route, { troopIdx: 1, targetType: 5, targetPos: { x: 500, y: 500 },
+        path: [{ x: 12, y: 20 }, { x: 504, y: 500 }], costTime: 900 });
+    selector.onPrimary();
+    assert.equal(h.sent.at(-1).name, h.S.c2s_march);
+    assert.equal(h.sent.at(-1).data.targetType, 5); assert.equal(h.sent.at(-1).data.targetId, other);
+    h.receive(h.S.s2c_march, { marchInfo: { troopIdx: 1, targetType: 5, targetId: other, state: 1, endPos: { x: 504, y: 500 } } });
+    assert.equal(item.selectionIssue, '正前往此处', '城外接敌点不能误判为另一个目标');
+    const sent = h.sent.length;
+    selector.onPrimary(); assert.equal(h.sent.length, sent, '已在攻城途中不能重复下令');
+    h.receive(h.S.s2c_sync_city, { cityInfo: { ...info, allianceId: big } });
+    item.dispatchOrder(); assert.equal(h.sent.length, sent);
+    assert.equal(h.notices.at(-1)[1], '已由本盟占领');
+    click.updateAllianceCityInfo(); assert.equal(click.labelUnion.string, '本盟城池');
+    assert.equal(click.btnOccupy.node.active, false, '本盟城池隐藏攻城按钮');
+    assert.equal(click.btnMove.node.active, true, '本盟城池显示独立调动入口');
+    h.role.allianceId = 0; item.dispatchOrder(); assert.equal(h.notices.at(-1)[1], '请先加入同盟');
+    click.updateAllianceCityInfo(); assert.equal(click.btnMove.node.active, false, '退盟后撤销调动入口');
+    assert.equal(click.btnOccupy.node.active, true);
+    h.role.allianceId = big; click.updateAllianceCityInfo();
+    map.moveTargetIssue = () => { throw Error('调动不能使用普通 MOVE 入口'); };
+    click.node.parent = {}; click.onClickMove();
+    assert.equal(selector.resourceTarget.action, 'redeploy');
+    assert.equal(selector.targetLabel.string, '洛阳  ·  500, 500');
+    item.action = 'redeploy';
+    h.receive(h.S.s2c_sync_city, { cityInfo: { ...info, allianceId: 0 } });
+    const beforeMove = h.sent.length; item.dispatchOrder();
+    assert.equal(h.sent.length, beforeMove, '确认时重查归属，变更后不能误发兵');
+    h.receive(h.S.s2c_sync_city, { cityInfo: { ...info, allianceId: big, deployCount: 3 } });
+    click.updateAllianceCityInfo();
+    assert.match(click.labelYield.string, /守军  12 \/ 12 队.*驻留 3 队/, '驻留不混入守军');
+    h.world.previewMarchRoute(1, 6, { x: 500, y: 500 });
+    h.receive(h.S.s2c_req_march_route, { troopIdx: 1, targetType: 6, targetPos: { x: 500, y: 500 },
+        path: [{ x: 12, y: 20 }, { x: 500, y: 500 }], costTime: 450.5 });
+    assert.equal(h.world.marchRoute.costTime, 450.5);
+    item.dispatchOrder();
+    assert.equal(h.sent.at(-1).name, h.S.c2s_march);
+    assert.deepEqual(plain(h.sent.at(-1).data), { troopIdx: 1, targetType: 6, targetId: other, targetPos: { x: 500, y: 500 } }, '调动发送 REDEPLOY 和精确城池实体 ID');
+    h.receive(h.S.s2c_march, { marchInfo: { troopIdx: 1, targetType: 6, targetId: other, state: 1, endPos: { x: 500, y: 500 } } });
+    assert.equal(item.selectionIssue, '正前往此处');
+    h.receive(h.S.s2c_sync_march, { marchInfo: { troopIdx: 1, targetType: 6, targetId: other, state: 2, troopState: 2, endPos: { x: 500, y: 500 } } });
+    assert.equal(item.selectionIssue, '已抵达此处');
+    assert.equal(h.world.isTroopAtHome(1), false);
+    assert.equal(h.world.returnTroopToCity(1), true);
+    assert.equal(h.sent.at(-1).data.targetType, 1, '驻留调动部队可以回主城');
+    click._data = new deps.MapCityData(); click._data.type = 51;
+    assert.equal(click.isAllianceCityTarget(), false, '玩家主城不能冒充联盟城池');
+});
+test('攻城 AOI 计时不补查行军路线，攻城中拒绝再次出征但允许撤回', () => {
+    const h = harness(); h.authenticate(); h.role.cityPos = { x: 100, y: 100 };
+    h.receive(h.S.s2c_sync_march, { marchInfo: { troopIdx: 1, targetType: 5, targetId: other,
+        state: 2, troopState: 4, endPos: { x: 504, y: 500 }, startTime: 100, endTime: 105 } });
+    const sent = h.sent.length;
+    h.receive(h.S.s2c_aoi_enter, { entities: [{ entityId: other, entityType: 2, ownerId: big,
+        troopState: 4, troopIdx: 1, targetId: 501, targetPos: { x: 500, y: 500 },
+        pos: { x: 504, y: 500 }, path: [], startTime: 100, endTime: 105 }] });
+    assert.equal(h.sent.length, sent, '攻城阶段不能误判为缺路线的行军');
+    assert.equal(h.world.entities.get(String(other)).troopState, 4);
+    assert.equal(h.world.isTroopAtHome(1), false);
+    assert.equal(h.world.moveTroop(1, { x: 200, y: 200 }), false);
+    assert.equal(h.world.returnTroopToCity(1), true);
+    assert.equal(h.sent.at(-1).data.targetType, 1);
+    assert.equal(h.world.marches.get(1).troopState, 4, '等待服务端确认返程');
+});
+test('路线预览使用 169/170 新协议，浮点路径和耗时不触发真实出征', () => {
+    const h = harness(); h.authenticate();
+    assert.equal(h.world.previewMarchRoute(1, 4, { x: 40, y: 50 }), true);
+    const request = h.sent.at(-1);
+    assert.equal(request.name, h.S.c2s_req_march_route);
+    assert.deepEqual(plain(request.data), { troopIdx: 1, targetType: 4, targetPos: { x: 40, y: 50 } });
+    const before = h.sent.length;
+    h.world.previewMarchRoute(1, 4, { x: 40, y: 50 }); assert.equal(h.sent.length, before, '刷新列表不重复寻路');
+    h.receive(h.S.s2c_req_march_route, { ...request.data, path: [{ x: 12.25, y: 20.5 }, { x: 40, y: 50 }], costTime: 63.25 });
+    assert.equal(h.world.marchRoute.status, 'ready'); assert.equal(h.world.marchRoute.costTime, 63.25);
+    assert.equal(h.world.marchRoute.path[0].x, 12.25);
+    assert.equal(h.world.marches.values().length, 0); assert.equal(h.world.entities.size, 0);
+    assert.equal(h.sent.some(p => p.name === h.S.c2s_march), false);
+    const ids = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/protbuf/net_pb.json'), 'utf8')).define.World;
+    assert.equal(ids.c2s_req_march_route, 169); assert.equal(ids.s2c_req_march_route, 170);
+});
+test('预览快速换队换目标与关闭界面不被迟到回包覆盖', () => {
+    const h = harness(); h.authenticate();
+    h.world.previewMarchRoute(1, 4, {x:40,y:50}); const a = h.sent.at(-1).data;
+    h.world.previewMarchRoute(2, 5, {x:60,y:70}); const b = h.sent.at(-1).data;
+    const reply = data => ({...data, path:[{x:12,y:20},{x:data.targetPos.x - 4,y:data.targetPos.y}],costTime:20});
+    h.receive(h.S.s2c_req_march_route, reply(b));
+    h.receive(h.S.s2c_req_march_route, reply(a));
+    assert.equal(h.world.marchRoute.troopIdx, 2); assert.equal(h.world.marchRoute.path.at(-1).x, 56, '接敌点可以不同于城心');
+    h.world.previewMarchRoute(1, 4, {x:40,y:50});
+    h.world.clearMarchRoute(); h.receive(h.S.s2c_req_march_route, reply(a));
+    assert.equal(h.world.marchRoute, null);
+});
+test('关闭再打开相同目标会先吸收旧回包，再请求当前位置', () => {
+    const h = harness(); h.authenticate();
+    h.world.previewMarchRoute(1,4,{x:40,y:50}); const a=h.sent.at(-1).data, n=h.sent.length;
+    h.world.clearMarchRoute(); h.world.previewMarchRoute(1,4,{x:40,y:50});
+    assert.equal(h.sent.length,n);
+    h.receive(h.S.s2c_req_march_route,{...a,path:[{x:10,y:20},{x:40,y:50}],costTime:10});
+    assert.equal(h.world.marchRoute.status,'loading'); assert.equal(h.sent.length,n+1);
+    h.receive(h.S.s2c_req_march_route,{...a,path:[{x:11,y:20},{x:40,y:50}],costTime:9});
+    assert.equal(h.world.marchRoute.path[0].x,11);
+});
+test('预览不可达与请求超时可见且不自动发兵，重试不会认领旧包', () => {
+    const h = harness(); h.authenticate();
+    h.world.previewMarchRoute(1,4,{x:40,y:50}); const a=h.sent.at(-1).data;
+    h.receive(h.S.s2c_req_march_route,{...a,path:[],costTime:0}); assert.equal(h.world.marchRoute.status,'unreachable');
+    h.world.previewMarchRoute(1,4,{x:41,y:50}); const b=h.sent.at(-1).data;
+    h.tick(8000); assert.equal(h.world.marchRoute.status,'error');
+    h.world.previewMarchRoute(1,4,{x:41,y:50},true);
+    h.receive(h.S.s2c_req_march_route,{...b,path:[{x:10,y:20},{x:41,y:50}],costTime:10});
+    assert.equal(h.world.marchRoute.status,'loading');
+    h.receive(h.S.s2c_req_march_route,{...b,path:[{x:11,y:20},{x:41,y:50}],costTime:9});
+    assert.equal(h.world.marchRoute.path[0].x,11);
+    assert.equal(h.sent.some(p=>p.name===h.S.c2s_march),false);
+});
+test('改道和重连清除旧预览，服务器路线版本变化后重新查询', () => {
+    const h=harness(); h.authenticate(); h.world.previewMarchRoute(1,4,{x:40,y:50}); const a=h.sent.at(-1).data;
+    h.receive(h.S.s2c_sync_march,{marchInfo:{troopIdx:1,targetType:4,targetId:0,state:1,
+        startPos:{x:20,y:20},endPos:{x:30,y:30},startTime:100,endTime:120,path:[{x:20,y:20},{x:30,y:30}]}});
+    h.receive(h.S.s2c_req_march_route,{...a,path:[{x:12,y:20},{x:40,y:50}],costTime:40});
+    assert.equal(h.world.marchRoute.status,'loading');
+    h.receive(h.S.s2c_req_march_route,{...a,path:[{x:21.5,y:21.5},{x:40,y:50}],costTime:30});
+    assert.equal(h.world.marchRoute.path[0].x,21.5);
+    h.disconnect(); assert.equal(h.world.marchRoute,null);
+    h.receive(h.S.s2c_req_march_route,{...a,path:[{x:12,y:20},{x:40,y:50}],costTime:40});
+    assert.equal(h.world.marchRoute,null);
+    h.authenticate(); h.world.previewMarchRoute(1,4,{x:40,y:50}); assert.equal(h.world.marchRoute.status,'loading');
+});
+test('非法预览参数和损坏回包不画直线替代服务端路径', () => {
+    const h=harness(); h.authenticate();
+    assert.equal(h.world.previewMarchRoute(0,4,{x:40,y:50}),false);
+    assert.equal(h.world.previewMarchRoute(1,99,{x:40,y:50}),false);
+    assert.equal(h.world.previewMarchRoute(1,4,{x:1000,y:50}),false);
+    h.world.previewMarchRoute(1,4,{x:40,y:50}); const a=h.sent.at(-1).data;
+    h.receive(h.S.s2c_req_march_route,{...a,path:[{x:12,y:20},{x:40,y:50}],costTime:-1});
+    assert.equal(h.world.marchRoute.status,'error'); assert.equal(h.world.marchRoute.path.length,0);
 });
 console.log(`通过 ${passed} 项 game_common 新协议回归`);

@@ -41,6 +41,53 @@ export interface TroopSidebarCardData {
     canEdit: boolean;
 }
 
+export interface TroopRoutePoints {
+    origin: { x: number; y: number } | null;
+    destination: { x: number; y: number } | null;
+    originName: string;
+    destinationName: string;
+    originIcon: CommandGlyph;
+    destinationIcon: CommandGlyph;
+    order: string;
+}
+
+/** 军令连接两处驻地；地名与坐标均可定位，和队伍跟随入口分开。 */
+export function troopSidebarRoute(parent: Node, points: TroopRoutePoints | null, width: number, y: number): Node | null {
+    let row = parent.getChildByName('RoutePoints');
+    if (!points) { if (row) row.active = false; return row; }
+    if (!row) { row = new Node('RoutePoints'); row.layer = parent.layer; parent.addChild(row); }
+    row.active = true;
+    place(row, 0, y, width, 44);
+    const buttonWidth = (width - 38) / 2, offset = (width + 38) / 4;
+    for (const [name, title, icon, point, x, color] of [
+        ['Origin', points.originName, points.originIcon, points.origin, -offset, new Color(157, 194, 197)],
+        ['Destination', points.destinationName, points.destinationIcon, points.destination, offset, new Color(231, 202, 140)],
+    ] as const) {
+        const g = inkSurface(row, name, buttonWidth, 44, new Color(26, 33, 27, 125), null);
+        g.node.setPosition(x, 0, 0);
+        const tone = point ? color : C.muted;
+        g.strokeColor = new Color(color.r, color.g, color.b, 100); g.lineWidth = 1;
+        g.moveTo(-buttonWidth / 2 + 5, -17); g.lineTo(buttonWidth / 2 - 5, -17); g.stroke();
+        const heading = caption(g.node, 'Heading', title, 9, 10, buttonWidth - 26, 12, C.text, Label.HorizontalAlign.CENTER);
+        heading.overflow = Label.Overflow.SHRINK;
+        commandGlyph(g.node, 'LocationMark', icon, -buttonWidth / 2 + 12, 10, 15, tone);
+        const value = caption(g.node, 'Coordinates', point ? `(${point.x},${point.y})` : '—', 0, -8, buttonWidth - 8, 12, tone, Label.HorizontalAlign.CENTER);
+        value.overflow = Label.Overflow.SHRINK;
+        value.isBold = true;
+        const button = g.node.getComponent(Button) || g.node.addComponent(Button);
+        button.target = g.node; button.interactable = !!point;
+        button.transition = Button.Transition.SCALE; button.zoomScale = .96; button.duration = .08;
+    }
+    const order = caption(row, 'Order', points.order, 0, 10, 36, 11, C.gold, Label.HorizontalAlign.CENTER);
+    order.isBold = true;
+    const arrow = inkSurface(row, 'Direction', 24, 12, null, null);
+    arrow.node.setPosition(0, -8, 0);
+    arrow.strokeColor = C.gold; arrow.lineWidth = 1.5;
+    arrow.moveTo(-9, 0); arrow.lineTo(8, 0);
+    arrow.moveTo(3, 4); arrow.lineTo(8, 0); arrow.lineTo(3, -4); arrow.stroke();
+    return row;
+}
+
 /** 队伍卡片只在数据或布局变化时绘制；倒计时仍复用原 labelPos，不逐帧重建。 */
 export function troopSidebarCard(top: Node, nameLabel: Label, statusLabel: Label, data: TroopSidebarCardData): void {
     const width = top.getComponent(UITransform).width, left = -width / 2, right = width / 2;
@@ -50,8 +97,8 @@ export function troopSidebarCard(top: Node, nameLabel: Label, statusLabel: Label
     for (const oldName of ['CommandSkin', 'OrderBadge', 'StateBadge', 'CommanderPortrait']) {
         const old = top.getChildByName(oldName); if (old) old.active = false;
     }
-    const color = data.state === '占领中' ? new Color(220, 176, 86)
-        : data.state === '行军中' || data.state === '回城中' ? new Color(135, 187, 201)
+    const color = data.state === '攻城中' ? new Color(228, 142, 99) : data.state === '占领中' ? new Color(220, 176, 86)
+        : data.state === '行军中' || data.state === '回城中' || data.state === '调动中' ? new Color(135, 187, 201)
         : data.canEdit ? new Color(166, 186, 141) : C.muted;
     const g = inkSurface(top, 'TroopCardSurface', width, height, null, null);
     g.fillColor = data.expanded ? new Color(63, 59, 39) : new Color(37, 44, 35);
@@ -93,8 +140,8 @@ export function troopSidebarCard(top: Node, nameLabel: Label, statusLabel: Label
             data.soldiers > 0 ? new Color(243, 222, 165) : new Color(192, 151, 111), Label.HorizontalAlign.LEFT);
         count.isBold = true; count.node.active = true;
         g.fillColor = new Color(15, 24, 18, 115); g.rect(left + 5, -height / 2 + 5, width - 10, 21); g.fill();
-        const glyph: CommandGlyph = data.state === '占领中' ? 'flag' : data.state === '待命' ? 'home'
-            : data.state === '行军中' || data.state === '回城中' ? 'move' : 'army';
+        const glyph: CommandGlyph = data.state === '攻城中' ? 'attack' : data.state === '占领中' ? 'flag' : data.state === '待命' ? 'home'
+            : data.state === '行军中' || data.state === '回城中' || data.state === '调动中' ? 'move' : 'army';
         commandGlyph(top, 'StateIcon', glyph, left + 18, -34, 13, color).active = true;
         statusLabel.node.active = true;
         textStyle(statusLabel, 8, -34, width - 70, 11, color);

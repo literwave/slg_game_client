@@ -1,0 +1,23 @@
+{
+  "generator": "built-in imagegen",
+  "baseAtlas": "assets/resources/ui/march/commander_march_walk12_v4.png",
+  "outputAtlas": "assets/resources/ui/march/commander_steep_front_hoof_v1.png",
+  "sourceGrid": {
+    "columns": 6,
+    "rows": 2,
+    "cellSize": 362
+  },
+  "operations": "Uniformly resize each generated 362-square source cell to 182-square, pad left=3 top=0 right=7 bottom=10, then compose 12 cells in a 6x2 transparent sheet using the built-in image tools.",
+  "prompt": "Edit only the horse lower legs and hooves in the steep-front 12-frame trot sheet. Preserve rider, armor, spear, horse head/body, scale, camera and registration. Exactly four anatomically connected legs with distinct forelegs; clean single hoof caps, correct knees/hocks, alternating diagonal pairs; no fused legs, duplicate feet, toes, disconnected pieces or colored alpha fringes. Fixed 6x2 equal square-cell layout with genuine transparency and natural lifted/contact hooves.",
+  "outputGrid": {
+    "columns": 6,
+    "rows": 2,
+    "cellSize": 192
+  },
+  "binding": "Only steep_ld and steep_rd use this patch. Other walking views, idle frames and guard frames continue to use their original resources.",
+  "texture": {
+    "filter": "linear",
+    "wrap": "clamp",
+    "mipmap": false
+  }
+}

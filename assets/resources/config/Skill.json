@@ -424,7 +424,7 @@
   },
   {
     "Id": 1009,
-    "Name": "魔王再临",
+    "Name": "古之恶来",
     "Desc": "对敌军1-2个目标发动猛攻（伤害率%n%），并提升自身攻击%n%",
     "Icon": "ui/skill/skill_1009",
     "Trigger": 1,
@@ -483,7 +483,7 @@
   },
   {
     "Id": 1010,
-    "Name": "戟震山河",
+    "Name": "威震逍遥津",
     "Desc": "普通攻击后追加一次攻击（伤害率%n%）",
     "Icon": "ui/skill/skill_1010",
     "Trigger": 3,
@@ -1393,6 +1393,1268 @@
         "probability": 45,
         "effect_value": [
           115
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1027,
+    "Name": "遗计",
+    "Desc": "指挥使我军全体谋略提升%n%",
+    "Icon": "ui/skill/skill_1027",
+    "Trigger": 4,
+    "Target": 4,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      4
+    ],
+    "Levels": [
+      {
+        "probability": 100,
+        "effect_value": [
+          14
+        ],
+        "effect_round": [
+          3
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          18
+        ],
+        "effect_round": [
+          3
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          24
+        ],
+        "effect_round": [
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1028,
+    "Name": "刚烈",
+    "Desc": "自身攻击与防御提升%n%",
+    "Icon": "ui/skill/skill_1028",
+    "Trigger": 2,
+    "Target": 1,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      2,
+      3
+    ],
+    "Levels": [
+      {
+        "probability": 100,
+        "effect_value": [
+          12,
+          12
+        ],
+        "effect_round": [
+          2,
+          2
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          16,
+          16
+        ],
+        "effect_round": [
+          2,
+          2
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          20,
+          20
+        ],
+        "effect_round": [
+          3,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1029,
+    "Name": "百步穿杨",
+    "Desc": "对敌军单体发动一次攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1029",
+    "Trigger": 1,
+    "Target": 5,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 45,
+        "effect_value": [
+          125
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 50,
+        "effect_value": [
+          145
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 55,
+        "effect_value": [
+          165
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1030,
+    "Name": "反骨",
+    "Desc": "对敌军单体发动攻击（伤害率%n%），并提升自身攻击%n%",
+    "Icon": "ui/skill/skill_1030",
+    "Trigger": 1,
+    "Target": 5,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1,
+      2
+    ],
+    "Levels": [
+      {
+        "probability": 40,
+        "effect_value": [
+          100,
+          10
+        ],
+        "effect_round": [
+          0,
+          2
+        ]
+      },
+      {
+        "probability": 45,
+        "effect_value": [
+          115,
+          14
+        ],
+        "effect_round": [
+          0,
+          2
+        ]
+      },
+      {
+        "probability": 50,
+        "effect_value": [
+          130,
+          18
+        ],
+        "effect_round": [
+          0,
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1031,
+    "Name": "锦帆突袭",
+    "Desc": "普通攻击后追加一次攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1031",
+    "Trigger": 3,
+    "Target": 5,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 35,
+        "effect_value": [
+          75
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 40,
+        "effect_value": [
+          90
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 45,
+        "effect_value": [
+          105
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1032,
+    "Name": "勇冠三军",
+    "Desc": "对敌军1-2个目标发动攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1032",
+    "Trigger": 1,
+    "Target": 6,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 40,
+        "effect_value": [
+          95
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 45,
+        "effect_value": [
+          110
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 50,
+        "effect_value": [
+          125
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1033,
+    "Name": "王佐",
+    "Desc": "指挥使我军全体谋略提升%n%",
+    "Icon": "ui/skill/skill_1033",
+    "Trigger": 4,
+    "Target": 4,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      4
+    ],
+    "Levels": [
+      {
+        "probability": 100,
+        "effect_value": [
+          14
+        ],
+        "effect_round": [
+          3
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          18
+        ],
+        "effect_round": [
+          3
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          22
+        ],
+        "effect_round": [
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1034,
+    "Name": "樊城",
+    "Desc": "自身防御提升%n%",
+    "Icon": "ui/skill/skill_1034",
+    "Trigger": 2,
+    "Target": 1,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      3
+    ],
+    "Levels": [
+      {
+        "probability": 100,
+        "effect_value": [
+          20
+        ],
+        "effect_round": [
+          2
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          28
+        ],
+        "effect_round": [
+          2
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          36
+        ],
+        "effect_round": [
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1035,
+    "Name": "巧变",
+    "Desc": "普通攻击后追加一次攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1035",
+    "Trigger": 3,
+    "Target": 5,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 35,
+        "effect_value": [
+          75
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 40,
+        "effect_value": [
+          90
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 45,
+        "effect_value": [
+          105
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1036,
+    "Name": "落凤",
+    "Desc": "对敌军1-2个目标发动谋略攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1036",
+    "Trigger": 1,
+    "Target": 6,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 40,
+        "effect_value": [
+          105
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 45,
+        "effect_value": [
+          125
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 50,
+        "effect_value": [
+          145
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1037,
+    "Name": "举荐",
+    "Desc": "使我军全体攻击提升%n%",
+    "Icon": "ui/skill/skill_1037",
+    "Trigger": 2,
+    "Target": 4,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      2
+    ],
+    "Levels": [
+      {
+        "probability": 100,
+        "effect_value": [
+          12
+        ],
+        "effect_round": [
+          2
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          16
+        ],
+        "effect_round": [
+          2
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          20
+        ],
+        "effect_round": [
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1038,
+    "Name": "忠勇",
+    "Desc": "对敌军单体发动一次攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1038",
+    "Trigger": 1,
+    "Target": 5,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 35,
+        "effect_value": [
+          90
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 40,
+        "effect_value": [
+          105
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 45,
+        "effect_value": [
+          120
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1039,
+    "Name": "神射",
+    "Desc": "对敌军单体发动一次攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1039",
+    "Trigger": 1,
+    "Target": 5,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 40,
+        "effect_value": [
+          110
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 45,
+        "effect_value": [
+          125
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 50,
+        "effect_value": [
+          140
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1040,
+    "Name": "竭虑",
+    "Desc": "指挥使我军全体防御提升%n%",
+    "Icon": "ui/skill/skill_1040",
+    "Trigger": 4,
+    "Target": 4,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      3
+    ],
+    "Levels": [
+      {
+        "probability": 100,
+        "effect_value": [
+          12
+        ],
+        "effect_round": [
+          3
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          16
+        ],
+        "effect_round": [
+          3
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          20
+        ],
+        "effect_round": [
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1041,
+    "Name": "斩将",
+    "Desc": "对敌军单体发动一次攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1041",
+    "Trigger": 1,
+    "Target": 5,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 35,
+        "effect_value": [
+          92
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 40,
+        "effect_value": [
+          108
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 45,
+        "effect_value": [
+          122
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1042,
+    "Name": "陷阵营",
+    "Desc": "自身防御提升%n%",
+    "Icon": "ui/skill/skill_1042",
+    "Trigger": 2,
+    "Target": 1,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      3
+    ],
+    "Levels": [
+      {
+        "probability": 100,
+        "effect_value": [
+          18
+        ],
+        "effect_round": [
+          2
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          24
+        ],
+        "effect_round": [
+          2
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          30
+        ],
+        "effect_round": [
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1043,
+    "Name": "儒将",
+    "Desc": "使我军全体防御提升%n%",
+    "Icon": "ui/skill/skill_1043",
+    "Trigger": 2,
+    "Target": 4,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      3
+    ],
+    "Levels": [
+      {
+        "probability": 100,
+        "effect_value": [
+          8
+        ],
+        "effect_round": [
+          2
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          11
+        ],
+        "effect_round": [
+          2
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          14
+        ],
+        "effect_round": [
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1044,
+    "Name": "骁果",
+    "Desc": "对敌军单体发动一次攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1044",
+    "Trigger": 1,
+    "Target": 5,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 40,
+        "effect_value": [
+          105
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 45,
+        "effect_value": [
+          120
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 50,
+        "effect_value": [
+          135
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1045,
+    "Name": "忠护",
+    "Desc": "自身防御提升%n%",
+    "Icon": "ui/skill/skill_1045",
+    "Trigger": 2,
+    "Target": 1,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      3
+    ],
+    "Levels": [
+      {
+        "probability": 100,
+        "effect_value": [
+          16
+        ],
+        "effect_round": [
+          2
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          22
+        ],
+        "effect_round": [
+          2
+        ]
+      },
+      {
+        "probability": 100,
+        "effect_value": [
+          28
+        ],
+        "effect_round": [
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1046,
+    "Name": "先锋",
+    "Desc": "对敌军单体发动一次攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1046",
+    "Trigger": 1,
+    "Target": 5,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 35,
+        "effect_value": [
+          85
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 40,
+        "effect_value": [
+          100
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 45,
+        "effect_value": [
+          115
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1047,
+    "Name": "水战",
+    "Desc": "对敌军1-2个目标发动攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1047",
+    "Trigger": 1,
+    "Target": 6,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 35,
+        "effect_value": [
+          75
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 40,
+        "effect_value": [
+          90
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 45,
+        "effect_value": [
+          105
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1048,
+    "Name": "短兵",
+    "Desc": "普通攻击后追加一次攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1048",
+    "Trigger": 3,
+    "Target": 5,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 30,
+        "effect_value": [
+          60
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 35,
+        "effect_value": [
+          75
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 40,
+        "effect_value": [
+          90
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1049,
+    "Name": "地公",
+    "Desc": "对敌军单体发动谋略攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1049",
+    "Trigger": 1,
+    "Target": 5,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 35,
+        "effect_value": [
+          85
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 40,
+        "effect_value": [
+          100
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 45,
+        "effect_value": [
+          115
+        ],
+        "effect_round": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "Id": 1050,
+    "Name": "蛮勇",
+    "Desc": "对敌军单体发动一次攻击（伤害率%n%）",
+    "Icon": "ui/skill/skill_1050",
+    "Trigger": 1,
+    "Target": 5,
+    "Limit": 1,
+    "Arms": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "IncludeEffect": [
+      1
+    ],
+    "Levels": [
+      {
+        "probability": 30,
+        "effect_value": [
+          65
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 35,
+        "effect_value": [
+          78
+        ],
+        "effect_round": [
+          0
+        ]
+      },
+      {
+        "probability": 40,
+        "effect_value": [
+          90
         ],
         "effect_round": [
           0

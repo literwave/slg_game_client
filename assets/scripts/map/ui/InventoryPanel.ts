@@ -35,6 +35,16 @@ export default class InventoryPanel extends Component {
     private preparingArt = '';
     private navigate: (destination: InventoryDestination) => void;
 
+    public async prepareView(): Promise<void> {
+        await InventoryIconCache.prepare(InventoryCommand.getInstance().items.map(row => row.itemId), () => this.isValid);
+        if (!this.isValid || this.node.activeInHierarchy) return;
+        if (!this.panel) this.build();
+        this.node.getComponent(Widget).updateAlignment();
+        this.safe.getComponent(Widget).updateAlignment();
+        this.safe.getComponent(SafeArea).updateArea();
+        this.layout();
+    }
+
     public show(navigate: (destination: InventoryDestination) => void): void {
         this.navigate = navigate;
         if (!this.panel) this.build();
@@ -73,8 +83,6 @@ export default class InventoryPanel extends Component {
         this.empty = caption(scrollNode, 'Empty', '', 0, 0, 400, 17, C.muted, Label.HorizontalAlign.CENTER);
         this.node.on(Node.EventType.SIZE_CHANGED, this.layout, this);
         this.safe.on(Node.EventType.SIZE_CHANGED, this.layout, this);
-        EventMgr.on(E.updateInventory, this.queueRefresh, this);
-        EventMgr.on(E.enterLogin, this.close, this);
     }
 
     private layout(): void {
@@ -264,7 +272,12 @@ export default class InventoryPanel extends Component {
         w.top = w.bottom = w.left = w.right = 0; w.alignMode = Widget.AlignMode.ALWAYS;
     }
     private close(): void { this.node.active = false; }
+    protected onEnable(): void {
+        EventMgr.on(E.updateInventory, this.queueRefresh, this);
+        EventMgr.on(E.enterLogin, this.close, this);
+    }
     protected onDisable(): void {
+        EventMgr.targetOff(this);
         this.unscheduleAllCallbacks(); this.queued = false;
         this.artRevision++; this.preparingArt = '';
     }

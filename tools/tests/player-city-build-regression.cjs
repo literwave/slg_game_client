@@ -36,7 +36,7 @@ class SpriteFrame { constructor(name) { this.name = name; } }
 class NodePool { clear() {} put() {} size() { return 0; } }
 class Color { static WHITE = new Color(); }
 const cc = { Component, Node, UITransform, Label, RichText: Label, Sprite, SpriteFrame, NodePool, Color,
-    Vec2: class { constructor(x, y) { this.x = x; this.y = y; } }, JsonAsset: class {},
+    Vec2: class { constructor(x, y) { this.x = x; this.y = y; } }, JsonAsset: class {}, TiledMapAsset: class {},
     _decorator: { ccclass: () => t => t, property: () => () => {} },
     resources: { load(p, t, cb) { cb(null, new SpriteFrame(p)); } } };
 const util = { mapSize: { width: 1000, height: 1000 }, areaCellSize: { width: 10, height: 10 }, mapCellCount: 1000000,
@@ -55,7 +55,7 @@ function harness(loadFacilities = true) {
         'core/ConfigManager', 'common/ItemPresentation', 'utils/ConfigIcon', 'world/WorldCommand', 'world/ResourceLand', 'build/BuildCommand', 'map/ui/BuildingPresentation',
         'map/MapCityProxy', 'map/MapCommand', 'map/MapCityLogic', 'map/MapBaseLayerLogic', 'map/PlayerCityAppearance', 'map/entries/FacilityBuildLogic',
         'map/ui/MapUIProxy', 'map/ui/MapUICommand', 'map/ui/BuildingProgressionGraph', 'map/ui/CityBuildingPanel',
-        'map/ui/MapUILogic', 'scene/MapScene']);
+        'map/ui/MapUILogic', 'scene/MapScene', 'map/CityOwnership', 'world/CityCommand']);
     const stubs = {
         'login/LoginCommand': { default: { getInstance: () => login } },
         'world/MapMarkCommand': { default: { getInstance: () => ({ marks: { values: () => [] } }) } },
@@ -73,7 +73,7 @@ function harness(loadFacilities = true) {
         key = key.replace(/\\/g, '/').replace(/\.ts$/, '');
         if (key.endsWith('.js')) return { default: require(path.join(scripts, key)) };
         if (stubs[key]) return stubs[key];
-        if (!actual.has(key)) return { default: class {}, AudioManager: { instance: { playClick() {} } } };
+        if (!actual.has(key) && !key.startsWith('config/enum/')) return { default: class {}, AudioManager: { instance: { playClick() {} } } };
         if (cache.has(key)) return cache.get(key).exports;
         const mod = { exports: {} }; cache.set(key, mod);
         const file = path.join(scripts, key + '.ts');
@@ -118,11 +118,25 @@ test('首次进图实际加载流程初始化建筑表，提前到达的 Build �
     const main = new module.exports.default();
     main.prepareSkillAssets = main.prepareHeadIcons = main.prepareHeroAssets = main.prepareInventoryAssets = () => {};
     const assets = ['BuildingDetail', 'BuildingLv'].map(name => ({ name, json: table(name) }));
-    main.prepareMap({}, assets).next();
+    main.prepareMap({ json: { header: '<map>' } }, assets).next();
     h.ui.qryCityFacilities(1);
     assert.equal(h.ui.proxy.getFacilityConfigs().length, table('BuildingDetail').length);
     assert.equal(h.ui.proxy.getMyFacilityByType(1, 1).level, 7, '不能回退成配置初始等级 1');
     assert.equal(h.ui.proxy.getMyFacilityByType(1, 10).level, 0, '未建建筑仍可进入列表');
+});
+
+test('内城预热允许隐藏时准备建筑，不发送请求且异常后恢复隐藏刷新保护', () => {
+    const h = harness(), Panel = h.load('map/ui/CityBuildingPanel').default, panel = new Panel();
+    panel.node = { activeInHierarchy: false }; panel.panel = {};
+    panel.summary = {}; panel.status = { node: {} }; panel.tabs = [];
+    const marker = new Error('graph preparation reached');
+    panel.syncGraph = () => { throw marker; };
+    panel.layout = () => panel.refresh();
+    const sent = h.sent.length;
+    assert.throws(() => panel.prepareView(), error => error === marker);
+    assert.equal(panel.preparingView, false);
+    assert.doesNotThrow(() => panel.refresh(), '普通隐藏窗口不响应后台数据刷新');
+    assert.equal(h.sent.length, sent, '预热不能发送建造、查询或升级请求');
 });
 
 test('内城入口创建新版面板，重复打开复用同一窗口', () => {
@@ -193,6 +207,17 @@ test('MOVE 空地与资源地可选，城池占地、山水、越界和未开关
     cell = { type: 0, level: 0, isEmpty: true }; route = '须先夺关';
     assert.equal(map.moveTargetIssue(100, 200), route);
     for (const [x, y] of [[-1, 0], [1000, 0], [1.5, 2], [0, NaN]]) assert.match(map.moveTargetIssue(x, y), /坐标无效/);
+});
+
+test('普通 MOVE 不代替城池调动，任何联盟归属的城池都走独立 REDEPLOY 入口', () => {
+    const h = harness(), map = h.map;
+    map.proxy.getResData = () => ({ type: 50, level: 5 });
+    map.proxy.getSysCityResData = () => ({ x: 522, y: 269 });
+    for (const owner of [otherUid, uid, 0]) {
+        h.receive(h.S.s2c_req_city_list, { cityList: [{ entityId, cityType: 3, pos: { x: 522, y: 269 }, allianceId: owner }] });
+        assert.match(map.moveTargetIssue(522, 269), /城池/);
+        assert.match(map.moveTargetIssue(523, 269), /城池/);
+    }
 });
 
 test('World 城池进入/更新/离开、自己的 AOI 离开不丢主城，迁城清理旧格', () => {

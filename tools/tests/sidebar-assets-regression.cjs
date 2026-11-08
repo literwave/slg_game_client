@@ -50,6 +50,7 @@ function load(file, imports) {
     const gates = load('assets/scripts/map/GateGeometry.ts', { './BridgeSilhouette': load('assets/scripts/map/BridgeSilhouette.ts', {}) });
     const appearance = load('assets/scripts/map/PlayerCityAppearance.ts', {});
     const artLoads = [], frames = new Map();
+    const sizes = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/world/art-sizes.json')));
     const artModule = load('assets/scripts/map/WorldMapArt.ts', {
         cc: { resources: {
             load(paths, Type, progress, completed) {
@@ -59,11 +60,16 @@ function load(file, imports) {
                     const name = p.split('/').at(-2), frame = { name, isValid: true };
                     frames.set(name, frame); return frame;
                 })); }
-                else done(null, { json: {} });
+                else if (paths.startsWith('ui/world/')) {
+                    const name = paths.split('/').at(-2), frame = { name, isValid: true, addRef() {},
+                        originalSize: { width: sizes[name][0], height: sizes[name][1] } };
+                    frames.set(name, frame); done(null, frame);
+                } else done(null, { json: paths === 'world/art-sizes' ? sizes : {} });
             },
             loadDir() { throw new Error('不允许加载历史素材目录'); },
         } },
         './CityFootprint': city, './GateGeometry': gates,
+        '../core/AssetLoadQueue': { default: { request: (key, run) => run() }, AssetPriority: { Visible: 10 }, AssetRequestCancelled: class {} },
         './PlayerCityAppearance': appearance, './PlayerCityGround': { default: { prepare: async () => {} } },
     });
     const names = artModule.worldArtNames();
@@ -78,15 +84,19 @@ function load(file, imports) {
     for (const old of ['county-commandery-v3', 'county-regional-v2', 'city-overview-capital-v3']) assert.ok(!names.includes(old));
     const ready = artModule.default.prepare(); assert.equal(artModule.default.prepare(), ready);
     await ready;
-    assert.equal(artModule.default.preparationProgress, 1, '所有素材校验完成后才达到就绪进度');
-    assert.equal(artLoads.filter(Array.isArray).length, 1);
-    for (const level of [4, 7, 10]) assert.ok(artModule.default.frame(city.cityArtAsset(level)));
+    assert.equal(artModule.default.preparationProgress, 1, '基础地形和几何信息就绪即可进入首屏构建');
+    assert.equal(artLoads.filter(Array.isArray).length, 0);
+    assert.equal(frames.size, artModule.WORLD_CORE_ART.length, '启动不加载全部城池、资源等级图');
+    for (const name of artModule.WORLD_CORE_ART) assert.ok(artModule.default.frame(name));
+    for (const level of [4, 7, 10]) { await artModule.default.ensure(city.cityArtAsset(level)); assert.ok(artModule.default.frame(city.cityArtAsset(level))); }
     let oldBytes = 0, oldPixels = 0, oldCount = 0;
     for (const name of fs.readdirSync(path.join(root, 'assets/resources/ui/world')).filter(n => n.endsWith('.png'))) {
         const image = fs.readFileSync(path.join(root, 'assets/resources/ui/world', name));
         oldCount++; oldBytes += image.length; oldPixels += image.readUInt32BE(16) * image.readUInt32BE(20);
     }
-    console.log('PASS 地图按运行清单加载，所有山体与城池素材完整、历史原画不加载');
+    console.log('PASS 地图启动仅加载基础地形，城池按需加载，历史原画不加载');
     console.log(JSON.stringify({ oldCount, currentCount: names.length, omittedBytes: oldBytes - neededBytes,
-        omittedRGBABytes: (oldPixels - neededPixels) * 4 }));
+        omittedRGBABytes: (oldPixels - neededPixels) * 4,
+        previousEagerCount: names.length, coreCount: artModule.WORLD_CORE_ART.length,
+        coreRGBABytes: artModule.WORLD_CORE_ART.reduce((sum, name) => sum + sizes[name][0] * sizes[name][1] * 4, 0), previousEagerRGBABytes: neededPixels * 4 }));
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,4 +1,5 @@
 import { AnimationClip, Rect, resources, Size, SpriteFrame, Vec2 } from 'cc';
+import { CAVALRY_WALK_CYCLE, MARCH_CYCLE } from './MarchPose';
 
 export type MarchUnitKind = 'cavalry' | 'infantry';
 export const MARCH_DIRECTIONS = ['r', 'ru', 'u', 'lu', 'l', 'ld', 'd', 'rd'];
@@ -11,17 +12,37 @@ export interface MarchAnimationSet {
     /** 占领驻守姿势：步兵半跪举盾持枪，骑将留在中央警戒。 */
     guardFrames?: SpriteFrame[];
     mirrored: boolean[];
+    /** 骑将补充陡斜视角；停驻、驻守、攻城仍保留原八方向索引。 */
+    walkViews?: MarchWalkView[];
+}
+
+export interface MarchWalkView {
+    clip: AnimationClip;
+    frames: SpriteFrame[];
+    angle: number;
+    mirrored: boolean;
+}
+
+/** 按投影后的真实行进角选立绘；边界保留 3° 余量，避免转弯时来回跳视角。 */
+export function selectMarchWalkView(views: MarchWalkView[], angle: number, previous?: MarchWalkView): MarchWalkView {
+    const distance = (view: MarchWalkView) => Math.abs(Math.atan2(Math.sin(angle - view.angle), Math.cos(angle - view.angle)));
+    let nearest = views[0];
+    for (const view of views) if (distance(view) < distance(nearest)) nearest = view;
+    return previous && views.indexOf(previous) >= 0 && distance(previous) <= distance(nearest) + Math.PI / 30
+        ? previous : nearest;
 }
 
 const sets = new Map<MarchUnitKind, Promise<MarchAnimationSet>>();
 const sheets = new Map<string, Promise<SpriteFrame[]>>();
-// 图集五行分别为右、右上、上、右下、下；左侧方向复用对应镜像。
+// 前 60 格依次存放右、右上、上、右下、下，每个朝向 12 帧；左侧方向镜像。
 const DIRECTION_ROWS = [0, 1, 2, 1, 0, 3, 4, 3];
 const MIRRORED = [false, false, false, true, true, true, false, false];
+const WALK_FRAME_COUNT = 12;
+const IDLE_START = WALK_FRAME_COUNT * 5;
 
 /** 固定画布和落脚点，避免逐帧裁透明边导致抖动；所有部队共享帧资源。 */
-function loadSheet(path: string, columns: number, rows: number): Promise<SpriteFrame[]> {
-    const key = `${path}:${columns}:${rows}`;
+function loadSheet(path: string, columns: number, rows: number, canvasScale = 1, offsetY = 0): Promise<SpriteFrame[]> {
+    const key = `${path}:${columns}:${rows}:${canvasScale}:${offsetY}`;
     if (sheets.has(key)) return sheets.get(key);
     const pending = new Promise<SpriteFrame[]>((resolve, reject) => {
         resources.load(`${path}/spriteFrame`, SpriteFrame, (error, sheet) => {
@@ -35,12 +56,17 @@ function loadSheet(path: string, columns: number, rows: number): Promise<SpriteF
             }
             sheet.addRef();
             const frames: SpriteFrame[] = [];
+            // 原画有方格和竖格两种版式；置于同一个正方形画布，不能把正面马横向拉宽。
+            const canvas = Math.round(Math.max(width, height) * canvasScale);
+            const inset = canvasScale > 1 ? .5 : 0;
             for (let row = 0; row < rows; row++) {
                 for (let col = 0; col < columns; col++) {
                     const frame = new SpriteFrame();
                     frame.name = `${path.substring(path.lastIndexOf('/') + 1)}_${row}_${col}`;
-                    frame.reset({ texture, rect: new Rect(col * width, row * height, width, height),
-                        originalSize: new Size(width, height), offset: new Vec2(0, 0) });
+                    frame.reset({ texture, rect: new Rect(col * width + inset, row * height + inset,
+                        width - inset * 2, height - inset * 2),
+                        originalSize: canvasScale > 1 ? new Size(canvas, canvas) : new Size(width, height),
+                        offset: new Vec2(0, offsetY) });
                     frame.packable = false;
                     frame.addRef();
                     frames.push(frame);
@@ -57,46 +83,57 @@ function loadSheet(path: string, columns: number, rows: number): Promise<SpriteF
 export function loadMarchAnimations(kind: MarchUnitKind): Promise<MarchAnimationSet> {
     let pending = sets.get(kind);
     if (pending) return pending;
-    const sheet = kind === 'cavalry' ? 'commander_march_sheet' : 'guard_march_cycle';
-    // 骑将的原斜向过于侧身，单独替换为有纵深透视的前/后三分之四视角。
-    // 步兵使用已经补齐收腿、换脚阶段的完整步态图集。
-    const diagonal = kind === 'cavalry' ? loadSheet('ui/march/commander_march_diagonal', 7, 2) : Promise.resolve(null);
-    // 前斜向重新绘制八帧四蹄交替的步态，不能继续使用前腿始终蜷起的旧六帧。
-    const frontWalk = kind === 'cavalry' ? loadSheet('ui/march/commander_march_front_walk', 4, 2) : Promise.resolve(null);
-    const sideWalk = kind === 'cavalry' ? loadSheet('ui/march/commander_march_side_walk', 5, 2) : Promise.resolve(null);
-    pending = Promise.all([loadSheet(`ui/march/${sheet}`, 7, 5), diagonal, frontWalk, sideWalk])
-        .then(([frames, diagonalFrames, frontWalkFrames, sideWalkFrames]) => {
-        const directionalFrames = MARCH_DIRECTIONS.map((_, index) => {
-            if (diagonalFrames && index % 2) {
-                const row = index < 4 ? 0 : 1;
-                return diagonalFrames.slice(row * 7, row * 7 + 7);
-            }
-            const first = DIRECTION_ROWS[index] * 7;
-            return frames.slice(first, first + 7);
-        });
-        const walkFrames = MARCH_DIRECTIONS.map((_, index) =>
-            sideWalkFrames && (index === 0 || index === 4) ? sideWalkFrames
-                : frontWalkFrames && (index === 5 || index === 7) ? frontWalkFrames : directionalFrames[index].slice(0, 6)
-        );
-        const clips = MARCH_DIRECTIONS.map((direction, index) => {
-            const walk = walkFrames[index];
-            // 骑将与护卫共用 0.75 秒周期；不同帧数、转向切片不会改变整队的步态相位。
-            const clip = AnimationClip.createWithSpriteFrames(walk, walk.length / .75);
-            clip.name = `${kind}_walk_${direction}`;
-            clip.wrapMode = AnimationClip.WrapMode.Loop;
-            clip.addRef();
-            return clip;
-        });
-        // 每行最后一格是同一套装备的站姿；画布均为 256²，落脚线统一在距底边 18px。
-        return { clips, walkFrames, idleFrames: directionalFrames.map(row => row[6]), mirrored: MIRRORED.slice() };
-    }).then((set: MarchAnimationSet) => loadGuardFrames(kind).then(guardFrames => {
-        set.guardFrames = guardFrames;
-        return set;
-    }, () => set));
+    pending = (kind === 'cavalry' ? loadCavalryWalk() : loadInfantryWalk())
+        .then(set => loadGuardFrames(kind).then(guardFrames => {
+            set.guardFrames = guardFrames;
+            return set;
+        }, () => set));
     sets.set(kind, pending);
     // 同一图集加载失败只报告一次，避免每个队员重复刷屏；不自动重试或覆盖资源。
     void pending.catch(error => console.error('[MarchAnimation]', kind, error));
     return pending;
+}
+
+function createWalkClip(kind: MarchUnitKind, direction: string, frames: SpriteFrame[], cycle: number): AnimationClip {
+    const clip = AnimationClip.createWithSpriteFrames(frames, frames.length / cycle);
+    clip.name = `${kind}_walk_${direction}`;
+    clip.wrapMode = AnimationClip.WrapMode.Loop; clip.addRef();
+    return clip;
+}
+
+async function loadInfantryWalk(): Promise<MarchAnimationSet> {
+    const frames = await loadSheet('ui/march/guard_march_walk12', 10, 7);
+    const walkFrames = DIRECTION_ROWS.map(row => frames.slice(row * WALK_FRAME_COUNT, (row + 1) * WALK_FRAME_COUNT));
+    return { walkFrames, mirrored: MIRRORED.slice(),
+        clips: MARCH_DIRECTIONS.map((direction, i) => createWalkClip('infantry', direction, walkFrames[i], MARCH_CYCLE)),
+        idleFrames: DIRECTION_ROWS.map(row => frames[IDLE_START + row]) };
+}
+
+async function loadCavalryWalk(): Promise<MarchAnimationSet> {
+    const [primary, axial, idle] = await Promise.all([
+        loadSheet('ui/march/commander_walk_grounded_primary_v6', 6, 6, 1.11, -4),
+        loadSheet('ui/march/commander_walk_grounded_axial_v6', 6, 8, 1.04),
+        loadSheet('ui/march/commander_idle_v6', 5, 1),
+    ]);
+    // Twelve chronological poses per view, no interleaving unrelated takes or hoof patches.
+    const directions = [primary.slice(0, 12), primary.slice(12, 24), axial.slice(12, 24),
+        primary.slice(24, 36), axial.slice(0, 12)];
+    const walkFrames = DIRECTION_ROWS.map(row => directions[row]);
+    const clips = MARCH_DIRECTIONS.map((direction, i) =>
+        createWalkClip('cavalry', direction, walkFrames[i], CAVALRY_WALK_CYCLE));
+    const set: MarchAnimationSet = { clips, walkFrames, mirrored: MIRRORED.slice(),
+        idleFrames: DIRECTION_ROWS.map(row => idle[row]) };
+    const diagonal = Math.atan(.5), steep = Math.atan(2), pi = Math.PI;
+    const angles = [0, diagonal, pi / 2, pi - diagonal, pi, pi + diagonal, pi * 1.5, -diagonal];
+    set.walkViews = clips.map((clip, i) => ({ clip, frames: walkFrames[i], angle: angles[i], mirrored: MIRRORED[i] }));
+    for (const [name, start, angle, mirrored] of [
+        ['steep_ru', 24, steep, false], ['steep_lu', 24, pi - steep, true],
+        ['steep_ld', 36, pi + steep, true], ['steep_rd', 36, -steep, false],
+    ] as [string, number, number, boolean][]) {
+        const frames = axial.slice(start, start + WALK_FRAME_COUNT);
+        set.walkViews.push({ clip: createWalkClip('cavalry', name, frames, CAVALRY_WALK_CYCLE), frames, angle, mirrored });
+    }
+    return set;
 }
 
 /** 驻守与行军图集分离，半跪姿势保持相同的身体比例和落脚点。 */

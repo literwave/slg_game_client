@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package City;
+// 联盟城池
+// 归属是联盟，不是玩家。allianceId=0 表示中立，守军是 NPC。
+// 配置取 City[cityType][level]：Durability、Team、TeamCount、RankReward。
+// 攻打必须已入盟。行军能走到就能打，一座城可以多个联盟同时打，守军和城防共用一份。
+// 不能打自己联盟已经占领的城。
+// 行军用 World.c2s_march，targetType=ATTACK_CITY(5)，targetId=城池实体 id。
+// 到达后与 City.Team 打一场。胜一场拆掉一队守军，并拆掉等分城防（durabilityMax/teamCount，余数补在最后一队）。
+// 队数与城防同时归零则城破，归属改为打掉最后一队的那名玩家所属联盟，守军与城防按配置回满。不驻玩家部队。
+// 调动（TargetType.REDEPLOY）只把部队调度到本盟城池待命，不算守军，不改城防和队数。
+// 到达并停在城里的部队计入 deployCount，城池界面用它显示调动人数。行军途中不计。
+// 部队再出发、回城、退盟，或城易主后，不再计在这座城上。易主时 deployCount 清零。
+// 某个联盟解散或成员退盟，不中止攻城，也不回满守军。已造成的伤害留在本次榜上。
+// 排名按本次攻城对守军的伤害，所有打过的人排在一起。City.RankReward 只发配了的名次，第 4 名及以后无奖。
+
+import "common.proto";
+
+message p_city_info {
+	int64 entityId = 1;
+	uint32 cityType = 2;         // CityType.Id
+	uint32 level = 3;
+	Common.p_pos pos = 4;
+	int64 allianceId = 5;        // 占领联盟，0=中立
+	string allianceName = 6;
+	uint32 durability = 7;       // 当前城防
+	uint32 durabilityMax = 8;    // City.Durability
+	uint32 teamLeft = 9;         // 剩余守军队数
+	uint32 teamCount = 10;       // City.TeamCount
+	uint32 deployCount = 11;     // 已调动到达、停在该城的部队数。中立为 0
+}
+
+// 本次攻城伤害榜的一行。damage 为对守军造成的伤害
+message p_city_rank {
+	uint32 rank = 1;
+	int64 uid = 2;
+	string name = 3;
+	int64 allianceId = 4;        // 造成该伤害时所属联盟
+	string allianceName = 5;
+	int64 damage = 6;
+}
+
+// 全部城池。地图点开和联盟领地都用这份
+message c2s_req_city_list {
+}
+
+message s2c_req_city_list {
+	repeated p_city_info cityList = 1;
+}
+
+// 单座城详情，带当前攻城伤害榜（无人攻打时 rankList 为空）
+message c2s_req_city_info {
+	int64 entityId = 1;
+}
+
+message s2c_req_city_info {
+	p_city_info cityInfo = 1;
+	repeated p_city_rank rankList = 2; // 本次有伤害的玩家，不限联盟，伤害从高到低
+}
+
+// 城防、守军队数、归属或调动人数变化。推给占领盟、本次有伤害的联盟，以及视野内看得到该城的玩家
+message s2c_sync_city {
+	p_city_info cityInfo = 1;
+}
+
+// 城破。推给本次有伤害的在线玩家。cityInfo.allianceId 为打掉最后一队的玩家所属联盟
+// rewardList 是自己拿到的奖，没排进配置名次则为空
+message s2c_city_occupy {
+	p_city_info cityInfo = 1;
+	int64 breakUid = 2;
+	string breakName = 3;
+	repeated p_city_rank rankList = 4;
+	repeated Common.p_reward_info rewardList = 5;
+}

@@ -11,6 +11,9 @@ import ListLogic from '../../utils/ListLogic';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
 import { applyGeneralListSkin } from './GeneralListSkin';
+import { defaultGeneralFilters, filterGenerals, generalFilterChoices, GeneralFilterChoices,
+    GeneralRosterFilters, hasGeneralFilters } from '../../general/GeneralRosterFilter';
+import { GeneralFilterBar } from './GeneralFilterBar';
 
 @ccclass('GeneralListLogic')
 export default class GeneralListLogic extends Component {
@@ -27,6 +30,10 @@ export default class GeneralListLogic extends Component {
     private _convertSupported: boolean = false;
     private _visibleCount: number = 0;
     private _layoutKey = '';
+    private _filters: GeneralRosterFilters = defaultGeneralFilters();
+    private _filterBar: GeneralFilterBar | null = null;
+    private _filterChoices: GeneralFilterChoices = generalFilterChoices([]);
+    private _availableCount = 0;
 
     protected onLoad(): void {
         this._convertSupported = GeneralCommand.getInstance().isProtocolAvailable(ServerConfig.general_convert);
@@ -47,6 +54,7 @@ export default class GeneralListLogic extends Component {
 
 
     protected onDisable(): void {
+        this._filterBar?.close();
         view.off('canvas-resize', this.onCanvasResize, this);
         view.off('design-resolution-changed', this.onCanvasResize, this);
         EventMgr.targetOff(this);
@@ -54,15 +62,30 @@ export default class GeneralListLogic extends Component {
 
     private onCanvasResize(): void {
         this.applyLayout();
+        this.renderFilters();
     }
 
     private applyLayout(refreshList = true): boolean {
         const size = view.getVisibleSize();
-        const key = `${size.width}:${size.height}:${this._visibleCount}:${this._type}`;
+        const filtered = hasGeneralFilters(this._filters);
+        const key = `${size.width}:${size.height}:${this._visibleCount}:${this._availableCount}:${this._type}:${filtered}`;
         if (key === this._layoutKey) return false;
         this._layoutKey = key;
-        applyGeneralListSkin(this.node, this._visibleCount, this._type, refreshList);
+        applyGeneralListSkin(this.node, this._visibleCount, this._type, refreshList, filtered, this._availableCount);
         return true;
+    }
+
+    private renderFilters(): void {
+        const parent = this.node.getChildByName('New Node');
+        if (!parent) return;
+        if (!this._filterBar) this._filterBar = new GeneralFilterBar(parent, filters => {
+            this._filters = filters;
+            this.scrollView.stopAutoScroll();
+            this.refreshGenerals(true);
+        });
+        const size = view.getVisibleSize();
+        this._filterBar.render(this._filters, this._filterChoices, size.width, size.height,
+            this._visibleCount, this._availableCount, this._type === 1);
     }
 
     protected onClickClose(): void {
@@ -118,10 +141,11 @@ export default class GeneralListLogic extends Component {
         });
 
         const troops = TroopCommand.getInstance().proxy;
-        const list = proxy.getUseGenerals()
-            .filter((general) => !excluded.has(general.hero_type))
-            // 只改变武将列表的分组优先级；组内保留品质、等级等原有顺序。
-            .sort((a, b) => Number(troops.isHeroInTroop(b.hero_type)) - Number(troops.isHeroInTroop(a.hero_type)))
+        const owned = proxy.getUseGenerals();
+        const eligible = owned.filter(general => !excluded.has(general.hero_type));
+        this._availableCount = eligible.length;
+        this._filterChoices = generalFilterChoices(owned);
+        const list = filterGenerals(eligible, this._filters, id => troops.isHeroInTroop(id))
             .map((general) => Object.assign({}, general, {
                 listType: this._type, listPosition: this._position, listAppearance: 'roster',
             }));
@@ -133,6 +157,7 @@ export default class GeneralListLogic extends Component {
             const relayout = this.applyLayout(false);
             comp.setData(list, resetScroll ? undefined : 0, relayout);
         }
+        this.renderFilters();
     }
 
 
@@ -147,6 +172,8 @@ export default class GeneralListLogic extends Component {
             this._cunGeneral = data;
         }
 
+        // 仓库和上阵选择是不同上下文，不能把“已上阵”条件带进只能选择空闲武将的窗口。
+        if (this._type !== type) this._filters = defaultGeneralFilters();
         this._type = type;
         this._position = position;
 

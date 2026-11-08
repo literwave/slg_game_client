@@ -28,7 +28,7 @@ export function taskCardLayout(width: number, rewards: number) {
     return { narrow, infoWidth, rewardWidth, columns, height: narrow ? 140 + rows * 84 : Math.max(156, 44 + rows * 84) };
 }
 
-export function taskWindowTrim(parent: Node, width: number, height: number): void {
+export function taskWindowTrim(parent: Node, width: number, height: number, titleWidth = 96): void {
     const g = trim(parent, 'TaskWindowTrim', width, height);
     g.node.setSiblingIndex(1);
     g.strokeColor = C.line; g.lineWidth = 1; bevel(g, width - 10, height - 10, 12); g.stroke();
@@ -43,21 +43,28 @@ export function taskWindowTrim(parent: Node, width: number, height: number): voi
     const plateWidth = Math.min(360, width - 112);
     const plate = trim(parent, 'TaskTitlePlate', plateWidth, 44); plate.node.setPosition(0, height / 2 - 31);
     plate.node.setSiblingIndex(2);
+    const titleInset = Math.max(60, titleWidth / 2 + 12);
     // 标题使用对称铜饰，不与下方页签共用按钮底板。
     for (const side of [-1, 1]) {
+        if (plateWidth / 2 < titleInset + 24) continue;
         plate.strokeColor = C.gold; plate.lineWidth = 1.5;
-        plate.moveTo(side * 60, 0); plate.lineTo(side * (plateWidth / 2 - 14), 0);
+        plate.moveTo(side * titleInset, 0); plate.lineTo(side * (plateWidth / 2 - 14), 0);
         plate.lineTo(side * (plateWidth / 2 - 6), 6); plate.stroke();
         plate.strokeColor = C.line; plate.lineWidth = 1;
-        plate.moveTo(side * 76, -5); plate.lineTo(side * (plateWidth / 2 - 20), -5); plate.stroke();
+        plate.moveTo(side * (titleInset + 16), -5); plate.lineTo(side * (plateWidth / 2 - 20), -5); plate.stroke();
         plate.fillColor = C.gold;
-        plate.moveTo(side * 52, 0); plate.lineTo(side * 57, 5); plate.lineTo(side * 62, 0);
-        plate.lineTo(side * 57, -5); plate.lineTo(side * 52, 0); plate.fill();
+        plate.moveTo(side * (titleInset - 8), 0); plate.lineTo(side * (titleInset - 3), 5); plate.lineTo(side * (titleInset + 2), 0);
+        plate.lineTo(side * (titleInset - 3), -5); plate.lineTo(side * (titleInset - 8), 0); plate.fill();
     }
     plate.strokeColor = C.line;
     plate.moveTo(-22, -21); plate.lineTo(22, -21); plate.stroke();
-    const title = parent.getChildByName('Title'); title.setSiblingIndex(parent.children.length - 1);
-    const label = title.getComponent(Label); label.fontSize = 28; label.isBold = true;
+    // 动态窗口可能先画装饰、后创建标题，不能因此中断整个界面绘制。
+    const title = parent.getChildByName('Title');
+    if (!title) return;
+    title.setSiblingIndex(parent.children.length - 1);
+    const label = title.getComponent(Label);
+    if (!label) return;
+    label.fontSize = 28; label.isBold = true;
     label.color = new Color(243, 220, 170); label.outlineColor = new Color(14, 20, 14); label.outlineWidth = 1;
 }
 

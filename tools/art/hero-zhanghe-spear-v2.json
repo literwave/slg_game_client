@@ -1,0 +1,22 @@
+{
+  "tool": "内置 image_gen",
+  "heroId": 1035,
+  "name": "张郃",
+  "purpose": "修正原画长枪在握持处与肩后倾角不一致的问题；移除错位旧杆，重绘枪尾、握持处和枪头共线的完整长枪。",
+  "source": "assets/resources/ui/hero/card_1035.png",
+  "output": "assets/resources/ui/hero/card_1035_spear_v2.png",
+  "prompt": "Use case: precise-object-edit.\nEdit target: the supplied Zhang He historical warrior illustration. Correct ONLY the physically broken, misaligned spear and the immediate gripping fingers if needed. Preserve the character's face, helmet, red plume, armor, cloak, pointing free hand, stance, mountain landscape, troops, parchment palette, brushwork, composition and lighting.\nProblem: the lower spear shaft currently rises steeply from the lower left through his gripping hand toward the shoulder, while the upper shaft and spearhead extend from behind his shoulder at a much shallower angle toward the upper right. These are two disconnected axes and cannot be one rigid weapon.\nRequired correction: redraw ONE straight, continuous long spear. Its single centerline runs from close to the left edge at about 60 percent of image height, through his existing gripping hand at roughly 31 percent of image width and 46 percent of image height, to the existing spearhead near 94 percent of image width and 16 percent of image height. These locations describe one diagonal straight line; use a ruler-straight rigid wooden shaft, NOT a kinked or curved shaft. Keep the current spearhead location and its small red tassel. The shaft crosses clearly IN FRONT of his chest and armor between the hand and spearhead, with correct cast shadows; it must not disappear behind his shoulder and reappear on another axis. The shaft on both sides of the gripping fist is perfectly collinear with the spear socket and pointed head. Only the curled fingers briefly occlude the shaft, with a natural closed grip and thumb.\nRemove the entire obsolete steep diagonal lower shaft, including its old section running toward his shoulder and the old shaft extending down toward the bottom-left ground. Restore the underlying cloak, armor and ground in those removed areas. Keep only the one newly aligned spear: one shaft, one steel spearhead, one tassel. No duplicate shaft, branch, broken end, floating spearhead, extra weapon, extra hand or extra fingers. Preserve the original anatomical position of the pointing arm. Do not redraw or beautify the face, costume, environment or art style. Maintain full opaque vertical 350:480 aspect ratio with high resolution. No text, UI, border, watermark, guides or drawn alignment lines. The result should look like the same original painting with a correctly constructed intact spear.",
+  "postprocess": [
+    "resize 350x480 bicubic"
+  ],
+  "assetSettings": {
+    "filter": "linear",
+    "wrap": "clamp",
+    "mipmap": false,
+    "pivot": {
+      "x": 0.5,
+      "y": 0.5
+    }
+  },
+  "integration": "通过 GeneralPortrait.ts 统一解析张郃新版画像，保持配置表原资源标识。"
+}

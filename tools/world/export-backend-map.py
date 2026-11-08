@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import re
 import runpy
 import zipfile
 from pathlib import Path
@@ -26,8 +27,19 @@ inner = json.loads((ROOT / 'tools/world/fixed-inner-resources.json').read_text(e
 res_land = json.loads((ROOT / 'assets/resources/config/ResLand.json').read_text(encoding='utf8'))
 if isinstance(res_land, dict):
     res_land = list(res_land.values())
-resource_types = {row['Enum']: row['Id'] for row in json.loads((ROOT / 'assets/resources/config/ResLandType.json').read_text(encoding='utf8'))}
 map_enums = {52: 'WOOD', 53: 'IRON', 54: 'STONE', 55: 'GRAIN'}
+# 新版导表把枚举写到独立 TS 文件，ResLandType.json 不再携带 Enum 字段。
+# 读取客户端实际使用的枚举，并核对配置 ID，避免凭中文名称或旧编号猜类型。
+enum_source = (ROOT / 'assets/scripts/config/enum/ResLandTypeEnum.ts').read_text(encoding='utf8')
+resource_types = {name: int(value) for name, value in re.findall(
+    r'^\s*(GRAIN|WOOD|IRON|STONE)\s*=\s*(\d+)\s*,?\s*$', enum_source, re.MULTILINE)}
+type_rows = json.loads((ROOT / 'assets/resources/config/ResLandType.json').read_text(encoding='utf8'))
+if isinstance(type_rows, dict):
+    type_rows = list(type_rows.values())
+type_ids = {row['Id'] for row in type_rows}
+if (set(resource_types) != set(map_enums.values()) or len(set(resource_types.values())) != 4
+        or not set(resource_types.values()).issubset(type_ids)):
+    raise SystemExit('ResLandTypeEnum 与 ResLandType 配置不完整或不一致，请先同步 game_common')
 pending = []
 for kind, name in map_enums.items():
     protocol_type = resource_types.get(name)

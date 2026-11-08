@@ -15,7 +15,7 @@ function harness() {
     const cache = new Map(), timers = new Map(), sent = [], toasts = [], notifications = [], layouts = [];
     let timerId = 0, failSend = false, facilityRequests = 0, additionReads = 0;
     const role = { soldierInfo: { count: 0, hurtCount: 0 } };
-    class Component { constructor() { this.isValid = true; this.node = { active: true }; } }
+    class Component { constructor() { this.isValid = true; this.node = { active: true, getChildByName: () => null }; } }
     class Label { constructor() { this.string = ''; this.node = { active: true }; } }
     class Node {}
     Node.EventType = {};
@@ -71,6 +71,8 @@ function harness() {
         'utils/DateUtil': { default: {} },
         'utils/ListLogic': { default: class {} },
         'map/ui/GeneralHeadLogic': { default: class {} },
+        // 筛选控件的原生布局与交互由 general-filter-regression 独立覆盖。
+        'map/ui/GeneralFilterBar': { GeneralFilterBar: class {} },
         'map/ui/GeneralListSkin': { applyGeneralListSkin(root, count, type, refreshList) {
             layouts.push({ count, type, refreshList });
         } },
@@ -184,7 +186,7 @@ test('真实 World 编解码：界面三槽映射协议 1/2/3 站位，回包前
     assert.equal(h.command.editTroop(2, { 1001: 0, 1002: 1, 1003: 2 }), true);
     const packet = h.sent.at(-1);
     assert.equal(h.proto.getIdByMsgType(packet.name), protocolIds.World.c2s_edit_troop);
-    assert.deepEqual(plain(packet.data), { troopInfo: { troopIdx: 2, posMap: { 1: { heroIdx: 1001, soldier: { count: 0, hurtCount: 0 } }, 2: { heroIdx: 1002, soldier: { count: 0, hurtCount: 0 } }, 3: { heroIdx: 1003, soldier: { count: 0, hurtCount: 0 } } } } });
+    assert.deepEqual(plain(packet.data), { troopInfo: { troopIdx: 2, troopState: 0, posMap: { 1: { heroIdx: 1001, soldier: { count: 0, hurtCount: 0 } }, 2: { heroIdx: 1002, soldier: { count: 0, hurtCount: 0 } }, 3: { heroIdx: 1003, soldier: { count: 0, hurtCount: 0 } } } } });
     assert.equal(h.command.proxy.getTroop(2), null);
     h.receive(h.server.s2c_edit_troop, packet.data);
     assert.equal(h.proto.getIdByMsgType(h.server.s2c_edit_troop), protocolIds.World.s2c_edit_troop);
@@ -628,5 +630,12 @@ test('无武将/无兵力明确提示；发送失败解除锁定，草稿可重�
     assert.equal(settings._curConscripts[0], 80);
 });
 
+test('新增攻城状态经真实 protobuf 往返，不改变行军 state 含义', () => {
+    const h = harness();
+    h.ready([{ troopIdx: 1, troopState: 4, posMap: { 1: { heroIdx: 1001, soldier: { count: 100, hurtCount: 0 } } } }]);
+    assert.equal(h.command.proxy.getTroop(1).troopState, 4);
+    h.receive(h.server.s2c_sync_troop, { troopInfo: { troopIdx: 1, troopState: 1, posMap: {} } });
+    assert.equal(h.command.proxy.getTroop(1).troopState, 1);
+});
 console.log('Troop integration: ' + passed + ' checks passed.');
 process.exit(0);

@@ -82,9 +82,10 @@ export default class CityLogic extends Component {
             icon.trim = false;
             icon.node.setScale(1, 1, 1); icon.node.setPosition(appearance.x, appearance.y, 0);
             icon.node.getComponent(UITransform).setAnchorPoint(.5, PLAYER_CITY_ANCHOR_Y);
-            WorldMapArt.apply(icon, appearance.art, appearance.width);
+            WorldMapArt.apply(icon, appearance.art, appearance.width, () => {
+                PlayerCityGround.apply(icon, appearance.art, appearance.width, appearance.height, footprint.height, appearance.sourceHeight);
+            });
             icon.node.getComponent(UITransform).setContentSize(appearance.width, appearance.height);
-            PlayerCityGround.apply(icon, appearance.art, appearance.width, appearance.height, footprint.height, appearance.sourceHeight);
         }
         WorldMapArt.ownership(this.node, this.upSpr, this.downSpr,
             WorldMapArt.factionColor(this._data, MapCommand.getInstance().cityProxy), footprint.width, footprint.height);

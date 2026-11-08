@@ -136,7 +136,7 @@ export function rankTitleTrim(parent: Node, width: number): void {
     }
 }
 
-function rankTabIcon(parent: Node, index: number, x: number, selected: boolean): void {
+export function rankTabIcon(parent: Node, index: number, x: number, selected: boolean): void {
     let emblem = parent.getChildByName('CategoryIcon');
     if (!emblem) { emblem = node(parent, 'CategoryIcon', x, 0, 34, 34); emblem.addComponent(Graphics); }
     place(emblem, x, 0, 34, 34);

@@ -2,19 +2,16 @@
   {
     "Id": 1,
     "Name": "世界",
-    "Enum": "WORLD",
     "Desc": "本服世界频道"
   },
   {
     "Id": 2,
     "Name": "联盟",
-    "Enum": "ALLIANCE",
     "Desc": "联盟频道（需已加入联盟）"
   },
   {
     "Id": 3,
     "Name": "私聊",
-    "Enum": "PRIVATE",
     "Desc": "玩家私聊"
   }
 ]

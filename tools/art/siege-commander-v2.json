@@ -1,0 +1,902 @@
+{
+  "purpose": "攻城主将驻马举枪指挥，与两排投掷共用时钟",
+  "asset": "assets/resources/ui/march/siege-commander-v2.png",
+  "generator": "built-in imagegen",
+  "referenceAssets": [
+    "assets/resources/ui/march/commander_idle_v6.png",
+    "assets/resources/ui/march/commander_walk_grounded_primary_v6.png"
+  ],
+  "sourceDimensions": [
+    1586,
+    992
+  ],
+  "grid": {
+    "columns": 8,
+    "rows": 5,
+    "cell": 256
+  },
+  "directions": [
+    "right",
+    "upper-right",
+    "back",
+    "lower-right",
+    "front"
+  ],
+  "mirroredDirections": [
+    "upper-left",
+    "left",
+    "lower-left"
+  ],
+  "registration": {
+    "root": [
+      128,
+      224
+    ],
+    "pivot": [
+      0.5,
+      0.125
+    ],
+    "scale": 1.12,
+    "perFrameScale": false,
+    "perFrameTint": false
+  },
+  "processing": "Image Core crop/padding/composite: isolate 40 disjoint full-character bounds and register planted hooves on a fixed canvas; no source deformation or truncation at generated grid lines.",
+  "frames": [
+    {
+      "row": 0,
+      "column": 0,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 41,
+          "y": 12,
+          "width": 155,
+          "height": 183
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "right": 40,
+          "top": 44,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 236,
+          "y": 15,
+          "width": 155,
+          "height": 180
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "right": 41,
+          "top": 47,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 431,
+          "y": 10,
+          "width": 156,
+          "height": 185
+        },
+        {
+          "type": "padding",
+          "left": 59,
+          "right": 41,
+          "top": 42,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 629,
+          "y": 39,
+          "width": 168,
+          "height": 156
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "right": 27,
+          "top": 71,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 0,
+      "column": 4,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 824,
+          "y": 43,
+          "width": 178,
+          "height": 152
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "right": 17,
+          "top": 75,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 0,
+      "column": 5,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1020,
+          "y": 31,
+          "width": 154,
+          "height": 164
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "right": 41,
+          "top": 63,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 0,
+      "column": 6,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1216,
+          "y": 17,
+          "width": 154,
+          "height": 178
+        },
+        {
+          "type": "padding",
+          "left": 61,
+          "right": 41,
+          "top": 49,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 0,
+      "column": 7,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1410,
+          "y": 11,
+          "width": 155,
+          "height": 184
+        },
+        {
+          "type": "padding",
+          "left": 60,
+          "right": 41,
+          "top": 43,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 49,
+          "y": 203,
+          "width": 131,
+          "height": 185
+        },
+        {
+          "type": "padding",
+          "left": 96,
+          "right": 29,
+          "top": 42,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 246,
+          "y": 212,
+          "width": 129,
+          "height": 176
+        },
+        {
+          "type": "padding",
+          "left": 97,
+          "right": 30,
+          "top": 51,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 442,
+          "y": 205,
+          "width": 130,
+          "height": 183
+        },
+        {
+          "type": "padding",
+          "left": 96,
+          "right": 30,
+          "top": 44,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 639,
+          "y": 220,
+          "width": 154,
+          "height": 168
+        },
+        {
+          "type": "padding",
+          "left": 97,
+          "right": 5,
+          "top": 59,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 1,
+      "column": 4,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 835,
+          "y": 223,
+          "width": 157,
+          "height": 165
+        },
+        {
+          "type": "padding",
+          "left": 96,
+          "right": 3,
+          "top": 62,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 1,
+      "column": 5,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1032,
+          "y": 213,
+          "width": 128,
+          "height": 175
+        },
+        {
+          "type": "padding",
+          "left": 97,
+          "right": 31,
+          "top": 52,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 1,
+      "column": 6,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1227,
+          "y": 209,
+          "width": 131,
+          "height": 179
+        },
+        {
+          "type": "padding",
+          "left": 95,
+          "right": 30,
+          "top": 48,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 1,
+      "column": 7,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1423,
+          "y": 204,
+          "width": 130,
+          "height": 184
+        },
+        {
+          "type": "padding",
+          "left": 96,
+          "right": 30,
+          "top": 43,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 71,
+          "y": 400,
+          "width": 79,
+          "height": 189
+        },
+        {
+          "type": "padding",
+          "left": 89,
+          "right": 88,
+          "top": 38,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 266,
+          "y": 403,
+          "width": 81,
+          "height": 186
+        },
+        {
+          "type": "padding",
+          "left": 87,
+          "right": 88,
+          "top": 41,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 462,
+          "y": 388,
+          "width": 89,
+          "height": 201
+        },
+        {
+          "type": "padding",
+          "left": 86,
+          "right": 81,
+          "top": 26,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 657,
+          "y": 405,
+          "width": 120,
+          "height": 184
+        },
+        {
+          "type": "padding",
+          "left": 85,
+          "right": 51,
+          "top": 43,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 2,
+      "column": 4,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 856,
+          "y": 411,
+          "width": 117,
+          "height": 178
+        },
+        {
+          "type": "padding",
+          "left": 88,
+          "right": 51,
+          "top": 49,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 2,
+      "column": 5,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1055,
+          "y": 406,
+          "width": 78,
+          "height": 183
+        },
+        {
+          "type": "padding",
+          "left": 89,
+          "right": 89,
+          "top": 44,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 2,
+      "column": 6,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1251,
+          "y": 404,
+          "width": 79,
+          "height": 185
+        },
+        {
+          "type": "padding",
+          "left": 88,
+          "right": 89,
+          "top": 42,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 2,
+      "column": 7,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1449,
+          "y": 401,
+          "width": 77,
+          "height": 188
+        },
+        {
+          "type": "padding",
+          "left": 89,
+          "right": 90,
+          "top": 39,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 42,
+          "y": 595,
+          "width": 138,
+          "height": 181
+        },
+        {
+          "type": "padding",
+          "left": 34,
+          "right": 84,
+          "top": 46,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 240,
+          "y": 609,
+          "width": 136,
+          "height": 167
+        },
+        {
+          "type": "padding",
+          "left": 36,
+          "right": 84,
+          "top": 60,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 440,
+          "y": 597,
+          "width": 132,
+          "height": 179
+        },
+        {
+          "type": "padding",
+          "left": 40,
+          "right": 84,
+          "top": 48,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 638,
+          "y": 618,
+          "width": 161,
+          "height": 158
+        },
+        {
+          "type": "padding",
+          "left": 42,
+          "right": 53,
+          "top": 69,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 3,
+      "column": 4,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 833,
+          "y": 618,
+          "width": 163,
+          "height": 158
+        },
+        {
+          "type": "padding",
+          "left": 40,
+          "right": 53,
+          "top": 69,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 3,
+      "column": 5,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1031,
+          "y": 616,
+          "width": 129,
+          "height": 160
+        },
+        {
+          "type": "padding",
+          "left": 42,
+          "right": 85,
+          "top": 67,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 3,
+      "column": 6,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1227,
+          "y": 606,
+          "width": 131,
+          "height": 170
+        },
+        {
+          "type": "padding",
+          "left": 40,
+          "right": 85,
+          "top": 57,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 3,
+      "column": 7,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1422,
+          "y": 595,
+          "width": 133,
+          "height": 181
+        },
+        {
+          "type": "padding",
+          "left": 39,
+          "right": 84,
+          "top": 46,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "column": 0,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 66,
+          "y": 784,
+          "width": 84,
+          "height": 192
+        },
+        {
+          "type": "padding",
+          "left": 84,
+          "right": 88,
+          "top": 35,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "column": 1,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 261,
+          "y": 799,
+          "width": 89,
+          "height": 177
+        },
+        {
+          "type": "padding",
+          "left": 82,
+          "right": 85,
+          "top": 50,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "column": 2,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 455,
+          "y": 785,
+          "width": 101,
+          "height": 191
+        },
+        {
+          "type": "padding",
+          "left": 79,
+          "right": 76,
+          "top": 36,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "column": 3,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 643,
+          "y": 812,
+          "width": 135,
+          "height": 164
+        },
+        {
+          "type": "padding",
+          "left": 70,
+          "right": 51,
+          "top": 63,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "column": 4,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 840,
+          "y": 811,
+          "width": 135,
+          "height": 165
+        },
+        {
+          "type": "padding",
+          "left": 71,
+          "right": 50,
+          "top": 62,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "column": 5,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1042,
+          "y": 803,
+          "width": 98,
+          "height": 173
+        },
+        {
+          "type": "padding",
+          "left": 76,
+          "right": 82,
+          "top": 54,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "column": 6,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1241,
+          "y": 796,
+          "width": 92,
+          "height": 180
+        },
+        {
+          "type": "padding",
+          "left": 78,
+          "right": 86,
+          "top": 47,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "column": 7,
+      "operations": [
+        {
+          "type": "crop",
+          "x": 1442,
+          "y": 784,
+          "width": 85,
+          "height": 192
+        },
+        {
+          "type": "padding",
+          "left": 84,
+          "right": 87,
+          "top": 35,
+          "bottom": 29,
+          "background": "#00000000"
+        }
+      ]
+    }
+  ],
+  "timing": {
+    "cycle": 3.2,
+    "frameStarts": [
+      0,
+      0.16,
+      0.32,
+      0.52,
+      0.72,
+      2.16,
+      2.52,
+      2.88
+    ],
+    "firstInfantryRelease": 0.76,
+    "lastInfantryRelease": 2.14
+  },
+  "prompt": "Use case: historical-scene.\nAsset: production transparent PNG animation sprite sheet for an isometric Three Kingdoms game.\nReference image 1 is the approved five-view mounted commander standing art; reference image 2 supplies matching character/horse materials ONLY, not the walking motion. Preserve the exact Chinese commander, dark steel/brass lamellar armor, red cloak and plume, long wooden spear, chestnut horse, black mane/tail, restrained gold/red tack, realistic hand-painted miniature style. Build NEW command animation poses, no walking.\n\nLayout: exactly EIGHT columns by FIVE rows (40 frames) of equal SQUARE cells on a wide 1600x1000 genuine transparent RGBA canvas. No labels or drawn grid. Every row is the SAME full 8-frame command cycle at a different fixed direction: row 1 RIGHT (side); row 2 UPPER-RIGHT (rear/flank at shallow isometric angle); row 3 UP (strict back); row 4 LOWER-RIGHT (front/flank); row 5 DOWN (strict front). Never change facing within a row.\nColumns: 1 ready holding spear upright; 2 begin raising commanding arm and tilting spear; 3 clear raised order gesture, torso turns slightly; 4 decisively point the spear diagonally forward toward the direction of siege attack; 5 hold the forward command with a small head turn; 6 bring spear and arm back; 7 settle cape and shoulders; 8 back at ready, smoothly looping to frame 1. The change in arm and weapon silhouette must be clearly readable at tiny game size. This is an order gesture from behind the troops, not throwing, firing, striking a wall, galloping, or rearing.\nHorse must remain PLANTED and motionless in all eight frames of a row: identical four legs, normal solid hooves, leg spacing and ground contacts; same horse torso/head position and scale. Animate rider arms/shoulders, weapon and restrained cape only. Same saddle seat fixed. Do not bend/squash/translate the whole horse, and do not invent extra limbs.\nAll spear tips, spear butts, tail, cape and plumes must fit COMPLETELY inside their own cell in every pose. Give a real transparent safety gutter of at least 6% on every side. If the forward spear requires room, use a foreshortened diagonal spear, never clip it or run it into an adjacent cell. Root centered x=50%, planted hooves y=89%, topmost tip no higher than y=7%. Fixed camera and body registration within each row, no per-frame brightness, zoom or costume changes.\nClean color-neutral soft alpha edges: no red/yellow/green halo pixels, black/white matte, ground shadow or baked scenery. No visual effects, magic, arrows, trails, circles, numbers, text, watermark, checkerboard or separate objects. Only the 40 correctly ordered full-body commander-and-horse sprites."
+}

@@ -1,525 +1,207 @@
-import {
-    _decorator,
-    Button,
-    Color,
-    Component,
-    EventTouch,
-    Graphics,
-    HorizontalTextAlignment,
-    Label,
-    Node,
-    Tween,
-    tween,
-    UIOpacity,
-    UITransform,
-    Vec3,
-    VerticalTextAlignment,
-} from 'cc';
+import { _decorator, BlockInputEvents, Button, Color, Component, Graphics, Label, Node,
+    sys, UIOpacity, UITransform, view } from 'cc';
 import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from './LogicEvent';
 
 const { ccclass, property } = _decorator;
+export interface ReconnectState { attempt?: number; maxAttempts?: number; retryDelayMs?: number; }
+type Phase = 'connecting' | 'success' | 'failed';
+const GOLD = new Color(217, 181, 112, 255);
+const LIGHT = new Color(246, 220, 161, 255);
+const INK = new Color(22, 28, 25, 245);
 
-export interface ReconnectState {
-    attempt?: number;
-    maxAttempts?: number;
-    retryDelayMs?: number;
-}
-
-const GOLD = new Color(216, 188, 128, 255);
-const GOLD_SOFT = new Color(188, 156, 96, 150);
-const TEXT_MAIN = new Color(238, 225, 198, 255);
-const TEXT_SUB = new Color(191, 174, 143, 255);
-const TEXT_FAINT = new Color(139, 123, 96, 255);
-const SEAL_RED = new Color(119, 32, 26, 255);
-const SEAL_RED_DARK = new Color(81, 24, 21, 255);
-
+/** 断网时也能立即绘制的烽火徽记，不依赖远程图集。 */
 @ccclass('ReconnectLogic')
 export default class ReconnectLogic extends Component {
-    @property
-    public blockInput: boolean = true;
-
+    @property public blockInput = true;
     private built = false;
-    private cardNode: Node | null = null;
-    private titleLabel: Label | null = null;
-    private statusLabel: Label | null = null;
-    private attemptLabel: Label | null = null;
-    private hintLabel: Label | null = null;
-    private footnoteLabel: Label | null = null;
-    private sealNode: Node | null = null;
-    private sealLabel: Label | null = null;
-    private progressNode: Node | null = null;
-    private progressGraphics: Graphics | null = null;
-    private retryButton: Node | null = null;
-    private opacity: UIOpacity | null = null;
-
-    private width = 1280;
-    private height = 720;
-    private dotsElapsed = 0;
-    private dotCount = 0;
-    private retryRemaining = 0;
-    private retryTotal = 0;
-    private phase = 0;
-    private failed = false;
-    private success = false;
+    private phase: Phase = 'connecting';
+    private mask: Node = null;
+    private visual: Node = null;
+    private emblem: Node = null;
+    private tower: Graphics = null;
+    private motion: Graphics = null;
+    private sparks: Graphics = null;
+    private status: Label = null;
+    private retryButton: Node = null;
+    private opacity: UIOpacity = null;
+    private elapsed = 0;
+    private intro = 0;
+    private lastTick = 0;
+    private returning = false;
 
     protected onLoad(): void {
         this.ensureBuilt();
+        view.on('canvas-resize', this.layout, this);
+        this.node.parent?.on(Node.EventType.SIZE_CHANGED, this.layout, this);
     }
-
-    public showReconnecting(state: ReconnectState = {}): void {
-        if (!this.node.active) {
-            this.node.active = true;
-        }
-        this.ensureBuilt();
-        this.failed = false;
-        this.success = false;
-        this.cancelPendingHide();
-        this.unschedule(this.enterLogin);
-
-        this.dotsElapsed = 0;
-        this.dotCount = 0;
-        this.phase = 0;
-        this.retryTotal = Math.max(0, (state.retryDelayMs ?? 2000) / 1000);
-        this.retryRemaining = this.retryTotal;
-
-        if (this.titleLabel) {
-            this.titleLabel.string = '断线重连中';
-            this.titleLabel.color = TEXT_MAIN;
-        }
-        if (this.statusLabel) {
-            this.statusLabel.string = '正在尝试重新连接服务器';
-            this.statusLabel.color = TEXT_SUB;
-        }
-        if (this.attemptLabel) {
-            const attempt = Math.max(1, state.attempt ?? 1);
-            const max = state.maxAttempts ?? 0;
-            this.attemptLabel.string = max > 0
-                ? `第 ${attempt} / ${max} 次重连 · ${Math.ceil(this.retryTotal)} 秒后重试`
-                : `正在第 ${attempt} 次重连 · ${Math.ceil(this.retryTotal)} 秒后重试`;
-            this.attemptLabel.color = TEXT_FAINT;
-        }
-        if (this.hintLabel) {
-            this.hintLabel.string = '网络恢复后将自动返回战场';
-            this.hintLabel.node.active = true;
-        }
-        if (this.footnoteLabel) {
-            this.footnoteLabel.string = '请保持网络通畅，勿关闭游戏';
-            this.footnoteLabel.node.active = true;
-        }
-        if (this.sealLabel) {
-            this.sealLabel.string = '重';
-            this.sealLabel.color = new Color(226, 198, 146, 255);
-        }
-        if (this.sealNode) {
-            this.sealNode.setScale(1, 1, 1);
-        }
-        if (this.progressNode) {
-            this.progressNode.active = true;
-        }
-        if (this.retryButton) {
-            this.retryButton.active = false;
-        }
-
-        this.drawProgress();
-        this.playIntro();
+    protected onDisable(): void { this.lastTick = 0; }
+    protected onDestroy(): void {
+        view.off('canvas-resize', this.layout, this);
+        this.node.parent?.off(Node.EventType.SIZE_CHANGED, this.layout, this);
     }
-
+    public showReconnecting(_state: ReconnectState = {}): void {
+        const continuing = this.built && this.node.active && this.phase === 'connecting';
+        this.ensureBuilt(); this.node.active = true;
+        this.phase = 'connecting'; this.returning = false;
+        if (!continuing) { this.elapsed = 0; this.intro = 0; }
+        this.lastTick = this.now();
+        this.status.string = '重连中'; this.status.color = LIGHT;
+        this.retryButton.active = false; this.tower.node.active = true;
+        this.layout(); this.paint();
+    }
     public showSuccess(): void {
-        if (!this.built || !this.node.active) {
-            return;
-        }
-        this.success = true;
-        this.failed = false;
-        this.cancelPendingHide();
-        if (this.titleLabel) {
-            this.titleLabel.string = '重连成功';
-            this.titleLabel.color = new Color(174, 218, 157, 255);
-        }
-        if (this.statusLabel) {
-            this.statusLabel.string = '已恢复与服务器的连接';
-            this.statusLabel.color = TEXT_MAIN;
-        }
-        if (this.attemptLabel) {
-            this.attemptLabel.string = '正在返回战场…';
-            this.attemptLabel.color = GOLD_SOFT;
-        }
-        if (this.hintLabel) {
-            this.hintLabel.node.active = false;
-        }
-        if (this.footnoteLabel) {
-            this.footnoteLabel.node.active = false;
-        }
-        if (this.progressNode) {
-            this.progressNode.active = false;
-        }
-        if (this.retryButton) {
-            this.retryButton.active = false;
-        }
-        this.scheduleOnce(this.hideAfterSuccess, 0.9);
+        if (!this.built || !this.node.active) return;
+        this.phase = 'success'; this.elapsed = 0; this.intro = 1; this.lastTick = this.now();
+        this.status.string = '已连接'; this.status.color = LIGHT;
+        this.retryButton.active = this.tower.node.active = false;
+        this.paint();
     }
-
+    /** 保留失败态入口；网络层仍由 Main 统一决定何时回登录。 */
     public showFailed(): void {
-        if (!this.node.active) {
-            this.node.active = true;
-        }
-        this.ensureBuilt();
-        this.failed = true;
-        this.success = false;
-        this.cancelPendingHide();
-        this.unschedule(this.enterLogin);
-
-        if (this.titleLabel) {
-            this.titleLabel.string = '重连失败';
-            this.titleLabel.color = new Color(224, 158, 126, 255);
-        }
-        if (this.statusLabel) {
-            this.statusLabel.string = '未能恢复与服务器的连接';
-            this.statusLabel.color = TEXT_SUB;
-        }
-        if (this.attemptLabel) {
-            this.attemptLabel.string = '请检查网络环境后重新登录';
-            this.attemptLabel.color = TEXT_FAINT;
-        }
-        if (this.hintLabel) {
-            this.hintLabel.node.active = false;
-        }
-        if (this.footnoteLabel) {
-            this.footnoteLabel.node.active = false;
-        }
-        if (this.progressNode) {
-            this.progressNode.active = false;
-        }
-        if (this.retryButton) {
-            this.retryButton.active = true;
-        }
-        if (this.sealLabel) {
-            this.sealLabel.string = '断';
-            this.sealLabel.color = new Color(232, 178, 130, 255);
-        }
-        if (this.sealNode) {
-            Tween.stopAllByTarget(this.sealNode);
-            this.sealNode.setScale(1.08, 1.08, 1);
-            tween(this.sealNode)
-                .to(0.18, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' })
-                .start();
-        }
-        this.playIntro();
+        this.ensureBuilt(); this.node.active = true;
+        this.phase = 'failed'; this.elapsed = 0; this.intro = 0; this.lastTick = this.now(); this.returning = false;
+        this.status.string = '连接中断'; this.status.color = new Color(222, 176, 139, 255);
+        this.retryButton.active = true; this.retryButton.getComponent(Button).interactable = true;
+        this.tower.node.active = false;
+        this.layout(); this.paint();
     }
-
     public hideNow(): void {
-        this.cancelPendingHide();
-        this.unschedule(this.enterLogin);
-        this.failed = false;
-        this.success = false;
+        this.returning = false; this.lastTick = 0;
+        if (this.opacity) this.opacity.opacity = 0;
         this.node.active = false;
     }
-
-    protected update(dt: number): void {
-        if (!this.built || this.failed || this.success) {
-            return;
-        }
-
-        this.dotsElapsed += dt;
-        if (this.dotsElapsed >= 0.36) {
-            this.dotsElapsed = 0;
-            this.dotCount = (this.dotCount + 1) % 3;
-            if (this.statusLabel) {
-                this.statusLabel.string = `正在尝试重新连接服务器${'.'.repeat(this.dotCount + 1)}`;
-            }
-        }
-
-        if (this.retryRemaining > 0) {
-            this.retryRemaining = Math.max(0, this.retryRemaining - dt);
-            if (this.attemptLabel) {
-                const seconds = Math.ceil(this.retryRemaining);
-                const current = this.attemptLabel.string;
-                const prefix = current.split('·')[0].trim();
-                this.attemptLabel.string = this.retryRemaining > 0.05
-                    ? `${prefix} · ${seconds} 秒后重试`
-                    : `${prefix} · 正在连接`;
-            }
-        }
-
-        this.phase = (this.phase + dt * 0.72) % 1;
-        this.drawProgress();
+    private now(): number { return typeof performance !== 'undefined' ? performance.now() : Date.now(); }
+    protected update(): void {
+        if (!this.built || !this.node.activeInHierarchy) return;
+        const now = this.now(), dt = this.lastTick ? Math.max(0, (now - this.lastTick) / 1000) : 0;
+        this.lastTick = now; this.elapsed += dt; this.intro = Math.min(1, this.intro + dt / .18);
+        // 使用 UI 实时时钟，游戏速度为零时仍可恢复；没有跨状态遗留的淡出回调。
+        if (this.phase === 'success' && this.elapsed >= .62) { this.hideNow(); return; }
+        this.paint();
     }
-
+    private paint(): void {
+        const fade = this.phase === 'success' ? 1 - Math.max(0, (this.elapsed - .36) / .26) : 1;
+        this.opacity.opacity = Math.round(255 * this.intro * Math.max(0, fade));
+        const scale = .97 + .03 * (1 - Math.pow(1 - this.intro, 3));
+        this.emblem.setScale(scale, scale, 1);
+        const g = this.motion; g.clear();
+        const fire = this.sparks; fire.clear();
+        if (this.phase === 'connecting') {
+            const angle = this.elapsed * 1.85;
+            this.arc(g, 61, angle, angle + 1.1, 2.2, LIGHT);
+            this.arc(g, 61, angle + Math.PI, angle + Math.PI + .52, 1.3, new Color(195, 151, 78, 170));
+            this.arc(g, 68, -angle * .46, -angle * .46 + .42, 1, new Color(213, 180, 115, 110));
+            const x = Math.cos(angle + 1.1) * 61, y = Math.sin(angle + 1.1) * 61;
+            g.fillColor = new Color(236, 200, 128, 28); g.circle(x, y, 6); g.fill();
+            g.fillColor = LIGHT; g.circle(x, y, 2); g.fill();
+            this.drawFire(fire);
+        } else if (this.phase === 'success') {
+            const glow = Math.max(0, 1 - this.elapsed / .62);
+            this.arc(g, 61, 0, Math.PI * 2, 1.5, new Color(225, 208, 154, Math.round(210 * glow)));
+            this.arc(g, 61 + this.elapsed * 30, 0, Math.PI * 2, 1, new Color(225, 208, 154, Math.round(90 * glow)));
+            g.lineWidth = 3; g.strokeColor = LIGHT;
+            g.moveTo(-17, -1); g.lineTo(-5, -13); g.lineTo(20, 15); g.stroke();
+        } else {
+            this.arc(g, 61, .22, Math.PI - .22, 1, new Color(172, 125, 87, 150));
+            this.arc(g, 61, Math.PI + .22, Math.PI * 2 - .22, 1, new Color(172, 125, 87, 150));
+            g.lineWidth = 2; g.strokeColor = new Color(213, 158, 113, 255);
+            g.moveTo(-5, 21); g.lineTo(5, 6); g.lineTo(-5, -5); g.lineTo(5, -21); g.stroke();
+        }
+    }
+    private drawFire(g: Graphics): void {
+        const t = this.elapsed, sway = Math.sin(t * 4.7) * 2.5, height = 25 + Math.sin(t * 6.1) * 2;
+        g.fillColor = new Color(197, 110, 50, 215);
+        g.moveTo(-7, 19); g.bezierCurveTo(-13, 26, -3 + sway, 28, sway, 19 + height);
+        g.bezierCurveTo(8 + sway, 34, 4, 29, 8, 27); g.bezierCurveTo(12, 20, 3, 17, -7, 19); g.fill();
+        g.fillColor = new Color(246, 205, 125, 245);
+        g.moveTo(-3, 20); g.bezierCurveTo(-6, 26, 2 + sway * .5, 29, 2, 35);
+        g.bezierCurveTo(8, 27, 6, 22, 2, 19); g.fill();
+        for (let i = 0; i < 4; i++) {
+            const p = (t * .42 + i * .25) % 1;
+            g.fillColor = new Color(234, 193, 109, Math.round(Math.sin(p * Math.PI) * 150));
+            g.circle(Math.sin(i * 2.4 + p * 3) * (5 + p * 8), 29 + p * 24, 1 - p * .5); g.fill();
+        }
+    }
     private ensureBuilt(): void {
-        if (this.built) {
-            return;
-        }
+        if (this.built) return;
         this.built = true;
-
-        const parentTransform = this.node.parent?.getComponent(UITransform);
-        this.width = parentTransform?.width ?? 1280;
-        this.height = parentTransform?.height ?? 720;
-
-        let transform = this.node.getComponent(UITransform);
-        if (!transform) {
-            transform = this.node.addComponent(UITransform);
-        }
-        transform.setContentSize(this.width, this.height);
-        transform.setAnchorPoint(0.5, 0.5);
-        this.node.setPosition(0, 0, 0);
-
-        this.opacity = this.node.getComponent(UIOpacity) ?? this.node.addComponent(UIOpacity);
-        this.opacity.opacity = 0;
-
-        const mask = this.createNode('DimMask', this.node, this.width, this.height);
-        const maskGraphics = mask.addComponent(Graphics);
-        maskGraphics.fillColor = new Color(5, 4, 3, 186);
-        maskGraphics.rect(-this.width * 0.5, -this.height * 0.5, this.width, this.height);
-        maskGraphics.fill();
-        if (this.blockInput) {
-            mask.on(Node.EventType.TOUCH_START, this.blockTouch, this, true);
-            mask.on(Node.EventType.TOUCH_MOVE, this.blockTouch, this, true);
-            mask.on(Node.EventType.TOUCH_END, this.blockTouch, this, true);
-            mask.on(Node.EventType.TOUCH_CANCEL, this.blockTouch, this, true);
-        }
-
-        const backdrop = this.createNode('BackdropMark', this.node, 460, 460, 0, -18);
-        const backdropLabel = backdrop.addComponent(Label);
-        backdropLabel.string = '战';
-        backdropLabel.fontSize = 300;
-        backdropLabel.lineHeight = 320;
-        backdropLabel.color = new Color(194, 155, 86, 12);
-        backdropLabel.horizontalAlign = HorizontalTextAlignment.CENTER;
-        backdropLabel.verticalAlign = VerticalTextAlignment.CENTER;
-
-        this.cardNode = this.createNode('ReconnectCard', this.node, 460, 280);
-        const panel = this.cardNode.addComponent(Graphics);
-        this.drawPanel(panel);
-
-        this.sealNode = this.createNode('Seal', this.cardNode, 68, 68, 0, 103);
-        const sealGraphics = this.sealNode.addComponent(Graphics);
-        this.drawSeal(sealGraphics);
-        const sealText = this.createNode('SealText', this.sealNode, 58, 58);
-        this.sealLabel = sealText.addComponent(Label);
-        this.sealLabel.string = '重';
-        this.sealLabel.fontSize = 26;
-        this.sealLabel.lineHeight = 30;
-        this.sealLabel.color = new Color(226, 198, 146, 255);
-        this.sealLabel.horizontalAlign = HorizontalTextAlignment.CENTER;
-        this.sealLabel.verticalAlign = VerticalTextAlignment.CENTER;
-
-        this.titleLabel = this.createLabel('Title', this.cardNode, 400, 42, 0, 57, '断线重连中', 30, TEXT_MAIN);
-        this.statusLabel = this.createLabel('Status', this.cardNode, 400, 28, 0, 15, '正在尝试重新连接服务器', 18, TEXT_SUB);
-        this.attemptLabel = this.createLabel('Attempt', this.cardNode, 400, 24, 0, -17, '', 14, TEXT_FAINT);
-        this.hintLabel = this.createLabel('Hint', this.cardNode, 400, 24, 0, -83, '网络恢复后将自动返回战场', 15, TEXT_SUB);
-        this.footnoteLabel = this.createLabel('Footnote', this.cardNode, 400, 20, 0, -112, '请保持网络通畅，勿关闭游戏', 13, TEXT_FAINT);
-
-        this.progressNode = this.createNode('Progress', this.cardNode, 360, 20, 0, -51);
-        this.progressGraphics = this.progressNode.addComponent(Graphics);
-
-        this.retryButton = this.createButton();
-        this.retryButton.active = false;
+        const ui = this.node.getComponent(UITransform) || this.node.addComponent(UITransform); ui.setAnchorPoint(.5, .5);
+        this.opacity = this.node.getComponent(UIOpacity) || this.node.addComponent(UIOpacity);
+        this.mask = this.makeNode('DimMask', this.node, 1280, 720);
+        this.mask.addComponent(Graphics); this.mask.addComponent(BlockInputEvents);
+        this.visual = this.makeNode('ReconnectVisual', this.node, 264, 280);
+        this.emblem = this.makeNode('BeaconEmblem', this.visual, 160, 160, 0, 24);
+        const plate = this.emblem.addComponent(Graphics);
+        for (let i = 7; i > 0; i--) { plate.fillColor = new Color(198, 153, 74, 3); plate.circle(0, 0, 51 + i * 4); plate.fill(); }
+        plate.fillColor = INK; plate.circle(0, 0, 52); plate.fill();
+        this.arc(plate, 52, 0, Math.PI * 2, 1, new Color(211, 177, 109, 160));
+        this.arc(plate, 47, 0, Math.PI * 2, 1, new Color(154, 129, 86, 65));
+        for (let i = 0; i < 8; i++) this.arc(plate, 61, i * Math.PI / 4, i * Math.PI / 4 + .1, 1, new Color(192, 157, 97, 75));
+        this.tower = this.makeNode('Watchtower', this.emblem, 80, 96).addComponent(Graphics); this.drawTower(this.tower);
+        this.motion = this.makeNode('SignalOrbit', this.emblem, 160, 160).addComponent(Graphics);
+        this.sparks = this.makeNode('BeaconFlame', this.emblem, 80, 112).addComponent(Graphics);
+        this.status = this.makeLabel('Status', this.visual, 240, 30, -66, '', 19, LIGHT);
+        this.retryButton = this.makeNode('ReturnLogin', this.visual, 180, 44, 0, -111);
+        const bg = this.retryButton.addComponent(Graphics);
+        bg.fillColor = new Color(100, 78, 40, 240); bg.roundRect(-90, -22, 180, 44, 3); bg.fill();
+        bg.strokeColor = new Color(208, 174, 105, 180); bg.lineWidth = 1; bg.roundRect(-89, -21, 178, 42, 3); bg.stroke();
+        const button = this.retryButton.addComponent(Button); button.transition = Button.Transition.SCALE; button.zoomScale = .97;
+        this.retryButton.on(Button.EventType.CLICK, this.onReturnLogin, this);
+        this.makeLabel('Label', this.retryButton, 164, 30, 0, '返回登录', 16, LIGHT); this.retryButton.active = false;
+        this.layout();
     }
-
-    private drawPanel(graphics: Graphics): void {
-        graphics.clear();
-        graphics.fillColor = new Color(13, 11, 8, 244);
-        graphics.roundRect(-228, -138, 456, 276, 9);
-        graphics.fill();
-
-        graphics.lineWidth = 1.5;
-        graphics.strokeColor = GOLD_SOFT;
-        graphics.roundRect(-228, -138, 456, 276, 9);
-        graphics.stroke();
-
-        graphics.lineWidth = 1;
-        graphics.strokeColor = new Color(160, 130, 78, 80);
-        graphics.roundRect(-215, -125, 430, 250, 6);
-        graphics.stroke();
-
-        graphics.lineWidth = 1;
-        graphics.strokeColor = new Color(206, 174, 108, 150);
-        graphics.moveTo(-170, 34);
-        graphics.lineTo(-28, 34);
-        graphics.moveTo(28, 34);
-        graphics.lineTo(170, 34);
-        graphics.stroke();
-
-        graphics.fillColor = new Color(206, 174, 108, 170);
-        graphics.circle(0, 34, 2.5);
-        graphics.fill();
-
-        graphics.lineWidth = 1;
-        graphics.strokeColor = new Color(160, 130, 78, 65);
-        graphics.moveTo(-170, -99);
-        graphics.lineTo(170, -99);
-        graphics.stroke();
-
-        this.drawCorner(graphics, -212, 122, 1, -1);
-        this.drawCorner(graphics, 212, 122, -1, -1);
-        this.drawCorner(graphics, -212, -122, 1, 1);
-        this.drawCorner(graphics, 212, -122, -1, 1);
+    private layout(): void {
+        if (!this.built) return;
+        const size = view.getVisibleSize(), safe = sys.getSafeAreaRect();
+        this.node.getComponent(UITransform).setContentSize(size.width, size.height);
+        this.mask.getComponent(UITransform).setContentSize(size.width, size.height);
+        this.mask.getComponent(BlockInputEvents).enabled = this.blockInput;
+        const g = this.mask.getComponent(Graphics); g.clear();
+        g.fillColor = new Color(7, 12, 10, this.phase === 'failed' ? 135 : 105);
+        g.rect(-size.width / 2, -size.height / 2, size.width, size.height); g.fill();
+        this.visual.setPosition(safe.x + safe.width / 2 - size.width / 2, safe.y + safe.height / 2 - size.height / 2, 0);
+        this.visual.getComponent(UITransform).setContentSize(Math.min(264, safe.width - 24), Math.min(280, safe.height - 24));
+        // 不缩小按钮热区；短横屏仅压紧上下间距。
+        const compact = safe.height < 310;
+        this.emblem.setPosition(0, compact ? 30 : 24, 0);
+        this.status.node.setPosition(0, compact ? -49 : -66, 0);
+        this.retryButton.setPosition(0, compact ? -90 : -111, 0);
     }
-
-    private drawCorner(graphics: Graphics, x: number, y: number, sx: number, sy: number): void {
-        graphics.lineWidth = 2;
-        graphics.strokeColor = new Color(212, 177, 108, 190);
-        graphics.moveTo(x, y + sy * 20);
-        graphics.lineTo(x, y);
-        graphics.lineTo(x + sx * 20, y);
-        graphics.stroke();
-        graphics.fillColor = new Color(212, 177, 108, 180);
-        graphics.circle(x + sx * 6, y + sy * 6, 1.6);
-        graphics.fill();
+    private drawTower(g: Graphics): void {
+        g.fillColor = new Color(157, 129, 77, 235);
+        g.moveTo(-17, -22); g.lineTo(-13, 9); g.lineTo(13, 9); g.lineTo(17, -22); g.close(); g.fill();
+        g.fillColor = new Color(104, 92, 62, 255);
+        g.moveTo(2, 9); g.lineTo(13, 9); g.lineTo(17, -22); g.lineTo(2, -22); g.close(); g.fill();
+        g.fillColor = GOLD; g.rect(-22, -26, 44, 4); g.rect(-19, -22, 38, 2); g.fill(); g.rect(-18, 8, 36, 5); g.fill();
+        for (const x of [-18, -7, 5, 14]) { g.rect(x, 12, x === 14 ? 4 : 6, 5); g.fill(); }
+        g.fillColor = new Color(25, 31, 27, 255); g.roundRect(-5, -22, 10, 17, 4); g.fill();
+        g.lineWidth = 1; g.strokeColor = new Color(222, 191, 126, 110);
+        for (const y of [-14, -6, 2]) { g.moveTo(-13, y); g.lineTo(-7, y); g.moveTo(7, y); g.lineTo(13, y); } g.stroke();
+        g.fillColor = new Color(205, 162, 87, 255); g.rect(-9, 17, 18, 3); g.fill();
     }
-
-    private drawSeal(graphics: Graphics): void {
-        graphics.clear();
-        graphics.fillColor = SEAL_RED;
-        graphics.circle(0, 0, 31);
-        graphics.fill();
-        graphics.fillColor = SEAL_RED_DARK;
-        graphics.circle(0, 0, 25);
-        graphics.fill();
-        graphics.lineWidth = 1.5;
-        graphics.strokeColor = new Color(222, 188, 126, 215);
-        graphics.circle(0, 0, 31);
-        graphics.stroke();
-        graphics.lineWidth = 1;
-        graphics.strokeColor = new Color(222, 188, 126, 110);
-        graphics.circle(0, 0, 27);
-        graphics.stroke();
+    private arc(g: Graphics, radius: number, from: number, to: number, width: number, color: Color): void {
+        g.lineWidth = width; g.strokeColor = color;
+        const steps = Math.max(4, Math.ceil(Math.abs(to - from) * 12));
+        g.moveTo(Math.cos(from) * radius, Math.sin(from) * radius);
+        for (let i = 1; i <= steps; i++) { const a = from + (to - from) * i / steps; g.lineTo(Math.cos(a) * radius, Math.sin(a) * radius); }
+        g.stroke();
     }
-
-    private drawProgress(): void {
-        if (!this.progressGraphics) {
-            return;
-        }
-        const graphics = this.progressGraphics;
-        graphics.clear();
-        graphics.fillColor = new Color(73, 62, 46, 180);
-        graphics.rect(-180, -1, 360, 2);
-        graphics.fill();
-
-        const segmentWidth = 86;
-        const start = -180 - segmentWidth + this.phase * (360 + segmentWidth);
-        graphics.fillColor = new Color(213, 177, 105, 85);
-        graphics.rect(start, -1.5, segmentWidth, 3);
-        graphics.fill();
-
-        const glowStart = start + segmentWidth * 0.5 - 20;
-        graphics.fillColor = new Color(236, 207, 147, 210);
-        graphics.rect(glowStart, -2, 40, 4);
-        graphics.fill();
-
-        graphics.fillColor = new Color(222, 190, 125, 220);
-        graphics.circle(-180, 0, 2);
-        graphics.circle(180, 0, 2);
-        graphics.fill();
+    private makeNode(name: string, parent: Node, width: number, height: number, x = 0, y = 0): Node {
+        const node = new Node(name); node.layer = this.node.layer; parent.addChild(node);
+        const ui = node.addComponent(UITransform); ui.setContentSize(width, height); ui.setAnchorPoint(.5, .5);
+        node.setPosition(x, y, 0); return node;
     }
-
-    private createButton(): Node {
-        if (!this.cardNode) {
-            throw new Error('Reconnect card is not ready');
-        }
-        const buttonNode = this.createNode('ReturnLoginButton', this.cardNode, 196, 46, 0, -73);
-        const graphics = buttonNode.addComponent(Graphics);
-        graphics.fillColor = new Color(87, 27, 23, 255);
-        graphics.roundRect(-98, -23, 196, 46, 5);
-        graphics.fill();
-        graphics.lineWidth = 1.5;
-        graphics.strokeColor = GOLD;
-        graphics.roundRect(-98, -23, 196, 46, 5);
-        graphics.stroke();
-        graphics.lineWidth = 1;
-        graphics.strokeColor = new Color(224, 191, 126, 100);
-        graphics.roundRect(-91, -16, 182, 32, 3);
-        graphics.stroke();
-
-        const button = buttonNode.addComponent(Button);
-        button.transition = Button.Transition.SCALE;
-        button.zoomScale = 0.96;
-        buttonNode.on(Button.EventType.CLICK, this.onReturnLogin, this);
-
-        this.createLabel('Label', buttonNode, 180, 32, 0, 0, '返回登录', 18, new Color(235, 211, 164, 255));
-        return buttonNode;
+    private makeLabel(name: string, parent: Node, width: number, height: number, y: number, text: string, size: number, color: Color): Label {
+        const label = this.makeNode(name, parent, width, height, 0, y).addComponent(Label);
+        label.string = text; label.fontSize = size; label.lineHeight = height; label.color = color;
+        label.useSystemFont = true; label.fontFamily = 'Microsoft YaHei';
+        label.horizontalAlign = Label.HorizontalAlign.CENTER; label.verticalAlign = Label.VerticalAlign.CENTER;
+        label.overflow = Label.Overflow.CLAMP; label.enableWrapText = false; return label;
     }
-
-    private createLabel(
-        name: string,
-        parent: Node,
-        width: number,
-        height: number,
-        x: number,
-        y: number,
-        text: string,
-        size: number,
-        color: Color,
-    ): Label {
-        const node = this.createNode(name, parent, width, height, x, y);
-        const label = node.addComponent(Label);
-        label.string = text;
-        label.fontSize = size;
-        label.lineHeight = Math.max(size + 4, height);
-        label.color = color;
-        label.horizontalAlign = HorizontalTextAlignment.CENTER;
-        label.verticalAlign = VerticalTextAlignment.CENTER;
-        return label;
-    }
-
-    private createNode(name: string, parent: Node, width: number, height: number, x: number = 0, y: number = 0): Node {
-        const node = new Node(name);
-        node.layer = this.node.layer;
-        const transform = node.addComponent(UITransform);
-        transform.setContentSize(width, height);
-        transform.setAnchorPoint(0.5, 0.5);
-        node.setPosition(x, y, 0);
-        node.setParent(parent);
-        return node;
-    }
-
-    private playIntro(): void {
-        if (!this.opacity || !this.cardNode) {
-            return;
-        }
-        Tween.stopAllByTarget(this.opacity);
-        Tween.stopAllByTarget(this.cardNode);
-        this.opacity.opacity = 0;
-        this.cardNode.setScale(0.965, 0.965, 1);
-        tween(this.opacity).to(0.18, { opacity: 255 }, { easing: 'quadOut' }).start();
-        tween(this.cardNode)
-            .to(0.24, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' })
-            .start();
-    }
-
-    private hideAfterSuccess(): void {
-        if (!this.success || !this.opacity) {
-            return;
-        }
-        Tween.stopAllByTarget(this.opacity);
-        tween(this.opacity)
-            .to(0.24, { opacity: 0 }, { easing: 'quadIn' })
-            .call(() => {
-                this.success = false;
-                this.node.active = false;
-            })
-            .start();
-    }
-
-    private cancelPendingHide(): void {
-        this.unschedule(this.hideAfterSuccess);
-        if (this.opacity) {
-            Tween.stopAllByTarget(this.opacity);
-        }
-    }
-
-    private blockTouch(event: EventTouch): void {
-        event.propagationStopped = true;
-    }
-
     private onReturnLogin(): void {
-        if (!this.failed) {
-            return;
-        }
-        this.scheduleOnce(this.enterLogin, 0.08);
-    }
-
-    private enterLogin(): void {
+        if (this.phase !== 'failed' || this.returning) return;
+        this.returning = true; this.retryButton.getComponent(Button).interactable = false;
         EventMgr.emit(LogicEvent.enterLogin);
     }
 }

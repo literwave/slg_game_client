@@ -70,6 +70,8 @@ const stubs = {
     'map/ui/GeneralHeadLogic': { default: class {} },
     'map/ui/MapUICommand': { default: { getInstance: () => ({ proxy: { getDefenseSoldiers: () => 0 } }) } },
     'common/AudioManager': { AudioManager: { instance: { playClick() {} } } },
+    'world/CityCommand': { default: { getInstance: () => ({ loaded: true, loading: false, at: () => null }) } },
+    'network/pto/ProtocolCommand': { idKey: id => String(id ?? 0), hasId: id => !!id },
 };
 const cache = new Map();
 function load(key) {
@@ -121,10 +123,16 @@ const world = {
     requestInFlight: () => pending,
     occupyResourceLand(id, x, y) { if (pending) return false; pending = true; orders.push({id,x,y}); return true; },
     moveTroop(id, pos) { if (pending) return false; pending = true; orders.push({id,...pos}); return true; },
+    marchRoute: null,
+    clearMarchRoute() { this.marchRoute = null; },
+    previewMarchRoute(troopIdx,targetType,targetPos) {
+        this.marchRoute = {troopIdx,targetType,targetPos,status:'ready',costTime:15.1,path:[{x:0,y:0},targetPos]};
+        return true;
+    },
 };
 class Head extends Component { setHeadId(id) { this.heroId = id; } }
 stubs['general/TroopCommand'] = { default: { getInstance: () => troopCommand } };
-stubs['world/WorldCommand'] = { default: { getInstance: () => world } };
+stubs['world/WorldCommand'] = { MarchTargetType: {Move:4,AttackCity:5,OccupyResource:3}, default: { getInstance: () => world } };
 stubs['general/GeneralCommand'] = { default: { getInstance: () => ({ proxy: {
     getMyGeneral: id => id ? {cfgId: id, level: 10} : null,
     getGeneralCfg: id => ({name: '武将' + id}),
@@ -199,7 +207,7 @@ test('卡片只选择，确认才下令；重复确认不会重复行军', () =>
     assert.equal(row.node.position.y, -152, '选中后第二张卡片仍留在原行');
     s.refreshTroops();
     assert.equal(row.node.position.y, -152, '同步刷新不叠卡');
-    assert.equal(row.labelState.string, '已选中');
+    assert.equal(row.labelState.string, '00:16', '选中行显示服务端预计耗时并向上取整');
     s.onPrimary();
     assert.equal(orders.length, 1); assert.deepEqual(orders[0], {id: 2, x: 373, y: 146});
     assert.equal(s.node.active, false);
@@ -261,5 +269,17 @@ test('横竖屏的空状态、选队列表和按钮都在面板范围内', () =>
             s.onDestroy();
         }
     }
+});
+test('路线未就绪禁止出征，失败能重试，关闭清除预览', () => {
+    const s=setup([troop(1)]), row=s.selectedItem();
+    for(const state of ['loading','unreachable','error']) {
+        world.marchRoute.status=state; s.onRouteChanged();
+        assert.equal(s.primaryAction,state==='error'?'routeRetry':'none');
+        if(state!=='error') { s.onPrimary(); assert.equal(orders.length,0); }
+    }
+    s.onPrimary(); s.onRouteChanged();
+    assert.equal(s.primaryAction,'dispatch'); assert.equal(row.labelState.string,'00:16');
+    s.onDisable(); assert.equal(world.marchRoute,null);
+    s.onDestroy();
 });
 console.log('Troop selection: ' + passed + ' checks passed.');

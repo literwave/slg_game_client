@@ -100,11 +100,11 @@ export function commandArt(parent: Node, name: string, art: string, x: number, y
     let node = parent.getChildByName(name);
     if (!node) { node = new Node(name); node.layer = parent.layer; parent.addChild(node); node.addComponent(UITransform); node.addComponent(Sprite); }
     node.active = !!art; if (!art) return;
-    const frame = WorldMapArt.frame(art), size = frame.originalSize;
+    const size = WorldMapArt.size(art);
     const ratio = Math.min(width / size.width, height / size.height);
     const sprite = node.getComponent(Sprite);
     // Sprite 首次换图会按原图尺寸重置 UITransform，先切换 CUSTOM 再写目标尺寸。
-    sprite.type = Sprite.Type.SIMPLE; sprite.sizeMode = Sprite.SizeMode.CUSTOM; sprite.spriteFrame = frame; sprite.color = Color.WHITE;
+    WorldMapArt.apply(sprite, art, size.width * ratio);
     place(node, x, y, size.width * ratio, size.height * ratio);
 }
 

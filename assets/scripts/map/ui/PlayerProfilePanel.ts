@@ -6,9 +6,9 @@ import { hasId, idKey } from '../../network/pto/ProtocolCommand';
 import { LogicEvent as E } from '../../common/LogicEvent';
 import { ServerConfig as S } from '../../config/ServerConfig';
 import { EventMgr } from '../../utils/EventMgr';
-import DateUtil from '../../utils/DateUtil';
 import { caption, inkSurface, ManagementColors as C, panelButton, place } from './ManagementStyle';
 import { gameCloseButton, taskWindowTrim } from './TaskBoardView';
+import { rankTabIcon } from './RankBoardView';
 
 const { ccclass } = _decorator;
 @ccclass('PlayerProfilePanel')
@@ -40,7 +40,7 @@ export default class PlayerProfilePanel extends Component {
         this.node.addComponent(BlockInputEvents);
         this.safe = this.make('SafeContent', this.node); this.stretch(this.safe); this.safe.addComponent(SafeArea);
         this.panel = this.make('Profile', this.safe);
-        for (const [name, action] of [['Close', () => this.close()], ['Retry', () => this.refresh()], ['Chat', () => this.chat()]] as const) {
+        for (const [name, action] of [['Close', () => this.close()], ['Chat', () => this.chat()]] as const) {
             const b = this.make(name, this.panel); b.addComponent(Button); b.on(Button.EventType.CLICK, action, this);
         }
         const portrait = this.make('Portrait', this.panel); portrait.addComponent(Sprite).sizeMode = Sprite.SizeMode.CUSTOM;
@@ -58,17 +58,24 @@ export default class PlayerProfilePanel extends Component {
         if (!this.panel || !this.node.activeInHierarchy) return;
         const safe = this.safe.getComponent(UITransform), root = this.node.getComponent(UITransform);
         if (safe.width <= 1 || safe.height <= 1) return;
-        const width = Math.max(280, Math.min(510, safe.width - 24)), height = 392;
+        const self = this.isSelf;
+        const width = Math.max(280, Math.min(420, safe.width - 24)), height = self ? 248 : 306;
+        const top = height / 2;
         inkSurface(this.node, 'Scrim', root.width, root.height, new Color(0, 0, 0, 160), null);
         place(this.panel, 0, 0, width, height);
         const scale = Math.min(1, (safe.height - 24) / height, (safe.width - 24) / width);
         this.panel.setScale(scale, scale, 1);
-        inkSurface(this.panel, 'Surface', width, height, C.ink, C.gold); taskWindowTrim(this.panel, width, height);
+        inkSurface(this.panel, 'Surface', width, height, C.ink, C.gold);
+        caption(this.panel, 'Title', self ? '我的资料' : '主公资料', 0, top - 31, width - 124, 28, C.gold, Label.HorizontalAlign.CENTER);
+        taskWindowTrim(this.panel, width, height, 136);
         gameCloseButton(this.panel.getChildByName('Close'), width / 2 - 30, height / 2 - 30);
         const cmd = OtherUserCommand.getInstance(), data = cmd.profiles.get(this.uid), pending = cmd.requestInFlight(`profile:${this.uid}`);
-        caption(this.panel, 'Title', '主公资料', 0, 164, width - 124, 23, C.gold, Label.HorizontalAlign.CENTER);
         const icon = this.panel.getChildByName('Portrait'), sprite = icon.getComponent(Sprite);
-        place(icon, -width / 2 + 64, 91, 66, 66);
+        const portraitX = -width / 2 + 62, portraitY = top - 100;
+        const portraitFrame = inkSurface(this.panel, 'PortraitFrame', 78, 78, C.inset, C.line);
+        portraitFrame.node.setPosition(portraitX, portraitY, 0);
+        portraitFrame.node.setSiblingIndex(this.panel.children.indexOf(icon) - 1);
+        place(icon, portraitX, portraitY, 72, 72);
         const icons = LoginCommand.getInstance().headIcons, iconId = data ? icons.getDisplayId(data.headIcon) : 0;
         const path = data ? icons.getIconPath(iconId) : '';
         if (path !== this.avatarPath) {
@@ -83,33 +90,54 @@ export default class PlayerProfilePanel extends Component {
                 if (sprite.isValid && this.avatarPath === path && frame) { sprite.spriteFrame = frame; icon.active = true; }
             }, () => { if (this.avatarLoading === path) this.avatarLoading = ''; });
         }
-        const nameWidth = width - 140;
-        const name = caption(this.panel, 'Name', data?.name || '主公', 48, 106, nameWidth, 23, C.text);
+        const nameWidth = width - 144;
+        const name = caption(this.panel, 'Name', data?.name || '主公', 44, top - 87, nameWidth, 24, C.text);
         name.isBold = true; name.overflow = Label.Overflow.SHRINK;
-        const id = caption(this.panel, 'Uid', `ID ${this.uid}`, 48, 72, nameWidth, 12, C.muted); id.overflow = Label.Overflow.SHRINK;
-        const presence = data ? data.offlineTime === 0 ? '在线'
-            : data.offlineTime > 1 ? `离线 · ${DateUtil.converTimeStr(data.offlineTime * 1000, 'MM-DD hh:mm')}` : '离线' : '';
-        const presenceLabel = caption(this.panel, 'Presence', presence, 48, 46, nameWidth, 12,
+        const level = this.panel.getChildByName('Level') || this.make('Level', this.panel);
+        place(level, portraitX, portraitY - 34, 60, 22);
+        inkSurface(level, 'Plate', 60, 22, C.inset, C.line);
+        caption(level, 'Text', data ? `Lv.${data.level}` : '—', 0, 0, 56, 13, C.gold, Label.HorizontalAlign.CENTER);
+        level.setSiblingIndex(this.panel.children.length - 1);
+        const narrow = width < 360, idWidth = nameWidth - (narrow ? 0 : 60);
+        const id = caption(this.panel, 'Uid', `ID ${this.uid}`, -width / 2 + 116 + idWidth / 2,
+            top - 114, idWidth, 11, C.muted); id.overflow = Label.Overflow.SHRINK;
+        const presence = data ? data.offlineTime === 0 ? '在线' : '离线' : '';
+        const presenceLabel = caption(this.panel, 'Presence', presence, narrow ? 44 : width / 2 - 50,
+            top - (narrow ? 136 : 114), narrow ? nameWidth : 44, 11,
             data?.offlineTime === 0 ? C.gold : C.muted);
         presenceLabel.overflow = Label.Overflow.SHRINK;
-        const stats = [['主公等级', data?.level], ['主城等级', data?.cityLevel], ['战力', data?.power], ['所属同盟', data ? data.allianceName || '暂无同盟' : undefined]];
-        stats.forEach(([title, value], i) => {
-            const x = (i % 2 ? 1 : -1) * width / 4, y = 15 - Math.floor(i / 2) * 64;
-            caption(this.panel, `StatLabel${i}`, String(title), x, y, width / 2 - 32, 13, C.muted, Label.HorizontalAlign.CENTER);
-            const label = caption(this.panel, `StatValue${i}`, value === undefined ? '—' : String(value), x, y - 24, width / 2 - 32, 20, C.text, Label.HorizontalAlign.CENTER);
-            label.overflow = Label.Overflow.SHRINK;
-        });
-        const status = !cmd.sessionReady ? '连接恢复后可查看资料' : pending ? '正在更新资料…'
-            : cmd.isMissing(this.uid) ? '该主公不存在或资料未开放' : cmd.hasFailed(this.uid) ? '暂未取得资料，可重试' : '';
-        caption(this.panel, 'Status', status, 0, -119, width - 32, 12, C.muted, Label.HorizontalAlign.CENTER);
-        const retry = this.panel.getChildByName('Retry'), chat = this.panel.getChildByName('Chat');
-        panelButton(retry, '刷新', -width / 4, -158, width / 2 - 32, 38);
-        retry.getComponent(Button).interactable = cmd.sessionReady && !pending;
-        panelButton(chat, '私聊', width / 4, -158, width / 2 - 32, 38, true);
-        chat.getComponent(Button).interactable = !!data && cmd.sessionReady && this.uid !== idKey(LoginCommand.getInstance().proxy.getRoleData()?.userId);
+        const innerWidth = width - 48, powerWidth = (innerWidth - 12) * .6, cityWidth = innerWidth - 12 - powerWidth;
+        for (const [key, iconIndex, value, x, span] of [
+            ['Power', 0, data ? String(data.power) : '—', -innerWidth / 2 + powerWidth / 2, powerWidth],
+            ['City', 1, data ? `Lv.${data.cityLevel}` : '—', innerWidth / 2 - cityWidth / 2, cityWidth],
+        ] as const) {
+            const stat = this.panel.getChildByName(key) || this.make(key, this.panel);
+            place(stat, x, top - 178, span, 48); inkSurface(stat, 'Plate', span, 48, C.inset, null);
+            rankTabIcon(stat, iconIndex, -span / 2 + 22, iconIndex === 0);
+            const label = caption(stat, 'Value', value, 21, 0, span - 50, iconIndex === 0 ? 24 : 19,
+                iconIndex === 0 ? C.gold : C.text);
+            label.isBold = iconIndex === 0; label.overflow = Label.Overflow.SHRINK;
+        }
+        const status = !cmd.sessionReady ? '连接中…' : !data ? pending ? '加载中…'
+            : cmd.isMissing(this.uid) ? '暂无资料' : cmd.hasFailed(this.uid) ? '加载失败' : '' : '';
+        const alliance = this.panel.getChildByName('Alliance') || this.make('Alliance', this.panel);
+        place(alliance, 0, top - 222, innerWidth, 32); alliance.active = !!data && !status;
+        const seal = inkSurface(alliance, 'Seal', 24, 24, C.panel, C.line);
+        seal.node.setPosition(-innerWidth / 2 + 22, 0, 0);
+        caption(alliance, 'Symbol', '盟', -innerWidth / 2 + 22, 0, 22, 14, C.gold, Label.HorizontalAlign.CENTER);
+        caption(alliance, 'Name', data?.allianceName || '无同盟', 21, 0, innerWidth - 50, 15,
+            data?.allianceName ? C.text : C.muted).overflow = Label.Overflow.SHRINK;
+        const statusLabel = caption(this.panel, 'Status', status, 0, top - 222, innerWidth, 13, C.muted, Label.HorizontalAlign.CENTER);
+        statusLabel.node.active = !!status;
+        const chat = this.panel.getChildByName('Chat');
+        chat.active = !self;
+        if (!self) panelButton(chat, '私聊', 0, -height / 2 + 32, Math.min(200, width - 48), 40, true);
+        chat.getComponent(Button).interactable = !self && !!data && cmd.sessionReady;
     }
+    private get isSelf(): boolean { return this.uid === idKey(LoginCommand.getInstance().proxy.getRoleData()?.userId); }
     private chat(): void {
-        const profile = OtherUserCommand.getInstance().profiles.get(this.uid); if (!profile) return;
+        const cmd = OtherUserCommand.getInstance(), profile = cmd.profiles.get(this.uid);
+        if (this.isSelf || !profile || !cmd.sessionReady) return;
         this.close(); EventMgr.emit(E.openPrivateChat, { id: profile.uid, name: profile.name, headIcon: profile.headIcon });
     }
     close(): void { this.node.active = false; }

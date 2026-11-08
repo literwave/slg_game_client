@@ -24,6 +24,8 @@ function unwrapTroop(serverData: any): any {
 /** 部队数据 */
 export class TroopData {
     troopIdx: number = 0;
+    /** 服务器 TroopState；本地不根据计时器修改业务状态。 */
+    troopState: number = 0;
     heroPositions: Map<number, number> = new Map<number, number>();
     private soldiers = new Map<number, SoldierInfo>();
 
@@ -34,6 +36,7 @@ export class TroopData {
         }
 
         const troop = unwrapTroop(serverData);
+        data.troopState = Number(troop.troopState) || 0;
         data.troopIdx = Number(troop.troopIdx != null ? troop.troopIdx : (troop.troop_idx != null ? troop.troop_idx : data.troopIdx));
         data.heroPositions.clear();
 

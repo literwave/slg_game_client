@@ -1,6 +1,6 @@
 import type { MarchInfo, WorldEntity, WorldPosition } from './WorldCommand';
 
-/** 仅用于显示；AOI 实体没有 troopIdx，不伪造本人的行军数据。 */
+/** 仅用于显示，不将 AOI 快照写回本人的行军业务状态。 */
 export type MarchMotion = Pick<MarchInfo, 'startPos' | 'endPos' | 'startTime' | 'endTime' | 'state' | 'path'>;
 
 export interface MarchPath {

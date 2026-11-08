@@ -828,8 +828,8 @@
   },
   {
     "Id": 11009,
-    "Name": "董卓sp碎片",
-    "Desc": "用于合成或升星武将「董卓sp」",
+    "Name": "典韦碎片",
+    "Desc": "用于合成或升星武将「典韦」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1009",
     "Quality": 5,
     "BuyDiamond": 20,
@@ -843,8 +843,8 @@
   },
   {
     "Id": 11010,
-    "Name": "吕布sp碎片",
-    "Desc": "用于合成或升星武将「吕布sp」",
+    "Name": "张辽碎片",
+    "Desc": "用于合成或升星武将「张辽」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1010",
     "Quality": 5,
     "BuyDiamond": 20,
@@ -933,8 +933,8 @@
   },
   {
     "Id": 11016,
-    "Name": "刘备sp碎片",
-    "Desc": "用于合成或升星武将「刘备sp」",
+    "Name": "刘备碎片",
+    "Desc": "用于合成或升星武将「刘备」",
     "Icon": "ui/item_icons/hero_fragments/fragment_1016",
     "Quality": 5,
     "BuyDiamond": 20,
@@ -1091,6 +1091,366 @@
     "useParams": [
       {
         "hero_id": 1026
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11027,
+    "Name": "郭嘉碎片",
+    "Desc": "用于合成或升星武将「郭嘉」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1027",
+    "Quality": 5,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1027
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11028,
+    "Name": "夏侯惇碎片",
+    "Desc": "用于合成或升星武将「夏侯惇」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1028",
+    "Quality": 4,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1028
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11029,
+    "Name": "黄忠碎片",
+    "Desc": "用于合成或升星武将「黄忠」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1029",
+    "Quality": 5,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1029
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11030,
+    "Name": "魏延碎片",
+    "Desc": "用于合成或升星武将「魏延」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1030",
+    "Quality": 4,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1030
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11031,
+    "Name": "甘宁碎片",
+    "Desc": "用于合成或升星武将「甘宁」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1031",
+    "Quality": 4,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1031
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11032,
+    "Name": "颜良碎片",
+    "Desc": "用于合成或升星武将「颜良」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1032",
+    "Quality": 4,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1032
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11033,
+    "Name": "荀彧碎片",
+    "Desc": "用于合成或升星武将「荀彧」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1033",
+    "Quality": 5,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1033
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11034,
+    "Name": "曹仁碎片",
+    "Desc": "用于合成或升星武将「曹仁」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1034",
+    "Quality": 4,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1034
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11035,
+    "Name": "张郃碎片",
+    "Desc": "用于合成或升星武将「张郃」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1035",
+    "Quality": 4,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1035
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11036,
+    "Name": "庞统碎片",
+    "Desc": "用于合成或升星武将「庞统」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1036",
+    "Quality": 5,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1036
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11037,
+    "Name": "徐庶碎片",
+    "Desc": "用于合成或升星武将「徐庶」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1037",
+    "Quality": 4,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1037
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11038,
+    "Name": "关平碎片",
+    "Desc": "用于合成或升星武将「关平」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1038",
+    "Quality": 3,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1038
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11039,
+    "Name": "太史慈碎片",
+    "Desc": "用于合成或升星武将「太史慈」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1039",
+    "Quality": 4,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1039
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11040,
+    "Name": "鲁肃碎片",
+    "Desc": "用于合成或升星武将「鲁肃」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1040",
+    "Quality": 4,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1040
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11041,
+    "Name": "华雄碎片",
+    "Desc": "用于合成或升星武将「华雄」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1041",
+    "Quality": 3,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1041
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11042,
+    "Name": "高顺碎片",
+    "Desc": "用于合成或升星武将「高顺」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1042",
+    "Quality": 3,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1042
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11043,
+    "Name": "李典碎片",
+    "Desc": "用于合成或升星武将「李典」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1043",
+    "Quality": 3,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1043
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11044,
+    "Name": "乐进碎片",
+    "Desc": "用于合成或升星武将「乐进」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1044",
+    "Quality": 4,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1044
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11045,
+    "Name": "周仓碎片",
+    "Desc": "用于合成或升星武将「周仓」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1045",
+    "Quality": 3,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1045
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11046,
+    "Name": "廖化碎片",
+    "Desc": "用于合成或升星武将「廖化」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1046",
+    "Quality": 3,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1046
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11047,
+    "Name": "蒋钦碎片",
+    "Desc": "用于合成或升星武将「蒋钦」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1047",
+    "Quality": 3,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1047
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11048,
+    "Name": "丁奉碎片",
+    "Desc": "用于合成或升星武将「丁奉」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1048",
+    "Quality": 3,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1048
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11049,
+    "Name": "张梁碎片",
+    "Desc": "用于合成或升星武将「张梁」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1049",
+    "Quality": 3,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1049
+      }
+    ],
+    "Kind": 8,
+    "Overlap": 9999
+  },
+  {
+    "Id": 11050,
+    "Name": "潘凤碎片",
+    "Desc": "用于合成或升星武将「潘凤」",
+    "Icon": "ui/item_icons/hero_fragments/fragment_1050",
+    "Quality": 2,
+    "BuyDiamond": 20,
+    "useParams": [
+      {
+        "hero_id": 1050
       }
     ],
     "Kind": 8,

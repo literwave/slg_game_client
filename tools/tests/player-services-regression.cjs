@@ -147,10 +147,10 @@ tasks.push({ taskId: 1002, taskType: 1, progress: 1, state: 0 },
     { taskId: 1003, taskType: 1, progress: 2, state: 2 }, { taskId: 1004, taskType: 1, progress: 0, state: 9 });
 panel.show('tasks');
 const taskNames = () => panel.content.children.map(row => row.getChildByName('Heading').getComponent(Label).string);
-assert.deepEqual(taskNames(), ['营建根基', presentation.taskPresentation(tasks[0]).name], '仅列进行中与待领取，进行中排在前面');
+assert.deepEqual(taskNames(), [presentation.taskPresentation(tasks[0]).name, '营建根基'], '仅列进行中与待领取，待领取排在前面');
 assert.equal(panel.footer.getChildByName('Status').getComponent(Label).string, '1 项进行中 · 1 项待领取');
-assert.equal(panel.content.children[0].getChildByName('Action').getComponent(Button).interactable, false);
-assert.equal(panel.content.children[1].getChildByName('Action').getComponent(Button).interactable, true);
+assert.equal(panel.content.children[0].getChildByName('Action').getComponent(Button).interactable, true);
+assert.equal(panel.content.children[1].getChildByName('Action').getComponent(Button).interactable, false);
 tasks[0].state = 2; panel.queueRefresh(); panel.scheduled();
 assert.deepEqual(taskNames(), ['营建根基'], '收到领取确认后自动移除该行');
 assert.equal(panel.footer.getChildByName('Refresh'), undefined);
@@ -176,7 +176,7 @@ progression.tasksLoaded = true; pending.clear(); panel.queueRefresh(); panel.sch
 assert.equal(panel.taskType, 3, '首次异步收到任务后定位到可进行分类');
 assert.deepEqual(taskNames(), [presentation.taskPresentation(tasks[0]).name]);
 tasks.splice(0, tasks.length, ...taskSnapshot); panel.taskType = 1; panel.show('tasks');
-console.log('PASS 进行中优先、已领取移出、确认后刷新、默认分类与手动分类保留');
+console.log('PASS 待领取优先、已领取移出、确认后刷新、默认分类与手动分类保留');
 
 panel.show('mail'); panel.content.children[0].click();
 assert.deepEqual(sent.at(-1), ['mail-detail', 1, uid]);
@@ -273,9 +273,30 @@ assert.ok(panel.footer.getChildByName('MyRank').getChildByName('Score').getCompo
 assert.ok(panel.content.getChildByName('Rank1').getChildByName('RankBadge'));
 assert.ok(panel.content.getChildByName('Rank1').getChildByName('Portrait'));
 assert.ok(panel.content.children.every(row => !row.children.some(n => n.getComponent(Button))), '排行条目仅展示，不提供私聊入口');
+{
+    const events = load('utils/EventMgr').EventMgr, E = load('common/LogicEvent').LogicEvent, target = {};
+    let opened;
+    events.on(E.openPlayerProfile, uid => opened = uid, target);
+    panel.content.getChildByName('Rank1').click(); assert.equal(opened, '1', '榜单里的自己可查看资料');
+    opened = null;
+    panel.footer.getChildByName('MyRank').click(); assert.equal(opened, '1', '尚未上榜也能从我的排名查看自己的资料');
+    panel.content.getChildByName('Rank2').click(); assert.equal(opened, '2', '他人条目仍查看对应玩家');
+    events.targetOff(target);
+    console.log('PASS 排行榜本人条目与底部我的排名入口一致，他人条目保留目标身份');
+}
 panel.footer.getChildByName('Next').click(); assert.deepEqual(sent.at(-1), ['rank', 1, 21, 20]);
 panel.filters.children[1].click(); assert.deepEqual(sent.at(-1), ['rank', 2, 1, 20]);
 console.log('PASS 排行榜类型切换、分页和超大分值显示');
+
+{
+    rank.pages.set('4:1:20', { selfRank: { uid: '1', rank: 1, name: '我的同盟', score: '100' },
+        rankList: [{ uid: '1', rank: 1, name: '同盟', score: '100' }] });
+    panel.filters.children[3].click();
+    assert.equal(panel.footer.getChildByName('MyRank').getComponent(Button), null, '同盟 ID 不得当作玩家 ID 打开自己资料');
+    assert.equal(panel.content.getChildByName('Rank1').getComponent(Button), null);
+    panel.filters.children[1].click();
+    console.log('PASS 同盟榜不误用个人资料入口');
+}
 
 let beforeSync = sent.length;
 panel.update(29); assert.equal(sent.length, beforeSync);
@@ -410,9 +431,12 @@ assert.equal(body.getChildByName('ActionText'), undefined);
 assert.equal(body.getChildByName('RewardHint'), undefined, '移除通用小金匣');
 const rewardRow = body.getChildByName('TaskRewards');
 assert.equal(rewardRow.active, true);
-assert.equal(rewardRow.children.filter(node => node.active).length, 2);
-assert.deepEqual(rewardRow.children.slice(0, 2).map(node => node.getChildByName('Count').getComponent(Label).string), ['×500', '×500']);
-assert.ok(rewardRow.children.slice(0, 2).every(node => node.getChildByName('Icon').getComponent(Sprite).enabled));
+const firstTaskRewards = configs.MainTask.find(row => row.Id === tracker.current.taskId).Reward;
+const visibleRewards = rewardRow.children.filter(node => node.active);
+assert.equal(visibleRewards.length, firstTaskRewards.length, '当前任务的每项配置奖励都应显示');
+assert.deepEqual(visibleRewards.map(node => node.getChildByName('Count').getComponent(Label).string),
+    firstTaskRewards.map(reward => `×${reward.item_count.toLocaleString()}`), '奖励数量应与真实配置逐项一致');
+assert.ok(visibleRewards.every(node => node.getChildByName('Icon').getComponent(Sprite).enabled));
 const firstFrame = rewardRow.children[0].getChildByName('Icon').getComponent(Sprite).spriteFrame, loadsBeforeClaim = loadedIcons.length;
 assert.equal(tracker.claimPulse, true);
 const claimsBefore = sent.filter(p => p[0] === 'task-claim').length;
@@ -456,7 +480,8 @@ tasks.push({ taskId: 1003, taskType: 1, progress: 1, state: 0 });
 pending.delete(S.c2s_req_task_list); EventMgr.emit(E.updateTasks); flush();
 assert.equal(tracker.current.taskId, 1003);
 assert.equal(body.getChildByName('TaskDetail').getComponent(Label).string, presentation.taskPresentation(tasks.find(t => t.taskId === 1003)).detail);
-assert.equal(body.getChildByName('TaskProgress').getComponent(Label).string, '1/2');
+const nextTaskTarget = configs.MainTask.find(row => row.Id === 1003).Target;
+assert.equal(body.getChildByName('TaskProgress').getComponent(Label).string, `1/${nextTaskTarget}`, '进度目标随真实任务配置更新');
 assert.equal(rewardRow.active, true, '进行中仍直接展示真实奖励');
 assert.equal(trackerNode.getChildByName('RewardGlow').active, false);
 assert.equal(body.getComponent(Button).interactable, false, '未完成任务不发领奖请求');
@@ -514,7 +539,7 @@ assert.equal(body.getComponent(Button).interactable, false);
 assert.equal(body.getChildByName('TaskTitle').getComponent(Label).string, '连接恢复后自动同步任务');
 progression.sessionReady = true; EventMgr.emit(E.protocolRequestChanged); flush();
 assert.equal(tracker.current.taskId, 1003, '会话恢复后任务卡重新显示服务端任务');
-assert.equal(body.getChildByName('TaskProgress').getComponent(Label).string, '1/2');
+assert.equal(body.getChildByName('TaskProgress').getComponent(Label).string, `1/${nextTaskTarget}`, '会话恢复后沿用真实任务目标');
 assert.equal(body.getChildByName('TaskDetail').active, true);
 tracker.onDestroy(); assert.equal(EventMgr.targetInName.has(tracker), false);
 assert.equal(presentation.trackedTask([{ taskId: 1001, taskType: 1, state: 0 }, { taskId: 1002, taskType: 1, state: 1 }]).taskId, 1001);

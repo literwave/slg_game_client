@@ -1,0 +1,18 @@
+{
+  "purpose": "重做地图攻城表现：持盾投掷、错峰两排、独立飞行与墙面命中",
+  "references": [
+    "https://staging.ageofempires.com/news/age-of-empires-iv-season-nine-update-preview-12-0-1974/",
+    "https://community.lingxigames.com/m/s1/strategy_detail/16273"
+  ],
+  "referenceUse": "仅参考战场层次、抛物线和守军/城防阶段，不复制游戏美术",
+  "asset": "assets/resources/ui/march/siege-assault-infantry-v2.png",
+  "source": "原创生成透明动作图集，经 Image Core 等比整理为 1280×1280，AssetDB 导入",
+  "grid": { "columns": 8, "rows": 8, "cell": 160 },
+  "directions": ["E", "NE", "N", "NW", "W", "SW", "S", "SE"],
+  "poses": ["准备", "举火", "引臂", "投出", "随挥", "收臂", "重新持火", "待命"],
+  "registration": { "pivot": [0.53, 0.025], "scale": 0.88, "tint": [255, 255, 255, 255] },
+  "timing": { "cycleSeconds": 3.2, "releaseSeconds": 0.76, "columnDelay": 0.24, "rankDelay": 0.9 },
+  "commander": "后方驻马指挥：siege-commander-v2 五视角四十帧，镜像覆盖八方向；举枪号令先于首排投掷，第二排出手后收势。固定落蹄、尺寸与颜色，撤退恢复行军；参数和提示词见 siege-commander-v2.json",
+  "effects": "弹体到达时才显示命中；守军阶段为土尘，城墙阶段为碎石；烟火随服务端城防比例出现",
+  "authority": "只改变客户端视觉，不修改服务器战斗、耐久或回城规则"
+}

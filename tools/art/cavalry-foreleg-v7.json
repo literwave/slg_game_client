@@ -1,0 +1,24 @@
+{
+  "purpose": "修复浅前斜及镜像前蹄卷曲、换腿身份混乱",
+  "method": "分段素材 + 连续四拍步态 + 固定骨长 IK + 躯干遮挡内的连接点调整",
+  "asset": "assets/resources/ui/march/commander_foreleg_rig_v7.png",
+  "atlas": {
+    "width": 1774,
+    "height": 887,
+    "parts": 7
+  },
+  "prompt": "Use the supplied cavalry character as an exact visual reference. Create a production-ready CUTOUT ANIMATION PARTS atlas, not an animation sequence. Transparent background, 4 columns x 2 rows, eight equal square cells, no labels, no lines. Maintain the same shallow FRONT THREE-QUARTER perspective looking down at the chestnut horse, facing bottom-right; same armored Chinese commander with red cape and spear. Realistic painted strategy-game sprite.\n\nCELL 1 (top left): the entire horse TORSO, head, neck, mane, tail, saddle, tack and rider with spear, with ALL FOUR LEGS REMOVED from just below the shoulder and hip. Smooth rounded attachment stubs at the shoulder and haunch; no hanging hooves or lower legs. It is an isolated body plate for a skeletal animation rig. Keep the rider, head, torso and tail exactly like the reference. Spear and tail fully within frame with generous transparent margins.\nCELL 2: a single near FRONT upper-leg cutout, chestnut coat, shaped naturally from shoulder attachment down to rounded knee joint. Draw vertically, attachment at top, knee at bottom. No hoof. A straight slightly tapered organic segment.\nCELL 3: a single FRONT lower-leg cutout from rounded knee attachment down to fetlock, nearly straight vertically, thin chestnut/dark brown horse shin. No hoof. Rounded overlap ends.\nCELL 4: one compact DARK HORSE HOOF, side/front three-quarter view, flat sole at bottom and fetlock attachment centered at top. Normal sturdy short capsule/wedge, absolutely no curled toe.\nCELL 5 (bottom left): a single HIND upper-leg cutout from haunch attachment down to hock, muscular chestnut top tapering to angular hock below. Draw vertically with top attachment and bottom joint.\nCELL 6: single HIND lower-leg cutout from hock down to fetlock, straight vertical lean brown shin, rounded overlap ends, no hoof.\nCELL 7: a second compact hind HOOF with flat sole, like cell 4.\nCELL 8: completely empty transparent.\nDraw parts separately, fully isolated with wide transparent space, each part contained within its own cell. All parts should use the same light direction, texture, coat color and painting fidelity. The leg parts may be enlarged within their cells for clear detail; they will be resized to fit by the animator. These are individual solid pieces for two-bone IK, not bent moving leg poses, not skeleton bones, no joints drawn as circles, no guides, no shadows or glow.",
+  "rejectedCandidates": [
+    "12帧候选一：错误侧视角和重复六帧",
+    "12帧候选二：前腿仍未交换支撑"
+  ],
+  "viewScope": [
+    "shallow front right",
+    "mirrored shallow front left"
+  ],
+  "notes": [
+    "前腿支撑屈角12度，摆动至28度；蹄底不继承小腿转角。",
+    "相位沿用共享行军时钟；不宣称全速度下世界坐标脚底锁定。",
+    "后腿独立四拍相位，攻城和其余视角保留原动画。"
+  ]
+}

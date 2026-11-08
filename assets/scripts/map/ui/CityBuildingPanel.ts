@@ -79,8 +79,9 @@ export default class CityBuildingPanel extends Component {
     private frames = new Map<string, SpriteFrame>();
     private loadingFrames = new Map<string, Promise<SpriteFrame>>();
     private imageKeys = new WeakMap<Sprite, string>();
+    private preparingView = false;
 
-    /** 在进场遮罩下准备布局，仅使用本地快照，不触发建造或刷新请求。 */
+    /** 在不可见时准备建筑卡片与图片，仅使用本地快照。 */
     public prepareView(): void {
         if (!this.panel) this.build();
         // 与首次打开选择相同的下一级目标，复用已准备的建筑图节点。
@@ -88,7 +89,8 @@ export default class CityBuildingPanel extends Component {
         this.selected = 1;
         this.selectedLevel = this.nextLevel(1);
         this.detailOnly = false;
-        this.layout();
+        this.preparingView = true;
+        try { this.layout(); } finally { this.preparingView = false; }
     }
 
     show(cityId: number): void {
@@ -165,11 +167,6 @@ export default class CityBuildingPanel extends Component {
         this.actionHint = caption(this.detail, 'ActionHint', '', 0, 0, 280, 13, C.muted, Label.HorizontalAlign.CENTER);
         this.node.on(Node.EventType.SIZE_CHANGED, this.queueLayout, this);
         this.safe.on(Node.EventType.SIZE_CHANGED, this.queueLayout, this);
-        view.on('canvas-resize', this.queueLayout, this);
-        view.on('design-resolution-changed', this.queueLayout, this);
-        for (const event of [LogicEvent.updateCityBuilds, LogicEvent.protocolRequestChanged, LogicEvent.upateMyRoleRes]) {
-            EventMgr.on(event, this.refresh, this);
-        }
     }
 
     private visible(cfg: FacilityConfig): boolean {
@@ -367,14 +364,14 @@ export default class CityBuildingPanel extends Component {
     }
 
     private refresh(): void {
-        if (!this.panel || !this.node.activeInHierarchy) return;
+        if (!this.panel || (!this.node.activeInHierarchy && !this.preparingView)) return;
         const b = BuildCommand.getInstance(), configs = MapUICommand.getInstance().proxy.getFacilityConfigs();
         const balances = this.resourceBalances();
         const known = b.loaded;
         this.selectedLevel = Math.max(this.selectedLevel, b.levels.get(this.selected) || 0);
         const built = configs.filter(cfg => (b.levels.get(cfg.type) || 0) > 0).length;
         this.summary.string = known ? `主城 ${b.levels.get(1) || 0} 级     ·     已建 ${built}/${configs.length}` : '正在读取城内建筑…';
-        this.updateSyncRetry();
+        if (!this.preparingView) this.updateSyncRetry();
         this.status.string = !b.sessionReady ? '等待连接' : b.loading || this.retryScheduled ? '正在同步建筑…' :
             b.loadError ? '暂时无法同步，请稍后重新进入' : known ? '' : '等待建筑数据';
         this.status.node.active = !!this.status.string;
@@ -581,7 +578,18 @@ export default class CityBuildingPanel extends Component {
         b.requestBuildings();
     };
 
+    protected onEnable(): void {
+        view.on('canvas-resize', this.queueLayout, this);
+        view.on('design-resolution-changed', this.queueLayout, this);
+        for (const event of [LogicEvent.updateCityBuilds, LogicEvent.protocolRequestChanged, LogicEvent.upateMyRoleRes]) {
+            EventMgr.on(event, this.refresh, this);
+        }
+    }
+
     protected onDisable(): void {
+        EventMgr.targetOff(this);
+        view.off('canvas-resize', this.queueLayout, this);
+        view.off('design-resolution-changed', this.queueLayout, this);
         this.unschedule(this.retrySync); this.retryScheduled = false;
     }
 

@@ -24,6 +24,11 @@ export default class SkillLogic extends Component {
     private triggerFilter = 0;
     private items: Skill[] = [];
 
+    public prepareView(): void {
+        this.ensureView().refreshSize();
+        this.onSkillList();
+    }
+
     protected onEnable():void{
         this.ensureView().refreshSize();
         EventMgr.on(LogicEvent.skillListInfo, this.onSkillList, this);

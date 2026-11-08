@@ -370,6 +370,37 @@ test('city sidebar jump restores startup scale from every stage and cancels unfi
 });
 
 
+test('troop location cancels unfinished zoom and keeps the visible scale until an explicit zoom', () => {
+    const source = fs.readFileSync(path.join(root, 'assets/scripts/scene/MapScene.ts'), 'utf8');
+    const ast = ts.createSourceFile('MapScene.ts', source, ts.ScriptTarget.Latest, true);
+    const method = ast.statements.find(ts.isClassDeclaration).members.find(m => m.name?.getText(ast) === 'onScrollToMap');
+    const code = ts.transpileModule('class Route {' + method.getText(ast) + '}',
+        { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText;
+    const effects = [];
+    const route = new Function('MapLogic', 'EventMgr', 'LogicEvent', 'Vec2', code + ';return Route.prototype.onScrollToMap;')
+        (MapLogic, {emit:(...args)=>effects.push(args)}, {beforeScrollToMap:'cloud'}, Vec2);
+    for (const stage of [0,1,2,3,4]) for (const unfinished of [false,true]) {
+        const logic = makeLogic(); logic.zoomToStage(stage, new Vec2(640,360)); settleZoom(logic);
+        if (unfinished) {logic.zoomToStage(stage===4?0:4,new Vec2(900,600));logic.update(1/60);}
+        const height=logic._mapCamera.orthoHeight, target=new Vec2(81.25,110.75);
+        logic._pendingCameraX=999;logic._pendingCameraY=999;logic._moveDirty=true;
+        for(let i=0;i<3;i++) {
+            route.call({node:{getComponent:()=>logic}},target.x,target.y,'preserve-zoom');
+            assert.equal(logic._zooming,false);near(logic._targetHeight,height);near(logic._mapCamera.orthoHeight,height);
+            const pixel=MapUtil.mapCellToPixelPoint(target);
+            near(logic._mapCamera.node.position.x,pixel.x);near(logic._mapCamera.node.position.y,pixel.y);
+            for(let frame=0;frame<40;frame++)logic.update(1/60);
+            logic.resumeZoomStage();logic.onViewportResize();
+            near(logic._mapCamera.orthoHeight,height);assert.equal(logic._zooming,false);
+        }
+        logic.onTouchBegan(touch());logic.onTouchMove(touch(20,10));logic.onTouchEnd(touch(20,10));
+        settleZoom(logic);near(logic._mapCamera.orthoHeight,height);
+        logic.zoomToStage(stage===4?0:4,new Vec2(640,360));settleZoom(logic);
+        assert.equal(logic._preserveLocatedScale,false,'主动缩放可以继续正常切档');
+    }
+    assert.deepEqual(effects,[],'队伍定位不播放远距离云层过场');
+});
+
 test('whole-map explicit focus survives release resize and city return until the next explicit zoom', () => {
     const logic = makeLogic(), home = new Vec2(80, 110);
     logic.zoomToStage(4, new Vec2(640, 360)); settleZoom(logic);
@@ -756,6 +787,7 @@ test('campaign landscape matches expanded grid and keeps rivers off playable res
 const terrainArt = { landscape: { riverCells: [MapUtil.getIdByCellPoint(10, 10)] } };
 const MapTouchLogic = load('assets/scripts/map/MapTouchLogic.ts', {
     './MapClickUILogic': {}, './MapCommand': {}, './MapUtil': { default: MapUtil },
+    './MapArmyLogic': { default: class {} }, './MapLogic': { default: MapLogic },
     './WorldLandscape': { default: class {} }, './WorldMapArt': { default: terrainArt },
     './WorldCampaign': { default: { config: null } },
     './GateGeometry': load('assets/scripts/map/GateGeometry.ts', { './BridgeSilhouette': load('assets/scripts/map/BridgeSilhouette.ts', {}) }),
@@ -767,7 +799,7 @@ const MapTouchLogic = load('assets/scripts/map/MapTouchLogic.ts', {
 test('blocked terrain clicks are silent and preserve the current selection', () => {
     const logic = new MapTouchLogic(); let mountain = new Vec2(5, 6), removed = 0, calls = 0;
     const existing = { id: 12345, name: '原选中部队目标' }; let selected = existing;
-    logic.node = { getComponentInChildren: () => ({ blockerAt: () => mountain }) };
+    logic.node = { getComponent: () => null, getComponentInChildren: () => ({ blockerAt: () => mountain }) };
     logic._cmd = { cityProxy: { getCity: () => null }, buildProxy: { getBuild: () => null },
         proxy: { getResData: () => ({ id: 2010, x: 10, y: 10, type: 0 }), getSysCityResData: () => null } };
     logic.showClickUINode = data => { selected = data; calls++; };
@@ -785,5 +817,75 @@ test('blocked terrain clicks are silent and preserve the current selection', () 
     logic.onTouchMap(new Vec2(10,10),new Vec2(),new Vec2());
     assert.equal(selected.type,52,'资源地仍能选中');assert.equal(calls,2);
 });
+
+test('selected troop keeps camera on its moving position at every zoom without refocusing clouds', () => withClock(advance => {
+    const source = fs.readFileSync(path.join(root, 'assets/scripts/scene/MapScene.ts'), 'utf8');
+    const ast = ts.createSourceFile('MapScene.ts', source, ts.ScriptTarget.Latest, true);
+    const method = ast.statements.find(ts.isClassDeclaration).members.find(m => m.name?.getText(ast) === 'onScrollToMap');
+    const code = ts.transpileModule('class Route {' + method.getText(ast) + '}',
+        { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText;
+    class Armies {}
+    const effects = [], requested = [];
+    const route = new Function('MapLogic', 'MapArmyLogic', 'EventMgr', 'LogicEvent', 'Vec2', code + ';return Route.prototype.onScrollToMap;')
+        (MapLogic, Armies, {emit:(...args)=>effects.push(args)}, {beforeScrollToMap:'cloud'}, Vec2);
+    for (const stage of [0,1,2,3,4]) {
+        const logic = makeLogic(); logic.zoomToStage(stage,new Vec2(640,360));settleZoom(logic);
+        const height=logic._mapCamera.orthoHeight;
+        let position=MapUtil.mapCellToPixelPoint(new Vec2(80,110));
+        const armies={troopMapPosition:idx=>{requested.push(idx);return position;}};
+        route.call({node:{getComponent:Type=>Type===Armies?armies:logic}},80,110,'preserve-zoom',2);
+        let syncs=0; const sync=logic._cmd.proxy.setCurCenterPoint;
+        logic._cmd.proxy.setCurCenterPoint=(...args)=>{syncs++;sync(...args);};
+        for(let i=0;i<60;i++) {
+            position=MapUtil.mapCellToPixelPoint(new Vec2(80+i*.005,110+i*.01));
+            advance(1000/60);logic.update(1/60);logic.lateUpdate();
+            near(logic._mapCamera.node.position.x,position.x);near(logic._mapCamera.node.position.y,position.y);
+            near(logic._mapCamera.orthoHeight,height);
+        }
+        assert.ok(syncs>=10&&syncs<=13,'地图中心按原 80ms 节流，不能每帧拉取 AOI');
+        advance(100);logic.lateUpdate();const settled=syncs;
+        for(let i=0;i<60;i++){advance(17);logic.lateUpdate();}
+        assert.equal(syncs,settled,'驻留部队不重复刷新地图');
+        logic.onViewportResize();logic.lateUpdate();near(logic._mapCamera.node.position.x,position.x);
+        position=null;logic.lateUpdate();const end=logic.curCameraPoint();
+        position=new Vec2(0,0);logic.lateUpdate();assert.deepEqual(logic.curCameraPoint(),end,'部队消失后不再移动镜头');
+    }
+    assert.ok(requested.length>0&&requested.every(idx=>idx===2));assert.deepEqual(effects,[]);
+}));
+
+test('follow yields to manual drag or map navigation and resumes only on a fresh troop selection', () => {
+    const logic=makeLogic();let target=new Vec2(200,300);
+    const select=()=>{logic.scrollToMapPoint(new Vec2(80,110),'preserve-zoom');logic.followMapTarget(()=>target);logic.lateUpdate();};
+    select();logic.onTouchBegan(touch());logic.onTouchMove(touch(3,2));
+    logic.onTouchCancel(touch());target=new Vec2(230,330);logic.lateUpdate();
+    near(logic._mapCamera.node.position.x,230);
+    logic.onTouchBegan(touch());logic.onTouchMove(touch(30,10));logic.onTouchEnd(touch(30,10));
+    const dragged=logic.curCameraPoint();target=new Vec2(600,700);logic.lateUpdate();assert.deepEqual(logic.curCameraPoint(),dragged);
+    select();near(logic._mapCamera.node.position.x,600);
+    logic.onTouchBegan(touch());logic.onTouchEnd(touch());const land=logic.curCameraPoint();
+    target=new Vec2(800,900);logic.lateUpdate();assert.deepEqual(logic.curCameraPoint(),land,'点地块解除跟随');
+    select();logic.scrollToMapPoint(new Vec2(20,40),'player-city');const city=logic.curCameraPoint();
+    target=new Vec2(900,1000);logic.lateUpdate();assert.deepEqual(logic.curCameraPoint(),city,'回主城不被跟随抢回镜头');
+    select();logic.onDisable();const disabled=logic.curCameraPoint();target=new Vec2();logic.lateUpdate();
+    assert.deepEqual(logic.curCameraPoint(),disabled,'退出地图解除跟随');
+});
+
+test('wheel and pinch can change zoom while retaining the selected troop in the center', () => withClock(advance => {
+    const logic=makeLogic();let target=MapUtil.mapCellToPixelPoint(new Vec2(80,110));
+    logic.scrollToMapPoint(new Vec2(80,110),'preserve-zoom');logic.followMapTarget(()=>target);logic.lateUpdate();
+    for(let stage=0;stage<5;stage++){
+        advance(300);logic.onMouseWheel(wheel(-600,1000,600));
+        for(let frame=0;frame<100;frame++){
+            target.x+=.5;advance(17);logic.update(1/60);logic.lateUpdate();
+            near(logic._mapCamera.node.position.x,target.x);near(logic._mapCamera.node.position.y,target.y);
+        }
+    }
+    near(logic._mapCamera.orthoHeight,logic.maximumZoomHeight());
+    logic.onTouchBegan(finger(1,540,360));logic.onTouchBegan(finger(2,740,360));
+    logic.onTouchMove(finger(2,800,360));logic.onTouchEnd(finger(2,800,360));logic.onTouchEnd(finger(1,540,360));
+    for(let frame=0;frame<100;frame++){advance(17);logic.update(1/60);logic.lateUpdate();}
+    assert.ok(logic._mapCamera.orthoHeight<logic.maximumZoomHeight());
+    near(logic._mapCamera.node.position.x,target.x);near(logic._mapCamera.node.position.y,target.y);
+}));
 
 console.log(`${count} map navigation regressions passed`);

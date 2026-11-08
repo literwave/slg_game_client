@@ -148,6 +148,10 @@ export default class MapProxy {
 
     /** 每帧按约 4ms 的实际工作量分批；全部完成后才发布，取消加载不会留下半张地图。 */
     public *initMapResConfigBatched(jsonData: any): Generator<number, void, unknown> {
+        if (jsonData?.encoding === 'u8-type-level-empty-v1') {
+            yield* this.initPackedMapBatched(jsonData);
+            return;
+        }
         if (!jsonData || !Number.isInteger(jsonData.w) || jsonData.w <= 0
             || !Number.isInteger(jsonData.h) || jsonData.h <= 0 || !Array.isArray(jsonData.list)
             || jsonData.list.length !== jsonData.w * jsonData.h
@@ -205,6 +209,55 @@ export default class MapProxy {
         this._emptyCells = emptyCells;
         this._mapSysCityResDatas = sysCityDatas;
         this._resourceSource = { json: jsonData, list, emptyCells: jsonData.emptyCells, width: w, height: jsonData.h };
+        yield 1;
+    }
+
+    /** 从同一份原始表生成的双字节格数据直接铺入索引，不创建百万个临时数组。 */
+    private *initPackedMapBatched(data: any): Generator<number, void, unknown> {
+        const count = data.w * data.h, encoded = data.cells;
+        if (!Number.isInteger(data.w) || data.w <= 0 || !Number.isInteger(data.h) || data.h <= 0
+            || !Number.isSafeInteger(count) || typeof encoded !== 'string'
+            || encoded.length !== Math.ceil(count * 2 / 3) * 4) throw new Error('紧凑地图数据格式无效');
+        if (this._resourceSource?.json === data && this._resourceSource.list === encoded
+            && this._resourceSource.width === data.w && this._resourceSource.height === data.h) {
+            this._resourceCache.clear(); yield 1; return;
+        }
+        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+        const lookup = new Int16Array(128).fill(-1);
+        for (let i = 0; i < alphabet.length; i++) lookup[alphabet.charCodeAt(i)] = i;
+        const bytes = new Uint8Array(count * 2);
+        const types = new Uint8Array(count), levels = new Uint8Array(count), empty = new Uint8Array(count);
+        const cities: MapResData[] = [];
+        const now = () => typeof performance !== 'undefined' ? performance.now() : Date.now();
+        const padding = (3 - count * 2 % 3) % 3;
+        let start = now(), offset = 0;
+        for (let i = 0; i < encoded.length; i += 4) {
+            let value = 0;
+            for (let j = 0; j < 4; j++) {
+                const char = encoded.charCodeAt(i + j);
+                const isPadding = i + j >= encoded.length - padding;
+                const digit = isPadding ? (char === 61 ? 0 : -1) : (char < 128 ? lookup[char] : -1);
+                if (digit < 0) throw new Error('紧凑地图编码损坏');
+                value = (value << 6) | digit;
+            }
+            bytes[offset++] = value >>> 16;
+            if (offset < bytes.length) bytes[offset++] = (value >>> 8) & 255;
+            if (offset < bytes.length) bytes[offset++] = value & 255;
+            if (i % 4096 === 0 && now() - start >= 4) { yield offset / bytes.length * .4; start = now(); }
+        }
+        for (let i = 0; i < count; i++) {
+            types[i] = bytes[i * 2] & 127; levels[i] = bytes[i * 2 + 1];
+            empty[i] = types[i] === 0 && (bytes[i * 2] & 128) !== 0 ? 1 : 0;
+            if (types[i] === MapResType.SYS_CITY) {
+                const city = new MapResData(); city.id = i; city.type = types[i]; city.level = levels[i];
+                city.x = i % data.w; city.y = Math.floor(i / data.w); cities.push(city);
+            }
+            if (i % 4096 === 0 && now() - start >= 4) { yield .4 + i / count * .6; start = now(); }
+        }
+        // 完整校验、解码结束后一次发布，取消进图时不暴露半张地图。
+        this._resourceTypes = types; this._resourceLevels = levels; this._emptyCells = empty;
+        this._resourceWidth = data.w; this._mapSysCityResDatas = cities; this._resourceCache.clear();
+        this._resourceSource = { json: data, list: encoded, emptyCells: undefined, width: data.w, height: data.h };
         yield 1;
     }
 

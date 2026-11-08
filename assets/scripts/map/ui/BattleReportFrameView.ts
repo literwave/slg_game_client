@@ -1,11 +1,13 @@
 import { Button, Color, Graphics, isValid, Label, Mask, Node, resources, Sprite, SpriteFrame, UITransform } from 'cc';
 import type { ReportBrief } from '../../battle/BattleCommand';
-import { reportKind, reportTime } from '../../battle/ReportPresentation';
+import { ReportCategory, reportCategory, reportKind, reportTime } from '../../battle/ReportPresentation';
 import { caption, inkSurface, ManagementColors as C, place } from './ManagementStyle';
 import { gameCloseButton, taskWindowTrim } from './TaskBoardView';
 
 const ART = 'ui/report_chrome/';
-const ICONS: Record<number, string> = { 0: 'dispatch', 4: 'resources', 1: 'expedition', 2: 'siege', 3: 'defense' };
+const ICONS: Record<ReportCategory, string> = {
+    all: 'category-all-v2', pve: 'category-pve-v2', pvp: 'category-pvp-v2',
+};
 const frames = new Map<string, SpriteFrame>(), pending = new Map<string, Promise<SpriteFrame | null>>();
 
 function node(parent: Node, name: string): Node {
@@ -73,10 +75,10 @@ export function reportWindowFrame(parent: Node, width: number, height: number): 
     const statusY = top - (narrow ? 65 : 31), statusLeft = -width / 2 + 56;
     place(status, statusLeft + statusWidth / 2, statusY, statusWidth, 22);
     status.getComponent(Label).overflow = Label.Overflow.SHRINK;
-    art(parent, 'ReportCountIcon', ART + 'dispatch/spriteFrame', -width / 2 + 33, statusY, 26, 26);
+    art(parent, 'ReportCountIcon', ART + ICONS.all + '/spriteFrame', -width / 2 + 33, statusY, 26, 26);
 }
 
-export function reportFilters(parent: Node, width: number, filters: Array<[number, string]>, selected: number): void {
+export function reportFilters(parent: Node, width: number, filters: Array<[ReportCategory, string]>, selected: ReportCategory): void {
     const small = width < 440, gap = small ? 6 : 8;
     const w = (width - gap * (filters.length - 1)) / filters.length, step = w + gap;
     const rail = inkSurface(parent, 'ReportFilterRail', width, 64, null, null);
@@ -94,9 +96,10 @@ export function reportFilters(parent: Node, width: number, filters: Array<[numbe
             g.strokeColor = new Color(229, 196, 124); g.lineWidth = 2;
             g.moveTo(-w / 2 + 9, -31); g.lineTo(w / 2 - 9, -31); g.stroke();
         }
-        art(button, 'CategoryArt', ART + ICONS[id] + '/spriteFrame', 0, 11, small ? 32 : 39, small ? 32 : 39,
+        art(button, 'CategoryArt', ART + ICONS[id] + '/spriteFrame', small ? 0 : -29, small ? 11 : 0,
+            small ? 40 : 52, small ? 40 : 52,
             active ? Color.WHITE : new Color(217, 211, 188));
-        text(button, 'CategoryName', title, 0, -17, w - 4, small ? 12 : 14,
+        text(button, 'CategoryName', title, small ? 0 : 29, small ? -19 : 0, small ? w - 4 : 56, small ? 14 : 17,
             active ? new Color(255, 233, 183) : C.muted, Label.HorizontalAlign.CENTER).isBold = active;
         press(button, g.node);
     });
@@ -112,7 +115,7 @@ export function reportDispatchCard(cell: Node, brief: ReportBrief, width: number
         g.fillColor = C.gold; g.rect(left + 2, -35, 3, 70); g.fill();
         g.moveTo(width / 2 - 13, -5); g.lineTo(width / 2 - 8, 0); g.lineTo(width / 2 - 13, 5); g.stroke();
     }
-    art(cell, 'DispatchArt', ART + (ICONS[brief.reportType] || ICONS[0]) + '/spriteFrame', left + 46, 5, 60, 60);
+    art(cell, 'DispatchArt', ART + ICONS[reportCategory(brief)] + '/spriteFrame', left + 46, 5, 60, 60);
     const seal = node(cell, 'ResultSeal'); place(seal, left + 68, -24, 32, 32);
     const stamp = inkSurface(seal, 'Stamp', 32, 32, null, null);
     const tone = won ? new Color(223, 190, 117) : lost ? new Color(206, 129, 109) : C.muted;

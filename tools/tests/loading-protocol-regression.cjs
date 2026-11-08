@@ -5,7 +5,7 @@ const path = require('node:path');
 const ts = require(process.argv[2] || 'typescript');
 const root = path.resolve(__dirname, '../..');
 const asDefault = value => ({ default: value });
-class Component { isValid = true; scheduleOnce() {} }
+class Component { isValid = true; scheduleOnce() {} schedule() {} }
 class SpriteFrame { isValid = true; constructor(name) { this.name = name; } }
 class Node {
     static EventType = { SIZE_CHANGED: 'size' };
@@ -56,6 +56,9 @@ const netInterface = load('assets/scripts/network/socket/NetInterface.ts');
 const { NetEvent } = netInterface;
 const { ServerConfig } = load('assets/scripts/config/ServerConfig.ts');
 const portraitPaths = load('assets/scripts/general/GeneralPortrait.ts');
+const { SIEGE_SHEETS } = load('assets/scripts/map/entries/SiegeAnimationLibrary.ts', {
+    './SiegeChoreography': load('assets/scripts/map/entries/SiegeChoreography.ts'),
+});
 const heroConfig = Object.values(JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/Hero.json'), 'utf8')));
 const itemConfig = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/Item.json'), 'utf8'));
 const heroLevelConfig = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/config/HeroLv.json'), 'utf8'));
@@ -259,12 +262,18 @@ test('reward and unlock payloads stay cached while loading and flush once on UI 
 
 test('HUD subscribes after loading, pulls latest cached values and never registers twice', () => {
     const f = fixture();
-    let updates = 0, troopRequests = 0, systemRequests = 0;
-    const keys = [];
+    let updates = 0, troopRequests = 0, systemRequests = 0, panelWarmups = 0;
+    const keys = [], viewWarmups = [];
     const UI = load('assets/scripts/map/ui/MapUILogic.ts', {
         '../../utils/EventMgr': { EventMgr: f.EventMgr }, '../../common/LogicEvent': { LogicEvent },
         '../../core/CoreEvent': { CoreEvent }, '../../config/ServerConfig': { ServerConfig },
         '../MapCommand': asDefault({ getInstance: () => ({ cityProxy: { myUnionId: 0 } }) }),
+        '../WorldMapArt': asDefault({ unbindTree() {} }),
+        './LazyPanelLoader': asDefault(class {
+            prefetchAll() { panelWarmups++; }
+            warmView(key) { viewWarmups.push(key); return Promise.resolve(); }
+            dispose() {}
+        }),
         './MapUICommand': asDefault({ getInstance: () => ({ proxy: { clearData() {} } }) }),
         '../../systemopen/SystemOpenCommand': asDefault({ getInstance: () => ({ requestSystemOpen: () => systemRequests++ }) }),
         '../../general/TroopCommand': asDefault({ getInstance: () => ({ requestTroops: () => troopRequests++ }) }),
@@ -277,8 +286,12 @@ test('HUD subscribes after loading, pulls latest cached values and never registe
     for (let i = 0; i < 100; i++) f.EventMgr.emit(LogicEvent.upateMyRoleRes);
     assert.deepEqual([updates, troopRequests, systemRequests, keys.length], [1, 0, 0, 0]);
     assert.equal(f.EventMgr.events.has(ServerConfig.s2c_gm_command_help), false);
+    assert.equal(panelWarmups, 0, '首屏完成之前不开始功能预载');
+    assert.deepEqual(viewWarmups, [], '首屏完成之前不开始页面预热');
     f.EventMgr.emit(CoreEvent.gameReady); f.EventMgr.emit(CoreEvent.gameReady);
     assert.deepEqual([updates, troopRequests, systemRequests, keys.length], [2, 1, 0, 0]);
+    assert.equal(panelWarmups, 1, '进图后自动预载，重复 gameReady 不重复排队');
+    assert.deepEqual(viewWarmups, ['inventory', 'cityBuildings', 'battleReports'], '进图后各页面仅预热一次');
     f.EventMgr.emit(LogicEvent.upateMyRoleRes);
     assert.equal(updates, 3);
     ui.onDestroy();
@@ -370,7 +383,9 @@ function mainFixture(inventoryWarmup = Promise.resolve(), chatWarmup = Promise.r
     const buildings = { loaded: true, loadError: '' };
     const configs = new Map();
     const inventoryCalls = [];
-    const worldArt = { preparationProgress: 0, calls: 0,
+    const backgroundJobs = [];
+    const backgroundKeys = [], cancelledKeys = [], backgroundResolves = new Map();
+    const worldArt = { visibleState: { pending: 0, error: null }, statistics: {}, preparationProgress: 0, calls: 0,
         prepare() { this.calls++; return worldWarmup.then(() => { this.preparationProgress = 1; }); } };
     const Main = load('assets/scripts/Main.ts', {
         './utils/EventMgr': { EventMgr: f.EventMgr }, './common/LogicEvent': { LogicEvent }, './core/CoreEvent': { CoreEvent },
@@ -382,10 +397,21 @@ function mainFixture(inventoryWarmup = Promise.resolve(), chatWarmup = Promise.r
         }) }),
         './map/MapCommand': asDefault({ getInstance: () => ({ proxy: { *initMapResConfigBatched() { yield 0.5; yield 1; } } }) }),
         './map/WorldMapArt': asDefault(worldArt),
+        './map/entries/SiegeAnimationLibrary': { SIEGE_SHEETS, preloadSiegeSheet: async () => [] },
+        './core/AssetLoadQueue': { AssetPriority: { Background: 0 }, default: {
+            pauseBackground() {},
+            request(key, run) {
+                backgroundJobs.push(run); backgroundKeys.push(key);
+                return new Promise(resolve => backgroundResolves.set(key, resolve));
+            },
+            cancel(key) { cancelledKeys.push(key); backgroundResolves.get(key)?.(); },
+        } },
+        './common/ItemPresentation': { itemIconPath: id => `items/${id}/spriteFrame` },
         './map/ui/MapUICommand': asDefault({ getInstance: () => ({ proxy: { setBasic() {}, setAllFacilityCfg() {} } }) }),
         './login/LoginCommand': asDefault({ getInstance: () => ({
             beginMapLoading() {}, notifyClientLoaded() { loadNotices++; },
-            headIcons: { initConfig() {}, preloadIcons: async () => {} },
+            headIcons: { initConfig() {}, preloadIcons: async () => {}, configs: [{ id: 1 }, { id: 2 }],
+                getIconPath: id => `heads/${id}`, loadIcon: async () => new SpriteFrame('head') },
         }) }),
         './inventory/InventoryIconCache': asDefault({ prepare: (ids, isCurrent) => {
             inventoryCalls.push({ ids, isCurrent });
@@ -393,7 +419,8 @@ function mainFixture(inventoryWarmup = Promise.resolve(), chatWarmup = Promise.r
         } }),
         './chat/ChatIconCache': asDefault({ prepare: () => chatWarmup }),
         './skill/SkillCommand': asDefault({ getInstance: () => ({
-            proxy: { initSkillConfig() {}, preloadSkillIcons: async () => {} },
+            proxy: { initSkillConfig() {}, preloadSkillIcons: async () => {}, skillConfs: [{ cfgId: 101 }, { cfgId: 102 }],
+                getIconPath: id => `skills/${id}`, loadSkillIcon: async () => new SpriteFrame('skill') },
         }) }),
         './build/BuildCommand': asDefault({ getInstance: () => buildings }),
         './reward/RewardCommand': asDefault({ getInstance: () => ({ setUIReady() {} }) }),
@@ -414,11 +441,9 @@ function mainFixture(inventoryWarmup = Promise.resolve(), chatWarmup = Promise.r
     main.clearAllScene = () => {};
     f.EventMgr.on(CoreEvent.gameReady, () => uiReady++, {});
     f.EventMgr.on(LogicEvent.updateCityBuilds, main.onCityBuildsChanged, main);
-    return { ...f, main, worldArt, buildings, scheduled, renderFrame, drawListeners, inventoryCalls, get uiWarmups() { return uiWarmups; }, get loadNotices() { return loadNotices; }, completeResources: () => resourceComplete(null, [], [{}, [
-        { name: 'Hero', json: Object.fromEntries(heroConfig.map(hero => [hero.Id, hero])) },
-        { name: 'Item', json: itemConfig },
-        { name: 'Global', json: {} }, { name: 'mapRes_0', json: {} },
-    ]]), get finishes() { return finishes; }, get uiReady() { return uiReady; }, finishFade: () => finishCallback() };
+    return { ...f, main, worldArt, backgroundJobs, backgroundKeys, cancelledKeys, buildings, scheduled, renderFrame, drawListeners, inventoryCalls, get uiWarmups() { return uiWarmups; }, get loadNotices() { return loadNotices; }, completeResources: () => resourceComplete(null, [], [{ json: { header: '<map orientation="isometric" width="1000" height="1000" tilewidth="200" tileheight="100">' } }, { json: { version: 1, tables: {
+        Hero: Object.fromEntries(heroConfig.map(hero => [hero.Id, hero])), Item: itemConfig, Global: {}, mapRes_0: {},
+    } } }]), get finishes() { return finishes; }, get uiReady() { return uiReady; }, finishFade: () => finishCallback() };
 }
 
 async function settleMap(f) {
@@ -449,119 +474,61 @@ test('late world artwork failure cannot interrupt an abandoned entry', async () 
     assert.equal(failures, 0); assert.equal(f.finishes, 0); f.command.clearData();
 });
 
-test('entry requests heroes before resource load and finishes only after warmup and loading fade', async () => {
-    const f = mainFixture();
+test('首屏就绪即可进图，武将协议提前请求，隐藏界面和整表图片不阻塞', async () => {
+    const f = mainFixture(new Promise(() => {}), new Promise(() => {}));
     f.main.onEnterMap(); f.main.onEnterMap();
-    assert.equal(f.sent.length, 0, '加载遮罩提交首帧前不能发起武将请求');
-    assert.equal(f.scheduled.length, 0);
-    assert.equal(f.drawListeners.length, 1, '重复进入不注册第二个首帧回调');
-    f.renderFrame();
-    assert.equal(f.scheduled.length, 1);
-    f.scheduled.shift()();
+    assert.equal(f.sent.length, 0); assert.equal(f.drawListeners.length, 1);
+    f.renderFrame(); f.scheduled.shift()();
     assert.equal(f.sent.length, 1);
-    f.snapshot([{ heroId: 1001 }, { heroId: 1022 }]);
-    f.completeResources();
-    for (let i = 0; i < 10; i++) f.main.update();
-    f.main.onMapReady();
-    await flush();
-    assert.equal(f.images.length, 2);
-    assert.equal(f.finishes, 0);
-    f.images.splice(0).forEach(image => image.callback(null, new SpriteFrame(image.url)));
-    await settleMap(f);
-    assert.equal(f.finishes, 1);
-    assert.equal(f.uiWarmups, 1, '进场只准备一次武将界面');
-    assert.equal(f.loadNotices, 1, '资源准备好后即通知服务器，不等待遮罩退出');
-    assert.equal(f.uiReady, 0);
-    f.main.onMapReady();
-    assert.equal(f.finishes, 1);
-    f.finishFade();
-    assert.equal(f.uiReady, 1);
-    assert.equal(f.loadNotices, 1, '退出加载页不重复发送加载完成');
-    assert.ok(f.command.proxy.getGeneralTex(1001));
-    assert.ok(f.command.proxy.getGeneralTex(1022));
-    assert.equal(f.clock.timers.size, 0);
+    f.snapshot([{ heroId: 1001 }, { heroId: 1022 }]); f.completeResources();
+    await settleMap(f); f.main.onMapReady(); await settleMap(f);
+    assert.equal(f.images.length, 0, '首屏不请求全部拥有武将画像');
+    assert.equal(f.inventoryCalls.length, 0, '首屏不预载物品整表');
+    assert.equal(f.uiWarmups, 0, '首屏不创建隐藏窗口');
+    assert.equal(f.finishes, 1); assert.equal(f.loadNotices, 1); assert.equal(f.uiReady, 0);
+    f.main.onMapReady(); assert.equal(f.finishes, 1);
+    f.finishFade(); assert.equal(f.uiReady, 1);
+    for (const hero of heroConfig) assert.ok(f.backgroundKeys.includes(`hero-warm:${hero.Id}`), '未打开武将页也要预载完整画像');
+    for (const name of SIEGE_SHEETS) assert.ok(f.backgroundKeys.includes(`siege-warm:${name}`), '攻城图集一并排入后台预载');
+    for (const item of itemConfig) assert.ok(f.backgroundKeys.includes(`item-warm:items/${item.Id}/spriteFrame`));
+    assert.ok(f.backgroundKeys.includes('skill-warm:skills/101'));
+    assert.ok(f.backgroundKeys.includes('head-warm:heads/1'));
+    assert.equal(new Set(f.backgroundKeys).size, f.backgroundKeys.length, '首页武将不重复排队');
+    assert.equal(f.images.length, 0, '后台图片没有重新阻塞首屏');
+    f.main.disposeLoadingNow();
+    assert.deepEqual(f.cancelledKeys.sort(), f.backgroundKeys.slice().sort(), '退出登录撤销所有未开始的图片预取');
+    await Promise.all(f.backgroundJobs.map(run => run()));
+    assert.equal(f.images.length, 0, '退出后不执行旧会话背景预取');
     f.command.clearData();
 });
 
-test('slow or abandoned image warmup cannot block entry or finish a newer login', async () => {
+test('当前视野图片未就绪时保留遮罩，但仍能先取得服务器主城状态', async () => {
     const f = mainFixture();
-    f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
-    f.snapshot([{ heroId: 1001 }]); f.completeResources();
-    for (let i = 0; i < 10; i++) f.main.update();
-    f.main.onMapReady(); await flush();
-    f.clock.tick(10000);
-    await settleMap(f);
-    assert.equal(f.finishes, 1, 'image deadline must release the loading page');
-    f.main.disposeLoadingNow(); f.command.clearData();
-    f.finishFade();
-    f.images.splice(0).forEach(image => image.callback(null, new SpriteFrame(image.url)));
-    await flush();
-    assert.equal(f.uiReady, 0, 'old fade/image callbacks must not activate a logged-out HUD');
-    assert.equal(f.main._heroAssetsReady, false);
-    assert.equal(f.clock.timers.size, 0);
-});
-
-test('背包全表图标就绪前保留进场遮罩，完成后只通知服务器一次', async () => {
-    let resolveIcons;
-    const f = mainFixture(new Promise(resolve => resolveIcons = resolve));
-    f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
-    f.snapshot([]); f.completeResources();
-    for (let i = 0; i < 10; i++) f.main.update();
-    f.main.onMapReady(); await flush();
-    assert.deepEqual(f.inventoryCalls[0].ids, itemConfig.map(row => row.Id));
-    assert.equal(f.inventoryCalls[0].isCurrent(), true);
-    assert.equal(f.finishes, 0);
-    assert.equal(f.loadNotices, 0, '不能先发加载完成，再补背包图片');
-    resolveIcons(); await settleMap(f);
-    assert.equal(f.main._inventoryAssetsReady, true);
+    f.worldArt.visibleState.pending = 2;
+    f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()(); f.snapshot([]); f.completeResources();
+    await settleMap(f); f.main.onMapReady(); await settleMap(f);
+    assert.equal(f.loadNotices, 1); assert.equal(f.finishes, 0);
+    f.worldArt.visibleState.pending = 0; await settleMap(f);
     assert.equal(f.finishes, 1); assert.equal(f.loadNotices, 1);
-    f.main.onMapReady(); f.finishFade();
-    assert.equal(f.uiReady, 1); assert.equal(f.loadNotices, 1);
-    f.command.clearData();
-});
-
-test('退出进场后迟到的物品图片回调不能激活地图；加载失败可退出重试', async () => {
-    for (const abandoned of [true, false]) {
-        let resolveIcons, rejectIcons, failed = 0;
-        const f = mainFixture(new Promise((resolve, reject) => { resolveIcons = resolve; rejectIcons = reject; }));
-        f.main.failMapLoading = () => { failed++; f.main.disposeLoadingNow(); };
-        f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
-        f.snapshot([]); f.completeResources();
-        for (let i = 0; i < 10; i++) f.main.update();
-        f.main.onMapReady(); await flush();
-        if (abandoned) { f.main.disposeLoadingNow(); resolveIcons(); }
-        else rejectIcons(new Error('test missing icon'));
-        await flush();
-        assert.equal(f.main._inventoryAssetsReady, false);
-        assert.equal(f.inventoryCalls[0].isCurrent(), false);
-        assert.equal(f.finishes, 0); assert.equal(f.loadNotices, 0);
-        assert.equal(failed, abandoned ? 0 : 1);
-        assert.equal(f.clock.timers.size, 0);
-        f.command.clearData();
-    }
-});
-
-test('聊天频道图标就绪前保留加载页，不允许先进入地图再补图', async () => {
-    let resolveIcons;
-    const f = mainFixture(Promise.resolve(), new Promise(resolve => resolveIcons = resolve));
-    f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()();
-    f.snapshot([]); f.completeResources();
-    for (let i = 0; i < 10; i++) f.main.update();
-    f.main.onMapReady(); await settleMap(f);
-    assert.equal(f.main._chatAssetsReady, false); assert.equal(f.finishes, 0); assert.equal(f.loadNotices, 0);
-    resolveIcons(); await settleMap(f);
-    assert.equal(f.main._chatAssetsReady, true); assert.equal(f.finishes, 1); assert.equal(f.loadNotices, 1);
     f.finishFade(); assert.equal(f.uiReady, 1); f.command.clearData();
 });
 
-test('取消进图后聊天图标回调不能重新开启界面', async () => {
-    let resolveIcons;
-    const f = mainFixture(Promise.resolve(), new Promise(resolve => resolveIcons = resolve));
+test('当前视野资源失败可退出重试，取消进图后的淡出回调不激活旧界面', async () => {
+    const f = mainFixture(); let failed = 0;
+    f.main.failMapLoading = () => { failed++; f.main.disposeLoadingNow(); };
     f.main.onEnterMap(); f.renderFrame(); f.scheduled.shift()(); f.snapshot([]); f.completeResources();
-    for (let i = 0; i < 10; i++) f.main.update();
-    f.main.disposeLoadingNow(); resolveIcons(); await flush();
-    assert.equal(f.main._chatAssetsReady, false); assert.equal(f.finishes, 0); assert.equal(f.uiReady, 0);
+    await settleMap(f);
+    f.worldArt.visibleState.error = new Error('missing current city');
+    f.main.onMapReady(); await settleMap(f);
+    assert.equal(failed, 1); assert.equal(f.finishes, 0); assert.equal(f.uiReady, 0);
     f.command.clearData();
+    const g = mainFixture();
+    g.main.onEnterMap(); g.renderFrame(); g.scheduled.shift()(); g.snapshot([]); g.completeResources();
+    await settleMap(g); g.main.onMapReady(); await settleMap(g);
+    assert.equal(g.finishes, 1);
+    g.main.disposeLoadingNow(); g.finishFade();
+    assert.equal(g.uiReady, 0); assert.equal(g.backgroundJobs.length, 0);
+    g.command.clearData();
 });
 
 function inventoryArtFixture() {

@@ -1,0 +1,22 @@
+{
+  "1": {
+    "Id": 1,
+    "RankMax": 100,
+    "Desc": "战力榜；Id 对齐 RankType.POWER"
+  },
+  "2": {
+    "Id": 2,
+    "RankMax": 100,
+    "Desc": "主城等级榜；Id 对齐 RankType.CITY_LEVEL"
+  },
+  "3": {
+    "Id": 3,
+    "RankMax": 100,
+    "Desc": "歼敌榜；Id 对齐 RankType.KILL"
+  },
+  "4": {
+    "Id": 4,
+    "RankMax": 50,
+    "Desc": "联盟战力榜；Id 对齐 RankType.ALLIANCE_POWER"
+  }
+}

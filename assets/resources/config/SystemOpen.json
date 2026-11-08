@@ -2,7 +2,6 @@
   {
     "Id": 1,
     "Name": "更换头像",
-    "Enum": "HEAD_ICON",
     "Desc": "开启后可更换头像",
     "Cond": [
       {
@@ -13,7 +12,6 @@
   {
     "Id": 2,
     "Name": "创建联盟",
-    "Enum": "CREATE_ALLIANCE",
     "Desc": "开启后可创建联盟",
     "Cond": [
       {

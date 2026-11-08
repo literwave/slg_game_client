@@ -15,47 +15,45 @@ function harness() {
         constructor(name) { this.name = name; this.children = []; this.components = new Map(); this.events = new Map(); this.active = true; this.layer = 1; }
         get activeInHierarchy() { return this.active && (!this.parent || this.parent.activeInHierarchy); }
         addChild(n) { n.parent = this; this.children.push(n); }
-        getChildByName(name) { return this.children.find(n => n.name === name); }
+        getChildByName(name) { return this.children.find(n => n.name === name) || null; }
         addComponent(Type) { const c = new Type(); c.node = this; this.components.set(Type, c); return c; }
         getComponent(Type) { return this.components.get(Type) || null; }
+        getComponentInChildren(Type) { return this.getComponent(Type) || this.children.map(n => n.getComponentInChildren(Type)).find(Boolean) || null; }
         on(name, fn, target) { this.events.set(name, (...args) => fn.apply(target, args)); }
-        setPosition(x, y) { this.position = { x, y }; } setScale() {} setSiblingIndex() {}
+        setPosition(x, y) { this.position = { x, y }; } setScale() {}
+        setSiblingIndex(index) {
+            if (!this.parent) return;
+            const siblings = this.parent.children;
+            siblings.splice(siblings.indexOf(this), 1); siblings.splice(index, 0, this);
+        }
         click() { assert.notEqual(this.getComponent(Button)?.interactable, false); this.events.get('click')?.(); }
     }
-    class Label { static HorizontalAlign = { CENTER: 1 }; static Overflow = { SHRINK: 1 }; }
+    class Label { static HorizontalAlign = { LEFT: 0, CENTER: 1 }; static VerticalAlign = { CENTER: 1 }; static Overflow = { SHRINK: 1, CLAMP: 2 }; }
     class Sprite { static SizeMode = { CUSTOM: 1 }; isValid = true; spriteFrame = null; }
-    class Button { static EventType = { CLICK: 'click' }; interactable = true; }
+    class Button { static EventType = { CLICK: 'click' }; static Transition = { SCALE: 1 }; interactable = true; }
+    class Graphics { clear() {} moveTo() {} lineTo() {} roundRect() {} circle() {} rect() {} fill() {} stroke() {} }
     class Widget {
         static AlignMode = { ALWAYS: 1 };
         updateAlignment() { const parent = this.node.parent?.getComponent(UITransform); if (parent) this.node.getComponent(UITransform).setContentSize(parent.width, parent.height); }
     }
     class SafeArea { updateArea() { this.node.getComponent(Widget).updateAlignment(); } }
     class Color {}
-    const cc = { Component, Node, UITransform, Label, Sprite, Button, Widget, SafeArea, Color,
+    const cc = { Component, Node, UITransform, Label, Sprite, Button, Widget, SafeArea, Color, Graphics,
         Canvas: class {}, BlockInputEvents: class {}, _decorator: { ccclass: () => c => c, property: () => () => {} } };
     const own = { userId: me, name: '自己', headIcon: 1, soldier: 1234, resource: 5678 };
     const login = { proxy: { getRoleData: () => own }, headIcons: {
         getDisplayId: id => id || 1, getIconPath: id => `ui/head_icon/avatar_${id}`,
         loadIcon: id => new Promise(resolve => iconRequests.push({ id, resolve })),
     } };
-    const style = {
-        ManagementColors: { ink: {}, gold: {}, muted: {}, text: {} },
-        place(node, x, y, w, h) { node.setPosition(x, y); node.getComponent(UITransform).setContentSize(w, h); },
-        inkSurface() {}, panelButton(node, text) { node.caption = text; },
-        caption(parent, name, text) {
-            let n = parent.getChildByName(name);
-            if (!n) { n = new Node(name); parent.addChild(n); n.addComponent(UITransform); n.addComponent(Label); }
-            const label = n.getComponent(Label); label.string = text; return label;
-        },
-    };
     const stubs = {
         'login/LoginCommand': { default: { getInstance: () => login } },
         'network/socket/NetManager': { NetManager: { getInstance: () => ({ send(packet) {
             if (!sending) return false;
             sent.push({ name: packet.name, data: proto.decode(packet.name, packet.msg) }); return true;
         } }) } },
-        'map/ui/ManagementStyle': style,
-        'map/ui/TaskBoardView': { gameCloseButton() {}, taskWindowTrim() {} },
+        'common/BgLogic': { default: Component },
+        'progression/ProgressionPresentation': {},
+        'common/RewardQuality': {},
         'utils/DateUtil': { default: { converTimeStr: () => '11-04 12:00' } },
         'common/AudioManager': { AudioManager: { instance: { playClick() {} } } },
         'union/UnionCommand': { default: {} },
@@ -138,11 +136,35 @@ async function main() {
         console.log('PASS 超时/断线/发送失败释放请求，重试恢复，注销后迟到回包丢弃');
     }
     {
+        const h = harness(); h.login(); const panel = h.panel();
+        assert.doesNotThrow(() => panel.show(peer), '首次打开须执行真实标题装饰和按钮绘制，不能只留下空底框');
+        const frame = panel.panel, title = frame.getChildByName('Title').getComponent(h.cc.Label);
+        assert.equal(title.string, '主公资料'); assert.equal(title.fontSize, 28); assert.equal(title.isBold, true);
+        assert.ok(frame.children.indexOf(title.node) > frame.children.indexOf(frame.getChildByName('TaskTitlePlate')));
+        assert.equal(frame.getChildByName('Close').getComponent(h.cc.Button).target.name, 'ManagementButton');
+        assert.equal(frame.getChildByName('Retry'), null, '资料页不提供常驻刷新按钮');
+        assert.equal(frame.getChildByName('Chat').position.x, 0, '单一主操作居中');
+        assert.equal(frame.getChildByName('Chat').getComponent(h.cc.Button).interactable, false);
+        h.receive(profile());
+        assert.equal(frame.getChildByName('Name').getComponent(h.cc.Label).string, '青山');
+        assert.equal(frame.getChildByName('Power').getChildByName('Value').getComponent(h.cc.Label).string, '9007199254740999');
+        const children = frame.children.length;
+        frame.getChildByName('Close').click(); assert.equal(panel.node.active, false);
+        panel.show(other); h.receive(profile(other)); assert.equal(panel.node.active, true);
+        assert.equal(frame.children.length, children, '关闭、切换玩家及回包重绘不能重复创建装饰');
+        const empty = new h.cc.Node('UnbuiltWindow');
+        const trim = h.load('map/ui/TaskBoardView').taskWindowTrim;
+        assert.doesNotThrow(() => trim(empty, 510, 392), '标题尚未创建时装饰框也不能抛异常');
+        empty.addChild(new h.cc.Node('Title'));
+        assert.doesNotThrow(() => trim(empty, 510, 392), '标题尚未添加 Label 时不抛异常');
+        console.log('PASS 首次打开资料使用真实窗口装饰，标题与按钮可见，关闭重开不重复建节点');
+    }
+    {
         const h = harness(); h.login(); const panel = h.panel(), text = name => panel.panel.getChildByName(name).getComponent(h.cc.Label).string;
         panel.show(peer); panel.show(other); h.receive(profile(peer, { name: '甲' }));
         assert.equal(text('Name'), '主公', '甲回包不能冒充正在查看的乙');
         h.receive(profile(other, { name: '乙', headIcon: 1044, offlineTime: 1000 }));
-        assert.equal(text('Name'), '乙'); assert.equal(text('Presence'), '离线 · 11-04 12:00');
+        assert.equal(text('Name'), '乙'); assert.equal(text('Presence'), '离线');
         panel.show(peer); assert.equal(text('Name'), '甲'); assert.equal(text('Presence'), '在线');
         const count = h.sent.length;
         h.iconRequests.find(r => r.id === 1044).resolve({ id: '乙头像' }); await tick();
@@ -157,15 +179,40 @@ async function main() {
         console.log('PASS 连续切换玩家不串资料/头像，展示在线状态，私聊使用当前 uid 且拒绝自己');
     }
     {
+        const h = harness(); h.login(); const panel = h.panel();
+        panel.show(me);
+        const frame = panel.panel, chat = frame.getChildByName('Chat');
+        assert.equal(h.sent.at(-1).data.uid, me, '自己的公开资料也使用精确 uid 查询');
+        assert.equal(frame.getChildByName('Title').getComponent(h.cc.Label).string, '我的资料');
+        assert.equal(chat.active, false, '首次读取自己的资料就隐藏社交操作');
+        h.receive(profile(me, { name: '本人' }));
+        assert.equal(frame.getChildByName('Name').getComponent(h.cc.Label).string, '本人');
+        const selfHeight = frame.getComponent(h.cc.UITransform).height;
+        let openedChat = null; h.events.on(h.E.openPrivateChat, data => openedChat = data, h);
+        panel.chat();
+        assert.equal(openedChat, null, '直接调用处理函数也不能向自己发起私聊');
+        assert.equal(panel.node.active, true);
+        panel.show(peer); h.receive(profile(peer));
+        assert.equal(frame.getChildByName('Title').getComponent(h.cc.Label).string, '主公资料');
+        assert.ok(frame.getComponent(h.cc.UITransform).height > selfHeight, '自己没有操作区时收起底部留白，切换他人恢复布局');
+        assert.equal(chat.active, true); assert.equal(chat.getComponent(h.cc.Button).interactable, true);
+        assert.equal(chat.position.x, 0); assert.equal(frame.getChildByName('Retry'), null);
+        chat.click(); assert.equal(openedChat.id, peer);
+        console.log('PASS 自己资料隐藏私聊并收起操作区，切换他人恢复标题、布局及私聊');
+    }
+    {
         const h = harness(); h.login(); const panel = h.panel(); panel.show(peer);
         h.receive({ uid: peer });
         const status = () => panel.panel.getChildByName('Status').getComponent(h.cc.Label).string;
-        assert.equal(status(), '该主公不存在或资料未开放');
+        assert.equal(status(), '暂无资料');
         assert.equal(panel.panel.getChildByName('Chat').getComponent(h.cc.Button).interactable, false);
-        panel.panel.getChildByName('Retry').click(); h.timeout(); assert.equal(status(), '暂未取得资料，可重试');
-        panel.panel.getChildByName('Retry').click(); h.receive(profile(peer, { offlineTime: 1 }));
+        panel.close(); panel.show(peer); h.timeout(); assert.equal(status(), '加载失败');
+        const sent = h.sent.length;
+        h.events.emit(h.S.s2c_client_load_ok);
+        assert.equal(h.sent.length, sent + 1, '连接恢复后自动重新获取当前资料');
+        h.receive(profile(peer, { offlineTime: 1 }));
         assert.equal(panel.panel.getChildByName('Presence').getComponent(h.cc.Label).string, '离线');
-        console.log('PASS 不存在/超时界面可区分，失败期间禁用私聊，旧存档离线状态无 1970 时间');
+        console.log('PASS 不存在/超时状态可区分，重开及连接恢复自动获取资料，失败期间禁用私聊');
     }
     {
         const h = harness(); let target;

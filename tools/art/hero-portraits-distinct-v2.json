@@ -1,0 +1,37 @@
+{
+  "tool": "内置 image_gen",
+  "purpose": "拉开廖化、蒋钦、丁奉的脸型、年龄、装束、姿态和背景差异，保留纸本水墨设色画风。",
+  "portraits": [
+    {
+      "heroId": 1046,
+      "name": "廖化",
+      "source": "assets/resources/ui/hero/card_1046.png",
+      "output": "assets/resources/ui/hero/card_1046_distinct_v2.png",
+      "prompt": "Edit/redesign the supplied Liao Hua hero artwork for a Three Kingdoms strategy game. The input is the old portrait; preserve only its refined historical ink-and-gouache illustration style, fine dry-brush contours, aged ivory paper texture, realistic Chinese facial anatomy and restrained earthy colors. Replace the generic ragged action pose completely. ONE clearly identifiable veteran commander, late middle age, lean long face, visible gray eyebrows, close cropped salt-and-pepper moustache and short neatly pointed gray beard, stern attentive eyes; no likeness to the supplied younger black-bearded face. Calm upright three-quarter stance facing slightly LEFT, seen from head to upper thighs. Compact Han-era iron lamellar armor, an intact muted dark moss-green cloak neatly fastened at the shoulder, practical dark iron helmet with a small open face guard, no exaggerated fur and no torn beggar clothing. His right hand rests naturally on the sheathed sword at his waist; his left hand holds ONE straight spear vertically at his side. Both hands anatomically correct, believable grip. Head, helmet and neck fully visible, silhouette tall and composed, no running or lunging. Quiet misty green-gray mountain pass and a distant fortified gate, no horse, no snowstorm, no water, background subordinate. Face is clear in the upper third, eyes near 28 percent down the image, head well below the top edge, the figure occupies about 75 percent of image width; keep all key features inside the central 80 percent. Intended display is a small portrait card with top corner UI and a bottom 23 percent text overlay, so put face, hands and defining armor above the bottom overlay. Full-bleed portrait aspect ratio 350:480, high resolution, opaque artwork, absolutely no borders, card frame, UI, writing, labels, numbers, text, watermark, extra persons, disembodied arms, duplicated hands, fused weapons, fantasy glow, 3D render, photographic skin or anime. The result should read as a disciplined gray-bearded mountain veteran distinct from a blue naval officer and a youthful red-armored raider.",
+      "postprocess": [
+        "horizontal flip",
+        "resize 350x480 bicubic"
+      ]
+    },
+    {
+      "heroId": 1047,
+      "name": "蒋钦",
+      "source": "assets/resources/ui/hero/card_1047.png",
+      "output": "assets/resources/ui/hero/card_1047_distinct_v2.png",
+      "prompt": "Edit/redesign the supplied Jiang Qin hero artwork for a Three Kingdoms strategy game. The input is the old portrait; preserve the refined Chinese historical ink-and-gouache painting style, precise dry-brush contours, layered parchment texture, sober elegant palette, small-card readability. Replace the old bearded rower and action composition entirely. ONE robust naval officer with a broad square jaw, sun-browned skin, short neat black moustache, CLEAN-SHAVEN CHIN, alert confident eyes and a tightly wrapped deep-indigo headcloth; unmistakably a different face from a gray-bearded veteran or a thin clean-shaven raider. Broad, grounded shoulders; intact practical navy-blue cloth sleeves under medium bronze lamellar armor, restrained warm ochre sash, NO fur and NO ragged cloak. Stand steadily at a ship's wooden rail in a relaxed broad stance, torso turned slightly RIGHT and face turned toward the viewer. One hand rests comfortably on the wooden rail, the other naturally holds the hilt of a fully sheathed straight Han-era sword at his hip. No rowing, no diagonal pole across the body, no jumping, no leaning far forward, no oversized weapon. Show head to upper thighs. Background is a tranquil jade-green river, a pale linen sail and a few softly painted distant wooden ships under warm morning light; uncluttered and clearly distinct from a mountain and a snowy battlefield. Both hands five-fingered and properly attached, full neck and head clearly visible. Face clear in upper third, eyes around 28 percent down, breathing space above head, all defining features in central 80 percent and above lower 23 percent because game text overlays bottom. Full-bleed opaque portrait in 350:480 aspect, high resolution. No image text, logos, borders, card UI, labels, numbers, watermark, extra people, duplicated limbs, modern objects, glowing magic, photorealism, anime or 3D. The silhouette, face and calm nautical composition must be dramatically distinct from the original crouching black-bearded armored man.",
+      "postprocess": [
+        "resize 350x480 bicubic"
+      ]
+    },
+    {
+      "heroId": 1048,
+      "name": "丁奉",
+      "source": "assets/resources/ui/hero/card_1048.png",
+      "output": "assets/resources/ui/hero/card_1048_distinct_v2.png",
+      "prompt": "Edit/redesign the supplied Ding Feng hero portrait for a Three Kingdoms strategy game. The input is the old portrait; preserve refined ink-and-gouache historical Chinese illustration, crisp dry-brush marks, subtle aged paper, muted iron/crimson colors and painterly realism. Completely replace the generic broad bearded fur-clad running man. ONE lean athletic short-blade specialist in his early middle age, narrow angular Chinese face, CLEAN SHAVEN with no moustache or beard, sharp focused eyes; close-fitting open-face iron helmet with a SHORT red plume and a clearly visible face and neck. Fitted dark charcoal lamellar armor with red lacing, intact short crimson shoulder cape, protected bare forearms, no fur, no rags. A controlled low defensive half-kneel seen in three-quarter FRONT view, shoulders relatively upright, chin raised and eyes looking slightly LEFT at the viewer; no twisted torso or exaggerated foreshortening. Right hand holds a single short straight Han-era sword in a low outward guard, blade unobstructed and well away from the face; left arm braces a small round dark wooden buckler close to his chest. Hands and shoulders anatomically sound, each hand exactly five fingers, buckler clearly strapped to forearm. The head, upper body and weapons form a compact triangular silhouette, distinct from a tall spear-bearing old general and a calm blue naval officer. Minimal cold pale-gray reed field and a dusting of snow behind him, distant red battle pennants, spacious light sky separates his head; no horse or ship, no blizzard and no background crowd. Face around upper third, head with margin, whole helmet and plume within frame. Show head to knees; keep face and hands above the bottom 23 percent game-info overlay, weapons must not cross top corners reserved for UI. Full-bleed opaque portrait, 350:480 aspect ratio, high resolution. No borders, card frame, interface, text, labels, numbers or watermark; no extra characters, severed heads, monstrous anatomy, manga, photographic skin, shiny 3D armor or magical glow. Prioritize instant recognizability at small card size.",
+      "postprocess": [
+        "resize 350x480 bicubic"
+      ]
+    }
+  ]
+}
