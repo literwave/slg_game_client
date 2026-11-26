@@ -2,6 +2,7 @@ import { ServerConfig } from "../config/ServerConfig";
 import { NetManager } from "../network/socket/NetManager";
 import { Tools } from "../utils/Tools";
 import LoginProxy, { toProtoInt, toProtoId } from "./LoginProxy";
+import { LoginApi } from "./LoginApi";
 import { NetEvent } from "../network/socket/NetInterface";
 import MapCommand from "../map/MapCommand";
 import { LocalCache } from "../utils/LocalCache";
@@ -101,7 +102,11 @@ export default class LoginCommand {
         EventMgr.targetOff(this);
     }
 
+    /** 只由本次新建成功回包置位；已有角色和重连不重播开场。 */
+    public pendingFirstLanding = false;
+
     public resetClientState(): void {
+        this.pendingFirstLanding = false;
         this._serverReady = false;
         this._baseInfoReady = false;
         this._mapDataRequested = false;
@@ -310,6 +315,8 @@ export default class LoginCommand {
     /**玩家基础信息*/
     private onGetUserBaseInfo(data: any): void {
         if (!data || !this._serverReady) return;
+        const alreadyEntered = this._baseInfoReady;
+        if (alreadyEntered && !data.name) return;
         this._baseInfoReady = !!data.name;
         if (this._baseInfoReady) {
             data.userId = this._proxy.getLoginData().userId;
@@ -323,12 +330,12 @@ export default class LoginCommand {
         }
         if (!data.name) {
             this._baseInfoReady = false;
-            EventMgr.emit(LogicEvent.createRole);
+            EventMgr.emit(LogicEvent.createRole, data.birthZones || []);
             return;
         }
         else {
             EventMgr.emit(LogicEvent.updateMyRole);
-            EventMgr.emit(LogicEvent.enterMap);
+            if (!alreadyEntered) EventMgr.emit(LogicEvent.enterMap);
             // 重连时保留已加载地图，基础信息同步后重新通知服务端。
             if (this._clientLoaded) this.beginMapLoading();
             this.trySendClientLoadOk();
@@ -387,9 +394,10 @@ export default class LoginCommand {
 
     /**创建玩家*/
     private onUserCreate(data: any): void {
-        if (!this._serverReady || !data || !data.name) return;
+        if (!this._serverReady || this._baseInfoReady || !data || data.result || !data.name || !validCityPosition(data.cityPos)) return;
         this._proxy.saveEnterData(data);
         this._baseInfoReady = true;
+        this.pendingFirstLanding = true;
         console.info('[RoleCreate] 创建成功，切换加载页');
         // 与已有角色保持一致：创建成功立即显示进度页，其它资源在加载阶段就绪。
         EventMgr.emit(LogicEvent.enterMap);
@@ -475,25 +483,15 @@ export default class LoginCommand {
         this._baseInfoReady = false;
         this._mapDataRequested = false;
 
-        var msgName = ServerConfig.c2s_user_base_info;
-
-        // 使用 ProtoManager 编码
-        // 注意：这里需要根据你的 .proto 文件里的定义来写
-        // 假设 login.proto 里定义的请求消息是 c2s_user_login，并且在 Login 包下
-        var protoData = ProtoManager.getInstance().encode(msgName, {
-        });
-
-        if (!protoData) {
-            console.error("Failed to encode login request");
-            return;
-        }
-
-        var sendData = {
-            name: msgName,
-            msg: protoData, // 这里直接传 Uint8Array
-        };
-        NetManager.getInstance().send(sendData, true);
+        this.requestCreationOptions();
         this.startHeartbeat();
+    }
+
+    public requestCreationOptions(): boolean {
+        if (!this._serverReady || this._baseInfoReady) return false;
+        const name = ServerConfig.c2s_user_base_info;
+        const msg = ProtoManager.getInstance().encode(name, {});
+        return !!msg && NetManager.getInstance().send({ name, msg }, true);
     }
 
     /** 网关重连成功后重新验证，不走旧的 account.reLogin */
@@ -501,7 +499,26 @@ export default class LoginCommand {
         const loginData = this._proxy.getLoginData();
         console.info('[Login] 正在恢复网关会话');
 
+        // 票据是一次性的：重连必须先向登录服重新签发，不能复用已被网关消费的旧票据
+        if (loginData?.ticketLogin && loginData.apiToken) {
+            LoginApi.enter(loginData.apiToken, toProtoInt(loginData.serverId)).then(enter => {
+                const current = this._proxy.getLoginData();
+                if (!current || current !== loginData) return; // 期间已退出登录
+                current.token = enter.ticket;
+                if (this.role_enterServer(current)) return;
+                this.failReconnect();
+            }).catch(error => {
+                console.warn('[Login] 重连签发票据失败', error);
+                if (this._proxy.getLoginData() === loginData) this.failReconnect();
+            });
+            return;
+        }
+
         if (this.role_enterServer(loginData)) return;
+        this.failReconnect();
+    }
+
+    private failReconnect(): void {
         this._reconnecting = false;
         NetManager.getInstance().close();
         EventMgr.emit(NetEvent.ServerReconnectFailed);
@@ -588,33 +605,27 @@ export default class LoginCommand {
     }
 
 
-    /**
-     * create
-     * @param uid 
-     * @param nickName 
-     * @param sex 
-     * @param sid 
-     * @param headId 
-     */
-    public role_create(uid: number, nickName: string, sex: number = 0, sid: number = 0, headId: number = 0): boolean {
+    public role_create(nickName: string, sex: number, birthZone: number): boolean {
+        if (!this._serverReady || this._baseInfoReady || !Number.isInteger(birthZone) || birthZone < 1) return false;
         var msgName = ServerConfig.c2s_user_create;
         var protoData = ProtoManager.getInstance().encode(msgName, {
             sex: sex,
             name: nickName,
+            birthZone,
         });
         if (!protoData) return false;
         var send_data = {
             name: msgName,
             msg: protoData, // 这里直接传 Uint8Array
         };
-        NetManager.getInstance().send(send_data);
-        return true;
+        return NetManager.getInstance().send(send_data);
     }
 
 
     public role_enterServer(loginData): boolean {
+        // 票据登录时新账号 userId 为 0（由网关分配），其余情况仍要求有效 userId
         if (!loginData || typeof loginData.token !== 'string' || !loginData.token.trim()
-            || toProtoId(loginData.userId) === '0') return false;
+            || (toProtoId(loginData.userId) === '0' && !loginData.ticketLogin)) return false;
         var msgName = ServerConfig.c2s_verify_login;
 
         // 使用 ProtoManager 编码

@@ -18,6 +18,8 @@ import CityCommand from '../world/CityCommand';
 import MapMarkCommand from '../world/MapMarkCommand';
 import BuildCommand from '../build/BuildCommand';
 import { isResourceLandCell } from '../world/ResourceLand';
+import { systemCityCoversCell } from './SystemCityGeometry';
+import { isSystemCityGroundCell } from './CityGround';
 
 export default class MapCommand {
     //单例
@@ -222,6 +224,21 @@ export default class MapCommand {
     }
 
 
+    /** 城池占地只显示城市与空地底色，供资源、标签和地景图层共同剔除。 */
+    public isCityGroundCell(x: number, y: number): boolean {
+        const size = MapUtil.mapSize;
+        if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0
+            || !size || x >= size.width || y >= size.height) return false;
+        return isSystemCityGroundCell(x, y) || !!this.cityProxy.getCity(MapUtil.getIdByCellPoint(x, y));
+    }
+
+    /** 美术与地块有重叠时阻挡整格，透明角落不能成为城墙下的操作入口。 */
+    public isCityArtCoveredCell(x: number, y: number): boolean {
+        if (!Number.isInteger(x) || !Number.isInteger(y)) return false;
+        return !!WorldCampaign.config?.cities.some(city => systemCityCoversCell(x - city.x, y - city.y,
+            city.level, MapUtil.tileSize.width, MapUtil.tileSize.height, city));
+    }
+
     /** MOVE 的终点是地图坐标，不能沿用旧协议“只能在自有领地驻军”的限制。 */
     public moveTargetIssue(x: number, y: number): string {
         if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0
@@ -230,6 +247,7 @@ export default class MapCommand {
         if (this.cityProxy.getCity(id)) return '城池占地不能作为移动终点';
         // 城池调动使用 REDEPLOY 和实体 ID，普通 MOVE 仍只接受野外坐标。
         if (CityCommand.getInstance().at(x, y) || this.proxy.getSysCityResData(x, y)) return '城池占地不能作为移动终点';
+        if (this.isCityArtCoveredCell(x, y)) return '建筑覆盖的地块不可操作';
         if (!cell || !cell.isEmpty && !isResourceLandCell(cell)) return '请选择空地或可通行的资源地';
         return this.campaignBlockReason(x, y, false);
     }

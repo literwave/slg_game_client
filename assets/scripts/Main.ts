@@ -1,5 +1,5 @@
 import { preloadSiegeSheet, SIEGE_SHEETS } from './map/entries/SiegeAnimationLibrary';
-import { _decorator, Component, Prefab, Node, instantiate, TiledMapAsset, JsonAsset, AudioSource, assert, Camera, SpriteFrame, screen, view, director, Director } from 'cc';
+import { _decorator, Component, Prefab, Node, Vec2, instantiate, TiledMapAsset, JsonAsset, AudioSource, assert, Camera, SpriteFrame, screen, view, director, Director, UIOpacity } from 'cc';
 const { ccclass, property } = _decorator;
 
 import { GameConfig } from "./config/GameConfig";
@@ -9,6 +9,8 @@ import ArmyCommand from "./general/ArmyCommand";
 import GeneralCommand from "./general/GeneralCommand";
 import TroopCommand from "./general/TroopCommand";
 import LoginCommand from "./login/LoginCommand";
+import FirstLanding from './login/FirstLanding';
+import MapLogic from './map/MapLogic';
 import MapCommand from "./map/MapCommand";
 import WorldMapArt from './map/WorldMapArt';
 import MapUICommand from "./map/ui/MapUICommand";
@@ -24,6 +26,8 @@ import { LogicEvent } from './common/LogicEvent';
 import { ProtoManager } from './network/pto/ProtoManager';
 import { CoreEvent } from './core/CoreEvent';
 import LoadingLogic from './common/LoadingLogic';
+import CloudVeilTransition, { CloudTransitionTheme } from './common/CloudVeilTransition';
+import CreateLogic from './login/CreateLogic';
 import ReconnectLogic, { ReconnectState } from './common/ReconnectLogic';
 import RewardCommand from './reward/RewardCommand';
 import RewardWindowLogic from './reward/RewardWindowLogic';
@@ -44,6 +48,7 @@ import BattleCommand from './battle/BattleCommand';
 import AssetLoadQueue, { AssetPriority, AssetRequestCancelled } from './core/AssetLoadQueue';
 import InventoryIconCache from './inventory/InventoryIconCache';
 import { itemIconPath } from './common/ItemPresentation';
+import InnerCityScene, { EnterInnerCityOptions } from './city/InnerCityScene';
 
 @ccclass('Main')
 export default class Main extends Component {
@@ -69,6 +74,7 @@ export default class Main extends Component {
     private toastNode: Node = null;
     protected _loginScene: Node = null;
     protected _mapScene: Node = null;
+    protected _innerCityScene: Node = null;
     protected _mapUIScene: Node = null;
     protected _loadingNode: Node = null;
     protected _waitNode: Node = null;
@@ -87,6 +93,8 @@ export default class Main extends Component {
     private _cityStateRequested = false;
     private _cityStateTimer: ReturnType<typeof setTimeout> | null = null;
     private _backgroundAssetKeys = new Set<string>();
+    private _landingHiddenHud: Array<{ opacity: UIOpacity; value: number }> = [];
+    private _launchZoneName = '';
 
 
     protected onLoad(): void {
@@ -104,6 +112,8 @@ export default class Main extends Component {
         AudioManager.instance.init(this._audioSource);
 
         EventMgr.on(LogicEvent.enterMap, this.onEnterMap, this);
+        EventMgr.on(LogicEvent.enterInnerCity, this.onEnterInnerCity, this);
+        EventMgr.on(LogicEvent.exitInnerCity, this.onExitInnerCity, this);
         EventMgr.on(CoreEvent.mapReady, this.onMapReady, this);
         EventMgr.on(LogicEvent.updateCityBuilds, this.onCityBuildsChanged, this);
         EventMgr.on(CoreEvent.mapLoadFailed, this.onMapLoadFailed, this);
@@ -188,6 +198,7 @@ export default class Main extends Component {
         this.clearData();
         // 先取消网关重连，再打开登录页。否则登录页出来后，旧的重连定时器还会去连网关
         NetManager.getInstance().close();
+        CloudVeilTransition.preload?.();
         this._loginScene = instantiate(this.loginScenePrefab);
         this.node.addChild(this._loginScene);
 
@@ -263,10 +274,22 @@ export default class Main extends Component {
         const startedAt = Date.now();
         this._mapEntryStartedAt = startedAt;
         try {
+            const transitionTheme = this.resolveLaunchTransitionTheme();
+            this._launchZoneName = transitionTheme?.zoneName || '';
             this.addLoadingNode();
             this.hideWaitNode();
-            // 成功回包后立即离开创建页；加载遮罩接管输入和显示。
-            if (this._loginScene) this._loginScene.active = false;
+            const veil = this._loadingNode?.getComponent?.(CloudVeilTransition);
+            if (veil && typeof veil.beginCover === 'function') {
+                // 水墨云幕从四周合拢期间保留选州/登录画面（配合选州沙盘推进）；满覆瞬间再隐去旧页，彻底消除硬切。
+                veil.beginCover(() => {
+                    if (this.isValid && generation === this._loadGeneration && this._loginScene) {
+                        this._loginScene.active = false;
+                    }
+                }, transitionTheme || undefined);
+            } else if (this._loginScene) {
+                // 成功回包后立即离开创建页；加载遮罩接管输入和显示。
+                this._loginScene.active = false;
+            }
             // scheduleOnce(0) 本身不保证已经渲染。先等加载页提交一帧，
             // 再在下一轮 update 启动资源解析，避免创建页停在上一帧。
             this._afterLoadingDraw = () => {
@@ -352,7 +375,16 @@ export default class Main extends Component {
             yield;
         }
 
+        // 若本地资源命中缓存极快，等水墨云幕完全合拢再切换底层场景，避免云未闭拢时画面跳变。
+        const veil = this._loadingNode?.getComponent?.(CloudVeilTransition);
+        while (veil && typeof veil.isCovered === 'boolean' && !veil.isCovered && veil.currentPhase === 'closing') {
+            yield;
+        }
+
         this.clearAllScene();
+        EventMgr.emit(CoreEvent.mapLoadProgress, 0.85, '正在绘制九州山河…');
+        yield;
+
         this._mapScene = instantiate(this.mapScenePrefab);
         this._mapScene.parent = this.node;
         if (!this._enteringMap) return;
@@ -435,14 +467,26 @@ export default class Main extends Component {
             return;
         }
         const loadingNode = this._loadingNode;
-        const logic = loadingNode.getComponent(LoadingLogic);
+        const veil = loadingNode.getComponent(CloudVeilTransition);
+        const logic = (veil && typeof veil.finish === 'function') ? veil : loadingNode.getComponent(LoadingLogic);
         if (logic) {
-            logic.finish(() => {
+            const onDone = () => {
                 if (this._loadingNode === loadingNode) {
                     this._loadingNode = null;
                     this.completeMapEntry();
                 }
-            });
+            };
+            if (logic === veil) {
+                veil.finish(onDone, {
+                    onRevealStart: () => {
+                        if (this._loadingNode === loadingNode && LoginCommand.getInstance().pendingFirstLanding) {
+                            this.hideMapHudForLanding();
+                        }
+                    },
+                });
+            } else {
+                logic.finish(onDone);
+            }
         } else {
             if (loadingNode.isValid) loadingNode.destroy();
             this._loadingNode = null;
@@ -454,12 +498,30 @@ export default class Main extends Component {
         this._enteringMap = false;
         this._finishingLoading = false;
         this._heroRequest = null;
+        this.restoreMapHudForLanding();
         // UI 先注册，再统一补发加载期间积累的数据刷新和展示事件。
         EventMgr.emit(CoreEvent.gameReady);
-        GeneralCommand.getInstance().setUIReady();
-        RewardWindowLogic.init();
-        RewardCommand.getInstance().setUIReady();
-        SystemOpenCommand.getInstance().setUIReady();
+        const login = LoginCommand.getInstance();
+        const city = login.proxy.getRoleData()?.cityPos;
+        const mapLogic = this._mapScene?.getComponent(MapLogic);
+        const ready = () => {
+            GeneralCommand.getInstance().setUIReady();
+            RewardWindowLogic.init();
+            RewardCommand.getInstance().setUIReady();
+            SystemOpenCommand.getInstance().setUIReady();
+        };
+        if (login.pendingFirstLanding && mapLogic && city && this._mapUIScene) {
+            login.pendingFirstLanding = false;
+            const zoneName = this._launchZoneName;
+            this._launchZoneName = '';
+            const intro = new Node('FirstLanding'); intro.layer = this._mapUIScene.layer;
+            this._mapUIScene.addChild(intro);
+            intro.setSiblingIndex(this._mapUIScene.children.length - 1);
+            intro.addComponent(FirstLanding).initialize(mapLogic, new Vec2(city.x, city.y), ready, zoneName);
+        } else {
+            this._launchZoneName = '';
+            ready();
+        }
         this.logMapEntryStage('地图可操作（完整进图）');
         console.info('[MapEntry] 首屏资源', WorldMapArt.statistics);
         this.warmAssetsAfterLogin();
@@ -482,9 +544,9 @@ export default class Main extends Component {
                     if (isCurrent() && !(error instanceof AssetRequestCancelled)) console.warn('[MapEntry] 后台预载未完成', key, error);
                 }).then(() => { if (generation === this._loadGeneration) this._backgroundAssetKeys.delete(key); });
         };
-        // 先准备武将首页，再补齐背包、技能、头像和余下武将，不等待打开界面。
+        // 已拥有的武将优先，避免常用卡片排在整套背包与技能图标后面。
         const owned = proxy.getUseGenerals();
-        for (const hero of owned.slice(0, 6)) enqueue(`hero-warm:${hero.hero_type}`, () => proxy.loadGeneralTex(hero.hero_type));
+        for (const hero of owned) enqueue(`hero-warm:${hero.hero_type}`, () => proxy.loadGeneralTex(hero.hero_type));
         for (const name of SIEGE_SHEETS) enqueue(`siege-warm:${name}`, () => preloadSiegeSheet(name));
         for (const item of ConfigManager.getInstance().getConfig('Item') || []) {
             const path = itemIconPath(item.Id);
@@ -495,7 +557,6 @@ export default class Main extends Component {
             if (path) enqueue(`skill-warm:${path}`, () => skills.loadSkillIcon(skill.cfgId));
         }
         for (const head of heads.configs) enqueue(`head-warm:${heads.getIconPath(head.id)}`, () => heads.loadIcon(head.id));
-        for (const hero of owned) enqueue(`hero-warm:${hero.hero_type}`, () => proxy.loadGeneralTex(hero.hero_type));
         for (const hero of proxy.getGeneralAllCfg().values()) enqueue(`hero-warm:${hero.id}`, () => proxy.loadGeneralTex(hero.id));
         console.info(`[MapEntry] 后台图片预载已排队：${enqueued.size} 项`);
     }
@@ -519,6 +580,8 @@ export default class Main extends Component {
         this._finishingLoading = false;
         this._heroRequest = null;
         this._cityStateRequested = false;
+        this._launchZoneName = '';
+        this.restoreMapHudForLanding();
         if (this._cityStateTimer !== null) clearTimeout(this._cityStateTimer);
         this._cityStateTimer = null;
         if (this._loadingNode) {
@@ -529,10 +592,37 @@ export default class Main extends Component {
         }
     }
 
+    private resolveLaunchTransitionTheme(): CloudTransitionTheme | null {
+        const createLogic = this._loginScene?.getComponentInChildren?.(CreateLogic);
+        const birthTheme = createLogic?.getLaunchTransitionTheme?.();
+        if (birthTheme) return birthTheme;
+        return null;
+    }
+
+    /** 新角色落城拨云阶段先隐藏 HUD，待云开后由 FirstLanding 同一帧无缝接管，杜绝 HUD 闪现。 */
+    private hideMapHudForLanding(): void {
+        if (!this._mapUIScene || !this._mapUIScene.isValid || this._landingHiddenHud.length > 0) return;
+        for (const child of this._mapUIScene.children || []) {
+            if (!child || !child.isValid) continue;
+            const opacity = child.getComponent(UIOpacity) || child.addComponent(UIOpacity);
+            this._landingHiddenHud.push({ opacity, value: opacity.opacity });
+            opacity.opacity = 0;
+        }
+    }
+
+    private restoreMapHudForLanding(): void {
+        for (const saved of this._landingHiddenHud) {
+            if (saved.opacity && saved.opacity.isValid) saved.opacity.opacity = saved.value;
+        }
+        this._landingHiddenHud.length = 0;
+    }
+
     protected addLoadingNode(): void {
-        if (!this.loadingPrefab) throw new Error('未配置战场加载页');
         if (!this._loadingNode || !this._loadingNode.isValid) {
-            this._loadingNode = instantiate(this.loadingPrefab);
+            const node = new Node('CloudTransition');
+            node.layer = this.node.getChildByName('UI Camera')?.getComponent(Camera)?.visibility || this.node.layer;
+            node.addComponent(CloudVeilTransition);
+            this._loadingNode = node;
         }
         this._loadingNode.parent = this.node;
         this._loadingNode.active = true;
@@ -588,7 +678,44 @@ export default class Main extends Component {
         this.showTopToast(msg);
     }
 
+    private onEnterInnerCity(options?: EnterInnerCityOptions): void {
+        if (!this._mapScene || !this._mapUIScene) return;
+        if (!this._innerCityScene || !this._innerCityScene.isValid) {
+            const node = new Node('InnerCityScene');
+            node.layer = this._mapUIScene.layer;
+            this.node.addChild(node);
+            node.addComponent(InnerCityScene);
+            this._innerCityScene = node;
+        }
+        // 始终紧贴在 MapUIScene 正下方渲染（多次进出也不能越过 MapUIScene），共享顶栏资源条、任务栏与通用弹窗。
+        const myIndex = this._innerCityScene.getSiblingIndex();
+        const uiIndex = this._mapUIScene.getSiblingIndex();
+        if (myIndex > uiIndex) {
+            this._innerCityScene.setSiblingIndex(uiIndex);
+        } else if (myIndex < uiIndex - 1) {
+            this._innerCityScene.setSiblingIndex(uiIndex - 1);
+        }
+        if (this._mapScene.active) this._mapScene.active = false;
+        this._innerCityScene.getComponent(InnerCityScene)?.openCity(options || {});
+        EventMgr.emit(LogicEvent.innerCityStateChanged, true);
+    }
+
+    private onExitInnerCity(): void {
+        if (this._innerCityScene && this._innerCityScene.isValid && this._innerCityScene.active) {
+            this._innerCityScene.getComponent(InnerCityScene)?.closeCity();
+        }
+        if (this._mapScene && this._mapScene.isValid && !this._mapScene.active) {
+            this._mapScene.active = true;
+        }
+        EventMgr.emit(LogicEvent.innerCityStateChanged, false);
+    }
+
     protected clearAllScene() {
+        if (this._innerCityScene) {
+            this._innerCityScene.destroy();
+            this._innerCityScene = null;
+        }
+
         if (this._mapScene) {
             this._mapScene.destroy();
             this._mapScene = null;

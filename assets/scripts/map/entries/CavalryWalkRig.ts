@@ -1,5 +1,5 @@
 import { Color, Node, Rect, resources, Size, Sprite, SpriteFrame, UITransform, Vec2, isValid } from 'cc';
-import { CavalryForelegRig, ForelegPoint, solveCavalryForelegPose } from './CavalryForelegPose';
+import { CavalryForelegRig, ForelegPoint, cavalryBodyOffset, solveCavalryForelegPose } from './CavalryForelegPose';
 
 // One shared texture, distinct limb tracks. Front legs cannot exchange identity
 // or grow hooked toes between generated drawings.
@@ -37,6 +37,7 @@ export class CavalryWalkRig {
     readonly root: Node;
     ready = false;
     private legs: Leg[] = [];
+    private body: Node;
 
     constructor(parent: Node, size: number) {
         this.root = new Node('GroundedCavalry'); this.root.layer = parent.layer;
@@ -45,11 +46,13 @@ export class CavalryWalkRig {
         void loadParts().then(parts => {
             if (!isValid(this.root, true)) return;
             // Far legs are shaded and separated from the near-side tracks.
-            this.addLeg(parts, 'FarHind', true, true, { x: 105, y: 153 }, { x: 102, y: 203 }, 26, 30, .25);
-            this.addLeg(parts, 'FarFore', false, true, { x: 166, y: 161 }, { x: 172, y: 211 }, 27, 31, .5);
-            this.addLeg(parts, 'NearHind', true, false, { x: 87, y: 164 }, { x: 82, y: 217 }, 28, 32, .75);
-            this.addLeg(parts, 'NearFore', false, false, { x: 149, y: 169 }, { x: 151, y: 226 }, 30, 34, 0);
+            // 四拍落蹄：近前、远后、远前、近后；同侧后蹄先于前蹄落地。
+            this.addLeg(parts, 'FarHind', true, true, { x: 105, y: 153 }, { x: 102, y: 203 }, 24, 28, .75);
+            this.addLeg(parts, 'FarFore', false, true, { x: 166, y: 161 }, { x: 172, y: 213 }, 25, 30, .5);
+            this.addLeg(parts, 'NearHind', true, false, { x: 87, y: 164 }, { x: 82, y: 217 }, 26, 30, .25);
+            this.addLeg(parts, 'NearFore', false, false, { x: 149, y: 169 }, { x: 151, y: 228 }, 28, 33, 0);
             const body = this.sprite('Torso', parts[0], 164, 176, .5, .5);
+            this.body = body;
             this.place(body, { x: 128, y: 98 });
             this.ready = true;
         }).catch(() => { /* The shared loader reports once; existing sprite remains visible. */ });
@@ -66,12 +69,11 @@ export class CavalryWalkRig {
     private addLeg(parts: SpriteFrame[], name: string, hind: boolean, far: boolean,
         shoulder: ForelegPoint, restHoof: ForelegPoint, upperLength: number, lowerLength: number, phase: number): void {
         const upper = this.sprite(`${name}Upper`, parts[hind ? 4 : 1], hind ? 19 : 15, upperLength + 7, .5, .91);
-        const lower = this.sprite(`${name}Lower`, parts[hind ? 5 : 2], 10, lowerLength + 6, .5, .93);
-        const hoof = this.sprite(`${name}Hoof`, parts[hind ? 6 : 3], 12, 9, .5, .85);
+        const lower = this.sprite(`${name}Lower`, parts[hind ? 5 : 2], 9, lowerLength + 6, .5, .93);
+        const hoof = this.sprite(`${name}Hoof`, parts[hind ? 6 : 3], 10, 8, .5, .85);
         if (far) for (const node of [upper, lower, hoof]) node.getComponent(Sprite).color = new Color(191, 191, 191, 255);
         this.legs.push({ upper, lower, hoof, phase, rig: { shoulder, restHoof, upperLength, lowerLength,
-            strideVector: { x: 18, y: 9 }, lift: 3, bendSign: hind ? 1 : -1,
-            supportFlexDegrees: hind ? 28 : 12, swingFlexDegrees: hind ? 42 : 28 } });
+            strideVector: { x: 14, y: 2 }, lift: hind ? 4 : 6, bendSign: hind ? 1 : -1 } });
     }
 
     private place(node: Node, point: ForelegPoint): void { node.setPosition(point.x - 128, 238 - point.y, 0); }
@@ -79,8 +81,10 @@ export class CavalryWalkRig {
     setVisible(visible: boolean): void { this.root.active = visible && this.ready; }
 
     sample(phase: number, moving = true): void {
+        const bodyOffset = cavalryBodyOffset(phase, moving);
+        if (this.body) this.place(this.body, { x: 128 + bodyOffset.x, y: 98 + bodyOffset.y });
         for (const leg of this.legs) {
-            const pose = solveCavalryForelegPose(phase + leg.phase, leg.rig, moving);
+            const pose = solveCavalryForelegPose(phase + leg.phase, leg.rig, moving, bodyOffset);
             this.place(leg.upper, pose.shoulder); this.place(leg.lower, pose.knee); this.place(leg.hoof, pose.hoof);
             leg.upper.angle = Math.atan2(pose.knee.x - pose.shoulder.x, pose.knee.y - pose.shoulder.y) * 180 / Math.PI;
             leg.lower.angle = Math.atan2(pose.hoof.x - pose.knee.x, pose.hoof.y - pose.knee.y) * 180 / Math.PI;

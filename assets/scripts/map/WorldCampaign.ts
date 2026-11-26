@@ -1,11 +1,14 @@
 import WorldMapArt from './WorldMapArt';
 
 export interface CampaignRegion { id: number; name: string; tier: number; color: string; x: number; y: number; }
+export interface CampaignAttackEntrance { x: number; y: number; }
 export interface CampaignGate {
     id: string; name: string; x: number; y: number; regions: number[]; level: number;
-    crossing?: 'bridge' | 'pass'; axis?: 'x' | 'y'; bridgeSpan?: number;
+    crossing?: 'bridge' | 'pass'; axis?: 'x' | 'y'; bridgeSpan?: number; footprintRadius?: number; footprintWidthRadius?: number;
+    attackEntrances: readonly CampaignAttackEntrance[];
 }
-export interface CampaignCity { name: string; x: number; y: number; level: number; region: number; footprintRadius: number; art: string; }
+export interface CampaignCity { name: string; x: number; y: number; level: number; region: number; footprintRadius: number; art: string;
+    attackEntrances: readonly CampaignAttackEntrance[]; }
 export interface CampaignMap {
     width: number; height: number; regions: CampaignRegion[]; gates: CampaignGate[]; cities: CampaignCity[]; stages: string[];
     topologyVersion?: number;
@@ -39,6 +42,29 @@ export default class WorldCampaign {
 
     static gateAt(x: number, y: number): CampaignGate {
         return this.config?.gates.find(gate => gate.x === x && gate.y === y) || null;
+    }
+
+    /** 内部攻城落脚点，仅供寻路选择；不显示，也不以城中心代替缺失配置。 */
+    static attackEntrances(x: number, y: number): readonly CampaignAttackEntrance[] {
+        const config = this.config;
+        if (!config) return [];
+        return (config.cities.find(city => city.x === x && city.y === y)
+            || config.gates.find(gate => gate.x === x && gate.y === y))?.attackEntrances || [];
+    }
+
+    static isAttackEntrance(cityX: number, cityY: number, point?: CampaignAttackEntrance | null): boolean {
+        return !!point && Number.isInteger(point.x) && Number.isInteger(point.y)
+            && this.attackEntrances(cityX, cityY).some(entry => entry.x === point.x && entry.y === point.y);
+    }
+
+    static attackEntranceAt(x: number, y: number): { city: CampaignCity | CampaignGate; entrance: CampaignAttackEntrance } | null {
+        const config = this.config;
+        if (!config || !Number.isInteger(x) || !Number.isInteger(y)) return null;
+        for (const city of [...config.cities, ...config.gates]) {
+            const entrance = city.attackEntrances?.find(point => point.x === x && point.y === y);
+            if (entrance) return { city, entrance };
+        }
+        return null;
     }
 
     static landmark(x: number, y: number): string {

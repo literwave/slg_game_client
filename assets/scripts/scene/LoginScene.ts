@@ -4,6 +4,7 @@ import { LogicEvent } from '../common/LogicEvent';
 const { ccclass, property } = _decorator;
 
 import LoginCommand from "../login/LoginCommand";
+import CreateLogic, { BirthZone } from '../login/CreateLogic';
 import { NetEvent } from "../network/socket/NetInterface";
 import { EventMgr } from '../utils/EventMgr';
 import { NetManager } from "../network/socket/NetManager";
@@ -48,7 +49,7 @@ export default class LoginScene extends Component {
         }
     }
 
-    protected onCreate(): void {
+    protected onCreate(zones: BirthZone[] = []): void {
 
         if (this._createNode == null) {
             this._createNode = instantiate(this.createPrefab);
@@ -56,6 +57,7 @@ export default class LoginScene extends Component {
         } else {
             this._createNode.active = true;
         }
+        this._createNode.getComponent(CreateLogic)?.configureZones(zones);
     }
 
 

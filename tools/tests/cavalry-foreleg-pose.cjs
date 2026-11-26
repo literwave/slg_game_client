@@ -10,7 +10,7 @@ const code = ts.transpileModule(source, { compilerOptions: {
 } }).outputText;
 const loaded = { exports: {} };
 new Function('module', 'exports', code)(loaded, loaded.exports);
-const { solveCavalryForelegPose: solve, CAVALRY_FORELEG_STANCE: stance } = loaded.exports;
+const { solveCavalryForelegPose: solve, cavalryBodyOffset, CAVALRY_FORELEG_STANCE: stance } = loaded.exports;
 const rig = { shoulder: { x: 0, y: 0 }, restHoof: { x: 1, y: 32 },
     upperLength: 20, lowerLength: 20, strideVector: { x: 12, y: 5 }, lift: 5 };
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -36,7 +36,9 @@ for (let i = 0; i < 1000; i++) {
         const cross = (pose.hoof.x - pose.shoulder.x) * (pose.knee.y - pose.shoulder.y)
             - (pose.hoof.y - pose.shoulder.y) * (pose.knee.x - pose.shoulder.x);
         assert.ok(cross < 0, '膝盖始终使用同一弯曲方向');
-        assert.equal(pose.hoofAngle, 0, '马蹄不继承下腿旋转');
+        if (pose.grounded) assert.equal(pose.hoofAngle, 0, '落地蹄保持平底');
+        else assert.ok(Math.abs(pose.hoofAngle) <= 18, '离地蹄只作有限收趾');
+        samePoint(pose.shoulder, rig.shoulder, '脚点不能反向拖动腿根');
     }
     const nextCycle = solve(phase + 1, rig);
     samePoint(near.hoof, nextCycle.hoof, '整周期脚底一致');
@@ -56,6 +58,8 @@ for (let i = 0; i < 100; i++) {
     '支撑阶段补偿身体移动后脚底世界位置固定');
 }
 const peak = solve(stance + (1 - stance) / 2, rig);
+assert.ok(solve(stance + (1 - stance) * .25, rig).hoofAngle > 5, '离地回收时有收趾动作');
+assert.ok(solve(stance + (1 - stance) * .75, rig).hoofAngle < -5, '落地前收回转角');
 samePoint(peak.hoof, { x: rig.restHoof.x, y: rig.restHoof.y - rig.lift }, '低抬蹄峰值');
 for (const boundary of [stance, 1]) {
     const h = 1e-5, before = solve(boundary - h, rig), at = solve(boundary, rig), after = solve(boundary + h, rig);
@@ -132,6 +136,10 @@ async function verifyRendererRig() {
     }
     const legs = walk.legs;
     assert.equal(legs.length, 4, '必须保留四条可独立采样的腿');
+    const contacts = legs.map(leg => ({ name: leg.upper.name, phase: (1 - leg.phase) % 1 }))
+        .sort((a,b) => a.phase - b.phase).map(leg => leg.name);
+    assert.deepEqual(contacts, ['NearForeUpper','FarHindUpper','FarForeUpper','NearHindUpper'],
+        '步行四拍应为同侧后蹄先于前蹄，而不是颠倒前后顺序');
     const near = legs.find(leg => leg.upper.name === 'NearForeUpper');
     const far = legs.find(leg => leg.upper.name === 'FarForeUpper');
     assert.ok(near && far, '近远前腿身份固定');
@@ -148,11 +156,16 @@ async function verifyRendererRig() {
         const phase = i / 1000;
         walk.sample(phase);
         for (const leg of legs) {
-            const pose = solve(phase + leg.phase, leg.rig);
+            const offset = cavalryBodyOffset(phase);
+            const pose = solve(phase + leg.phase, leg.rig, true, offset);
             const reachMargin = leg.rig.upperLength + leg.rig.lowerLength
                 - distance(pose.shoulder, pose.hoof);
             minimumReachMargin = Math.min(minimumReachMargin, reachMargin);
             assert.ok(reachMargin > .1, `${leg.upper.name} 的整个周期必须可达并保留弯曲余量`);
+            samePoint(pose.shoulder, { x: leg.rig.shoulder.x + offset.x, y: leg.rig.shoulder.y + offset.y },
+                '腿根必须随躯干同步，禁止四条腿各自上下滑动');
+            const torso = walk.root.children.find(node => node.name === 'Torso');
+            close(leg.upper.position.y - torso.position.y, 98 - leg.rig.shoulder.y, '腿根到身体的距离恒定');
             samePoint(leg.upper.position, { x: pose.shoulder.x - 128, y: 238 - pose.shoulder.y },
                 '隐藏连接点同步到实际渲染节点');
             close(distance(leg.upper.position, leg.lower.position), leg.rig.upperLength,
@@ -161,16 +174,14 @@ async function verifyRendererRig() {
                 '连接点浮动时实际下段骨长不变');
             samePoint(leg.hoof.position, { x: pose.hoof.x - 128, y: 238 - pose.hoof.y },
                 '渲染器正确转换像素与 Creator 坐标');
-            assert.equal(leg.hoof.angle, 0, '实际蹄节点保持平底');
+            close(leg.hoof.angle, pose.hoofAngle, '实际蹄节点同步收趾转角');
             const angle = leg.lower.angle * Math.PI / 180;
             samePoint({ x: Math.sin(angle), y: Math.cos(angle) },
                 { x: (pose.hoof.x - pose.knee.x) / leg.rig.lowerLength,
                     y: (pose.hoof.y - pose.knee.y) / leg.rig.lowerLength }, '下腿旋转与骨骼轴一致');
             if (leg === near || leg === far) {
                 const flex = renderedFlex(leg);
-                if (pose.grounded) close(flex, 12, '前腿承重期间保持12度近直立关节', 1e-6);
-                else assert.ok(flex >= 12 - 1e-6 && flex <= 28 + 1e-6,
-                    '前腿摆动保持12至28度，不再出现大折角');
+                assert.ok(flex < 100, '前腿不应反折或收缩到胸口');
             }
             if (pose.grounded) {
                 const p = ((phase + leg.phase) % 1 + 1) % 1, amount = .5 - p / stance;
@@ -179,7 +190,8 @@ async function verifyRendererRig() {
                 '实际支撑参数不能因不可达夹取产生脚底滑动');
             }
         }
-        const a = solve(phase + near.phase, near.rig), b = solve(phase + far.phase, far.rig);
+        const a = solve(phase + near.phase, near.rig, true, cavalryBodyOffset(phase)),
+            b = solve(phase + far.phase, far.rig, true, cavalryBodyOffset(phase));
         assert.ok(a.grounded || b.grounded, '实际前腿相位不能同时腾空');
         for (const first of [[a.shoulder, a.knee], [a.knee, a.hoof]]) {
             for (const second of [[b.shoulder, b.knee], [b.knee, b.hoof]]) {
@@ -193,8 +205,10 @@ async function verifyRendererRig() {
         assert.ok(gap > near.hoof.getComponent(PartTransform).width, '近远前蹄轨道必须留出蹄宽');
     }
     for (const leg of [near, far]) {
+        walk.sample(-leg.phase);
+        const supportFlex = renderedFlex(leg);
         walk.sample(stance + (1 - stance) / 2 - leg.phase);
-        close(renderedFlex(leg), 28, '前腿摆动峰值有实际28度屈曲', 1e-6);
+        assert.ok(renderedFlex(leg) > supportFlex + 15, '回收时应明显屈腿，而非整根腿僵硬平移');
     }
     for (const leg of legs) {
         for (const boundary of [stance, 1]) {
@@ -213,8 +227,22 @@ async function verifyRendererRig() {
     walk.sample(.81, false);
     for (const leg of legs) samePoint(leg.hoof.position,
         { x: leg.rig.restHoof.x - 128, y: 238 - leg.rig.restHoof.y }, '渲染器站立回置');
-    for (const leg of [near, far]) close(renderedFlex(leg), 12, '站立保持近直立承重姿态', 1e-6);
+    for (const leg of legs) assert.equal(leg.hoof.angle, 0, '站定后四蹄放平');
+    samePoint(walk.root.children.find(node => node.name === 'Torso').position, { x: 0, y: 140 }, '站定后躯干归位');
     console.log(`PASS 实际四腿参数、素材范围、旋转坐标、无骨段交叉；最小轨道间距 ${minimumTrackGap.toFixed(2)}px，最小伸展余量 ${minimumReachMargin.toFixed(2)}px`);
-    console.log('PASS 实际前腿支撑12度、摆动不超过28度、隐藏连接点周期和速度连续、骨段长度不变');
+    console.log('PASS 固定腿根、回收屈腿、离地收趾、身体同步起伏、接缝连续与站姿归位');
+    if (process.argv[3]) {
+        const frames = [];
+        for (let i=0;i<12;i++) {
+            walk.sample(i/12);
+            frames.push(walk.root.children.map(node => {
+                const sprite=node.getComponent(PartSprite), ui=node.getComponent(PartTransform);
+                return { name:node.name, position:node.position, angle:node.angle||0,
+                    width:ui.width,height:ui.height,anchor:ui.anchor,rect:sprite.spriteFrame.rect,
+                    color:sprite.color };
+            }));
+        }
+        fs.writeFileSync(process.argv[3],JSON.stringify(frames));
+    }
 }
 verifyRendererRig().catch(error => { console.error(error); process.exitCode = 1; });

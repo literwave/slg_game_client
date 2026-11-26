@@ -7,19 +7,21 @@ import DateUtil from '../../utils/DateUtil';
 import { loadMarchAnimations, MarchAnimationSet, MarchUnitKind, MarchWalkView, selectMarchWalkView } from './MarchAnimationLibrary';
 import { MarchPose, marchGaitRate, sampleMarchPose } from './MarchPose';
 import { loadSiegeCommander, loadSiegeUnit, SiegeFrame, siegeFrameAt } from './SiegeAnimationLibrary';
-import { SiegeLaunch, SiegeVolley, siegeCommandFrameAt } from './SiegeChoreography';
+import { siegeBeat, SiegeLaunch, SiegeVolley, siegeCommandFrameAt } from './SiegeChoreography';
 import { CavalryWalkRig } from './CavalryWalkRig';
 import { CAVALRY_WALK_CYCLE } from './MarchPose';
+import { loadNavalSprites, NavalSpriteSet } from './NavalAnimationLibrary';
 
 interface Member {
-    node: Node; animation: Animation; lag: number; side: number;
+    node: Node; shadow: Node; animation: Animation; lag: number; side: number;
     sprite: Sprite; animations?: MarchAnimationSet;
     clip: string; moving: boolean; dustPhase: number; facing: number;
     walkView?: MarchWalkView;
     guardPose: boolean; kind: MarchUnitKind;
     siegeFrames?: SiegeFrame[][]; siegeLoading?: boolean; siegePose?: boolean;
     siegeScale?: number; siegeMirrored?: boolean;
-    attackIndex: number; launch: SiegeLaunch;
+    navalPose?: boolean;
+    attackIndex: number; launch: SiegeLaunch; extraLaunch: SiegeLaunch;
     guardPost?: { x: number; y: number; dx: number; dy: number };
     foot?: Vec2;
     arrivalFoot?: Vec2;
@@ -46,6 +48,10 @@ export default class MarchFormation {
     private dustElapsed = 0;
     private dustVisible = false;
     private guarding = false;
+    private naval = false;
+    private navalAnchor: Vec2 | null = null;
+    private navalSprites: NavalSpriteSet | null = null;
+    private navalLoading = false;
     private siegeTarget: Vec2 | null = null;
     private siegeWeight = 0;
     private siegeStartedAt: number | null = null;
@@ -97,12 +103,36 @@ export default class MarchFormation {
         }
     }
 
-    /** 占领倒计时期间展开到边缘半跪防守；行军途中不生效。 */
+    /** 涉水行军或攻打河心水寨时切换为战船编队表现；不修改逻辑坐标或兵力。 */
+    setNaval(on: boolean, anchor: { x: number; y: number } | null = null): void {
+        const nextAnchor = anchor ? new Vec2(anchor.x, anchor.y) : null;
+        const anchorChanged = (!this.navalAnchor && !!nextAnchor) || (!!this.navalAnchor && !nextAnchor)
+            || (!!this.navalAnchor && !!nextAnchor && Vec2.distance(this.navalAnchor, nextAnchor) > .001);
+        const changed = this.naval !== on;
+        this.naval = on;
+        this.navalAnchor = nextAnchor;
+        if (on && !this.navalSprites && !this.navalLoading) {
+            this.navalLoading = true;
+            const revision = this.revision;
+            void loadNavalSprites().then(sprites => {
+                this.navalLoading = false;
+                if (this.disposed || revision !== this.revision) return;
+                this.navalSprites = sprites;
+                for (let i = 0; i < this.members.length; i++) this.applyPose(this.members[i], this.members[i].moving, i);
+            }).catch(() => { this.navalLoading = false; });
+        }
+        if (changed || anchorChanged) {
+            if (changed) this.dustVisible = false;
+            for (let i = 0; i < this.members.length; i++) this.applyPose(this.members[i], this.members[i].moving, i);
+        }
+    }
+
+    /** 占领期间展开到边缘半跪警戒；行军途中不生效。 */
     setGuarding(on: boolean): void {
         if (this.guarding === on) return;
         this.guarding = on;
         // 阵形位置在 update 中渐移，不能到达时突然横跳到地块侧边。
-        for (const member of this.members) this.applyPose(member, member.moving);
+        for (let i = 0; i < this.members.length; i++) this.applyPose(this.members[i], this.members[i].moving, i);
     }
 
     setSiegeTarget(target: Vec2 | null): void {
@@ -135,7 +165,8 @@ export default class MarchFormation {
         const shadowWidth = kind === 'cavalry' ? size * .23 : size * .13;
         for (const [scale, alpha] of [[1, 18], [.78, 24], [.52, 30]]) {
             shadowG.fillColor = new Color(22, 27, 18, alpha);
-            shadowG.ellipse(0, 0, shadowWidth * scale, shadowWidth * scale * .36); shadowG.fill();
+        shadowG.ellipse(0, 0, shadowWidth * scale,
+            shadowWidth * scale * .72 * MapUtil.tileSize.height / MapUtil.tileSize.width); shadowG.fill();
         }
         const body = new Node('Body'); body.layer = node.layer; node.addChild(body);
         const transform = body.addComponent(UITransform);
@@ -144,9 +175,11 @@ export default class MarchFormation {
         const sprite = body.addComponent(Sprite); sprite.sizeMode = Sprite.SizeMode.CUSTOM; sprite.trim = false;
         const animation = body.addComponent(Animation);
         body.active = false;
-        const member: Member = { node, animation, sprite, lag, side, clip: '', moving: false,
+        const member: Member = { node, shadow, animation, sprite, lag, side, clip: '', moving: false,
             facing: 7, guardPose: false, kind, dustPhase: this.members.length * .097,
-            attackIndex: this.members.length - 1, launch: { x: 0, y: 0, index: this.members.length - 1 } };
+            attackIndex: this.members.length - 1,
+            launch: { x: 0, y: 0, index: Math.max(0, this.members.length - 1) },
+            extraLaunch: { x: 0, y: 0, index: 3 } };
         if (kind === 'cavalry') member.walkRig = new CavalryWalkRig(body, size);
         this.members.push(member);
         const revision = this.revision;
@@ -175,7 +208,7 @@ export default class MarchFormation {
         this.siegeVolley.sources.length = 0;
         if (!assaulting) this.siegeStartedAt = null;
         if (assaulting && this.siegeStartedAt === null && this.siegeWeight > .995 &&
-            this.members.filter(member => member.kind === 'infantry').every(member => !!member.siegeFrames))
+            (this.naval || this.members.filter(member => member.kind === 'infantry').every(member => !!member.siegeFrames)))
             this.siegeStartedAt = now;
         this.siegeVolley.seconds = this.siegeStartedAt === null ? 0 : Math.max(0, (now - this.siegeStartedAt) / 1000);
         this.gaitWeight += ((sample.moving ? 1 : 0) - this.gaitWeight) * (1 - Math.exp(-dt / .10));
@@ -204,24 +237,40 @@ export default class MarchFormation {
         if (!sample.moving && !stopping && this.members.some(member => member.moving)) this.gaitTime += dt;
         this.wasMarching = sample.moving;
         const center = MapUtil.mapCellToPixelPoint(new Vec2(sample.position.x, sample.position.y));
+        const visualCell = this.naval && assaulting && this.navalAnchor ? this.navalAnchor : sample.position;
+        const visualCenter = this.naval && assaulting && this.navalAnchor
+            ? MapUtil.mapCellToPixelPoint(new Vec2(visualCell.x, visualCell.y)) : center;
         const advance = this.previousCenter ? center.clone().subtract(this.previousCenter) : new Vec2();
         this.previousCenter = center.clone();
         const towards = !sample.moving && this.siegeTarget ? this.siegeTarget : sample.towards;
         const next = MapUtil.mapCellToPixelPoint(new Vec2(towards.x, towards.y));
-        if (Vec2.distance(center, next) > .01) {
-            this.heading.set(next.x - center.x, next.y - center.y).normalize();
-            this.groundHeading.set(towards.x - sample.position.x, towards.y - sample.position.y).normalize();
+        if (Vec2.distance(visualCenter, next) > .01) {
+            this.heading.set(next.x - visualCenter.x, next.y - visualCenter.y).normalize();
+            this.groundHeading.set(towards.x - visualCell.x, towards.y - visualCell.y).normalize();
         }
         // 改道包的平滑校正也属于整队位移，不能只施加到主将上。
         const pathHead = sample.moving && playback.path.length > 0 ? playback.behind(0) : null;
         const correction = pathHead ? new Vec2(sample.position.x - pathHead.position.x,
             sample.position.y - pathHead.position.y) : new Vec2();
-        for (const member of this.members) {
+        for (let memberIndex = 0; memberIndex < this.members.length; memberIndex++) {
+            const member = this.members[memberIndex];
+            // 涉水时主将与前两名护卫分别化为楼船/艨艟战船，其余步兵登船隐入舱内。
+            const navalBoarded = this.naval && memberIndex > 2;
+            if (navalBoarded) {
+                member.node.active = false;
+                continue;
+            }
+            const shipMember = this.naval && memberIndex <= 2;
+            const effectiveLag = shipMember ? (memberIndex === 0 ? 0 : .34) : member.lag;
+            const effectiveSide = shipMember ? (memberIndex === 0 ? 0 : (memberIndex === 1 ? -.28 : .28)) : member.side;
             // 行军沿路径跟随；到达后按最后一段朝向收队，不能永远停在拐点两侧。
-            const tail = sample.moving && playback.path.length > 0 ? playback.behind(member.lag) : null;
+            const tail = sample.moving && playback.path.length > 0 ? playback.behind(effectiveLag) : null;
+            // 普通停驻时围绕主将排成前后两行；行军使用原来的紧凑队列。
+            const restColumns = this.members.length >= 7 ? 3 : 2;
+            const restingEscort = !shipMember && !sample.moving && !defending && !assaulting && member.kind === 'infantry';
             const ground = tail ? new Vec2(tail.position.x, tail.position.y)
-                : new Vec2(sample.position.x - this.groundHeading.x * member.lag,
-                    sample.position.y - this.groundHeading.y * member.lag);
+                : new Vec2(visualCell.x - this.groundHeading.x * effectiveLag,
+                    visualCell.y - this.groundHeading.y * effectiveLag);
             const forward = tail ? new Vec2(tail.towards.x - ground.x, tail.towards.y - ground.y) : this.groundHeading.clone();
             if (forward.lengthSqr() < .0001) forward.set(this.groundHeading);
             forward.normalize();
@@ -229,9 +278,16 @@ export default class MarchFormation {
             const base = MapUtil.mapCellToPixelPoint(ground);
             const direction = MapUtil.mapCellToPixelPoint(new Vec2(ground.x + forward.x, ground.y + forward.y)).subtract(base).normalize();
             // 先在地面排列，再统一做等距投影，斜行时不挤成一团或左右漂移。
-            ground.x -= forward.y * member.side; ground.y += forward.x * member.side;
+            ground.x -= forward.y * effectiveSide; ground.y += forward.x * effectiveSide;
             const foot = MapUtil.mapCellToPixelPoint(ground);
-            if (member.guardPost && this.guardWeight > 0) {
+            if (restingEscort) {
+                // 停驻两排按屏幕水平线对齐；缩进菱形边界内，朝向仍保留最后的行军方向。
+                const column = member.attackIndex % restColumns - (restColumns - 1) / 2;
+                const row = Math.floor(member.attackIndex / restColumns);
+                foot.set(center.x + column * MapUtil.tileSize.width * .20,
+                    center.y + (.5 - row) * MapUtil.tileSize.height * .35);
+            }
+            if (!shipMember && member.guardPost && this.guardWeight > 0) {
                 const post = member.guardPost;
                 const guardFoot = MapUtil.mapCellToPixelPoint(new Vec2(sample.position.x + post.x, sample.position.y + post.y));
                 foot.x += (guardFoot.x - foot.x) * this.guardWeight;
@@ -243,23 +299,34 @@ export default class MarchFormation {
                 }
             }
             // 领队跟随同一平滑后的坐标；队员沿拐点逐个转弯。
-            if (!member.lag) foot.set(center);
+            if (!effectiveLag) foot.set(visualCenter);
             if (this.siegeWeight > 0) {
-                // 先在地面展开成两排，骑将在后；同一阵位参与原有行走与收步缓动。
-                const columns = this.members.length >= 7 ? 3 : 2;
-                const rank = Math.floor(member.attackIndex / columns);
-                const ahead = member.kind === 'cavalry' ? -.34 : .2 - rank * .26;
-                const side = member.kind === 'cavalry' ? 0 : (member.attackIndex % columns - (columns - 1) / 2) * .24;
-                const post = MapUtil.mapCellToPixelPoint(new Vec2(
-                    sample.position.x + this.groundHeading.x * ahead - this.groundHeading.y * side,
-                    sample.position.y + this.groundHeading.y * ahead + this.groundHeading.x * side));
-                foot.x += (post.x - foot.x) * this.siegeWeight;
-                foot.y += (post.y - foot.y) * this.siegeWeight;
+                if (shipMember) {
+                    // 战船列阵水战：护卫舟前出分列左右翼，主舰居中压阵，面向水寨齐射火箭。
+                    const ahead = memberIndex === 0 ? -.12 : .20;
+                    const side = memberIndex === 0 ? 0 : (memberIndex === 1 ? -.42 : .42);
+                    const post = MapUtil.mapCellToPixelPoint(new Vec2(
+                        visualCell.x + this.groundHeading.x * ahead - this.groundHeading.y * side,
+                        visualCell.y + this.groundHeading.y * ahead + this.groundHeading.x * side));
+                    foot.x += (post.x - foot.x) * this.siegeWeight;
+                    foot.y += (post.y - foot.y) * this.siegeWeight;
+                } else {
+                    // 先在地面展开成两排，骑将在后；同一阵位参与原有行走与收步缓动。
+                    const columns = this.members.length >= 7 ? 3 : 2;
+                    const rank = Math.floor(member.attackIndex / columns);
+                    const ahead = member.kind === 'cavalry' ? -.34 : .2 - rank * .26;
+                    const side = member.kind === 'cavalry' ? 0 : (member.attackIndex % columns - (columns - 1) / 2) * .24;
+                    const post = MapUtil.mapCellToPixelPoint(new Vec2(
+                        sample.position.x + this.groundHeading.x * ahead - this.groundHeading.y * side,
+                        sample.position.y + this.groundHeading.y * ahead + this.groundHeading.x * side));
+                    foot.x += (post.x - foot.x) * this.siegeWeight;
+                    foot.y += (post.y - foot.y) * this.siegeWeight;
+                }
             }
             const previousFoot = member.foot?.clone();
             if (justArrived && member.foot) member.arrivalFoot = new Vec2(member.foot.x + advance.x, member.foot.y + advance.y);
             if (sample.moving) member.arrivalFoot = undefined;
-            if (!member.foot || !member.lag || !member.node.active) member.foot = foot.clone();
+            if (!member.foot || !effectiveLag || !member.node.active) member.foot = foot.clone();
             else if (!sample.moving && member.arrivalFoot) {
                 member.foot.set(member.arrivalFoot.x + (foot.x - member.arrivalFoot.x) * stopBlend,
                     member.arrivalFoot.y + (foot.y - member.arrivalFoot.y) * stopBlend);
@@ -281,6 +348,7 @@ export default class MarchFormation {
             member.node.setPosition(member.foot.x - (this.renderLayer ? 0 : center.x),
                 member.foot.y - (this.renderLayer ? 0 : center.y), 0);
             member.node.active = this.host.active;
+            member.shadow.active = !shipMember;
             // 转弯/折返的短暂跟随阶段，身体朝向实际位移，避免脸先转而双脚横滑。
             if (previousFoot && (sample.moving || settling)) {
                 const travel = member.foot.clone().subtract(previousFoot);
@@ -288,12 +356,42 @@ export default class MarchFormation {
             }
             const angle = Math.atan2(direction.y, direction.x);
             const difference = Math.atan2(Math.sin(angle - member.facing * Math.PI / 4), Math.cos(angle - member.facing * Math.PI / 4));
-            // 等距斜边投影约 26.6°，余量须小于 4°，才能从水平朝向正常转入斜行。
+            // 朝向依据投影后的行进方向，保留小幅迟滞以免近阈值时来回切换动画。
             if (!member.clip || Math.abs(difference) > Math.PI / 8 + Math.PI / 60)
                 member.facing = (Math.round(angle / (Math.PI / 4)) + 8) % 8;
-            member.walkView = (sample.moving || settling) && member.animations?.walkViews?.length
+            member.walkView = !shipMember && (sample.moving || settling) && member.animations?.walkViews?.length
                 ? selectMarchWalkView(member.animations.walkViews, angle, member.walkView) : undefined;
-            this.applyPose(member, sample.moving || settling);
+            this.applyPose(member, sample.moving || settling, memberIndex);
+            if (member.navalPose) {
+                const wavePhase = now / 1000 * 2.8 + member.dustPhase * 15;
+                const heave = Math.sin(wavePhase) * (sample.moving ? 2.4 : 1.6);
+                const pitch = Math.sin(wavePhase * .75 + .6) * (sample.moving ? 1.8 : 1.2);
+                let recoilX = 0, recoilY = 0;
+                if (assaulting && this.siegeStartedAt !== null && !member.moving) {
+                    const beat = siegeBeat(this.siegeVolley.seconds, memberIndex, 180);
+                    if (beat.flight >= 0 && beat.flight < .16) {
+                        const kick = Math.sin(beat.flight / .16 * Math.PI) * 3.0;
+                        recoilX = -this.heading.x * kick;
+                        recoilY = -this.heading.y * kick;
+                    }
+                    member.launch.index = memberIndex;
+                    member.launch.x = member.foot.x - center.x + this.heading.x * (memberIndex === 0 ? 18 : 12);
+                    member.launch.y = member.foot.y - center.y + (memberIndex === 0 ? 22 : 16) + this.heading.y * 8;
+                    this.siegeVolley.sources.push(member.launch);
+                    if (memberIndex === 0) {
+                        member.extraLaunch.index = 3;
+                        member.extraLaunch.x = member.foot.x - center.x - this.heading.x * 6;
+                        member.extraLaunch.y = member.foot.y - center.y + 26 + this.heading.y * 6;
+                        this.siegeVolley.sources.push(member.extraLaunch);
+                    }
+                }
+                const shipScale = memberIndex === 0 ? 1.38 : 1.54;
+                const mirror = this.navalSprites?.mirrored[member.facing] ? -1 : 1;
+                member.sprite.node.setPosition(recoilX, heave + recoilY, 0);
+                member.sprite.node.angle = pitch * mirror;
+                member.sprite.node.setScale(shipScale * mirror, shipScale, 1);
+                continue;
+            }
             // 方向帧保持清晰，不对相邻图片做半透明混合；重心动作按真实时间连续采样。
             sampleMarchPose(member.kind, this.gaitTime, member.moving ? Math.max(this.gaitWeight, .35) : 0, this.pose);
             if (defending && !member.moving) {
@@ -309,6 +407,7 @@ export default class MarchFormation {
             member.sprite.node.setScale(member.siegePose ? member.siegeScale * mirror : mirror,
                 member.siegePose ? member.siegeScale : this.pose.stretch, 1);
             if (member.kind === 'infantry' && member.siegePose && this.siegeStartedAt !== null && !member.moving) {
+                member.launch.index = member.attackIndex;
                 member.launch.x = member.foot.x - center.x + this.heading.x * 8 - this.heading.y * 3;
                 member.launch.y = member.foot.y - center.y + 27 + this.heading.y * 6;
                 this.siegeVolley.sources.push(member.launch);
@@ -319,11 +418,29 @@ export default class MarchFormation {
             .forEach((member, i) => member.node.setSiblingIndex(i + 1));
     }
 
-    private applyPose(member: Member, moving: boolean): void {
+    private applyPose(member: Member, moving: boolean, memberIndex = -1): void {
         const changed = member.moving !== moving;
         member.moving = moving;
         member.walkRig?.setVisible(false);
         member.sprite.enabled = true;
+        const shipIdx = memberIndex >= 0 ? memberIndex : this.members.indexOf(member);
+        if (this.naval && shipIdx >= 0 && shipIdx <= 2 && this.navalSprites) {
+            if (!member.navalPose) member.animation.stop();
+            member.siegePose = false;
+            member.navalPose = true;
+            member.sprite.spriteFrame = this.navalSprites.frames[member.facing];
+            member.sprite.color = new Color(255, 255, 255, 255);
+            member.sprite.node.getComponent(UITransform).setAnchorPoint(.5, .24);
+            member.sprite.node.active = true;
+            member.clip = `naval_${member.facing}`;
+            return;
+        }
+        if (member.navalPose) {
+            member.navalPose = false;
+            member.sprite.color = new Color(255, 255, 255, 255);
+            member.sprite.node.getComponent(UITransform).setAnchorPoint(.5, 18 / 256);
+            member.clip = '';
+        }
         if (this.siegeTarget && !moving && member.siegeFrames) {
             const index = member.kind === 'cavalry' ? siegeCommandFrameAt(this.siegeVolley.seconds)
                 : siegeFrameAt(this.siegeVolley.seconds, member.attackIndex);
@@ -387,6 +504,49 @@ export default class MarchFormation {
     }
 
     private updateDust(dt: number, now: number): void {
+        if (this.naval) {
+            const activeShips = this.members.filter((m, idx) => idx <= 2 && m.node.active);
+            if (!activeShips.length) {
+                if (this.dustVisible) this.dust.clear();
+                this.dustVisible = false; this.dustElapsed = 0; return;
+            }
+            this.dustElapsed += dt;
+            if (this.dustVisible && this.dustElapsed < .07) return;
+            this.dustElapsed = 0; this.dustVisible = true; this.dust.clear();
+            const ratio = MapUtil.tileSize.height / MapUtil.tileSize.width;
+            for (let i = 0; i < activeShips.length; i++) {
+                const ship = activeShips[i];
+                const sx = ship.node.position.x - (this.renderLayer ? this.host.position.x : 0);
+                const sy = ship.node.position.y - (this.renderLayer ? this.host.position.y : 0);
+                const baseRx = i === 0 ? 28 : 20;
+                // 船底浅暗水面投影 + 柔和泛白水波圈
+                this.dust.fillColor = new Color(18, 44, 48, 34);
+                this.dust.ellipse(sx, sy - 2, baseRx, baseRx * .55 * ratio); this.dust.fill();
+                for (let ring = 0; ring < 2; ring++) {
+                    const phase = ((now / 1500 + ship.dustPhase * 2 + ring * .5) % 1);
+                    const rx = baseRx * (.92 + phase * .42), ry = rx * .56 * ratio;
+                    this.dust.lineWidth = 1.4;
+                    this.dust.strokeColor = new Color(218, 240, 238, Math.round((1 - phase) * 68));
+                    this.dust.ellipse(sx, sy - 2, rx, ry); this.dust.stroke();
+                }
+                if (ship.moving) {
+                    const px = -this.heading.y, py = this.heading.x * .6;
+                    for (let w = 0; w < 2; w++) {
+                        const age = ((now / 950 + ship.dustPhase * 3 + w * .5) % 1);
+                        const bx = sx - this.heading.x * (12 + age * 28);
+                        const by = sy - this.heading.y * (12 + age * 28);
+                        const spread = 6 + age * 14;
+                        this.dust.lineWidth = 1.5;
+                        this.dust.strokeColor = new Color(224, 244, 242, Math.round((1 - age) * 78));
+                        this.dust.moveTo(bx + px * spread, by + py * spread);
+                        this.dust.lineTo(bx + this.heading.x * 7, by + this.heading.y * 7);
+                        this.dust.lineTo(bx - px * spread, by - py * spread);
+                        this.dust.stroke();
+                    }
+                }
+            }
+            return;
+        }
         if (!this.members.some(member => member.moving && member.node.active)) {
             if (this.dustVisible) this.dust.clear();
             this.dustVisible = false; this.dustElapsed = 0; return;

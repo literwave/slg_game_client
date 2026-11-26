@@ -9,6 +9,7 @@ import { TargetTypeEnum } from '../config/enum/TargetTypeEnum';
 import { EntityTypeEnum } from '../config/enum/EntityTypeEnum';
 import { TroopStateEnum } from '../config/enum/TroopStateEnum';
 import CityCommand from './CityCommand';
+import WorldCampaign from '../map/WorldCampaign';
 
 /** 路径中的p_pos_f保留小数；只有目的格和视野中心使用整数坐标。 */
 export interface WorldPosition { x: number; y: number; }
@@ -19,6 +20,10 @@ export interface MarchRoutePreview {
 }
 type RouteSelection = MarchRoutePreview & { originVersion: string };
 interface RouteRequest { selection: RouteSelection; expired: boolean; }
+interface CityRouteSelection {
+    troopIdx: number; cityX: number; cityY: number; cityId: string; originVersion: string;
+    candidates: RouteSelection[];
+}
 /** 与 game_common 的 TargetType 配置一致；坐标移动不需要实体 ID。 */
 export enum MarchTargetType {
     ReturnCity = TargetTypeEnum.RETURN_CITY, AttackMonster = TargetTypeEnum.ATTACK_MONSTER,
@@ -58,6 +63,7 @@ export default class WorldCommand extends ProtocolCommand {
     private pathRequests = new Map<string, WorldEntity>();
     private failedPaths = new Map<string, string>();
     private routeSelection: RouteSelection | null = null;
+    private cityRouteSelection: CityRouteSelection | null = null;
     private routeRequests = new Map<string, RouteRequest[]>();
     get marchRoute(): MarchRoutePreview | null { return this.routeSelection; }
     constructor() {
@@ -126,7 +132,8 @@ export default class WorldCommand extends ProtocolCommand {
         EventMgr.on(E.mapEenterChange, this.focus, this);
         this.reconcileOnNotice(['目标不存在', '此处不能占领', '城池范围内不能占领', '等级不足',
             '不能攻打同盟领地', '资源尚未恢复', '已有部队在占领', '已有部队驻守', '已有部队在采集',
-            '目标无法到达', '城池不存在', '请先加入联盟', '不能攻打本盟城池', '只能调动至本盟城池', '城池归属已变化，调动取消', '部队已在调动或驻留'], 'march:', () => this.requestMarches());
+            '目标无法到达', '城池不存在', '请先加入联盟', '不能攻打本盟城池', '只能调动至本盟城池', '城池归属已变化，调动取消', '部队已在调动或驻留',
+            '只能从城池攻城入口出征', '部队未到达城池攻城入口', '城池归属已变化，攻城结束', '参战身份已变化，请重新出征'], 'march:', () => this.requestMarches());
     }
     protected reset(): void {
         this.marches.clear(); this.entities.clear(); this.focusPos = null; this.lastFocus = '';
@@ -157,11 +164,19 @@ export default class WorldCommand extends ProtocolCommand {
     }
     private notifyMarchRoute(): void { EventMgr.emit(E.updateMarchRoute, this.marchRoute); }
     clearMarchRoute(): void {
+        this.cityRouteSelection = null;
         if (!this.routeSelection) return;
         this.routeSelection = null; this.notifyMarchRoute();
         // 保留在途请求用于吸收迟到回包；关闭面板后不能被旧回包重新画出路线。
     }
     private refreshMarchRoute(): void {
+        const city = this.cityRouteSelection;
+        if (city) {
+            if (city.originVersion !== this.routeOriginVersion(city.troopIdx)) {
+                this.previewCityAttackRoute(city.troopIdx, city.cityX, city.cityY, true);
+            }
+            return;
+        }
         const route = this.routeSelection;
         if (route && route.originVersion !== this.routeOriginVersion(route.troopIdx)) {
             this.previewMarchRoute(route.troopIdx, route.targetType, route.targetPos, true);
@@ -172,6 +187,7 @@ export default class WorldCommand extends ProtocolCommand {
         if (!this.ready || !uint(troopIdx) || !this.validPos(targetPos) || [1, 2, 3, 4, 5, 6].indexOf(targetType) < 0) {
             this.clearMarchRoute(); return false;
         }
+        this.cityRouteSelection = null;
         const key = this.routeKey({ troopIdx, targetType, targetPos }), originVersion = this.routeOriginVersion(troopIdx);
         if (!force && this.routeSelection && this.routeKey(this.routeSelection) === key
             && this.routeSelection.originVersion === originVersion) return true;
@@ -180,27 +196,67 @@ export default class WorldCommand extends ProtocolCommand {
         this.routeSelection = selection; this.notifyMarchRoute();
         return this.sendMarchRoute(selection);
     }
+
+    /** 入口只是寻路候选点：比较服务端实际路线，选可达且耗时最短的一条。 */
+    previewCityAttackRoute(troopIdx: number, x: number, y: number, force = false): boolean {
+        if (!this.ready || !uint(troopIdx) || this.cityAttackIssue(x, y)) {
+            this.clearMarchRoute(); return false;
+        }
+        const originVersion = this.routeOriginVersion(troopIdx), cityId = idKey(CityCommand.getInstance().at(x, y).entityId);
+        const previous = this.cityRouteSelection;
+        if (!force && previous?.troopIdx === troopIdx && previous.cityX === x && previous.cityY === y
+            && previous.cityId === cityId && previous.originVersion === originVersion) return true;
+        const candidates: RouteSelection[] = WorldCampaign.attackEntrances(x, y).map(targetPos => ({
+            troopIdx, targetType: MarchTargetType.AttackCity, targetPos: { ...targetPos }, originVersion,
+            status: 'loading', path: [], costTime: 0,
+        }));
+        this.cityRouteSelection = { troopIdx, cityX: x, cityY: y, cityId, originVersion, candidates };
+        this.routeSelection = { ...candidates[0], path: [] };
+        this.notifyMarchRoute();
+        let sent = false;
+        for (const candidate of candidates) sent = this.sendMarchRoute(candidate) || sent;
+        return sent;
+    }
+
+    private currentRoute(key: string): RouteSelection | undefined {
+        return this.cityRouteSelection ? this.cityRouteSelection.candidates.find(route => this.routeKey(route) === key)
+            : this.routeSelection && this.routeKey(this.routeSelection) === key ? this.routeSelection : undefined;
+    }
+
+    private routeChanged(selection: RouteSelection): void {
+        const city = this.cityRouteSelection;
+        if (!city) { if (this.routeSelection === selection) this.notifyMarchRoute(); return; }
+        if (city.candidates.indexOf(selection) < 0) return;
+        // 全部候选返回后才开放确认；回包顺序不能决定落脚点。
+        if (city.candidates.some(route => route.status === 'loading')) return;
+        const reachable = city.candidates.filter(route => route.status === 'ready').sort((a, b) => a.costTime - b.costTime);
+        this.routeSelection = reachable.length ? { ...reachable[0] } : { ...city.candidates[0], path: [], costTime: 0,
+            status: city.candidates.every(route => route.status === 'unreachable') ? 'unreachable' : 'error' };
+        this.notifyMarchRoute();
+    }
+
     private sendMarchRoute(selection: RouteSelection): boolean {
         const key = this.routeKey(selection), queue = this.routeRequests.get(key) || [];
         if (queue.some(request => !request.expired)) return true;
         // 协议没有序号。同键超时记录按发送顺序保留，迟到回包不能冒充重试结果。
-        if (queue.length >= 4) { selection.status = 'error'; this.notifyMarchRoute(); return false; }
+        if (queue.length >= 4) { selection.status = 'error'; this.routeChanged(selection); return false; }
         const request: RouteRequest = { selection, expired: false };
         queue.push(request); this.routeRequests.set(key, queue);
         const sent = this.request(S.c2s_req_march_route, {
             troopIdx: selection.troopIdx, targetType: selection.targetType, targetPos: selection.targetPos,
         }, `march-route:${key}`, () => {
             request.expired = true;
-            if (this.routeSelection === selection) {
-                selection.status = 'error'; this.notifyMarchRoute();
-            } else if (this.routeSelection?.status === 'loading' && this.routeKey(this.routeSelection) === key) {
-                this.sendMarchRoute(this.routeSelection);
+            const current = this.currentRoute(key);
+            if (current === selection) {
+                selection.status = 'error'; this.routeChanged(selection);
+            } else if (current?.status === 'loading') {
+                this.sendMarchRoute(current);
             }
         }, true);
         if (!sent) {
             queue.splice(queue.indexOf(request), 1);
             if (!queue.length) this.routeRequests.delete(key);
-            selection.status = 'error'; this.notifyMarchRoute();
+            selection.status = 'error'; this.routeChanged(selection);
         }
         return sent;
     }
@@ -210,9 +266,9 @@ export default class WorldCommand extends ProtocolCommand {
         if (!request) return;
         if (!queue.length) this.routeRequests.delete(key);
         if (!request.expired) this.finish(`march-route:${key}`);
-        const selection = this.routeSelection;
+        const selection = this.currentRoute(key);
         if (request.expired || selection !== request.selection) {
-            if (selection?.status === 'loading' && this.routeKey(selection) === key) this.sendMarchRoute(selection);
+            if (selection?.status === 'loading') this.sendMarchRoute(selection);
             return;
         }
         if (selection.originVersion !== this.routeOriginVersion(selection.troopIdx)) {
@@ -220,11 +276,13 @@ export default class WorldCommand extends ProtocolCommand {
         }
         const cost = Number(data.costTime || 0), path = data.path || [];
         if (Array.isArray(path) && !path.length && cost === 0) selection.status = 'unreachable';
-        else if (this.validPath(path) && Number.isFinite(cost) && cost >= 0) {
+        else if (this.validPath(path) && Number.isFinite(cost) && cost >= 0
+            && (!this.cityRouteSelection || Math.hypot(path[path.length - 1].x - selection.targetPos.x,
+                path[path.length - 1].y - selection.targetPos.y) < .01)) {
             selection.path = path.map(p => ({ x: p.x, y: p.y }));
             selection.costTime = cost; selection.status = 'ready';
         } else selection.status = 'error';
-        this.notifyMarchRoute();
+        this.routeChanged(selection);
     }
     private pathVersion(entity: WorldEntity): string {
         return `${entity.entityType}:${idKey(entity.ownerId)}:${entity.startTime}:${entity.endTime}`;
@@ -348,8 +406,6 @@ export default class WorldCommand extends ProtocolCommand {
         if (!cfg) return mapType === 54 ? '石料资源配置尚未同步，请稍后重试' : '资源地配置尚未同步，请稍后重试';
         const entity = this.resourceLandAt(x, y);
         if (entity && entity.cfgId !== cfg.Id) return '地图资源配置与服务器不一致，请更新地图配置';
-        const role = LoginCommand.getInstance().proxy.getRoleData();
-        if (role && cfg.OpenCond?.level && role.level < cfg.OpenCond.level) return `主公达到${cfg.OpenCond.level}级后可占领`;
         return '';
     }
     /** 已有归属的土地也允许发起攻占，守军、免战和归属变更由服务器判定。 */
@@ -360,21 +416,29 @@ export default class WorldCommand extends ProtocolCommand {
         if (!this.validPos({ x, y })) return false;
         return this.march(troopIdx, MarchTargetType.OccupyResource, this.resourceLandEntityId(x, y), { x, y });
     }
-    cityAttackIssue(x: number, y: number): string {
+    cityAttackIssue(x: number, y: number, entrance?: WorldPosition): string {
         if (!this.validPos({ x, y })) return '城池坐标无效';
         if (!this.sessionReady) return '连接尚未恢复';
         const allianceId = LoginCommand.getInstance().proxy.getRoleData()?.allianceId;
-        if (!hasId(allianceId)) return '请先加入同盟';
         const command = CityCommand.getInstance(), city = command.at(x, y);
         if (!city) return command.loaded ? '城池情报不存在，请重新选择' : '城池情报同步中';
         if (hasId(city.allianceId) && idKey(city.allianceId) === idKey(allianceId)) return '已由本盟占领';
+        if (!WorldCampaign.attackEntrances(x, y).length) return '城池路线配置缺失，请更新地图';
+        if (entrance && (!this.validPos(entrance) || !WorldCampaign.isAttackEntrance(x, y, entrance))) return '攻城路线已变化，请重新寻路';
         return '';
     }
-    /** 使用服务端城池实体，路径和城外接敌点由服务端判定，不套用资源地占领规则。 */
-    attackCity(troopIdx: number, x: number, y: number): boolean {
-        if (this.cityAttackIssue(x, y)) return false;
+    /** 正式出征使用已预览的城外终点，确认时重查城池归属和部队起点。 */
+    attackCity(troopIdx: number, x: number, y: number, entrance?: WorldPosition): boolean {
+        if (this.cityAttackIssue(x, y, entrance)) return false;
         const city = CityCommand.getInstance().at(x, y);
-        return this.march(troopIdx, MarchTargetType.AttackCity, city.entityId, { x, y });
+        if (!entrance) {
+            const selection = this.cityRouteSelection, route = this.routeSelection;
+            if (!selection || selection.troopIdx !== troopIdx || selection.cityX !== x || selection.cityY !== y
+                || selection.cityId !== idKey(city.entityId) || selection.originVersion !== this.routeOriginVersion(troopIdx)
+                || route?.status !== 'ready' || !WorldCampaign.isAttackEntrance(x, y, route.targetPos)) return false;
+            entrance = route.targetPos;
+        }
+        return this.march(troopIdx, MarchTargetType.AttackCity, city.entityId, { x: entrance.x, y: entrance.y });
     }
     /** 地图格子坐标，250ms 合并拖动上报；不用像素坐标代替格坐标。 */
     focus(pos: WorldPosition): void {

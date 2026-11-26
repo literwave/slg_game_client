@@ -19,6 +19,204 @@ CCEffect %{
         surfaceMetrics: { value: [46000, 26000, 0, 0] }
         waterTexture: { value: white }
         riverTexture: { value: black }
+  - name: city-edge-clip
+    passes:
+    - vert: city-edge-vs:vert
+      frag: city-edge-fs:frag
+      depthStencilState:
+        depthTest: false
+        depthWrite: false
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendDstAlpha: one_minus_src_alpha
+      rasterizerState:
+        cullMode: none
+      properties:
+        mapMetrics: { value: [1000, 1000, 200, 100] }
+        worldToMap: { value: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] }
+        riverTexture: { value: black }
+        groundTexture: { value: white }
+  - name: city-footprint-fit
+    passes:
+    - vert: city-fit-vs:vert
+      frag: city-fit-fs:frag
+      depthStencilState:
+        depthTest: false
+        depthWrite: false
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendDstAlpha: one_minus_src_alpha
+      rasterizerState:
+        cullMode: none
+      properties:
+        cityUvX: { value: [1, 0, 0.5, 0] }
+        cityUvY: { value: [0, -1, 0.5, 0] }
+        cityUpperUvX: { value: [1, 0, 0.5, 0] }
+        cityUpperUvY: { value: [0, -1, 0.5, 0] }
+        cityRender: { value: [1, 1, 0, 0] }
+  - name: mountain-ground-blend
+    passes:
+    - vert: city-edge-vs:vert
+      frag: mountain-ground-fs:frag
+      depthStencilState:
+        depthTest: false
+        depthWrite: false
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendDstAlpha: one_minus_src_alpha
+      rasterizerState:
+        cullMode: none
+      properties:
+        mapMetrics: { value: [1000, 1000, 200, 100] }
+        worldToMap: { value: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] }
+        groundTexture: { value: white }
+}%
+CCProgram city-fit-vs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #if USE_LOCAL
+    #include <builtin/uniforms/cc-local>
+  #endif
+  in vec3 a_position;
+  in vec2 a_texCoord;
+  in vec4 a_color;
+  out vec2 uv0;
+  out vec4 color;
+  vec4 vert () {
+    vec4 pos = vec4(a_position, 1.0);
+    #if USE_LOCAL
+      pos = cc_matWorld * pos;
+    #endif
+    uv0 = a_texCoord; color = a_color;
+    return cc_matViewProj * pos;
+  }
+}%
+CCProgram city-fit-fs %{
+  precision highp float;
+  #include <builtin/internal/embedded-alpha>
+  in vec2 uv0;
+  in vec4 color;
+  uniform CityFit { vec4 cityUvX; vec4 cityUvY; vec4 cityUpperUvX; vec4 cityUpperUvY; vec4 cityRender; };
+  #pragma builtin(local)
+  layout(set = 2, binding = 12) uniform sampler2D cc_spriteTexture;
+  vec4 frag () {
+    vec3 p = vec3(vec2(uv0.x - .5, .5 - uv0.y) * cityRender.xy + cityRender.zw, 1.0);
+    // 与主城一致：墙脚限制在前侧边界，后墙和塔顶保留真实高度。
+    if (cityUvX.w > .5) {
+      if (abs(p.x) > .5 || p.y < abs(p.x) - .5) discard;
+    } else if (abs(p.x) + abs(p.y) > .5) discard;
+    vec2 sourceUV = p.y > 0.0
+      ? vec2(dot(cityUpperUvX.xyz, p), dot(cityUpperUvY.xyz, p))
+      : vec2(dot(cityUvX.xyz, p), dot(cityUvY.xyz, p));
+    if (sourceUV.x < 0.0 || sourceUV.y < 0.0 || sourceUV.x > 1.0 || sourceUV.y > 1.0) discard;
+    return CCSampleWithAlphaSeparated(cc_spriteTexture, sourceUV) * color;
+  }
+}%
+CCProgram city-edge-vs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #if USE_LOCAL
+    #include <builtin/uniforms/cc-local>
+  #endif
+  uniform MapTransform { mat4 worldToMap; };
+  in vec3 a_position;
+  in vec2 a_texCoord;
+  in vec4 a_color;
+  out vec2 uv0;
+  out vec2 mapPoint;
+  out vec4 color;
+  vec4 vert () {
+    vec4 pos = vec4(a_position, 1.0);
+    #if USE_LOCAL
+      pos = cc_matWorld * pos;
+    #endif
+    mapPoint = (worldToMap * pos).xy;
+    uv0 = a_texCoord;
+    color = a_color;
+    return cc_matViewProj * pos;
+  }
+}%
+CCProgram pass-entrance-mask %{
+  float passEntranceOpening(vec2 gridPoint, vec2 cell, float marker) {
+    if (marker < .2 || marker > .9) return 0.0;
+    float code = floor(marker * 255.0 + .5);
+    vec2 local = gridPoint - cell;
+    float xAxis = 1.0 - step(112.0, code);
+    float negative = step(80.0, code) * (1.0 - step(112.0, code)) + step(144.0, code);
+    float along = mix(local.y, local.x, xAxis) * (1.0 - 2.0 * negative);
+    float across = mix(local.x, local.y, xAxis);
+    float ripple = .012 * sin(gridPoint.x * 19.0 + gridPoint.y * 13.0)
+                 + .008 * sin(gridPoint.x * 31.0 - gridPoint.y * 23.0);
+    // 内端一直连到门槛，外端逐渐融回野外；只清通道，两侧保留山脚。
+    return (1.0 - smoothstep(.12, .28, abs(across) + ripple))
+         * (1.0 - smoothstep(.20, .50, along));
+  }
+}%
+CCProgram city-edge-fs %{
+  precision highp float;
+  #include <builtin/internal/embedded-alpha>
+  #include <pass-entrance-mask>
+  #include <mountain-edge-blend>
+  in vec2 uv0;
+  in vec2 mapPoint;
+  in vec4 color;
+  uniform MapMetrics { vec4 mapMetrics; };
+  uniform sampler2D riverTexture;
+  #pragma builtin(local)
+  layout(set = 2, binding = 12) uniform sampler2D cc_spriteTexture;
+  vec4 frag () {
+    float row = ((mapMetrics.y - 1.0) * mapMetrics.w * .5 - mapPoint.y) / mapMetrics.w;
+    vec2 gridPoint = vec2(row + mapPoint.x / mapMetrics.z, row - mapPoint.x / mapMetrics.z);
+    vec2 cell = floor(gridPoint + .5);
+    float mountainAlpha = 1.0;
+    if (cell.x >= 0.0 && cell.y >= 0.0 && cell.x < mapMetrics.x && cell.y < mapMetrics.y) {
+      float clearing = texture(riverTexture, (cell + .5) / mapMetrics.xy).b;
+      if (clearing > .9) discard;
+      mountainAlpha = 1.0 - passEntranceOpening(gridPoint, cell, clearing);
+    }
+    vec4 result = CCSampleWithAlphaSeparated(cc_spriteTexture, uv0) * color;
+    result = blendMountainEdge(result, mapPoint, mapMetrics.zw);
+    result.a *= mountainAlpha;
+    return result;
+  }
+}%
+CCProgram mountain-edge-blend %{
+  uniform sampler2D groundTexture;
+  vec2 mountainGroundUV(vec2 p) { return 1.0 - abs(mod(p, 2.0) - 1.0); }
+  vec4 blendMountainEdge(vec4 source, vec2 mapPoint, vec2 tileSize) {
+    // 只融合半透明山脚，保留山峰、岩面和树木的原画明暗。
+    vec2 artPoint = mapPoint * vec2(200.0, 100.0) / tileSize;
+    vec3 ground = texture(groundTexture, mountainGroundUV(artPoint / vec2(920.0, 560.0))).rgb;
+    vec3 variation = texture(groundTexture, mountainGroundUV(artPoint.yx / vec2(1730.0, 1310.0) + .31)).rgb;
+    ground = mix(ground, variation, .32) * .97;
+    float fringe = 1.0 - smoothstep(.25, .88, source.a);
+    source.rgb = mix(source.rgb, ground, fringe * .75);
+    source.a = smoothstep(.06, .94, source.a);
+    return source;
+  }
+}%
+CCProgram mountain-ground-fs %{
+  precision highp float;
+  #include <builtin/internal/embedded-alpha>
+  #include <mountain-edge-blend>
+  in vec2 uv0;
+  in vec2 mapPoint;
+  in vec4 color;
+  uniform MapMetrics { vec4 mapMetrics; };
+  #pragma builtin(local)
+  layout(set = 2, binding = 12) uniform sampler2D cc_spriteTexture;
+  vec4 frag () {
+    return blendMountainEdge(CCSampleWithAlphaSeparated(cc_spriteTexture, uv0) * color, mapPoint, mapMetrics.zw);
+  }
 }%
 CCProgram landscape-vs %{
   precision highp float;
@@ -41,6 +239,7 @@ CCProgram landscape-vs %{
 }%
 CCProgram landscape-fs %{
   precision highp float;
+  #include <pass-entrance-mask>
   in vec2 uv0;
   uniform Landscape {
     vec4 mapMetrics;
@@ -65,12 +264,14 @@ CCProgram landscape-fs %{
     vec2 cell = vec2(row + p.x / mapMetrics.z, row - p.x / mapMetrics.z);
     float d = smoothMinimum(smoothMinimum(cell.x + .5 + border(cell.y, 0.0), mapMetrics.x - .5 - cell.x + border(cell.y, 1.7)),
                   smoothMinimum(cell.y + .5 + border(cell.x, 3.4), mapMetrics.y - .5 - cell.y + border(cell.x, 5.1)));
-    vec3 grass = texture(cc_spriteTexture, mirrored(p / vec2(920.0, 560.0))).rgb;
-    vec3 variation = texture(cc_spriteTexture, mirrored(p.yx / vec2(1730.0, 1310.0) + .31)).rgb;
+    // 草纹、水纹和山体一样由 2:1 制作基准投影，不能只改河岸位置而保留旧的贴地比例。
+    vec2 artPoint = p * vec2(200.0, 100.0) / mapMetrics.zw;
+    vec3 grass = texture(cc_spriteTexture, mirrored(artPoint / vec2(920.0, 560.0))).rgb;
+    vec3 variation = texture(cc_spriteTexture, mirrored(artPoint.yx / vec2(1730.0, 1310.0) + .31)).rgb;
     grass = mix(grass, variation, .32);
     float meadow = sin(cell.x * .19 + sin(cell.y * .09) * 2.0) * sin(cell.y * .13);
     grass *= .96 + meadow * .06;
-    vec3 water = texture(waterTexture, mirrored(p / vec2(600.0, 360.0))).rgb;
+    vec3 water = texture(waterTexture, mirrored(artPoint / vec2(600.0, 360.0))).rgb;
     water = mix(water, vec3(.30, .40, .37), .28);
     vec2 dataUV = (cell + .5) / mapMetrics.xy;
     // 边界河道继续延伸至外侧海岸，避免在逻辑地图边缘被一条陆地封口。
@@ -89,6 +290,17 @@ CCProgram landscape-fs %{
     col = mix(col, vec3(.57, .64, .52), shallows * .28);
     float fog = smoothstep(1.7, 6.5, -d + sin(p.x * .005 + sin(p.y * .008)) * .55);
     col = mix(col, vec3(.68, .72, .68), fog);
-    return vec4(col, 1.0 - smoothstep(4.0, 8.0, -d));
+    // 城池占地用整数格中心采样，避免线性过滤把河岸、山色混进半个格子。
+    vec2 cityUV = (floor(cell + .5) + .5) / mapMetrics.xy;
+    float insideMap = step(-.5, cell.x) * step(-.5, cell.y)
+        * (1.0 - step(mapMetrics.x - .5, cell.x)) * (1.0 - step(mapMetrics.y - .5, cell.y));
+    float groundMarker = texture(riverTexture, clamp(cityUV, vec2(0.0), vec2(1.0))).b;
+    // 入口与山脚使用同一方向遮罩；土路保留底纹，并渐变衔接外侧草地。
+    float entrance = insideMap * passEntranceOpening(cell, floor(cell + .5), groundMarker);
+    vec3 trail = mix(grass, vec3(.48, .40, .27), .42);
+    col = mix(col, trail, entrance * .72);
+    float cityGround = insideMap * step(.9, groundMarker);
+    col = mix(col, grass, cityGround);
+    return vec4(col, mix(1.0 - smoothstep(4.0, 8.0, -d), 1.0, cityGround));
   }
 }%

@@ -34,7 +34,8 @@ const cc = { Component, Vec2, Vec3, UITransform, Node, NodePool, Sprite, SpriteF
     _decorator: { ccclass: () => c => c, property: () => () => {} }, Prefab: class {} };
 let now = 100000, marches = [], preview = null, atHome = false;
 const entities = new Map(), ownerId = '9007199254740995';
-const util = { mapSize: { width: 1000, height: 1000 }, areaCellSize: { width: 10, height: 10 }, mapCellToPixelPoint: p => new Vec2((p.x - p.y) * 100, -(p.x + p.y) * 50) };
+const tileHeight = Number(process.env.MAP_TEST_TILE_HEIGHT || 100);
+const util = { tileSize: { width: 200, height: tileHeight }, mapSize: { width: 1000, height: 1000 }, areaCellSize: { width: 10, height: 10 }, mapCellToPixelPoint: p => new Vec2((p.x - p.y) * 100, -(p.x + p.y) * tileHeight / 2) };
 const cities = new Map();
 const stubs = {
     'world/CityCommand': {default:{getInstance:()=>({cities})}},
@@ -45,7 +46,7 @@ const stubs = {
     'general/ArmyProxy': { ArmyCmd: { Idle: 0, Conscript: 5 } },
     'world/WorldCommand': { default: { getInstance: () => ({ entities, marchRoute: preview, isTroopAtHome: () => atHome,
         marches: { values: () => marches, get: idx => marches.find(m => m.troopIdx === idx) }, occupyCountdownAt: () => null }) },
-        MarchTargetType: { ReturnCity: 1, Move: 4 } },
+        MarchTargetType: { ReturnCity: 1, Move: 4, AttackCity: 5 } },
     'login/LoginCommand': { default: { getInstance: () => ({ proxy: { getRoleData: () => ({ userId: ownerId }) } }) } },
     'general/TroopCommand': { default: { getInstance: () => ({ proxy: { getTroop: () => null } }) } },
     'network/pto/ProtocolCommand': { idKey: id => String(id ?? 0), hasId: id => id !== undefined && id !== null && String(id) !== '0' },
@@ -86,6 +87,8 @@ const previewGraphic = layer.routePreviewNode.getComponent(Graphics);
 assert.equal(layer.routePreviewNode.active,true);
 assert.deepEqual(previewGraphic.points.slice(0,3),preview.path.map(p=>{const v=util.mapCellToPixelPoint(p);return[v.x,v.y];}));
 assert.equal(layer.aoiArmies.size,0,'预览路线不能生成或移动真实部队');
+preview.targetType = 5; events.emit(E.updateMarchRoute);
+assert.equal(previewGraphic.points.length, preview.path.length * 2, '攻城寻路只画路线，不再追加落脚格菱形');
 preview = null; events.emit(E.updateMarchRoute); assert.equal(layer.routePreviewNode.active,false,'关闭选队清除路线');
 console.log('PASS 预览绘制完整浮点折线且关闭清理，不产生真实部队');
 const id = '9007199254740997';
@@ -98,7 +101,7 @@ entities.set(id, { entityId: id, entityType: 2, ownerId, pos: march.startPos,
 events.emit(E.updateWorldEntities); assert.equal(layer.aoiArmies.size, 1);
 const logic = layer.aoiArmies.get(id), soldier = logic.aniNode;
 const advance = target => { while (now < target) { now = Math.min(target, now + 100); layer.update(); } };
-const positionIs = (x, y) => assert.ok(Math.hypot(soldier.position.x - x, soldier.position.y - y) < .00001);
+const positionIs = (x, y) => assert.ok(Math.hypot(soldier.position.x - x, soldier.position.y - y * tileHeight / 100) < .00001);
 advance(101000); positionIs(-1075, -1562.5);
 assert.deepEqual(layer.troopMapPosition(1), new Vec2(soldier.position.x, soldier.position.y));
 now += 550; // 模拟心跳校时跳动；画面沿单调时钟平滑播放，镜头不能领先实体。
@@ -139,6 +142,27 @@ const fixed = { ...sieging.aniNode.position };
 assert.deepEqual(layer.troopMapPosition(1), new Vec2(fixed.x, fixed.y), '攻城持续锁定城外部队位置');
 advance(116000); assert.deepEqual(sieging.aniNode.position, fixed);
 assert.equal(sieging.siegeEffect.node.active, true, '本地到点不自行宣布攻城结束');
+// 攻城成功采用 MOVE/ARRIVED/STAY 和原入口单点路线；即使城池归本盟，也不收进城内。
+cities.set('501', { entityId: 501, allianceId: 7, pos: { x: 14, y: 20 }, deployCount: 0 });
+marches = [{ ...march, targetType: 4, targetId: 0, troopState: 2, state: 2,
+    startPos: march.endPos, endPos: march.endPos, path: [march.endPos], startTime: 116, endTime: 116 }];
+entities.set(id, { entityId: id, entityType: 2, ownerId, troopIdx: 1, troopState: 2,
+    targetId: 0, pos: march.endPos, path: [], startTime: 0, endTime: 0 });
+events.emit(E.updateMarches); events.emit(E.updateWorldEntities); layer.update();
+assert.equal(layer.aoiArmies.get(id), sieging, '原地待命保留同一地图部队，不按城内驻军回收');
+assert.equal(sieging.aniNode.activeInHierarchy, true);
+assert.equal(sieging.marching, false); assert.equal(sieging.arrowNode.active, false);
+assert.equal(sieging.siegeEffect.node.active, false); assert.equal(sieging.formation.target, null);
+assert.deepEqual(sieging.aniNode.position, fixed);
+assert.deepEqual(layer.troopMapPosition(1), util.mapCellToPixelPoint(march.endPos), '跟随继续锁定原入口，不跳城心');
+for (let i = 0; i < 10; i++) { layer.update(); events.emit(E.updateMarches); }
+assert.deepEqual(sieging.aniNode.position, fixed); assert.equal(sieging.siegeEffect.node.active, false);
+entities.set('idle-observer', { entityId: 'idle-observer', entityType: 2, ownerId: '22', troopIdx: 1,
+    troopState: 2, targetId: 0, pos: march.endPos, path: [], startTime: 0, endTime: 0 });
+events.emit(E.updateWorldEntities);
+assert.equal(layer.aoiArmies.has('idle-observer'), true, '他人入口待命也保持可见');
+entities.delete('idle-observer'); events.emit(E.updateWorldEntities);
+console.log('PASS 攻城结束原入口待命保持本人/他人可见、停止攻城特效、不跳城心且不续攻');
 entities.set(id, { entityId: id, entityType: 2, ownerId, troopIdx: 1, troopState: 1,
     pos: march.endPos, path: [...march.path].reverse(), startTime: 116, endTime: 120 });
 marches = [{ ...march, targetType: 1, troopState: 1, state: 1, path: [...march.path].reverse(), startTime: 116, endTime: 120 }];

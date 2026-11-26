@@ -1,6 +1,7 @@
 import { _decorator, Component, Sprite, UITransform } from 'cc';
 const { ccclass, property } = _decorator;
 import WorldMapArt from '../WorldMapArt';
+import MapUtil from '../MapUtil';
 
 import { MapBuildData } from "../MapBuildProxy";
 import MapCommand from "../MapCommand";
@@ -45,7 +46,8 @@ export default class ResBuildLogic extends Component {
 
         if (this._data) {
         WorldMapArt.ownership(this.node, this.upSpr, this.downSpr,
-            WorldMapArt.factionColor(this._data, MapCommand.getInstance().buildProxy), 194);
+            WorldMapArt.factionColor(this._data, MapCommand.getInstance().buildProxy),
+            MapUtil.tileSize.width * .97, MapUtil.tileSize.height * .97);
         }
     }
 }

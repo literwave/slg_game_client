@@ -67,7 +67,9 @@ function load(file, deps = {}, clock = performance) {
     const mod = { exports: {} };
     new Function('require', 'module', 'exports', 'performance', result.outputText)(id => {
         if (id === 'cc') return cc;
+        if (id.endsWith('/MapProjection')) return require('./map-projection-module.cjs')(ts);
         if (id === './CityFootprint') return load('assets/scripts/map/CityFootprint.ts');
+        if (id === './CityArtFit' || id === './SystemCitySilhouettes') return load('assets/scripts/map/' + id.slice(2) + '.ts');
         assert.ok(id in deps, `Unexpected import ${id}`);
         return deps[id];
     }, mod, mod.exports, clock);
@@ -75,9 +77,10 @@ function load(file, deps = {}, clock = performance) {
 }
 const MapUtil = load('assets/scripts/map/MapUtil.ts', { './MapCommand': {} });
 const mapNode = new Node();
-mapNode.components.set(UITransform, new UITransform(40000, 20000));
+const tileHeight = Number(process.env.MAP_TEST_TILE_HEIGHT || 100);
+mapNode.components.set(UITransform, new UITransform(40000, 200 * tileHeight));
 const tiledMap = { node: mapNode, getMapSize: () => ({ width: 200, height: 200 }),
-    getTileSize: () => ({ width: 200, height: 100 }), getLayers: () => [{}] };
+    getTileSize: () => ({ width: 200, height: tileHeight }), getLayers: () => [{}] };
 MapUtil.initMapConfig(tiledMap);
 const StrategicStub = class {};
 const MapLogic = load('assets/scripts/map/MapLogic.ts', {
@@ -130,12 +133,12 @@ test('camera remains inside the diamond, with all four corner tiles reachable', 
     }
     for (let x = -30000; x <= 30000; x += 1250) for (let y = -16000; y <= 16000; y += 1000) {
         const p = logic.clampCameraPoint(x, y);
-        assert.ok(Math.abs(p.x) / 19900 + Math.abs(p.y) / 9950 <= 1 + 1e-9);
+        assert.ok(Math.abs(p.x) / 19900 + Math.abs(p.y) / (199 * tileHeight / 2) <= 1 + 1e-9);
         assert.ok(MapUtil.isVaildCellPoint(MapUtil.mapPixelToCellPoint(p)));
     }
-    const p = logic.clampCameraPoint(10000, 8000).clone();
-    const q = logic.clampCameraPoint(10100, 7950);
-    near(q.x - p.x, 100); near(q.y - p.y, -50);
+    const p = logic.clampCameraPoint(10000, 80 * tileHeight).clone();
+    const q = logic.clampCameraPoint(10100, 79.5 * tileHeight);
+    near(q.x - p.x, 100); near(q.y - p.y, -tileHeight / 2);
 });
 
 test('zoomed clicks use the same world scale as dragging', () => {
@@ -151,14 +154,14 @@ test('zoomed clicks use the same world scale as dragging', () => {
 });
 
 const wheel = (delta, x = 820, y = 430) => ({ getScrollY: () => delta, getUILocation: () => new Vec2(x, y) });
-test('wheel direction, smooth mouse anchoring and full near-to-overview limits', () => withClock(advance => {
+test('wheel uses four useful views with smooth mouse anchoring and bounded limits', () => withClock(advance => {
     const logic = makeLogic(); logic.scrollToMapPoint(new Vec2(100, 100));
     origin.set(20, 10);
     const anchor = new Vec2(820, 430);
     const world = logic.viewPointToWorldPoint(anchor);
     logic.onMouseWheel(wheel(-600));
     near(logic._mapCamera.orthoHeight, 450);
-    near(logic._targetHeight, 1600);
+    near(logic._targetHeight, logic.zoomHeights()[2]);
     logic.update(1 / 60);
     assert.ok(logic._mapCamera.orthoHeight > 450 && logic._mapCamera.orthoHeight < logic._targetHeight);
     for (let i = 0; i < 120; i++) {
@@ -166,14 +169,23 @@ test('wheel direction, smooth mouse anchoring and full near-to-overview limits',
         const after = logic.viewPointToWorldPoint(anchor);
         near(after.x, world.x); near(after.y, world.y);
     }
-    for (let i = 0; i < 8; i++) { advance(200); logic.onMouseWheel(wheel(-600)); }
+    advance(200); logic.onMouseWheel(wheel(-600));
+    settleZoom(logic);
+    near(logic._mapCamera.orthoHeight, logic.zoomHeights()[3]);
+    advance(200); logic.onMouseWheel(wheel(-600));
     settleZoom(logic);
     near(logic._mapCamera.orthoHeight, logic.maximumZoomHeight());
     near(logic.lastCenter.half.y, logic.maximumZoomHeight());
     near(logic._mapCamera.node.position.x, 0);
-    for (let i = 0; i < 8; i++) { advance(200); logic.onMouseWheel(wheel(600)); }
+    advance(200); logic.onMouseWheel(wheel(600)); settleZoom(logic);
+    near(logic._mapCamera.orthoHeight, logic.zoomHeights()[3]);
+    advance(200); logic.onMouseWheel(wheel(600)); settleZoom(logic);
+    near(logic._mapCamera.orthoHeight, logic.zoomHeights()[2]);
+    advance(200); logic.onMouseWheel(wheel(600));
     settleZoom(logic);
-    near(logic._mapCamera.orthoHeight, 192);
+    near(logic._mapCamera.orthoHeight, 450);
+    advance(200); logic.onMouseWheel(wheel(600)); settleZoom(logic);
+    near(logic._mapCamera.orthoHeight, 450, '不再放大到只看见素材局部的超近景');
     assert.ok(MapUtil.isVaildCellPoint(logic.lastCenter.cell));
     origin.set(0, 0);
 }));
@@ -183,23 +195,27 @@ test('trackpad increments form one stage per gesture and inertial tails do not s
     for (let i = 0; i < 34; i++) { advance(8); logic.onMouseWheel(wheel(-2)); }
     near(logic._targetHeight, 450);
     advance(8); logic.onMouseWheel(wheel(-2));
-    near(logic._targetHeight, 1600);
+    near(logic._targetHeight, logic.zoomHeights()[2]);
     for (let i = 0; i < 100; i++) { advance(8); logic.onMouseWheel(wheel(-5)); }
-    settleZoom(logic); near(logic._mapCamera.orthoHeight, 1600);
+    settleZoom(logic); near(logic._mapCamera.orthoHeight, logic.zoomHeights()[2]);
     advance(250);
     for (let i = 0; i < 35; i++) { advance(8); logic.onMouseWheel(wheel(-2)); }
     near(logic._targetHeight, logic.zoomHeights()[3]);
+    settleZoom(logic);
+    advance(250);
+    for (let i = 0; i < 35; i++) { advance(8); logic.onMouseWheel(wheel(-2)); }
+    near(logic._targetHeight, logic.maximumZoomHeight());
 }));
 
 test('large wheel bursts are bounded and immediate reverse changes direction', () => withClock(advance => {
     const logic = makeLogic();
     logic.onMouseWheel(wheel(-9000));
-    near(logic._targetHeight, 1600);
+    near(logic._targetHeight, logic.zoomHeights()[2]);
     for (let i = 0; i < 6; i++) { advance(15); logic.onMouseWheel(wheel(-600)); }
-    near(logic._targetHeight, 1600);
+    near(logic._targetHeight, logic.zoomHeights()[2]);
     logic.onMouseWheel(wheel(600)); near(logic._targetHeight, 450);
     advance(200); logic.onMouseWheel(wheel(600));
-    settleZoom(logic); near(logic._mapCamera.orthoHeight, 192);
+    settleZoom(logic); near(logic._mapCamera.orthoHeight, 450);
 }));
 
 test('dragging pauses zoom and release or city return restores the chosen fixed stage', () => {
@@ -209,12 +225,26 @@ test('dragging pauses zoom and release or city return restores the chosen fixed 
     logic.onTouchBegan(touch()); logic.update(1 / 60); near(logic._mapCamera.orthoHeight, height);
     logic.onTouchMove(touch(30, 10));
     logic.onTouchCancel(touch());
-    settleZoom(logic); near(logic._mapCamera.orthoHeight, 1600);
+    settleZoom(logic); near(logic._mapCamera.orthoHeight, logic.zoomHeights()[2]);
     logic.openCityAbout({ x: 100, y: 100 }); near(logic._mapCamera.orthoHeight, logic.cityViewHeight());
     const cityHeight = logic._mapCamera.orthoHeight;
     logic.onMouseWheel(wheel(-600)); logic.update(1 / 60); near(logic._mapCamera.orthoHeight, cityHeight);
-    logic.closeCityAbout(); near(logic._mapCamera.orthoHeight, 1600);
+    logic.closeCityAbout(); near(logic._mapCamera.orthoHeight, logic.zoomHeights()[2]);
 });
+
+test('wheel exits intermediate or preserved scales into the next useful view', () => withClock(advance => {
+    for (const height of [192, 700, 1600]) for (const direction of [-1, 1]) {
+        const logic = makeLogic();
+        logic._mapCamera.orthoHeight = height;
+        logic.scrollToMapPoint(new Vec2(80, 110), 'preserve-zoom');
+        advance(250); logic.onMouseWheel(wheel(direction * 600)); settleZoom(logic);
+        const expected = direction > 0
+            ? (height <= 450 ? 450 : height <= 1050 ? 450 : logic.zoomHeights()[2])
+            : (height < 450 ? 450 : height < 1050 ? logic.zoomHeights()[2] : logic.zoomHeights()[3]);
+        near(logic._mapCamera.orthoHeight, expected);
+        assert.equal(logic._preserveLocatedScale, false);
+    }
+}));
 
 test('pinch changes one stage, ignores extra fingers and never selects a tile on release', () => {
     const logic = makeLogic(); logic.scrollToMapPoint(new Vec2(100, 100));
@@ -251,7 +281,7 @@ test('strategic map taps descend exactly one stage around the selected area', ()
     assert.deepEqual(logic.lastCenter.cell, chosen, '点击的区域在放大后保持居中');
     logic.onTouchBegan(finger(1, 640, 360));
     logic.onTouchEnd(finger(1, 640, 360)); settleZoom(logic);
-    near(logic._mapCamera.orthoHeight, 1600);
+    near(logic._mapCamera.orthoHeight, 1050);
     assert.equal(events.some(e => e[0] === 'touchMap'), false);
 });
 
@@ -282,7 +312,7 @@ test('strategic city icons focus their city and preserve the full capital view',
             logic.zoomToStage(4, new Vec2(640, 360)); settleZoom(logic);
             logic.onTouchBegan(finger(1, 760, 410)); events.length = 0;
             logic.onTouchEnd(finger(1, 760, 410)); settleZoom(logic);
-            near(logic._mapCamera.orthoHeight, level >= 8 ? 1600 : 450);
+            near(logic._mapCamera.orthoHeight, level >= 8 ? 1050 : 450);
             assert.deepEqual(logic.lastCenter.cell, new Vec2(city.x, city.y));
             const clicks = events.filter(e => e[0] === 'touchMap');
             assert.equal(clicks.length, 1);
@@ -331,6 +361,7 @@ test('city sidebar jump restores startup scale from every stage and cancels unfi
     } };
     route = new Function('MapLogic', 'EventMgr', 'LogicEvent', 'Vec2', code + ';return SceneRoute.prototype.onScrollToMap;')(MapLogic, hub, event, Vec2);
     const Item = load('assets/scripts/map/ui/RightCityItemLogic.ts', {
+        '../PlayerCityAppearance': {},
         '../../utils/EventMgr': { EventMgr: hub }, '../../common/LogicEvent': { LogicEvent: event },
         '../../common/AudioManager': { AudioManager: { instance: { playClick() {} } } },
         './RightSidebarView': { commandListEntry() {} },
@@ -492,7 +523,7 @@ test('whole-map zoom covers the thousand-cell diamond in landscape and portrait'
     for (const [w, h] of [[1280, 720], [720, 1280]]) {
         size.width = w; size.height = h;
         const max = logic.maximumZoomHeight();
-        assert.deepEqual(logic.zoomHeights(), [192, 450, 1600, 12000, max]);
+        assert.deepEqual(logic.zoomHeights(), [192, 450, 1050, 12000, max]);
         assert.ok(max * 2 >= 100000 * 1.15);
         assert.ok(max * 2 * w / h >= 200000 * 1.15);
         logic._zoomLevel = 4; logic.onViewportResize();
@@ -789,7 +820,7 @@ const MapTouchLogic = load('assets/scripts/map/MapTouchLogic.ts', {
     './MapClickUILogic': {}, './MapCommand': {}, './MapUtil': { default: MapUtil },
     './MapArmyLogic': { default: class {} }, './MapLogic': { default: MapLogic },
     './WorldLandscape': { default: class {} }, './WorldMapArt': { default: terrainArt },
-    './WorldCampaign': { default: { config: null } },
+    './WorldCampaign': { default: { config: null, attackEntranceAt: () => null } },
     './GateGeometry': load('assets/scripts/map/GateGeometry.ts', { './BridgeSilhouette': load('assets/scripts/map/BridgeSilhouette.ts', {}) }),
     './SystemCityGeometry': load('assets/scripts/map/SystemCityGeometry.ts', {
         './SystemCitySilhouettes': load('assets/scripts/map/SystemCitySilhouettes.ts'),
@@ -800,7 +831,7 @@ test('blocked terrain clicks are silent and preserve the current selection', () 
     const logic = new MapTouchLogic(); let mountain = new Vec2(5, 6), removed = 0, calls = 0;
     const existing = { id: 12345, name: '原选中部队目标' }; let selected = existing;
     logic.node = { getComponent: () => null, getComponentInChildren: () => ({ blockerAt: () => mountain }) };
-    logic._cmd = { cityProxy: { getCity: () => null }, buildProxy: { getBuild: () => null },
+    logic._cmd = { cityProxy: { getCity: () => null }, buildProxy: { getBuild: () => null }, isCityArtCoveredCell: () => false,
         proxy: { getResData: () => ({ id: 2010, x: 10, y: 10, type: 0 }), getSysCityResData: () => null } };
     logic.showClickUINode = data => { selected = data; calls++; };
     logic.removeClickUINode = () => { removed++; };

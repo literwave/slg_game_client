@@ -103,7 +103,8 @@ export default class RightArmyItemLogic extends Component {
                         : march.targetType === MarchTargetType.Redeploy ? '调动'
                         : march.targetType === MarchTargetType.Move ? '移动' : '行军'} ${DateUtil.converSecondStr(left)}`;
                 } else {
-                    this.labelPos.string = `驻留 (${march.endPos.x}, ${march.endPos.y})`;
+                    const state = march.targetType === MarchTargetType.Move ? '原地待命' : '驻留';
+                    this.labelPos.string = `${state} (${march.endPos.x}, ${march.endPos.y})`;
                 }
             }
         }
@@ -209,7 +210,11 @@ export default class RightArmyItemLogic extends Component {
             const city = march.targetType === MarchTargetType.AttackCity || march.targetType === MarchTargetType.Redeploy
                 ? CityCommand.getInstance().cities.get(idKey(march.targetId)) : null;
             const destination = cell(city?.pos) || cell(march.endPos) || cell(march.path?.[march.path.length - 1]);
-            return present(origin, destination, march.targetType);
+            const points = present(origin, destination, march.targetType);
+            if (points && march.state === 2 && march.targetType === MarchTargetType.Move) {
+                points.order = '待命'; points.destinationName = '待命点';
+            }
+            return points;
         }
         if (!this._data || this._data.state <= 0) return null;
         // 旧 ArmyData 已在接包时处理回城方向，不能在显示层再交换起终点。
@@ -351,10 +356,10 @@ export default class RightArmyItemLogic extends Component {
         const twoActions = showSetting && showBack;
         const width = twoActions ? (ui.width - 32) / 2 : ui.width - 24;
         const offset = twoActions ? (width + 8) / 2 : 0;
-        if (showSetting) commandAction(this.btnSetting, hasHeroes ? '编队 / 补兵' : '配置武将', 'edit', -offset, actionY, width, actionHeight, true);
+        if (showSetting) commandAction(this.btnSetting, hasHeroes ? '编队 / 补兵' : '配置武将', 'edit', -offset, actionY, width, actionHeight, true, false, !twoActions);
         if (showBack) {
             const pending = this._troop && WorldCommand.getInstance().requestInFlight(`march:${this._troop.troopIdx}`);
-            commandAction(this.btnBack, pending ? '请求中…' : '回城', 'home', offset, actionY, width, actionHeight, !showSetting);
+            commandAction(this.btnBack, pending ? '请求中…' : '回城', 'home', offset, actionY, width, actionHeight, !showSetting, false, !twoActions);
         }
         // 属性节点首次创建时也会插到首位，全部创建后再把整块底板压到最底层。
         troopSidebarDetail(this.bottomNode);
@@ -386,7 +391,8 @@ export default class RightArmyItemLogic extends Component {
             && world.occupyCountdownAt(march.endPos.x, march.endPos.y, DateUtil.getServerTime() / 1000);
         const troopState = leaderIdx <= 0 ? '待配置' : !march || world.isTroopAtHome(this._troop.troopIdx) ? '待命'
             : march.troopState === TroopStateEnum.SIEGE ? '攻城中' : occupyLeft ? '占领中'
-            : march.state === 1 ? (march.targetType === MarchTargetType.ReturnCity ? '回城中' : march.targetType === MarchTargetType.Redeploy ? '调动中' : '行军中') : '驻留';
+            : march.state === 1 ? (march.targetType === MarchTargetType.ReturnCity ? '回城中' : march.targetType === MarchTargetType.Redeploy ? '调动中' : '行军中')
+            : march.targetType === MarchTargetType.Move ? '原地待命' : '驻留';
         const state = this._data ? ArmyCommand.getInstance().getArmyStateDes(this._data).replace(/[\[\]【】]/g, '') : troopState;
         const heroes = this._troop ? [0, 1, 2].map(slot => this._troop.getHeroIdxAt(slot))
             : (this._data?.generals || []).map(id => GeneralCommand.getInstance().proxy.getMyGeneral(id)?.cfgId || 0);

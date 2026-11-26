@@ -5,7 +5,7 @@ const path = require('node:path');
 const ts = require(process.argv[2]);
 const root = path.resolve(__dirname, '../..'), scripts = path.join(root, 'assets/scripts');
 class Component {
-    enabled = true; schedule() {} unscheduleAllCallbacks() {}
+    enabled = true; schedule() {} unschedule() {} unscheduleAllCallbacks() {}
     getComponent(Type) { return this.node.getComponent(Type); }
     getComponentInChildren(Type) { return this.node.getComponentInChildren(Type); }
 }
@@ -41,11 +41,14 @@ class Mask extends Component { static Type = { GRAPHICS_RECT: 0 }; }
 class Widget extends Component {}
 class Layout extends Component {}
 class ProgressBar extends Component {}
+class AmbientView extends Component { setPlayerCity(data) { this.data=data; } }
 let visible = { width: 1280, height: 720 };
 const cc = { Component, Node, UITransform, Label, Sprite, Button, Color, Graphics, ScrollView, Mask, Widget, Layout, ProgressBar,
     BlockInputEvents: class {}, UIOpacity: class {},
     Vec2: class { constructor(x, y) { this.x = x; this.y = y; } },
+    Vec3: class { constructor(x=0,y=0,z=0) { Object.assign(this,{x,y,z}); } },
     view: { getVisibleSize: () => visible, on() {}, off() {} },
+    sys: { getSafeAreaRect: () => ({x:0,y:0,...visible}) },
     _decorator: { ccclass: () => v => v, property: () => () => {} } };
 let moveIssue = '';
 const map = { proxy: { getWarFree: () => 0, isPosTag: () => false, getResData: () => null,
@@ -55,6 +58,8 @@ const art = { apply(sprite, name, width) { sprite.art = name; sprite.node.getCom
     ownership(node, a, b, c, width) { node.ownershipWidth = width; }, factionColor: () => null,
     frame: () => ({ originalSize: { width: 640, height: 400 } }) };
 const stubs = {
+    'map/CityAmbientView': { default: AmbientView },
+    'map/PlayerCityGround': { default: { layout: (appearance,height) => ({...appearance,height}), apply() {} } },
     'map/WorldMapArt': { default: art }, 'map/MapUtil': { default: util }, 'map/MapCommand': { default: { getInstance: () => map } },
     'map/WorldCampaign': { default: { config: null, landmark: () => '', gateAt: () => null } },
     'utils/DateUtil': { default: { getServerTime: () => 0 } }, 'common/BgLogic': { default: class {} },
@@ -63,7 +68,7 @@ const stubs = {
     'login/LoginCommand': { default: { getInstance: () => ({ movingCity: false, proxy: { getRoleData: () => ({ userId: 1 }) } }) } },
     'core/ConfigManager': { default: {} }, 'general/ArmyCommand': {}, 'general/GeneralCommand': {},
     'general/TroopCommand': {}, 'world/WorldCommand': { MarchTargetType: { OccupyResource: 3 }, default: { getInstance: () => ({
-        resourceLandAt: () => undefined, resourceLandEntityId: (x, y) => 4000000000000000 + y * 1000 + x,
+        resourceLandAt: () => undefined, occupyCountdownAt: () => null, resourceLandEntityId: (x, y) => 4000000000000000 + y * 1000 + x,
         emptyLandIssue: () => '', resourceLandIssue: () => '', marches: { values: () => [] } }) } },
     'map/ui/GeneralHeadLogic': { default: class {} },
     'map/ui/MapUICommand': { default: { getInstance: () => ({ proxy: { getDefenseSoldiers: () => 0 } }) } },
@@ -72,6 +77,7 @@ const stubs = {
 const cache = new Map();
 function load(key) {
     if (stubs[key]) return stubs[key];
+    if (key.endsWith('.js')) return { default: require(path.join(scripts,key)) };
     if (cache.has(key)) return cache.get(key).exports;
     const file = path.join(scripts, key + '.ts'), mod = { exports: {} }; cache.set(key, mod);
     const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: {
@@ -109,8 +115,16 @@ for (let level = 0; level <= 30; level++) {
     assert.equal(city.node.ownershipWidth, 600); assert.equal(data.getCellRadius(), 1);
     assert.deepEqual(selection.getComponent(Graphics).points, [[0, 150], [300, 0], [0, -150], [-300, 0]]);
     assert.ok(city.node.children.indexOf(selection) < city.node.children.indexOf(sprite), '选框必须画在立绘下方');
-    assert.equal(sprite.getComponent(Sprite).trim, false); assert.equal(sprite.getComponent(UITransform).anchorY, .3);
-    assert.ok(city.labelName.node.position.y < -150, '城名不能覆盖建筑');
+    assert.equal(sprite.getComponent(Sprite).trim, false); assert.equal(sprite.getComponent(UITransform).anchorY, .5);
+    assert.equal(city.labelName.node.active,false,'停用旧的地块上方城名');
+    assert.equal(city.node.getComponent(AmbientView).data,data,'主城显示层向氛围组件传入当前实体');
+}
+if(process.argv.includes('--city-only')){
+    city.onDisable();city.onEnable();city.setCityData({...data,id:30020});
+    assert.equal(city.node.getChildByName('CitySelection').active,false,'复用不带上一次选框');
+    assert.equal(city.node.getComponent(AmbientView).data.id,30020,'氛围组件跟随复用后的实体');
+    console.log('PASS 主城 0～30 级九格占地、居中锚点、停用旧标签、氛围组件绑定及对象池复用');
+    process.exit(0);
 }
 const Popup = load('map/MapClickUILogic').default, popup = prefab('map/MapClickUI.prefab', Popup, 'bgSelect');
 popup.onLoad(); popup.setCellData(data, { x: 0, y: 0 });
@@ -139,7 +153,7 @@ for (const target of [
     popup.node.parent = popupParent;
     popup.setCellData(Object.assign(new stubs['map/MapProxy'].MapResData(), target), { x: 0, y: 0 });
     assert.equal(popup.btnMove.node.active, true);
-    assert.equal(popup.btnMove.getComponentInChildren(Label).string, '移动');
+    assert.equal(popup.btnMove.getComponentInChildren(Label).string, '驻军');
     assert.equal(popup.btnOccupy.node.active, true);
     popup.onClickMove();
     assert.deepEqual(selectionEvents.at(-1), ['move', target.x, target.y]);

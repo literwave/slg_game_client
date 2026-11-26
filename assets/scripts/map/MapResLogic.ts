@@ -70,8 +70,18 @@ export default class MapResLogic extends MapBaseLayerLogic {
     }
 
     public addItem(areaIndex: number, data: any): Node {
-        if (this.overview && data.type >= MapResType.WOOD && data.type <= MapResType.GRAIN) return null;
+        if (!data) return null;
+        if (this.overview && data.type >= MapResType.WOOD && data.type <= MapResType.GRAIN) {
+            if (!this.isItemAllowed(data)) this.removeItem(areaIndex, data.id);
+            return null;
+        }
         return super.addItem(areaIndex, data);
+    }
+
+    protected isItemAllowed(data: MapResData): boolean {
+        // 关城本体也是 ResLogic，不能把城市自身当成背景资源过滤。
+        return data.type === MapResType.SYS_FORTRESS && !!WorldCampaign.gateAt(data.x, data.y)
+            || !this._cmd.isCityGroundCell(data.x, data.y);
     }
 
     private refreshOwnership(): void {
@@ -86,6 +96,7 @@ export default class MapResLogic extends MapBaseLayerLogic {
         for (const entity of world.entities.values()) {
             if (entity.entityType !== 4 || !entity.pos || !valid(entity.pos.x, entity.pos.y)) continue;
             const x = entity.pos.x, y = entity.pos.y;
+            if (this._cmd.isCityGroundCell(x, y)) continue;
             const timer = world.occupyCountdownAt(x, y, now);
             if (!timer && !hasId(entity.ownerId)) continue;
             const id = MapUtil.getIdByCellPoint(x, y);
@@ -95,7 +106,7 @@ export default class MapResLogic extends MapBaseLayerLogic {
         for (const march of world.marches.values()) {
             if (march.targetType !== MarchTargetType.OccupyResource || march.state !== 2 || !march.endPos) continue;
             const x = Math.round(march.endPos.x), y = Math.round(march.endPos.y);
-            if (!valid(x, y)) continue;
+            if (!valid(x, y) || this._cmd.isCityGroundCell(x, y)) continue;
             const timer = world.occupyCountdownAt(x, y, now);
             if (!timer) continue;
             const id = MapUtil.getIdByCellPoint(x, y);
@@ -174,8 +185,9 @@ export default class MapResLogic extends MapBaseLayerLogic {
         // 平移跨区不会改变细节档位；AOI/归属变化已有独立事件更新，不能每次拖图再全量重建。
         if (this.overview === enabled) return;
         this.overview = enabled;
-        for (const items of this._itemMap.values()) for (const [id, node] of items) {
-            node.active = !enabled || this._cmd.proxy.getResData(id)?.type === MapResType.SYS_FORTRESS;
+        for (const areas of [this._itemMap, this._retiredItems]) for (const items of areas.values()) for (const [id, node] of items) {
+            const data = this._cmd.proxy.getResData(id);
+            node.active = !!data && this.isItemAllowed(data) && (!enabled || data.type === MapResType.SYS_FORTRESS);
         }
         this.refreshOwnership();
     }

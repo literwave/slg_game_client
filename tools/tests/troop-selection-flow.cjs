@@ -114,6 +114,8 @@ let city = { cityId: 1 };
 map.cityProxy.getMyMainCity = () => city;
 map.cityProxy.getCity = () => null;
 map.proxy.getResData = () => ({ type: 55, level: 3 });
+map.proxy.getSysCityResData = () => null;
+map.isCityArtCoveredCell = () => false;
 map.campaignBlockReason = () => '';
 util.getIdByCellPoint = (x, y) => y * 1000 + x;
 const world = {
@@ -212,6 +214,16 @@ test('卡片只选择，确认才下令；重复确认不会重复行军', () =>
     assert.equal(orders.length, 1); assert.deepEqual(orders[0], {id: 2, x: 373, y: 146});
     assert.equal(s.node.active, false);
     row.dispatchOrder(); assert.equal(orders.length, 1);
+    s.onDestroy();
+});
+
+test('选队后地块被城图覆盖，确认时重新校验并阻止占领', () => {
+    const s = setup([troop(1)]);
+    map.isCityArtCoveredCell = () => true;
+    s.onPrimary();
+    assert.equal(orders.length, 0);
+    assert.equal(s.node.active, true);
+    map.isCityArtCoveredCell = () => false;
     s.onDestroy();
 });
 

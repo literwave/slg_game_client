@@ -12,7 +12,7 @@
 
 | 项目资源 | 尺寸 | 用途 |
 | --- | --- | --- |
-| `assets/resources/ui/world/mountain_ridge_connected.png` | 1024×486 | 连续长山脊，按山带方向翻转 |
+| `assets/resources/ui/world/mountain_ridge_connected.png` | 1024×486 | 连续长山脊，保留原画光照方向，不镜像 |
 | `assets/resources/ui/world/mountain_shoulder.png` | 768×390 | 低山肩、急转方向和关口过渡 |
 
 运行时通过 `ui/world/` 加载。布局生成命令及验证见 [布局说明](README.md)。

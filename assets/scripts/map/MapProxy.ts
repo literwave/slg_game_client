@@ -287,8 +287,8 @@ export default class MapProxy {
         const half = halfSize || new Vec2(size.width / 2, size.height / 2);
         const wasOverview = this.overview;
         const wasStrategic = this.strategic;
-        // 回差避免在临界滚轮位置反复切换细节。
-        this.overview = half.y > (wasOverview ? 650 : 750);
+        // 回差避免在临界滚轮位置反复切换细节；大视野地表档（1050）保持完整地表资源可见。
+        this.overview = half.y > (wasOverview ? 1250 : 1350);
         this.strategic = half.y > (wasStrategic ? 2800 : 3200);
         const detailChanged = wasOverview !== this.overview || wasStrategic !== this.strategic;
         // 战略层不扫描百万格或请求全图区域。

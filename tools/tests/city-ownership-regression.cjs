@@ -49,24 +49,27 @@ class Label { static HorizontalAlign = { CENTER: 1, LEFT: 0 }; static VerticalAl
 class Color { constructor(r, g, b, a = 255) { Object.assign(this, { r, g, b, a }); } }
 class Button { static EventType = { CLICK: 'click' }; static Transition = { SCALE: 1 }; }
 class Vec { constructor(x = 0, y = 0) { this.set(x, y); } set(x, y) { this.x = x; this.y = y; return this; } }
-class Camera extends Component { orthoHeight = 360; convertToUINode(p, parent, out) { out.set(p.x, p.y); } }
+class Camera extends Component { orthoHeight = 450; convertToUINode(p, parent, out) { out.set(p.x * 360 / this.orthoHeight, p.y * 360 / this.orthoHeight); } }
 const cc = { Component, Node, UITransform, Graphics, Label, Color, Button, Camera, Vec2: Vec, Vec3: Vec,
     Sprite: class {}, Widget: class {}, Layout: class {}, view: { getVisibleSize: () => ({ width: 1280, height: 720 }) },
     _decorator: { ccclass: () => C => C, property: () => () => {} } };
 const style = load('map/ui/ManagementStyle', { cc, '../../common/BgLogic': {} });
 const presentation = load('map/CityMapPresentation', { cc, './ui/ManagementStyle': style,
     './WorldCampaign': { default: { landmark: () => '朔方隘' } }, './CityOwnership': model });
-const listeners = [], emitted = [], E = { updateAllianceCities: 'cities', updateMyRole: 'role', allianceCityOccupied: 'occupied', openCityTroops: 'city-troops' };
+const listeners = [], emitted = [], E = { updateAllianceCities: 'cities', updateMyRole: 'role', allianceCityOccupied: 'occupied', openCityTroops: 'city-troops', touchMap: 'map-touch' };
 const events = { on: (event, handler, target) => listeners.push({ event, handler, target }),
     targetOff: target => { for (let i = listeners.length - 1; i >= 0; i--) if (listeners[i].target === target) listeners.splice(i, 1); },
     emit: (event, ...args) => { emitted.push([event, ...args]); for (const l of [...listeners]) if (l.event === event) l.handler.apply(l.target, args); } };
 let snapshot, myAlliance = mine;
 const proxy = { strategic: false };
+const entrancePoints = [{ x: city.pos.x + 2, y: city.pos.y }, { x: city.pos.x - 2, y: city.pos.y }];
 const View = load('map/CityOwnershipView', { cc, '../utils/EventMgr': { EventMgr: events }, '../common/LogicEvent': { LogicEvent: E },
     '../world/CityCommand': { default: { getInstance: () => ({ at: (x, y) => snapshot?.pos.x === x && snapshot?.pos.y === y ? snapshot : undefined }) } },
     '../login/LoginCommand': { default: { getInstance: () => ({ proxy: { getRoleData: () => ({ allianceId: myAlliance }) } }) } },
-    './MapCommand': { default: { getInstance: () => ({ proxy }) } }, './MapUtil': { default: { mapCellToPixelPoint: p => p } },
+    './MapCommand': { default: { getInstance: () => ({ proxy }) } }, './MapUtil': { default: { mapCellToPixelPoint: p => p, tileSize: { width: 200, height: 100 } } },
+    './WorldCampaign': { default: { attackEntrances: (x, y) => x === city.pos.x && y === city.pos.y ? entrancePoints : [] } },
     './CityOwnership': model, './CityMapPresentation': presentation, './ui/ManagementStyle': style,
+    './MapProjection': require('./map-projection-module.cjs')(ts),
     './CityDeployment': { cityDeploymentCount: c => Math.max(0, Math.floor(c?.deployCount || 0)) } }).default;
 const scene = new Node('Scene'), canvas = new Node('Canvas'), ui = new Node('MapUIScene'), cameraNode = new Node('Map Camera');
 scene.addChild(canvas); canvas.addChild(ui); canvas.addChild(cameraNode); const camera = cameraNode.addComponent(Camera);
@@ -74,21 +77,28 @@ const gate = new Node('Gate'); canvas.addChild(gate); gate.addComponent(UITransf
 const c = gate.addComponent(View); c.onEnable();
 c.setCity({ ...city.pos, level: 4, rid: 9, unionName: '过期旧归属' }, 100, [[-300, 0], [0, 160], [300, 0], [0, -160]]);
 c.lateUpdate(0);
+assert.equal(gate.getChildByName('AttackEntrances'), undefined, '城外不再绘制内部寻路落脚点');
+c.plate.handlers.get(Button.EventType.CLICK).call(c);
+assert.equal(emitted.at(-1)[0], E.touchMap);
+assert.equal(emitted.at(-1)[4], true, '名牌明确只开城池情报，不能冒充入口或误选驻军');
 assert.equal(c.owner.relation, 'unknown'); assert.equal(c.flags.length, 0, '旧 rid 不能冒充城池归属');
 snapshot = { ...city, allianceId: 0 }; events.emit(E.updateAllianceCities);
-assert.equal(c.plate.getChildByName('CityOwner').getComponent(Label).string, '中立');
+assert.equal(c.owner.relation, 'neutral');
+assert.equal(c.plate.getComponent(UITransform).height, 30, '常驻名牌只有一行');
+assert.ok(!c.plate.getChildByName('CityOwner')?.active, '完整盟名不再悬在外侧格子上');
 snapshot = city; events.emit(E.updateAllianceCities); c.lateUpdate(0);
 assert.equal(c.flags.length, 2); assert.ok(c.flags.every(n => n.active)); assert.equal(c.ground.node.active, true);
-assert.equal(c.plate.getChildByName('CityOwner').getComponent(Label).string, '本盟 · 山河盟');
+assert.equal(c.owner.name, '山河盟');
 assert.equal(c.captureTime, 0, '读取列表和重连数据不能触发占领动效');
 snapshot = { ...city, deployCount: 3 }; events.emit(E.updateAllianceCities);
 const troopsEntry = c.plate.getChildByName('CityTroops');
 assert.equal(troopsEntry.active, true);
-assert.equal(troopsEntry.getChildByName('Count').getComponent(Label).string, '队伍 × 3  ›');
+assert.equal(troopsEntry.getChildByName('Count').getComponent(Label).string, '驻3');
+assert.equal(troopsEntry.position.y, 0, '驻军入口整合到同一行');
 troopsEntry.handlers.get(Button.EventType.CLICK).call(c);
 assert.deepEqual(emitted.at(-1), [E.openCityTroops, city.entityId]);
 snapshot = { ...city, deployCount: 2 }; events.emit(E.updateAllianceCities);
-assert.equal(troopsEntry.getChildByName('Count').getComponent(Label).string, '队伍 × 2  ›', '离城数量推送即时更新');
+assert.equal(troopsEntry.getChildByName('Count').getComponent(Label).string, '驻2', '离城数量推送即时更新');
 const count = gate.children.length;
 for (let i = 0; i < 30; i++) events.emit(E.updateAllianceCities);
 assert.equal(gate.children.length, count, '重复同步不重复创建旗帜');
@@ -99,20 +109,76 @@ c.lateUpdate(2); c.lateUpdate(0); assert.equal(c.pulse.node.active, false);
 assert.ok(c.flags.every(f => f.getChildByName('FlagBanner').position.y === 0));
 myAlliance = other; events.emit(E.updateMyRole);
 assert.equal(troopsEntry.active, false, '换盟后不可继续打开旧驻军');
-assert.equal(c.owner.relation, 'other'); assert.equal(c.plate.getChildByName('CityOwner').getComponent(Label).string, '山河盟');
-console.log('PASS 城池协议实时刷新、盟名显示、换盟刷新、重连静态恢复、一次性升旗结束');
+assert.equal(c.owner.relation, 'other'); assert.equal(c.owner.name, '山河盟');
+console.log('PASS 城池协议实时刷新、紧凑名牌、换盟刷新、重连静态恢复、一次性升旗结束');
 
-for (const height of [180, 720, 1440]) { camera.orthoHeight = height; c.lateUpdate(0); assert.equal(camera.orthoHeight, height); }
+camera.orthoHeight=192;c.lateUpdate(.1);
+assert.equal(c.plate.active,false,'放大到近景后整块城名标签隐藏');
+assert.equal(gate.getChildByName('AttackEntrances'),undefined,'近景不显示攻城格');
+assert.ok(c.flags.every(f=>f.active),'城旗和归属仍然保留');
+camera.orthoHeight=450;c.lateUpdate(.1);
+assert.equal(c.plate.active,true,'缩回常用视角自动恢复居中标签');
+
+for (const height of [180, 720, 1440]) {
+    camera.orthoHeight = height; c.lateUpdate(0); assert.equal(camera.orthoHeight, height);
+    if (!c.plate.active) continue;
+    const ui = c.plate.getComponent(UITransform), zoom = height / 360;
+    for (const dx of [-1,1]) for (const dy of [-1,1]) {
+        const x=c.plate.position.x+dx*ui.width*c.plate.scale.x/2, y=c.plate.position.y+dy*ui.height*c.plate.scale.y/2;
+        assert.ok(Math.abs(x)/(300/zoom)+Math.abs(y)/(160/zoom)<1,'名牌完整矩形不能伸出城池占地');
+    }
+}
 c.cue.clear(); events.emit(E.allianceCityOccupied, { cityInfo: city }); c.lateUpdate(.1);
 assert.ok(c.flags.every(f => f.getChildByName('FlagBanner').position.y < 0));
 proxy.strategic = true; c.lateUpdate(.1);
+assert.equal(gate.getChildByName('AttackEntrances'), undefined, '总览无攻城格');
 assert.equal(c.plate.active, false); assert.equal(c.ground.node.active, false); assert.ok(c.flags.every(f => !f.active));
 proxy.strategic = false; c.lateUpdate(0); assert.equal(c.plate.active, true); assert.ok(c.flags.every(f => f.active));
+assert.equal(gate.getChildByName('AttackEntrances'), undefined, '切回近景也不能恢复入口提示');
 assert.ok(c.flags.every(f => f.getChildByName('FlagBanner').position.y === 0), '总览打断升旗后不能留半截旗');
 c.clear(); assert.equal(c.plate.active, false); assert.equal(c.ground.node.active, false);
+assert.equal(gate.getChildByName('AttackEntrances'), undefined, '对象池没有遗留入口标志');
 events.emit(E.allianceCityOccupied, { cityInfo: city }); assert.equal(c.captureTime, 0, '复用为普通资源后不响应旧城池推送');
 c.onDisable(); assert.equal(listeners.length, 0);
 c.onEnable(); c.setCity({ x: 1, y: 2, level: 4 }, 100, [[-100, 0], [0, 50], [100, 0], [0, -50]]);
+c.lateUpdate(0); assert.equal(gate.getChildByName('AttackEntrances'), undefined, '复用后也不创建入口');
 assert.equal(c.owner.relation, 'unknown'); assert.ok(c.flags.every(f => !f.active));
 c.onDisable(); c.onDestroy(); assert.equal(c.plate, null); assert.equal(listeners.length, 0);
 console.log('PASS 缩放不改相机、总览切换、对象池复用、离场名牌/监听清理');
+
+// 斜向桥关、长城名、带驻军的小屏幕场景，均按实际投影多边形内收。
+let placements=0;
+for (const polygon of [[[-300,0],[0,188],[300,0],[0,-188]],[[-260,-10],[-80,190],[280,10],[70,-210]]]) {
+    for (const zoom of [.5,1,2,4,8]) for (const nameWidth of [104,152,232]) for (const mirror of [1,-1]) {
+        const points=polygon.map(([x,y])=>[mirror*x/zoom+117,y/zoom-53]);
+        const result=presentation.cityNameplatePlacement(points,nameWidth,30);
+        if(!result.visible)continue;
+        for(const dx of [-1,1])for(const dy of [-1,1]) {
+            const x=result.x+dx*nameWidth*result.scale/2,y=result.y+dy*15*result.scale;
+            const crosses=points.map((a,i)=>{const b=points[(i+1)%points.length];return (b[0]-a[0])*(y-a[1])-(b[1]-a[1])*(x-a[0]);});
+            assert.ok(crosses.every(v=>v>=0)||crosses.every(v=>v<=0),'标签及驻军按钮不能抢占相邻格');
+        }
+        placements++;
+    }
+}
+assert.equal(presentation.cityNameplatePlacement([],100,30).visible,false);
+console.log('PASS '+placements+' 种城池/桥关、镜像、缩放及长名的实际名牌边界');
+
+// 关城细描边与用于旗帜/名牌布局的四角分开，凹口不可再被四角直线填满。
+const fittedNode = new Node('FittedGate'); canvas.addChild(fittedNode); fittedNode.addComponent(UITransform);
+const fitted = fittedNode.addComponent(View); snapshot = city; myAlliance = mine; camera.orthoHeight = 450;
+fitted.onEnable();
+const corners = [[-300,0],[0,160],[300,0],[0,-160]];
+const contour = [[-290,0],[0,155],[290,0],[150,-60],[100,-55],[80,-95],[0,-150],[-150,-60]];
+fitted.setCity({...city.pos,level:4},100,corners,contour); fitted.lateUpdate(0);
+assert.ok(!fitted.ground.commands.some(([op])=>op==='fill'), '关城不再给墙外空隙铺归属底色');
+assert.deepEqual(fitted.ground.commands.filter(([op])=>op==='moveTo'||op==='lineTo').slice(0,contour.length)
+    .map(([,x,y])=>[x,y]),contour,'归属线严格使用贴脚凹口轮廓');
+assert.equal(fitted.ground.commands.filter(([op])=>op==='stroke').length,2,'不额外画跨过草地的四角长线');
+events.emit(E.allianceCityOccupied,{cityInfo:city});fitted.lateUpdate(.3);
+assert.deepEqual(fitted.pulse.commands.filter(([op])=>op==='moveTo'||op==='lineTo').map(([,x,y])=>[x,y]),contour,
+    '占领反馈仍贴墙脚，不向相邻格扩张');
+fitted.setCity({...city.pos,level:4},100,corners);fitted.lateUpdate(0);
+assert.ok(fitted.ground.commands.some(([op])=>op==='fill'),'复用到普通城池恢复原有归属表现');
+fitted.onDisable();fitted.onDestroy();assert.equal(listeners.length,0);
+console.log('PASS 关城贴脚轮廓、无外扩填色、占领反馈与普通城池复用');

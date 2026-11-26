@@ -2,7 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), ts = require(process.argv[2]);
 const scripts = path.resolve(__dirname, '../../assets/scripts'), cache = new Map();
-let mono = 0, serverStart = 100000;
+let mono = 0, serverStart = 100000, activeOccupation = true;
 class Vec2 { constructor(x = 0, y = 0) { this.x = x; this.y = y; } }
 class Node {
     constructor(name = '') { this.name = name; this.children = []; this.components = new Map(); this.active = true; }
@@ -26,13 +26,13 @@ const cc = { Vec2, Vec3: Vec2, Node, Graphics, Sprite, UITransform: class {}, An
 const project = p => ({ x: (p.x - p.y) * 100, y: -(p.x + p.y) * 50 });
 const stubs = {
     'utils/DateUtil': { default: { getServerTime: () => serverStart + mono, monotonicNow: () => mono } },
-    'map/MapUtil': { default: { mapCellToPixelPoint: project } },
-    'map/entries/MarchFormation': { default: class { configure() {} setGuarding() {} setSiegeTarget() {} resetTrail() {} update() {} getSiegeVolley() { return { seconds: 0, sources: [] }; } destroy() {} } },
+    'map/MapUtil': { default: { mapCellToPixelPoint: project, tileSize: { width: 200, height: 100 } } },
+    'map/entries/MarchFormation': { default: class { configure() {} setGuarding(on) { this.guarding = on; } setSiegeTarget() {} resetTrail() {} update() {} getSiegeVolley() { return { seconds: 0, sources: [] }; } destroy() {} } },
     'map/entries/SiegeEffect': { default: class {} },
     'map/WorldCampaign': { default: { config: null, gateAt: () => null } },
     'world/CityCommand': { default: { getInstance: () => ({ cities: new Map() }) } },
     'network/pto/ProtocolCommand': { idKey: id => String(id ?? 0) },
-    'world/WorldCommand': { default: { getInstance: () => ({ occupyCountdownAt: () => null }) } },
+    'world/WorldCommand': { default: { getInstance: () => ({ occupyCountdownAt: () => activeOccupation ? { endTime: 999999 } : null }) } },
 };
 function load(name) {
     if (stubs[name]) return stubs[name];
@@ -77,6 +77,7 @@ console.log('PASS 双向行军已走路段消失，线头跟随部队');
 
 const corners = [{ x: 0, y: 0 }, { x: 0, y: 4 }, { x: 4, y: 4 }];
 const turn = setup(entity(corners, 8));
+assert.equal(turn.logic.formation.guarding, false, '行军中即使目标有占领倒计时也不进入警戒');
 advance(turn, 2000); routeIs(turn, [{ x: 0, y: 2 }, corners[1], corners[2]]);
 advance(turn, 2000); routeIs(turn, [corners[1], corners[2]]);
 advance(turn, 1000); routeIs(turn, [{ x: 1, y: 4 }, corners[2]]);
@@ -94,6 +95,9 @@ const changed = { ...entity([{ x: 0, y: 0 }, { x: -2, y: 0 }], 2), startTime: 10
 midway.logic.setWorldEntity(changed, true, midway.army, midway.arrow);
 routeIs(midway, changed.path); advance(midway, 2000);
 assert.equal(midway.arrow.active, false); routeIs(midway, []);
+assert.equal(midway.logic.formation.guarding, true, '占领倒计时期间应进入警戒');
+activeOccupation = false; midway.logic.update();
+assert.equal(midway.logic.formation.guarding, false, '普通停留和占领结束后恢复站姿');
 assert.equal(changed.path.length, 2, '显示裁切不得修改服务端路径');
 midway.logic.clear();
 midway.logic.setWorldEntity({ ...entity([{ x: -2, y: 0 }, { x: -2, y: 2 }], 2), startTime: 110, endTime: 112 },

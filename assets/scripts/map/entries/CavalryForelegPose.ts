@@ -11,9 +11,6 @@ export interface CavalryForelegRig {
     lift: number;
     /** Fixed IK branch. For a downward leg, -1 bends right and +1 bends left. */
     bendSign?: 1 | -1;
-    /** Visible lower limb articulation; its upper attachment slides behind the torso. */
-    supportFlexDegrees?: number;
-    swingFlexDegrees?: number;
 }
 
 export interface CavalryForelegPose {
@@ -22,10 +19,15 @@ export interface CavalryForelegPose {
     hoof: ForelegPoint;
     grounded: boolean;
     /** The hoof sprite does not inherit the lower leg's rotation. */
-    hoofAngle: 0;
+    hoofAngle: number;
 }
 
 export const CAVALRY_FORELEG_STANCE = .64;
+
+/** 只移动躯干和腿根，落地蹄保持自己的支撑轨迹。 */
+export function cavalryBodyOffset(phase: number, moving = true): ForelegPoint {
+    return { x: 0, y: moving ? .3 * (1 - Math.cos(phase * Math.PI * 4)) : 0 };
+}
 
 /**
  * Sample one leg; sample its partner at phase + .5 so at least one is grounded.
@@ -34,21 +36,19 @@ export const CAVALRY_FORELEG_STANCE = .64;
  * Stopping restores restHoof. Unreachable targets are clamped, never stretched.
  */
 export function solveCavalryForelegPose(
-    phase: number, rig: CavalryForelegRig, moving = true,
+    phase: number, rig: CavalryForelegRig, moving = true, bodyOffset: ForelegPoint = { x: 0, y: 0 },
 ): CavalryForelegPose {
     const { restHoof, strideVector, upperLength, lowerLength } = rig;
-    let shoulder = rig.shoulder;
+    const shoulder = { x: rig.shoulder.x + bodyOffset.x, y: rig.shoulder.y + bodyOffset.y };
     if (![phase, shoulder.x, shoulder.y, restHoof.x, restHoof.y,
         strideVector.x, strideVector.y, upperLength, lowerLength, rig.lift].every(Number.isFinite)
         || upperLength <= 0 || lowerLength <= 0 || rig.lift < 0
-        || (rig.bendSign !== undefined && rig.bendSign !== 1 && rig.bendSign !== -1)
-        || [rig.supportFlexDegrees, rig.swingFlexDegrees].some(value => value !== undefined
-            && (!Number.isFinite(value) || value <= 0 || value >= 90))) {
+        || (rig.bendSign !== undefined && rig.bendSign !== 1 && rig.bendSign !== -1)) {
         throw new RangeError('Foreleg rig requires finite coordinates, positive lengths and non-negative lift');
     }
 
     const p = ((phase % 1) + 1) % 1;
-    let travel = 0, lift = 0, swingWeight = 0;
+    let travel = 0, lift = 0, hoofAngle = 0;
     const grounded = !moving || p < CAVALRY_FORELEG_STANCE;
     if (moving) {
         if (grounded) {
@@ -60,22 +60,14 @@ export function solveCavalryForelegPose(
             // Hermite endpoint velocities match stance: no velocity snap on wrap/contact.
             travel = 3 * t2 - 2 * t3 - .5
                 - swing / CAVALRY_FORELEG_STANCE * (2 * t3 - 3 * t2 + t);
-            swingWeight = 16 * t2 * (1 - t) * (1 - t);
+            const swingWeight = 16 * t2 * (1 - t) * (1 - t);
             lift = rig.lift * swingWeight;
+            // 起蹄时收趾，前伸时逐渐放平；支撑阶段不跟随小腿转动。
+            hoofAngle = 18 * Math.sin(t * Math.PI * 2) * swingWeight;
         }
     }
     const targetX = restHoof.x + strideVector.x * travel;
     const targetY = restHoof.y + strideVector.y * travel - lift;
-    if (rig.supportFlexDegrees !== undefined) {
-        const flex = (rig.supportFlexDegrees + ((rig.swingFlexDegrees ?? rig.supportFlexDegrees)
-            - rig.supportFlexDegrees) * swingWeight) * Math.PI / 180;
-        const reachSquared = upperLength * upperLength + lowerLength * lowerLength
-            + 2 * upperLength * lowerLength * Math.cos(flex);
-        const horizontal = targetX - shoulder.x;
-        // The hidden upper arm/haunch absorbs perspective shortening. The visible
-        // knee stays nearly straight while supporting, with no stretching or foot slide.
-        shoulder = { x: shoulder.x, y: targetY - Math.sqrt(Math.max(0, reachSquared - horizontal * horizontal)) };
-    }
     let dx = targetX - shoulder.x, dy = targetY - shoulder.y;
     const requestedDistance = Math.hypot(dx, dy);
     if (requestedDistance > 0) {
@@ -102,6 +94,6 @@ export function solveCavalryForelegPose(
             y: shoulder.y + dy * along + dx * bend },
         hoof: { x: shoulder.x + dx * distance, y: shoulder.y + dy * distance },
         grounded,
-        hoofAngle: 0,
+        hoofAngle,
     };
 }

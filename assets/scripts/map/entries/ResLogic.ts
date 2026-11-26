@@ -2,8 +2,10 @@ import { _decorator, Color, Component, Sprite, UITransform } from 'cc';
 import { MapResData, MapResType } from '../MapProxy';
 import WorldMapArt from '../WorldMapArt';
 import WorldCampaign from '../WorldCampaign';
-import { gateWidth, gateMirrored, gateGroundCorners, GATE_ANCHOR_X, GATE_ANCHOR_Y, GATE_ART, BRIDGE_ART, BRIDGE_ANCHOR_X, BRIDGE_ANCHOR_Y, BRIDGE_HEIGHT_SCALE } from '../GateGeometry';
+import { gateWidth, gateHeight, gateMirrored, gateGroundCorners, gateGroundOutline, GATE_ANCHOR_X, GATE_ANCHOR_Y, GATE_ART, BRIDGE_ART, BRIDGE_ANCHOR_X, BRIDGE_ANCHOR_Y } from '../GateGeometry';
+import { groundArtScaleY } from '../MapProjection';
 import CityOwnershipView from '../CityOwnershipView';
+import CityAmbientView from '../CityAmbientView';
 import MapUtil from '../MapUtil';
 import { resourceFootprint } from '../ResourceFootprint';
 const { ccclass, property } = _decorator;
@@ -18,14 +20,19 @@ export default class ResLogic extends Component {
         this._data = data;
         const gate = data.type === MapResType.SYS_FORTRESS && WorldCampaign.gateAt(data.x, data.y);
         const bridge = gate && gate.crossing === 'bridge';
-        if (!gate) this.node.getComponent(CityOwnershipView)?.clear();
+        if (!gate) {
+            this.node.getComponent(CityOwnershipView)?.clear();
+            this.node.getComponent(CityAmbientView)?.clear();
+        }
         const art = gate ? (bridge ? BRIDGE_ART : GATE_ART) : { [MapResType.WOOD]: 'forest', [MapResType.IRON]: 'iron',
             [MapResType.STONE]: 'quarry', [MapResType.GRAIN]: 'grain', [MapResType.SYS_FORTRESS]: 'fort' }[data.type];
         if (!art) { this.spr.spriteFrame = null; return; }
         const level = Math.min(10, Math.max(1, Math.floor(data.level) || 1));
         const resource = data.type >= MapResType.WOOD && data.type <= MapResType.GRAIN;
-        const width = gate ? gateWidth(gate.level, gate) : data.type === MapResType.SYS_FORTRESS ? 138 : 100;
-        WorldMapArt.apply(this.spr, resource ? `${art}_lv${level}` : art, width);
+        const tile = MapUtil.tileSize;
+        const width = gate ? gateWidth(gate.level, gate, tile.width) : (data.type === MapResType.SYS_FORTRESS ? 138 : 100) * tile.width / 200;
+        if (gate && !bridge) WorldMapArt.applyGate(this.spr, gate.level, gate, tile.width, tile.height);
+        else WorldMapArt.apply(this.spr, resource ? `${art}_lv${level}` : art, width);
         this.spr.color = Color.WHITE;
         if (data.type >= MapResType.WOOD && data.type <= MapResType.GRAIN) {
             const imageSize = WorldMapArt.size(`${art}_lv${level}`);
@@ -45,16 +52,22 @@ export default class ResLogic extends Component {
             this.spr.trim = !gate;
             this.spr.node.getComponent(UITransform).setAnchorPoint(bridge ? BRIDGE_ANCHOR_X : gate ? GATE_ANCHOR_X : .5,
                 bridge ? BRIDGE_ANCHOR_Y : gate ? GATE_ANCHOR_Y : .25);
-            this.spr.node.setPosition(0, gate ? 0 : -3, 0);
+            this.spr.node.setPosition(0, gate ? 0 : -3 * groundArtScaleY(tile.width, tile.height), 0);
             const config = WorldCampaign.config;
             const mirror = gate && config && gateMirrored(gate.x, gate.y, config.width, config.height, gate);
-            this.spr.node.setScale(mirror ? -1 : 1, bridge ? BRIDGE_HEIGHT_SCALE : 1, 1);
+            const transform = this.spr.node.getComponent(UITransform);
+            transform.setContentSize(width, gate ? gateHeight(gate.level, gate, tile.width, tile.height)
+                : transform.height * groundArtScaleY(tile.width, tile.height));
+            this.spr.node.setScale(mirror ? -1 : 1, 1, 1);
             if (gate) this.spr.color = Color.WHITE;
             if (gate) {
                 const ownership = this.node.getComponent(CityOwnershipView) || this.node.addComponent(CityOwnershipView);
-                const height = this.spr.node.getComponent(UITransform).height * (bridge ? BRIDGE_HEIGHT_SCALE : 1);
+                const height = transform.height;
                 ownership.setCity(gate, height * (bridge ? .52 : 1 - GATE_ANCHOR_Y),
-                    gateGroundCorners(gate.level, !!mirror, gate));
+                    gateGroundCorners(gate.level, !!mirror, gate, tile.width, tile.height),
+                    bridge ? undefined : gateGroundOutline(gate.level, !!mirror, gate, tile.width, tile.height));
+                const ambient = this.node.getComponent(CityAmbientView) || this.node.addComponent(CityAmbientView);
+                ambient.setGate(gate, !!mirror);
             }
         }
         const title = this.node.getChildByName('CampaignGateName');

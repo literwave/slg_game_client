@@ -15,12 +15,10 @@ CCEffect %{
       rasterizerState:
         cullMode: none
       properties:
-        sourceMetrics: { value: [640, 421, 0, 639] }
-        cityMetrics: { value: [600, 360, 300, 0.85] }
-        alignment: { value: [0, 0, 0, 2] }
-        groundPlane: { value: [0, 0, 0, 0] }
-        groundMode: { value: [0, 0, 0, 0] }
-        groundProfile: { value: black }
+        cityUvX: { value: [1, 0, 0.5, 0] }
+        cityUvY: { value: [0, -1, 0.5, 0] }
+        cityRender: { value: [1, 1, 0, 0] }
+        cityTone: { value: [1, 1, 0, 0] }
         cityTexture: { value: white }
 }%
 CCProgram city-vs %{
@@ -44,65 +42,73 @@ CCProgram city-vs %{
   }
 }%
 CCProgram city-fs %{
+  #pragma extension([GL_OES_standard_derivatives, __VERSION__ < 300])
   precision highp float;
   in vec2 uv0;
   in vec4 color;
-  uniform CityGround {
-    vec4 sourceMetrics;
-    vec4 cityMetrics;
-    vec4 alignment;
-    vec4 groundPlane;
-    vec4 groundMode;
-  };
-  uniform sampler2D groundProfile;
+  uniform CityGround { vec4 cityUvX; vec4 cityUvY; vec4 cityTone; vec4 cityRender; };
   uniform sampler2D cityTexture;
+
+  // 明度、饱和度、高光压缩按城图配置；压住浅色石地与金边，保留屋瓦暗部细节。
+  vec3 cityPalette (vec3 rgb) {
+    float luminance = dot(rgb, vec3(.2126, .7152, .0722));
+    vec3 muted = mix(vec3(luminance), rgb, cityTone.y);
+    float highlight = smoothstep(.45, .90, luminance);
+    return muted * cityTone.x * (1.0 - cityTone.z * highlight);
+  }
+
+  float stoneNoise (vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+
+  // 城道与地图使用相同的两条格轴。占地底座独立铺满九格，建筑仍保留完整线性投影。
+  vec3 cityPaving (vec2 p) {
+    vec2 axes = vec2(p.x + p.y, p.x - p.y);
+    float edge = .498 - max(abs(axes.x), abs(axes.y));
+    vec2 stone = (axes + .5) * vec2(28.0, 42.0);
+    stone.x += mod(floor(stone.y), 2.0) * .5;
+    vec2 cell = floor(stone), local = fract(stone);
+    vec2 seam = min(local, 1.0 - local);
+    // 砖缝按屏幕像素平滑，拉远时收掉细纹；不再叠逐像素砂粒噪声。
+    // WebGL 1 必须显式启用导数扩展；无扩展的设备保留平滑底色，避免材质编译失败。
+    float pixelWidth = 1.4;
+    #if __VERSION__ < 300
+      #ifdef GL_OES_standard_derivatives
+        pixelWidth = max(fwidth(stone.x), fwidth(stone.y));
+      #endif
+    #else
+      pixelWidth = max(fwidth(stone.x), fwidth(stone.y));
+    #endif
+    float detail = 1.0 - smoothstep(.35, 1.4, pixelWidth);
+    float joint = 1.0 - smoothstep(.025 - pixelWidth * .5, .09 + pixelWidth * .5, min(seam.x, seam.y));
+    float variation = (stoneNoise(cell) - .5) * .025 * detail;
+    vec3 paving = vec3(.57, .525, .43) + variation;
+    paving -= joint * .045 * detail;
+    // 薄石沿压住地表接缝；不画粗边框，也不把未占领的邻格纳入底座。
+    float rim = 1.0 - smoothstep(.006, .010, edge);
+    vec3 curb = vec3(.61, .565, .465);
+    paving = mix(paving, curb, rim);
+    return paving * mix(.78, 1.0, smoothstep(.001, .004, edge));
+  }
+
   vec4 frag () {
-    float y = (1.0 - uv0.y) * cityMetrics.y;
-    float edge = abs(uv0.x - 0.5) * cityMetrics.z;
-    if (y < edge) discard;
-    // 已修订的城图使用直线地脚：只调整投影，不随像素透明度拉长树木、墙脚。
-    if (groundPlane.x > 0.0) {
-      bool left = uv0.x <= 0.5;
-      float t = left ? uv0.x * 2.0 : (uv0.x - 0.5) * 2.0;
-      float x = left ? mix(sourceMetrics.z, groundPlane.x, t) : mix(groundPlane.x, sourceMetrics.w, t);
-      float floorY = left ? mix(groundPlane.y, groundPlane.z, t) : mix(groundPlane.z, groundPlane.w, t);
-      float projectedY = y;
-      if (groundMode.x > 1.5) {
-        // 建筑按外墙转角校准；草皮前尖单独收边，不再决定整个右立面的坡度。
-        vec4 boundary = texture(groundProfile, vec2((x + 0.5) / sourceMetrics.x, 0.5));
-        float rawFloor = (boundary.r * 65280.0 + boundary.g * 255.0) / 65535.0 * sourceMetrics.y;
-        float delta = (rawFloor - floorY) * cityMetrics.w;
-        float band = max(cityMetrics.z * 0.03, abs(delta) * (delta < 0.0 ? 0.25 : 2.0) + 1.0);
-        if (y < edge + band) projectedY += delta * (1.0 - (y - edge) / band);
-      }
-      float sourceY = floorY + (projectedY - edge) / cityMetrics.w;
-      vec2 sampleUV = vec2((x + 0.5) / sourceMetrics.x, 1.0 - sourceY / sourceMetrics.y);
-      if (sampleUV.y < 0.0 || sampleUV.y > 1.0) discard;
-      return texture(cityTexture, sampleUV) * color;
+    vec3 p = vec3(vec2(uv0.x - .5, .5 - uv0.y) * cityRender.xy + cityRender.zw, 1.0);
+    // 地基仍受左右边界与前方两条格线约束；新图屋顶可自然高出后方格线。
+    if (cityUvX.w > .5) {
+      if (abs(p.x) > .5 || p.y < abs(p.x) - .5) discard;
+    } else if (abs(p.x) + abs(p.y) > .5) discard;
+    vec2 sourceUV = vec2(dot(cityUvX.xyz, p), dot(cityUvY.xyz, p));
+    vec4 city = vec4(0.0);
+    if (sourceUV.x >= 0.0 && sourceUV.y >= 0.0 && sourceUV.x <= 1.0 && sourceUV.y <= 1.0) {
+      city = texture(cityTexture, sourceUV);
     }
-    // 前城角落在占地中轴；连续映射保留两侧端点和直立的城墙。
-    float alignedU = uv0.x + alignment.x * 4.0 * uv0.x * (1.0 - uv0.x);
-    float x = mix(sourceMetrics.z, sourceMetrics.w, alignedU);
-    float sourceU = (x + 0.5) / sourceMetrics.x;
-    vec4 groundBytes = texture(groundProfile, vec2(sourceU, 0.5));
-    float floorY = (groundBytes.r * 65280.0 + groundBytes.g * 255.0) / 65535.0 * sourceMetrics.y;
-    float smoothY = (groundBytes.b * 65280.0 + groundBytes.a * 255.0) / 65535.0 * sourceMetrics.y;
-    // 主体统一线性校平；满级城外伸阶道只在地脚窄带内收边。
-    float columnOffset = x * alignment.y + alignment.z;
-    // 满级使用一次轮廓收边，避免主带与细带叠加把侧边草皮拉成竖条。
-    float groundY = groundMode.x > 0.5 ? floorY : smoothY;
-    float floorWorld = groundY * cityMetrics.w + columnOffset;
-    float delta = floorWorld - edge;
-    // delta >= 0 是向外补齐地脚，仍保留安全过渡宽度，避免映射翻折。
-    float bandFactor = groundMode.x > 0.5 && delta < 0.0 ? 0.25 : alignment.w;
-    float band = max(cityMetrics.z * 0.04, abs(delta) * bandFactor + 1.0);
-    float fine = groundMode.x > 0.5 ? 0.0 : (floorY - smoothY) * cityMetrics.w / (1.0 - delta / band);
-    float fineBand = max(cityMetrics.z * 0.035, abs(fine) * 2.0 + 1.0);
-    float baseY = y < edge + fineBand ? y + fine * (1.0 - (y - edge) / fineBand) : y;
-    float projectedY = baseY < edge + band ? baseY + delta * (1.0 - (baseY - edge) / band) : baseY;
-    float sourceY = (projectedY - columnOffset) / cityMetrics.w;
-    vec2 sampleUV = vec2(sourceU, 1.0 - sourceY / sourceMetrics.y);
-    if (sampleUV.y < 0.0 || sampleUV.y > 1.0) discard;
-    return texture(cityTexture, sampleUV) * color;
+    // 原版十级城自带草地和城墙；透明处透出地图，避免额外的整块灰色石底。
+    if (cityTone.w > .5) return vec4(cityPalette(city.rgb), city.a) * color;
+    if (city.a >= .999) return vec4(cityPalette(city.rgb), city.a) * color;
+    // 透明留白显示贴地城道；不用放大城图或裁断塔楼来填格。
+    float groundAlpha = 1.0 - smoothstep(.497, .498, abs(p.x) + abs(p.y));
+    float alpha = city.a + groundAlpha * (1.0 - city.a);
+    vec3 rgb = (city.rgb * city.a + cityPaving(p.xy) * groundAlpha * (1.0 - city.a)) / max(alpha, .0001);
+    return vec4(cityPalette(rgb), alpha) * color;
   }
 }%

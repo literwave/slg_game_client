@@ -6,6 +6,7 @@ import { EventMgr } from '../../utils/EventMgr';
 import { AudioManager } from '../../common/AudioManager';
 import { LogicEvent } from '../../common/LogicEvent';
 import { commandListEntry } from './RightSidebarView';
+import { playerCityArt } from '../PlayerCityAppearance';
 
 @ccclass('RightCityItemLogic')
 export default class RightCityItemLogic extends Component {
@@ -23,7 +24,7 @@ export default class RightCityItemLogic extends Component {
 
     private refreshSkin(): void {
         const level = this._data?.level || 1;
-        commandListEntry(this.node, this.labelInfo, this.labelPos, 'city', `player_city_lv${Math.max(1, Math.min(30, level))}`, this._data?.level || 0);
+        commandListEntry(this.node, this.labelInfo, this.labelPos, 'city', playerCityArt(Math.max(1, Math.min(30, level))), this._data?.level || 0);
     }
 
     protected onDestroy(): void {

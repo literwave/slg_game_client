@@ -42,40 +42,62 @@ export function drawCityFlag(root: Node, owner: CityOwner): void {
     letter.isBold = true;
 }
 
-/** 屏幕空间的城池名牌，字号不跟着地图缩成细线，也不压在城楼上。 */
-export function drawSystemCityNameplate(root: Node, data: ReturnType<typeof systemCityIdentity>): void {
+/** 单行城名留在占地内；完整归属由选中面板承载，颜色只作快速阵营识别。 */
+export function drawSystemCityNameplate(root: Node, data: ReturnType<typeof systemCityIdentity>, troopCount = 0): void {
     const owner = data.owner, color = cityOwnerColor(owner);
-    const width = Math.min(230, Math.max(156, Array.from(data.name).length * 21 + 54,
-        Math.min(10, Array.from(owner.name).length) * 15 + 60));
-    root.getComponent(UITransform).setContentSize(width, 86);
-    const g = inkSurface(root, 'CityTitlePlate', width, 76, null, null);
-    const left = -width / 2, right = width / 2;
-    g.fillColor = new Color(19, 26, 22, 245); g.strokeColor = color; g.lineWidth = 1.2;
-    g.moveTo(left + 7, 20); g.lineTo(right - 7, 20); g.lineTo(right, 13);
-    g.lineTo(right, -15); g.lineTo(left, -15); g.lineTo(left, 13); g.close(); g.fill(); g.stroke();
-    g.strokeColor = color;
-    g.moveTo(left + 12, 18); g.lineTo(right - 12, 18); g.stroke();
-    // 铜色等级牌与城名组合，省去“城池等级”等重复说明。
-    const bx = left + 19;
-    g.fillColor = new Color(112, 80, 35, 255); g.strokeColor = new Color(212, 178, 109, 230);
-    g.moveTo(bx - 15, 22); g.lineTo(bx + 15, 22); g.lineTo(bx + 15, -11);
-    g.lineTo(bx, -20); g.lineTo(bx - 15, -11); g.close(); g.fill(); g.stroke();
-    const level = caption(root, 'CityLevel', data.level > 0 ? String(data.level) : '城', bx, 2, 28, 17,
-        new Color(255, 229, 166), Label.HorizontalAlign.CENTER); level.isBold = true;
-    const title = caption(root, 'CityName', data.name, 18, 3, width - 48, 21,
+    const troopWidth = troopCount > 0 && owner.relation === 'mine' ? 48 : 0;
+    const nameWidth = Math.min(152, Math.max(72, Array.from(data.name).length * 17 + 12));
+    const width = nameWidth + 32 + troopWidth;
+    root.getComponent(UITransform).setContentSize(width, 30);
+    const g = inkSurface(root, 'CityTitlePlate', width, 30, new Color(19, 26, 22, 205), null);
+    const left = -width / 2;
+    g.fillColor = new Color(color.r, color.g, color.b, 210);
+    g.roundRect(left + 1, -14, 3, 28, 1.5); g.fill();
+    g.fillColor = new Color(112, 80, 35, 235);
+    g.roundRect(left + 6, -11, 24, 22, 3); g.fill();
+    const level = caption(root, 'CityLevel', data.level > 0 ? String(data.level) : '城', left + 18, 0, 22, 14,
+        new Color(255, 229, 166), Label.HorizontalAlign.CENTER);
+    level.node.getComponent(UITransform).setContentSize(22, 28); level.isBold = true;
+    const title = caption(root, 'CityName', data.name, left + 32 + nameWidth / 2, 0, nameWidth - 8, 16,
         new Color(248, 233, 198), Label.HorizontalAlign.CENTER);
+    title.node.getComponent(UITransform).setContentSize(nameWidth - 8, 28);
     title.isBold = true; title.overflow = Label.Overflow.SHRINK;
-    // 占领盟名是一条有阵营色的旗带，省去州名和归属说明段落。
-    if (owner.occupied) {
-        g.fillColor = new Color(Math.round(color.r * .28), Math.round(color.g * .28), Math.round(color.b * .28), 250);
-        g.strokeColor = new Color(color.r, color.g, color.b, 230);
-        g.moveTo(left + 13, -16); g.lineTo(right - 13, -16); g.lineTo(right - 18, -29);
-        g.lineTo(right - 13, -42); g.lineTo(left + 13, -42); g.lineTo(left + 18, -29); g.close(); g.fill(); g.stroke();
+    const oldOwner = root.getChildByName('CityOwner'); if (oldOwner) oldOwner.active = false;
+}
+
+/** 名牌优先靠近占地前沿，让出城楼主体；完整按钮仍限制在投影边界内。 */
+export function cityNameplatePlacement(corners: readonly (readonly number[])[], width: number,
+    height: number): { x: number; y: number; scale: number; visible: boolean } {
+    const hidden = { x: 0, y: 0, scale: 1, visible: false };
+    if (corners.length < 3 || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return hidden;
+    let x = 0, y = 0, area = 0;
+    for (let i = 0; i < corners.length; i++) {
+        const a = corners[i], b = corners[(i + 1) % corners.length];
+        if (!Number.isFinite(a[0]) || !Number.isFinite(a[1])) return hidden;
+        x += a[0]; y += a[1]; area += a[0] * b[1] - b[0] * a[1];
     }
-    const text = owner.occupied ? (owner.relation === 'mine' && owner.name !== '本盟' ? '本盟 · ' : '') + owner.name : owner.name;
-    const subtitle = caption(root, 'CityOwner', text, 0, -29, width - 42, owner.occupied ? 15 : 12,
-        owner.occupied ? new Color(247, 235, 202) : new Color(211, 202, 174), Label.HorizontalAlign.CENTER);
-    subtitle.isBold = owner.occupied;
-    subtitle.enableOutline = true; subtitle.outlineColor = new Color(24, 31, 26, 230); subtitle.outlineWidth = 1;
-    subtitle.overflow = Label.Overflow.SHRINK;
+    if (Math.abs(area) < 1) return hidden;
+    x /= corners.length; y /= corners.length;
+    const sign = Math.sign(area), margin = 3;
+    let scale = 1;
+    // 城池、斜向关隘共用实际投影多边形，名牌的四个角都不能落到外侧地块。
+    for (let i = 0; i < corners.length; i++) {
+        const a = corners[i], b = corners[(i + 1) % corners.length], dx = b[0] - a[0], dy = b[1] - a[1];
+        const room = sign * (dx * (y - a[1]) - dy * (x - a[0])) - margin * Math.hypot(dx, dy);
+        const support = Math.abs(dy) * width / 2 + Math.abs(dx) * height / 2;
+        if (support > 0) scale = Math.min(scale, room / support);
+    }
+    if (scale < .65) return hidden;
+    scale = Math.max(.65, Math.min(.88, scale * .86));
+    let forwardRoom = Infinity;
+    for (let i = 0; i < corners.length; i++) {
+        const a = corners[i], b = corners[(i + 1) % corners.length], dx = b[0] - a[0], dy = b[1] - a[1];
+        if (sign * dx <= 0) continue;
+        const room = sign * (dx * (y - a[1]) - dy * (x - a[0])) - margin * Math.hypot(dx, dy);
+        const support = (Math.abs(dy) * width / 2 + Math.abs(dx) * height / 2) * scale;
+        forwardRoom = Math.min(forwardRoom, Math.max(0, (room - support) / (sign * dx)));
+    }
+    const depth = Math.max(...corners.map(p => p[1])) - Math.min(...corners.map(p => p[1]));
+    y -= Math.min(depth * .3, forwardRoom);
+    return { x, y, scale, visible: true };
 }

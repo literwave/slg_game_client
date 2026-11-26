@@ -9,7 +9,7 @@ import MapUtil from "./MapUtil";
 import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
 import { CoreEvent } from '../core/CoreEvent';
-import WorldCommand from '../world/WorldCommand';
+import WorldCommand, { MarchTargetType } from '../world/WorldCommand';
 import LoginCommand from '../login/LoginCommand';
 import { hasId, idKey } from '../network/pto/ProtocolCommand';
 import { aoiTroopMotion, buildMarchPath, sampleMarchPath } from '../world/MarchPath';
@@ -142,7 +142,8 @@ export default class MapArmyLogic extends Component {
         const points = route.path.map(p => MapUtil.mapCellToPixelPoint(new Vec2(p.x, p.y)));
         if (points.length < 2) return;
         // 路线位于地面层，保留服务端拐点；不移动镜头，不代替真实部队行军线。
-        for (const [width, color] of [[6, new Color(42, 35, 22, 150)], [3, new Color(243, 205, 118, 235)]] as const) {
+        // 青灰主线配轻描边，起终点沿用同色，避免亮金与深边压住地图细节。
+        for (const [width, color] of [[6, new Color(58, 79, 84, 85)], [3, new Color(143, 186, 196, 220)]] as const) {
             g.lineWidth = width; g.strokeColor = color;
             g.moveTo(points[0].x, points[0].y);
             for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y);
@@ -151,6 +152,8 @@ export default class MapArmyLogic extends Component {
         g.lineWidth = 2;
         const first = points[0], last = points[points.length - 1];
         g.ellipse(first.x, first.y, 7, 4); g.stroke();
+        // 攻城只显示路线，不把内部落脚格再画成提示标记。
+        if (route.targetType === MarchTargetType.AttackCity) return;
         g.moveTo(last.x, last.y + 7); g.lineTo(last.x + 12, last.y);
         g.lineTo(last.x, last.y - 7); g.lineTo(last.x - 12, last.y); g.lineTo(last.x, last.y + 7); g.stroke();
     }

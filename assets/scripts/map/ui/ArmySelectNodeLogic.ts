@@ -160,7 +160,8 @@ export default class ArmySelectNodeLogic extends Component {
             : map.campaignBlockReason(x, y) || (empty ? world.emptyLandIssue(x, y) : world.resourceLandIssue(x, y, cell.type, cell.level));
         const resourceName = { 52: '林地', 53: '铁矿', 54: '石料', 55: '粮田' }[cell?.type] || '资源地';
         if (this.targetLabel) this.targetLabel.string = action === 'move' ? `${WorldCampaign.landmark(x, y) || '目的地'}  ·  ${x}, ${y}`
-            : (action === 'attackCity' || action === 'redeploy') ? `${WorldCampaign.landmark(x, y) || '城池'}  ·  ${x}, ${y}`
+            : action === 'attackCity' ? `${WorldCampaign.landmark(x, y) || '城池'}  ·  ${x}, ${y}`
+            : action === 'redeploy' ? `${WorldCampaign.landmark(x, y) || '城池'}  ·  ${x}, ${y}`
             : `${empty ? '空地' : `${cell?.level || ''}级${resourceName}`}  ·  ${x}, ${y}`;
         if ((action === 'attackCity' || action === 'redeploy') && !CityCommand.getInstance().at(x, y)) {
             const cities = CityCommand.getInstance();
@@ -234,7 +235,8 @@ export default class ArmySelectNodeLogic extends Component {
         const targetType = target.action === 'move' ? MarchTargetType.Move
             : target.action === 'attackCity' ? MarchTargetType.AttackCity
             : target.action === 'redeploy' ? MarchTargetType.Redeploy : MarchTargetType.OccupyResource;
-        world.previewMarchRoute(this.selectedTroopIdx, targetType, { x: target.x, y: target.y }, force);
+        if (target.action === 'attackCity') world.previewCityAttackRoute(this.selectedTroopIdx, target.x, target.y, force);
+        else world.previewMarchRoute(this.selectedTroopIdx, targetType, { x: target.x, y: target.y }, force);
     }
 
     private onRouteChanged(): void {

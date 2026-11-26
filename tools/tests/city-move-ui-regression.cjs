@@ -25,6 +25,7 @@ const E = { confirmMoveCity: 'confirmMoveCity', showToast: 'showToast' };
 const notices = [], sent = [], handlers = new Map();
 const EventMgr = { emit(name, ...data) { notices.push([name, ...data]); handlers.get(name)?.(...data); } };
 let issue = '', empty = true, occupied = false, blocked = '';
+let entrances = [];
 const login = { movingCity: false, cityMoveIssue: () => issue || (login.movingCity ? '正在迁城' : ''),
     moveCity(pos) { if (this.movingCity) return false; sent.push({ ...pos }); this.movingCity = true; return true; } };
 const map = { proxy: { getResData: () => ({ isEmpty: empty }) }, cityProxy: { getCity: () => occupied ? {} : null },
@@ -54,7 +55,10 @@ function load(relative, extra = {}) {
 const HUD = load('assets/scripts/map/ui/MapUILogic.ts', {
     './Dialog': { default: class {}, DialogType: { Default: 0, OnlyConfirm: 2 } },
     './MapTaskTracker': { default: TaskTracker }, './PlayerServicesPanel': { default: Services },
-    './HudMenuSkin': { styleWarReportShortcut() {} },
+    './HudMenuSkin': { styleWarReportShortcut() {}, styleHeaderShortcut() {} },
+    '../../chat/ChatPresentation': { chatDockLayout: () => ({ taskBottom: 124 }) },
+    '../WorldCampaign': { default: { attackEntranceAt: (x, y) => entrances.find(p => p.x === x && p.y === y) || null } },
+    '../PlayerCityAppearance': { PLAYER_CITY_FOOTPRINT_RADIUS: 1 },
 });
 const Click = load('assets/scripts/map/MapClickUILogic.ts', {
     './MapProxy': { MapResData }, './MapBuildProxy': { MapBuildData }, './MapCityProxy': { MapCityData },
@@ -84,6 +88,19 @@ hud.showMoveCityConfirm({ x: 80, y: 90 }); occupied = true; uiState.confirm();
 assert.equal(sent.length, 1, '确认前重新检查占用变化'); occupied = false;
 hud.showTip('普通提示', null); assert.equal(uiState.confirm, null, '普通提示不能留下迁城回调');
 console.log('PASS 迁城选地、消耗提示、取消、防重复确认、目标冻结、确认前重查和弹窗回调清理');
+
+entrances = [{ x: 80, y: 90 }];
+for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    assert.equal(hud.cityMoveTargetIssue({ x: 80 + dx, y: 90 + dy }), '请为城门前留出通路', '主城边缘和对角占地也不能封住入口');
+}
+assert.equal(hud.cityMoveTargetIssue({ x: 82, y: 90 }), '', '不扩大到相邻可迁入空地');
+entrances = [];
+hud.showMoveCityConfirm({ x: 80, y: 90 });
+entrances = [{ x: 81, y: 91 }]; uiState.confirm();
+assert.equal(sent.length, 1, '最终确认重新检查入口，不能使用过期的迁城确认');
+assert.equal(notices.at(-1)[1], '请为城门前留出通路');
+entrances = [];
+console.log('PASS 入口及相邻主城占地保留、范围外正常迁城、最终确认重新校验');
 tile._btnRelocate = { node: {}, interactable: true }; let layouts = 0; tile.layoutPanel = () => layouts++;
 tile.updateRelocateButton(); assert.equal(tile._btnRelocate.node.active, true);
 login.movingCity = true; tile.updateRelocateButton(); assert.equal(tile._btnRelocate.interactable, false);

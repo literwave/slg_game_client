@@ -1,0 +1,134 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "832fb826-4752-43b9-a639-2ed70a194bdd",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "832fb826-4752-43b9-a639-2ed70a194bdd@6c48a",
+      "displayName": "city-yizhou-tile-v3",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "clamp-to-edge",
+        "wrapModeT": "clamp-to-edge",
+        "imageUuidOrDatabaseUri": "832fb826-4752-43b9-a639-2ed70a194bdd",
+        "isUuid": true,
+        "visible": false,
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "832fb826-4752-43b9-a639-2ed70a194bdd@f9941",
+      "displayName": "city-yizhou-tile-v3",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": -12.5,
+        "offsetY": -13.5,
+        "trimX": 0,
+        "trimY": 27,
+        "width": 1015,
+        "height": 624,
+        "rawWidth": 1040,
+        "rawHeight": 651,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": true,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -507.5,
+            -312,
+            0,
+            507.5,
+            -312,
+            0,
+            -507.5,
+            312,
+            0,
+            507.5,
+            312,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            0,
+            624,
+            1015,
+            624,
+            0,
+            0,
+            1015,
+            0
+          ],
+          "nuv": [
+            0,
+            0,
+            0.9759615384615384,
+            0,
+            0,
+            0.9585253456221198,
+            0.9759615384615384,
+            0.9585253456221198
+          ],
+          "minPos": [
+            -507.5,
+            -312,
+            0
+          ],
+          "maxPos": [
+            507.5,
+            312,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "832fb826-4752-43b9-a639-2ed70a194bdd@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "832fb826-4752-43b9-a639-2ed70a194bdd@6c48a"
+  }
+}

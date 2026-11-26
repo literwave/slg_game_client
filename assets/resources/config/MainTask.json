@@ -14,17 +14,17 @@
       {
         "reward_type": 1,
         "item_id": 1,
-        "item_count": 5000
+        "item_count": 500
       },
       {
         "reward_type": 1,
         "item_id": 2,
-        "item_count": 5000
+        "item_count": 500
       },
       {
         "reward_type": 1,
         "item_id": 103,
-        "item_count": 5
+        "item_count": 1
       }
     ]
   },
@@ -39,24 +39,25 @@
       "type": 2,
       "bid": 1
     },
-    "Target": 3,
+    "Target": 2,
     "Reward": [
       {
         "reward_type": 1,
         "item_id": 1,
-        "item_count": 4000
+        "item_count": 800
       },
       {
         "reward_type": 1,
         "item_id": 2,
-        "item_count": 4000
+        "item_count": 800
       },
       {
         "reward_type": 1,
         "item_id": 4,
-        "item_count": 2000
+        "item_count": 400
       }
-    ]
+    ],
+    "Jump": 1
   },
   {
     "Id": 1003,
@@ -71,16 +72,22 @@
     "Target": 1,
     "Reward": [
       {
+        "reward_type": 3,
+        "item_id": 1006,
+        "item_count": 1
+      },
+      {
         "reward_type": 1,
         "item_id": 100,
-        "item_count": 30
+        "item_count": 15
       },
       {
         "reward_type": 1,
         "item_id": 103,
-        "item_count": 3
+        "item_count": 1
       }
-    ]
+    ],
+    "Jump": 2
   },
   {
     "Id": 1004,
@@ -92,24 +99,30 @@
     "Cond": {
       "type": 3
     },
-    "Target": 3,
+    "Target": 2,
     "Reward": [
+      {
+        "reward_type": 3,
+        "item_id": 1001,
+        "item_count": 1
+      },
       {
         "reward_type": 1,
         "item_id": 1,
-        "item_count": 6000
+        "item_count": 1200
       },
       {
         "reward_type": 1,
         "item_id": 2,
-        "item_count": 6000
+        "item_count": 1200
       },
       {
         "reward_type": 1,
         "item_id": 3,
-        "item_count": 2000
+        "item_count": 400
       }
-    ]
+    ],
+    "Jump": 2
   },
   {
     "Id": 1005,
@@ -121,24 +134,25 @@
     "Cond": {
       "type": 7
     },
-    "Target": 3,
+    "Target": 1,
     "Reward": [
       {
         "reward_type": 1,
         "item_id": 1,
-        "item_count": 8000
+        "item_count": 1600
       },
       {
         "reward_type": 1,
         "item_id": 2,
-        "item_count": 8000
+        "item_count": 1600
       },
       {
         "reward_type": 1,
         "item_id": 4,
-        "item_count": 3000
+        "item_count": 600
       }
-    ]
+    ],
+    "Jump": 3
   },
   {
     "Id": 1006,
@@ -156,29 +170,30 @@
       {
         "reward_type": 1,
         "item_id": 1,
-        "item_count": 8000
+        "item_count": 1600
       },
       {
         "reward_type": 1,
         "item_id": 2,
-        "item_count": 8000
+        "item_count": 1600
       },
       {
         "reward_type": 1,
         "item_id": 3,
-        "item_count": 3000
+        "item_count": 600
       },
       {
         "reward_type": 1,
         "item_id": 4,
-        "item_count": 4000
+        "item_count": 800
       },
       {
         "reward_type": 1,
         "item_id": 100,
-        "item_count": 50
+        "item_count": 25
       }
-    ]
+    ],
+    "Jump": 1
   },
   {
     "Id": 1007,
@@ -191,19 +206,20 @@
       "type": 6,
       "item_id": 4
     },
-    "Target": 25000,
+    "Target": 12000,
     "Reward": [
       {
         "reward_type": 1,
         "item_id": 4,
-        "item_count": 8000
+        "item_count": 1600
       },
       {
         "reward_type": 1,
         "item_id": 3,
-        "item_count": 3000
+        "item_count": 600
       }
-    ]
+    ],
+    "Jump": 4
   },
   {
     "Id": 1008,
@@ -216,24 +232,25 @@
       "type": 6,
       "item_id": 3
     },
-    "Target": 20000,
+    "Target": 10000,
     "Reward": [
       {
         "reward_type": 1,
         "item_id": 3,
-        "item_count": 6000
+        "item_count": 1200
       },
       {
         "reward_type": 1,
         "item_id": 1,
-        "item_count": 5000
+        "item_count": 1000
       },
       {
         "reward_type": 1,
         "item_id": 2,
-        "item_count": 5000
+        "item_count": 1000
       }
-    ]
+    ],
+    "Jump": 4
   },
   {
     "Id": 1009,
@@ -250,29 +267,30 @@
       {
         "reward_type": 1,
         "item_id": 1,
-        "item_count": 10000
+        "item_count": 2000
       },
       {
         "reward_type": 1,
         "item_id": 2,
-        "item_count": 10000
+        "item_count": 2000
       },
       {
         "reward_type": 1,
         "item_id": 3,
-        "item_count": 5000
+        "item_count": 1000
       },
       {
         "reward_type": 1,
         "item_id": 4,
-        "item_count": 6000
+        "item_count": 1200
       },
       {
         "reward_type": 1,
         "item_id": 103,
-        "item_count": 5
+        "item_count": 2
       }
-    ]
+    ],
+    "Jump": 3
   },
   {
     "Id": 1010,
@@ -290,24 +308,25 @@
       {
         "reward_type": 1,
         "item_id": 1,
-        "item_count": 20000
+        "item_count": 4000
       },
       {
         "reward_type": 1,
         "item_id": 2,
-        "item_count": 20000
+        "item_count": 4000
       },
       {
         "reward_type": 1,
         "item_id": 3,
-        "item_count": 8000
+        "item_count": 1600
       },
       {
         "reward_type": 1,
         "item_id": 4,
-        "item_count": 10000
+        "item_count": 2000
       }
-    ]
+    ],
+    "Jump": 1
   },
   {
     "Id": 1011,
@@ -324,14 +343,15 @@
       {
         "reward_type": 1,
         "item_id": 100,
-        "item_count": 100
+        "item_count": 50
       },
       {
         "reward_type": 1,
         "item_id": 103,
-        "item_count": 5
+        "item_count": 2
       }
-    ]
+    ],
+    "Jump": 2
   },
   {
     "Id": 1012,
@@ -348,24 +368,25 @@
       {
         "reward_type": 1,
         "item_id": 1,
-        "item_count": 15000
+        "item_count": 3000
       },
       {
         "reward_type": 1,
         "item_id": 2,
-        "item_count": 15000
+        "item_count": 3000
       },
       {
         "reward_type": 1,
         "item_id": 3,
-        "item_count": 8000
+        "item_count": 1600
       },
       {
         "reward_type": 1,
         "item_id": 4,
-        "item_count": 10000
+        "item_count": 2000
       }
-    ]
+    ],
+    "Jump": 5
   },
   {
     "Id": 1013,
@@ -383,24 +404,25 @@
       {
         "reward_type": 1,
         "item_id": 1,
-        "item_count": 30000
+        "item_count": 6000
       },
       {
         "reward_type": 1,
         "item_id": 2,
-        "item_count": 30000
+        "item_count": 6000
       },
       {
         "reward_type": 1,
         "item_id": 3,
-        "item_count": 15000
+        "item_count": 3000
       },
       {
         "reward_type": 1,
         "item_id": 4,
-        "item_count": 18000
+        "item_count": 3600
       }
-    ]
+    ],
+    "Jump": 1
   },
   {
     "Id": 1014,
@@ -413,24 +435,25 @@
       "type": 6,
       "item_id": 1
     },
-    "Target": 80000,
+    "Target": 60000,
     "Reward": [
       {
         "reward_type": 1,
         "item_id": 1,
-        "item_count": 20000
+        "item_count": 4000
       },
       {
         "reward_type": 1,
         "item_id": 3,
-        "item_count": 10000
+        "item_count": 2000
       },
       {
         "reward_type": 1,
         "item_id": 4,
-        "item_count": 8000
+        "item_count": 1600
       }
-    ]
+    ],
+    "Jump": 4
   },
   {
     "Id": 1015,
@@ -447,33 +470,34 @@
       {
         "reward_type": 1,
         "item_id": 1,
-        "item_count": 40000
+        "item_count": 8000
       },
       {
         "reward_type": 1,
         "item_id": 2,
-        "item_count": 40000
+        "item_count": 8000
       },
       {
         "reward_type": 1,
         "item_id": 3,
-        "item_count": 20000
+        "item_count": 4000
       },
       {
         "reward_type": 1,
         "item_id": 4,
-        "item_count": 25000
+        "item_count": 5000
       },
       {
         "reward_type": 1,
         "item_id": 100,
-        "item_count": 200
+        "item_count": 100
       },
       {
         "reward_type": 1,
         "item_id": 103,
-        "item_count": 10
+        "item_count": 3
       }
-    ]
+    ],
+    "Jump": 1
   }
 ]

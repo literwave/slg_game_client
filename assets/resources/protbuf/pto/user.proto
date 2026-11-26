@@ -17,6 +17,13 @@ message s2c_user_base_info {
 	Common.p_soldier_info soldierInfo = 7;  // 城中兵力
 	Common.p_pos cityPos = 8;               // 主城坐标
 	int64 allianceId = 9;                   // 联盟 id，0=无联盟
+	repeated BirthZone birthZones = 10;
+}
+
+message BirthZone {
+    int32 key = 1;
+    string name = 2;
+    string route = 3;
 }
 
 // 查看其它玩家（点头像、主城等）。不含经验、兵力、资源
@@ -58,11 +65,14 @@ message s2c_sync_city_pos {
 message c2s_user_create {
     string name = 1;
     int32 sex = 2;
+    int32 birthZone = 3; // required offer key (region id + 1); zero is invalid
 }
 
 message s2c_user_create {
     string name = 1;
     int32 sex = 2;
+    Common.p_pos cityPos = 3;
+    int32 result = 4; // 0 success, 1 invalid profile, 2 unknown zone, 3 no space
 }
 
 message c2s_req_user_res {

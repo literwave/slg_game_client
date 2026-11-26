@@ -11,6 +11,7 @@ class Clock {
     tick(ms = 0) { this.now += ms; for (const [id, timer] of [...this.timers]) if (timer.at <= this.now) { this.timers.delete(id); timer.fn(); } }
 }
 function load(file, imports, clock) {
+    imports = { '../map/MapProjection': require('./map-projection-module.cjs')(ts), ...imports };
     const output = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), { reportDiagnostics: true,
         compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, experimentalDecorators: true } });
     assert.equal(output.diagnostics.length, 0, file);
@@ -30,24 +31,32 @@ function queueFixture() {
 class Frame {
     isValid = true; refs = 0; packable = true;
     constructor(name) { this.name = name; this.originalSize = { width: 256, height: 128 }; }
+    texture = { width: 256, height: 128 };
     addRef() { this.refs++; return this; }
     decRef() { if (--this.refs === 0) this.isValid = false; return this; }
 }
 class Sprite {
     static SizeMode = { CUSTOM: 1 }; static Type = { SIMPLE: 1 };
     isValid = true; spriteFrame = null; customMaterial = null;
-    constructor() { this.node = { activeInHierarchy: true, getComponent: () => ({ setContentSize() {} }) }; }
+    constructor() {
+        this.ui = { setContentSize(width,height) { Object.assign(this,{width,height}); },
+            setAnchorPoint(x,y) { this.anchorX=x;this.anchorY=y; } };
+        this.node = { activeInHierarchy: true, getComponent: () => this.ui };
+    }
 }
 function artFixture() {
     const q = queueFixture(), images = [], released = [];
     const cc = { Color: { WHITE: {} }, Sprite, SpriteFrame: Frame, UITransform: class {}, EffectAsset: class {}, JsonAsset: class {},
+        Material: class { props = {}; initialize(options) { this.options=options; } setProperty(key,value) { this.props[key]=value; } destroy() { this.destroyed=true; } },
+        Vec4: class { constructor(x,y,z,w) { Object.assign(this,{x,y,z,w}); } },
         isValid: value => !!value && value.isValid !== false,
         resources: { load(url, type, callback) { images.push({ url, callback }); } } };
     const module = load('assets/scripts/map/WorldMapArt.ts', {
         cc, '../core/AssetLoadQueue': q.module,
-        './CityFootprint': { cityArtAsset: () => 'city', cityOverviewAsset: () => 'city-far', cityArtWidth: () => 200, SYSTEM_CITY_ARTS: [] },
+        './CityFootprint': { cityArtAsset: () => 'city', cityOverviewAsset: () => 'city-far', cityArtWidth: () => 200, SYSTEM_CITY_ARTS: [],
+            cityArtLayout: () => ({ width:600,height:375,anchorX:.5,anchorY:.5,fit:{inverse:[1,0,.5,0,-1,.5],upperInverse:[1,0,.5,0,-1,.5]} }) },
         './GateGeometry': { GATE_ART: 'gate', BRIDGE_ART: 'bridge' },
-        './PlayerCityAppearance': { PLAYER_CITY_MAX_LEVEL: 2 },
+        './PlayerCityAppearance': { ...load('assets/scripts/map/PlayerCityAppearance.ts', {}, q.clock), PLAYER_CITY_MAX_LEVEL: 2 },
         './PlayerCityGround': { default: { prepare: async () => {}, releaseArt: name => released.push(name) } },
     }, q.clock);
     const Art = module.default;
@@ -100,7 +109,7 @@ async function test(name, run) { await run(); console.log('PASS ' + name); count
         clock.tick(1); await settle(clock); await next; assert.equal(started[2], 'next');
         let more = false;
         const last = Queue.request('last', async () => { more = true; }, Priority.Background);
-        clock.tick(119); await settle(clock); assert.equal(more, false);
+        clock.tick(39); await settle(clock); assert.equal(more, false);
         clock.tick(1); await settle(clock); await last; assert.equal(more, true);
     });
     await test('panel preparation precedes bulk artwork but stays serialized and yields to clicks', async () => {
@@ -111,7 +120,7 @@ async function test(name, run) { await run(); console.log('PASS ' + name); count
         Queue.request('click', async () => { started.push('click'); }, Priority.Interaction);
         await settle(clock); assert.deepEqual(started, ['click']);
         clock.tick(1500); await settle(clock); assert.deepEqual(started, ['click', 'view']);
-        clock.tick(119); await settle(clock); assert.equal(started.length, 2);
+        clock.tick(39); await settle(clock); assert.equal(started.length, 2);
         clock.tick(1); await settle(clock); assert.deepEqual(started, ['click', 'view', 'bulk']);
     });
     await test('recycled sprite ignores old artwork completion and shares the replacement request', async () => {
@@ -124,6 +133,31 @@ async function test(name, run) { await run(); console.log('PASS ' + name); count
         const frame = f.finish('b'); await settle(f.clock);
         assert.equal(first.spriteFrame, frame); assert.equal(second.spriteFrame, frame); assert.equal(current, 1);
         assert.equal(frame.refs, 1); assert.equal(f.Art.visibleState.pending, 0);
+    });
+    await test('city upgrade retains old art and material through failure, retries and swaps atomically', async () => {
+        const f=artFixture(), sprite=new Sprite(); let swaps=0;
+        f.Art.apply(sprite,'a',600,()=>{sprite.customMaterial={old:true};sprite.ui.setContentSize(600,410);},true);
+        await settle(f.clock);const old=f.finish('a');await settle(f.clock);
+        const material=sprite.customMaterial;
+        f.Art.apply(sprite,'b',600,()=>{swaps++;sprite.customMaterial={new:true};sprite.ui.setContentSize(600,440);},true);
+        await settle(f.clock);
+        assert.equal(sprite.spriteFrame,old);assert.equal(sprite.customMaterial,material);assert.equal(sprite.ui.height,410);
+        f.finish('b',new Error('upgrade network failure'));await settle(f.clock);
+        f.clock.tick(121000);f.Art.updateStreaming();await settle(f.clock);
+        assert.equal(old.isValid,true,'正在兜底显示的旧纹理不能回收');assert.equal(sprite.spriteFrame,old);
+        const current=f.finish('b');await settle(f.clock);
+        assert.equal(sprite.spriteFrame,current);assert.equal(swaps,1);assert.equal(sprite.ui.height,440);
+        assert.equal(f.Art.visibleState.pending,0);
+    });
+    await test('rapid upgrade then downgrade ignores stale completion while keeping the displayed city', async () => {
+        const f=artFixture(),sprite=new Sprite();let stale=0;
+        f.Art.apply(sprite,'a',600,undefined,true);await settle(f.clock);
+        const old=f.finish('a');await settle(f.clock);
+        f.Art.apply(sprite,'b',600,()=>stale++,true);await settle(f.clock);
+        f.Art.apply(sprite,'a',600,undefined,true);f.finish('b');await settle(f.clock);
+        assert.equal(sprite.spriteFrame,old);assert.equal(stale,0);
+        sprite.node.activeInHierarchy=false;f.clock.tick(31000);f.Art.updateStreaming();
+        assert.equal(old.isValid,true,'低内存占用下离屏30秒仍保留缓存');
     });
     await test('inactive strategic markers defer textures until visible; pooled nodes clear bindings', async () => {
         const f = artFixture(), sprite = new Sprite(); sprite.node.activeInHierarchy = false;
@@ -139,11 +173,28 @@ async function test(name, run) { await run(); console.log('PASS ' + name); count
         const frame = f.finish('a'); await settle(f.clock);
         first.node.activeInHierarchy = false; f.clock.tick(31000); f.Art.updateStreaming();
         assert.equal(frame.isValid, true);
-        second.node.activeInHierarchy = false; f.clock.tick(31000); f.Art.updateStreaming();
+        second.node.activeInHierarchy = false; f.clock.tick(121000); f.Art.updateStreaming();
         assert.equal(frame.isValid, false); assert.equal(frame.refs, 0); assert.equal(first.spriteFrame, null);
         assert.deepEqual(f.released, ['a']);
         first.node.activeInHierarchy = true; f.Art.updateStreaming(); await settle(f.clock);
         f.finish('a'); await settle(f.clock); assert.ok(first.spriteFrame.isValid);
+    });
+    await test('city projection survives delayed import and shares/reclaims its full canvas and material', async () => {
+        const f=artFixture(), first=new Sprite(), second=new Sprite(); f.Art.effect={};
+        f.Art.applyCity(first,4,{x:833,y:307},200,125); await settle(f.clock);
+        assert.equal(first.ui.width,600); assert.equal(first.ui.height,375);
+        const imported=f.finish('city'); await settle(f.clock);
+        const full=first.spriteFrame,material=first.customMaterial;
+        assert.notEqual(full,imported,'不复用会裁边的导入帧'); assert.equal(full.texture,imported.texture,'共享原纹理，不重复解码');
+        assert.equal(full.packable,false); assert.equal(full.refs,1); assert.equal(material.options.technique,2);
+        assert.deepEqual({...material.props.cityUvY},{x:0,y:-1,z:.5,w:0});
+        assert.equal(first.ui.width,600); assert.equal(first.ui.height,375,'延迟加载不能把画布改回原图比例');
+        f.Art.applyCity(second,4,{x:833,y:307},200,125);
+        assert.equal(second.spriteFrame,full); assert.equal(second.customMaterial,material);
+        first.node.activeInHierarchy=false; second.node.activeInHierarchy=false;
+        f.clock.tick(121000);f.Art.updateStreaming();
+        assert.equal(full.refs,0);assert.equal(imported.refs,0);assert.equal(material.destroyed,true);
+        assert.equal(f.Art.cityFrames.size,0);assert.equal(f.Art.cityMaterials.size,0);
     });
     await test('visible failure is reported, retry recovers and geometry is available before the image', async () => {
         const f = artFixture(), sprite = new Sprite(); f.Art.apply(sprite, 'a', 100); await settle(f.clock);
@@ -219,9 +270,9 @@ async function test(name, run) { await run(); console.log('PASS ' + name); count
             assert.equal(requests.length, 1, 'only one background prefab in flight');
             const request = requests.shift(), frame = new Frame(request.name); frames.push(frame);
             request.callback(null, frame); await settle(q.clock);
-            assert.equal(requests.length, 0); q.clock.tick(120); await settle(q.clock);
+            assert.equal(requests.length, 0); q.clock.tick(40); await settle(q.clock);
         }
-        for (let i = 0; i < 20 && q.Queue.statistics.queued; i++) { q.clock.tick(120); await settle(q.clock); }
+        for (let i = 0; i < 20 && q.Queue.statistics.queued; i++) { q.clock.tick(40); await settle(q.clock); }
         assert.equal(frames.length, Object.keys(LAZY_PANELS).length);
         assert.equal(q.Queue.statistics.running, 0); assert.equal(q.Queue.statistics.queued, 0);
         assert.equal(nodes.length, frames.length); assert.equal(new Set(prepared).size, frames.length);
@@ -249,7 +300,7 @@ async function test(name, run) { await run(); console.log('PASS ' + name); count
         const rejected = assert.rejects(failed, /fixture/); await settle(q.clock); await rejected;
         const retry = loader.warmView('inventory', () => { calls++; });
         assert.equal(loader.warmView('inventory', () => { throw Error('duplicate'); }), retry);
-        q.clock.tick(120); await settle(q.clock); await retry; assert.equal(calls, 2);
+        q.clock.tick(40); await settle(q.clock); await retry; assert.equal(calls, 2);
         await loader.warmView('inventory', () => { throw Error('already prepared'); });
         const late = loader.warmView('cityBuildings', () => { throw Error('logout must cancel'); });
         const cancelled = assert.rejects(late, /panel-view/); loader.dispose(); await settle(q.clock); await cancelled;

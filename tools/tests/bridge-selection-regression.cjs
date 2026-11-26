@@ -41,7 +41,7 @@ function load(name) {
     };
     new Function('require','module','exports',code.outputText)(key=>{
         if(key in imports) return imports[key];
-        if(['./BridgeSilhouette','./GateGeometry','./TileHighlight'].includes(key)) return load(key.slice(2));
+        if(['./BridgeSilhouette','./GateGeometry','./TileHighlight','./MapProjection'].includes(key)) return load(key.slice(2));
         return {};
     },mod,mod.exports);
     return cache[name]=mod.exports;
@@ -66,7 +66,7 @@ for(const gate of [null,config.gates.find(g=>g.crossing==='bridge'),config.gates
         if(gate) {
             const ink=popup.bgSelect.getChildByName('GateSelection').getComponent(Graphics);
             assert.equal(ink.strokes.length,2);
-            assert.equal(ink.strokes[0].points.length,gate.crossing==='bridge'?15:9);
+            assert.equal(ink.strokes[0].points.length,9);
             for(const stroke of ink.strokes) for(let i=0;i<stroke.points.length;i+=3) {
                 const [a,b,c]=stroke.points.slice(i,i+3);
                 for(const p of [a,c]) assert.ok(Math.hypot(p[0]-b[0],p[1]-b[1])/zoom<=18.001,'放大后角标不能占满桥面');

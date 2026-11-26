@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path');
 const ts = require(process.argv[2]), root = path.resolve(__dirname, '../..');
 function load(file, imports) {
+    imports = { './MapProjection': require('./map-projection-module.cjs')(ts), ...imports };
     const output = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
         compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, experimentalDecorators: true },
         reportDiagnostics: true,
@@ -46,7 +47,10 @@ function load(file, imports) {
     }
     console.log('PASS 四枚独立图标、并发合并、缓存命中与失败重试');
 
-    const city = load('assets/scripts/map/CityFootprint.ts', {});
+    const cityFit = load('assets/scripts/map/CityArtFit.ts', {
+        './SystemCitySilhouettes': load('assets/scripts/map/SystemCitySilhouettes.ts', {}),
+    });
+    const city = load('assets/scripts/map/CityFootprint.ts', { './CityArtFit': cityFit });
     const gates = load('assets/scripts/map/GateGeometry.ts', { './BridgeSilhouette': load('assets/scripts/map/BridgeSilhouette.ts', {}) });
     const appearance = load('assets/scripts/map/PlayerCityAppearance.ts', {});
     const artLoads = [], frames = new Map();
@@ -74,6 +78,8 @@ function load(file, imports) {
     });
     const names = artModule.worldArtNames();
     assert.equal(names.length, new Set(names).size);
+    assert.ok(names.includes(appearance.playerCityArt(10)), '重绘主城进入按需加载清单');
+    assert.ok(!names.includes('player_city_lv10'), '旧十级原画不再进入地图加载清单');
     const landscape = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/world/original-landscape.json')));
     for (const patch of landscape.patches) assert.ok(names.includes(patch.art), patch.art);
     let neededBytes = 0, neededPixels = 0;

@@ -1,0 +1,134 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "f18ff2e2-514c-4786-8529-f18da54e10a1",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "f18ff2e2-514c-4786-8529-f18da54e10a1@6c48a",
+      "displayName": "mountain-pass-v8",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "clamp-to-edge",
+        "wrapModeT": "clamp-to-edge",
+        "imageUuidOrDatabaseUri": "f18ff2e2-514c-4786-8529-f18da54e10a1",
+        "isUuid": true,
+        "visible": false,
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "f18ff2e2-514c-4786-8529-f18da54e10a1@f9941",
+      "displayName": "mountain-pass-v8",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": -18,
+        "offsetY": -3.5,
+        "trimX": 21,
+        "trimY": 42,
+        "width": 1202,
+        "height": 776,
+        "rawWidth": 1280,
+        "rawHeight": 853,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": true,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -601,
+            -388,
+            0,
+            601,
+            -388,
+            0,
+            -601,
+            388,
+            0,
+            601,
+            388,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            21,
+            811,
+            1223,
+            811,
+            21,
+            35,
+            1223,
+            35
+          ],
+          "nuv": [
+            0.01640625,
+            0.041031652989449004,
+            0.95546875,
+            0.041031652989449004,
+            0.01640625,
+            0.9507620164126612,
+            0.95546875,
+            0.9507620164126612
+          ],
+          "minPos": [
+            -601,
+            -388,
+            0
+          ],
+          "maxPos": [
+            601,
+            388,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "f18ff2e2-514c-4786-8529-f18da54e10a1@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "f18ff2e2-514c-4786-8529-f18da54e10a1@6c48a"
+  }
+}

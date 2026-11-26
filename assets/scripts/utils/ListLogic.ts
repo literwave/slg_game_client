@@ -245,6 +245,10 @@ export default class ListLogic extends Component {
         }
         if (this._datas.length <= 0) {
             this._curOffset = this._startIndex = -1;//重置纪录
+            this.scrollView.stopAutoScroll();
+            this.scrollView.horizontal = false;
+            this.scrollView.vertical = false;
+            this.scrollView.elastic = false;
             this.hideItems();
             return;
         }
@@ -294,10 +298,14 @@ export default class ListLogic extends Component {
         }
 
         var isItemChange = this.updateItemCount(showCount);
+        const canScroll = this._maxOffset > 1;
+        this.scrollView.horizontal = this.isHorizontal && canScroll;
+        this.scrollView.vertical = !this.isHorizontal && canScroll;
+        this.scrollView.elastic = canScroll;
         this._newOffset = Math.max(Math.min(this._newOffset, this._maxOffset), 0);
        
 
-        if ((isItemChange || this._newOffset != this._curOffset)) {
+        if ((isItemChange || this._newOffset != this._curOffset || !canScroll)) {
             let pos = this.scrollView.content.position.clone();
             this._curOffset = this._newOffset;
             if (this.isHorizontal) {

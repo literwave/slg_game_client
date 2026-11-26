@@ -1,0 +1,134 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "305a761a-7b70-467e-aaf5-fef62008143b",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "305a761a-7b70-467e-aaf5-fef62008143b@6c48a",
+      "displayName": "city-overview-xuzhou-revamp-v7",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "clamp-to-edge",
+        "wrapModeT": "clamp-to-edge",
+        "imageUuidOrDatabaseUri": "305a761a-7b70-467e-aaf5-fef62008143b",
+        "isUuid": true,
+        "visible": false,
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "305a761a-7b70-467e-aaf5-fef62008143b@f9941",
+      "displayName": "city-overview-xuzhou-revamp-v7",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": 0,
+        "offsetY": -0.5,
+        "trimX": 20,
+        "trimY": 1,
+        "width": 320,
+        "height": 179,
+        "rawWidth": 360,
+        "rawHeight": 180,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": true,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -160,
+            -89.5,
+            0,
+            160,
+            -89.5,
+            0,
+            -160,
+            89.5,
+            0,
+            160,
+            89.5,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            20,
+            179,
+            340,
+            179,
+            20,
+            0,
+            340,
+            0
+          ],
+          "nuv": [
+            0.05555555555555555,
+            0,
+            0.9444444444444444,
+            0,
+            0.05555555555555555,
+            0.9944444444444445,
+            0.9444444444444444,
+            0.9944444444444445
+          ],
+          "minPos": [
+            -160,
+            -89.5,
+            0
+          ],
+          "maxPos": [
+            160,
+            89.5,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "305a761a-7b70-467e-aaf5-fef62008143b@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "305a761a-7b70-467e-aaf5-fef62008143b@6c48a"
+  }
+}

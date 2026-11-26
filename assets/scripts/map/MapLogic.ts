@@ -6,10 +6,11 @@ import MapUtil from "./MapUtil";
 import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
 import WorldStrategicMap from './WorldStrategicMap';
+import { DEFAULT_MAP_HEIGHT } from './MapProjection';
 
 // 进场展示主城与周边地块；最近缩放和内城视角独立配置。
-const DEFAULT_MAP_HEIGHT = 450;
 const CLOSE_UP_HEIGHT = 192;
+const WIDE_GROUND_HEIGHT = 1050;
 const CITY_VIEW_HEIGHT = 300;
 const WHEEL_GESTURE_GAP = 180;
 const WHOLE_MAP_ZOOM_LEVEL = 4;
@@ -159,13 +160,13 @@ export default class MapLogic extends Component {
         }
         if (!reversed && now - this._lastWheelStep < 140) return;
         this._lastWheelStep = now;
-        this.changeZoomStage(direction, event.getUILocation());
+        this.changeWheelZoomStage(direction, event.getUILocation());
     }
 
-    /** 近景、常用、周边、州域、全图。全图尺寸随横竖屏变化。 */
+    /** 近景、常用、大视野地表、州域、全图。全图尺寸随横竖屏变化。 */
     public zoomHeights(): number[] {
         const maximum = this.maximumZoomHeight();
-        return [CLOSE_UP_HEIGHT, DEFAULT_MAP_HEIGHT, 1600, Math.min(12000, maximum * .45), maximum]
+        return [CLOSE_UP_HEIGHT, DEFAULT_MAP_HEIGHT, WIDE_GROUND_HEIGHT, Math.min(12000, maximum * .45), maximum]
             .sort((a, b) => a - b);
     }
 
@@ -180,6 +181,17 @@ export default class MapLogic extends Component {
 
     private changeZoomStage(direction: number, anchor: Vec2): void {
         this.zoomToStage(this._zoomLevel + direction, anchor);
+    }
+
+    /** 滚轮停靠四档实用视图：日常操作、大视野地表（可见完整 5×5 关城与周边地貌）、州域战略、全图。 */
+    private changeWheelZoomStage(direction: number, anchor: Vec2): void {
+        const stages = this.zoomHeights(), stops = [1, 2, 3, WHOLE_MAP_ZOOM_LEVEL];
+        const height = this._zooming ? this._targetHeight : this._mapCamera.orthoHeight;
+        const tolerance = Math.max(.01, height * .001);
+        const next = direction > 0
+            ? stops.find(index => stages[index] > height + tolerance) ?? stops[stops.length - 1]
+            : stops.slice().reverse().find(index => stages[index] < height - tolerance) ?? stops[0];
+        this.zoomToStage(next, anchor);
     }
 
     private isWholeMapView(): boolean {
@@ -506,6 +518,24 @@ export default class MapLogic extends Component {
         let pixelX: number = point.x - uit.width * uit.anchorX;
         let pixelY: number = point.y - uit.height * uit.anchorY;
         return new Vec2(pixelX, pixelY);
+    }
+
+    /** 开局镜头始终围绕服务器城址推进，复用地图裁剪和 AOI 节流。 */
+    public showLandingFrame(point: Vec2, progress: number): void {
+        if (!this._mapCamera || !this._tiledMap) return;
+        this.stopFollowing();
+        this._zooming = false;
+        this._zoomLevel = 1;
+        this._wholeMapFocus = null;
+        const t = Math.max(0, Math.min(1, progress));
+        // 五阶缓入缓出：起止速度、加速度均为零，中段形成清晰的俯冲感。
+        const eased = t * t * t * (t * (6 * t - 15) + 10);
+        this._targetHeight = this.zoomHeights()[1];
+        this._mapCamera.orthoHeight = this._targetHeight * Math.pow(3.4, 1 - eased);
+        const position = this.toCameraPoint(point);
+        this._pendingCameraX = position.x; this._pendingCameraY = position.y;
+        this._moveDirty = true;
+        if (t === 0 || t === 1) this.flushPendingCameraMove();
     }
 
     public scrollToMapPoint(point: Vec2, focus?: 'player-city' | 'preserve-zoom'): void {

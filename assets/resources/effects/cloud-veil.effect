@@ -1,0 +1,166 @@
+CCEffect %{
+  techniques:
+  - passes:
+    - vert: veil-vs:vert
+      frag: veil-fs:frag
+      depthStencilState:
+        depthTest: false
+        depthWrite: false
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendDstAlpha: one_minus_src_alpha
+      rasterizerState:
+        cullMode: none
+      properties:
+        veilState: { value: [0.0, 0.0, 1.777, 0.0] }
+        veilStyle: { value: [0.0, 0.5, 0.5, 0.0] }
+}%
+
+CCProgram veil-vs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #if USE_LOCAL
+    #include <builtin/uniforms/cc-local>
+  #endif
+  in vec3 a_position;
+  in vec2 a_texCoord;
+  in vec4 a_color;
+  out vec2 uv0;
+  out vec4 color;
+  vec4 vert () {
+    vec4 pos = vec4(a_position, 1.0);
+    #if USE_LOCAL
+      pos = cc_matWorld * pos;
+    #endif
+    uv0 = a_texCoord;
+    color = a_color;
+    return cc_matViewProj * pos;
+  }
+}%
+
+CCProgram veil-fs %{
+  precision highp float;
+  #include <builtin/internal/embedded-alpha>
+  in vec2 uv0;
+  in vec4 color;
+  uniform CloudVeil {
+    vec4 veilState;
+    vec4 veilStyle;
+  };
+  #pragma builtin(local)
+  layout(set = 2, binding = 12) uniform sampler2D cc_spriteTexture;
+
+  float hash21(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+  }
+
+  float valueNoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    float a = hash21(i);
+    float b = hash21(i + vec2(1.0, 0.0));
+    float c = hash21(i + vec2(0.0, 1.0));
+    float d = hash21(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+  }
+
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float amp = 0.52;
+    mat2 rot = mat2(0.80, -0.60, 0.60, 0.80);
+    for (int i = 0; i < 5; i++) {
+      v += amp * valueNoise(p);
+      p = rot * p * 2.04 + vec2(17.1, 31.7);
+      amp *= 0.50;
+    }
+    return v;
+  }
+
+  vec4 frag () {
+    vec4 tex = CCSampleWithAlphaSeparated(cc_spriteTexture, uv0);
+    float t = veilState.x;
+    float cover = clamp(veilState.y, 0.0, 1.0);
+    float aspect = max(0.5, veilState.z);
+    float mode = veilState.w;
+
+    float emblemGlow = clamp(veilStyle.x, 0.0, 1.0);
+    vec2 focus = clamp(veilStyle.yz, vec2(0.12), vec2(0.88));
+    float warmth = clamp(veilStyle.w, 0.0, 1.0);
+
+    // 拨云阶段柔和向左右拉开，形成真实推开云幕的视差动势（中心平滑过渡，无中线接缝）。
+    float sidePull = smoothstep(-0.38, 0.38, uv0.x - 0.5) * 2.0 - 1.0;
+    float openShift = mode > 0.5 ? (1.0 - cover) * 0.16 * sidePull : 0.0;
+    vec2 centered = vec2((uv0.x - 0.5 - openShift) * aspect, uv0.y - 0.5);
+
+    // 双层域扭曲水墨云海：底层厚重山岚 + 前景轻盈飘絮。
+    vec2 baseCoord = centered * 2.15 + vec2(t * 0.055, -t * 0.018);
+    vec2 warp = vec2(
+      fbm(baseCoord + vec2(1.7, 9.2)),
+      fbm(baseCoord + vec2(8.3, 2.8) - vec2(t * 0.032, t * 0.014))
+    );
+    float cloudDeep = fbm(baseCoord + (warp - 0.5) * 1.45);
+    float cloudWisp = fbm(centered * 3.85 + (warp - 0.5) * 1.75 + vec2(-t * 0.095, t * 0.026));
+    float billow = clamp(cloudDeep * 0.66 + cloudWisp * 0.34, 0.0, 1.0);
+
+    // 合拢：由两侧与四缘向选州焦点聚拢；散开：自中庭拨云向四周散去。
+    float horizEdge = abs(uv0.x - 0.5) * 2.0;
+    vec2 toFocus = (uv0 - focus) * vec2(aspect * 0.58, 1.0);
+    float radialFocus = clamp(length(toFocus) * 1.35, 0.0, 1.45);
+    float radialCenter = clamp(length((uv0 - vec2(0.5)) * vec2(aspect * 0.62, 1.0)) * 1.38, 0.0, 1.45);
+
+    float maskShape = mode < 0.5
+      ? mix(horizEdge, radialFocus, 0.42)
+      : mix(radialCenter, horizEdge, 0.34);
+
+    // cover = 0 完全透明，cover = 1 100% 严密遮盖，中间段由云絮自然咬合过渡。
+    float coverCurve = cover * cover * (3.0 - 2.0 * cover);
+    float threshold = mix(1.62, -0.58, coverCurve);
+    float cloudFront = maskShape + (billow - 0.48) * 0.68;
+    float alpha = smoothstep(threshold - 0.24, threshold + 0.26, cloudFront);
+    // 满覆时强制封死，确保底层旧界面隐藏或切换时零透底、四边无漏缝。
+    alpha = max(alpha, smoothstep(0.88, 0.985, cover));
+    alpha *= smoothstep(0.0, 0.04, cover);
+
+    // 墨玉鎏金古典三国山水云海色板：避免死黑空洞，层次与天光更通透。
+    vec3 inkCore = vec3(0.055, 0.088, 0.098);
+    vec3 jadeMist = vec3(0.145, 0.218, 0.226);
+    vec3 celadonSilk = vec3(0.325, 0.405, 0.398);
+    vec3 silkIvory = vec3(0.845, 0.798, 0.692);
+    vec3 antiqueGold = vec3(0.945, 0.805, 0.495);
+
+    // 云脊受光层次：结合双层云与微斜天光，营造立体云海翻涌感。
+    float ridge = smoothstep(0.32, 0.80, cloudWisp * 0.70 + cloudDeep * 0.30);
+    float crest = smoothstep(0.54, 0.88, billow);
+    float skyGradient = clamp(uv0.y * 0.65 + 0.25, 0.0, 1.0);
+    vec3 col = mix(inkCore, jadeMist, smoothstep(0.14, 0.72, cloudDeep));
+    col = mix(col, celadonSilk, smoothstep(0.38, 0.76, cloudDeep * 0.55 + cloudWisp * 0.45) * (0.28 + 0.16 * skyGradient));
+    col = mix(col, silkIvory, ridge * 0.34 + crest * 0.18);
+
+    // 拨云前沿的淡淡鎏金晨光，营造“云开见山河”的仪式感。
+    float frontier = smoothstep(0.06, 0.44, alpha) * (1.0 - smoothstep(0.54, 0.94, alpha));
+    float rimIntensity = mode > 0.5 ? (0.38 + 0.24 * warmth) : 0.20;
+    col = mix(col, antiqueGold, frontier * rimIntensity * (0.55 + 0.45 * cloudWisp));
+
+    // 中庭破晓暖金晕光 + 细斜晨岚光束：即便在印章渐显前也不显灰暗空洞。
+    float centerHalo = exp(-dot(centered * vec2(1.02, 1.45), centered * vec2(1.02, 1.45)) * 3.6);
+    float baseDawn = (0.34 * cover + 0.66 * emblemGlow) * (0.72 + 0.28 * cloudDeep);
+    col += vec3(0.16, 0.125, 0.065) * centerHalo * baseDawn;
+
+    float rayCoord = centered.x * 1.15 - centered.y * 0.72;
+    float dawnShaft = exp(-rayCoord * rayCoord * 6.5) * smoothstep(-0.45, 0.55, centered.y);
+    col += vec3(0.11, 0.09, 0.048) * dawnShaft * cover * (0.45 + 0.55 * cloudWisp);
+
+    // 四角轻墨收束，保留边缘饱满云气而不发灰死黑。
+    float vignette = smoothstep(0.52, 1.38, length(centered));
+    col = mix(col, inkCore * 0.78, vignette * 0.30);
+
+    float finalAlpha = clamp(alpha, 0.0, 1.0) * tex.a * color.a;
+    return vec4(col, finalAlpha);
+  }
+}%

@@ -1,4 +1,4 @@
-import { Button, Color, Graphics, Label, Node, Sprite, UITransform, Widget, view } from 'cc';
+import { Button, Color, Graphics, Label, Node, ScrollView, Sprite, UITransform, Widget, view } from 'cc';
 import ListLogic from '../../utils/ListLogic';
 import { styleGeneralPageBackground } from './GeneralPageBackground';
 import { generalRosterLayout } from '../../general/GeneralRosterFilter';
@@ -201,6 +201,16 @@ export function applyGeneralListSkin(root: Node, itemCount = 0, listType = 0, re
         scroll.getComponent(UITransform)?.setContentSize(listWidth, listHeight);
         viewport.getComponent(UITransform)?.setContentSize(listWidth, listHeight);
         viewport.getChildByName('content')?.getComponent(UITransform)?.setContentSize(listWidth, listHeight);
+        const scrollView = scroll.getComponent(ScrollView);
+        if (scrollView) {
+            const rows = itemCount > 0 ? Math.ceil(itemCount / Math.max(1, columnCount)) : 0;
+            const totalHeight = rows > 0 ? rows * cardHeight + Math.max(0, rows - 1) * (showcase ? 0 : 20) : 0;
+            const canScroll = !showcase && totalHeight > listHeight + 1;
+            scrollView.stopAutoScroll();
+            scrollView.vertical = canScroll;
+            scrollView.horizontal = false;
+            scrollView.elastic = canScroll;
+        }
         if (refreshList) list?.refreshLayout();
     }
 

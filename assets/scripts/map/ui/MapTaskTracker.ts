@@ -10,6 +10,11 @@ import { caption, inkSurface, ManagementColors as C, place, textStyle } from './
 
 const { ccclass } = _decorator;
 const READY_GREEN = new Color(148, 209, 158, 255);
+const HANDLE_BG = new Color(41, 47, 36, 244);
+const HANDLE_BORDER = new Color(172, 148, 96, 195);
+const TAB_WIDTH = 28;
+const TAB_HEIGHT = 72;
+const SLIDE_DURATION = 0.26;
 interface RewardSlot { node: Node; accent: Graphics; icon: Sprite; fallback: Label; count: Label; }
 
 /** 地图左侧单任务追踪：只发送领奖请求，服务端确认后再切换后续任务。 */
@@ -31,6 +36,20 @@ export default class MapTaskTracker extends Component {
     private iconFrames = new Map<string, SpriteFrame>();
     private rewardGlow: Graphics;
     private glowOpacity: UIOpacity;
+    private collapseTab: Node;
+    private collapseBg: Graphics;
+    private collapseArrow: Label;
+    private collapseHint: Label;
+    private collapseReadyDot: Graphics;
+    private collapsed = false;
+    private claimable = false;
+    private expandedX = 0;
+    private collapsedX = 0;
+    private centerY = 0;
+    private slideActive = false;
+    private slideElapsed = 0;
+    private slideFromX = 0;
+    private slideToX = 0;
     private claimPulse = false;
     private pulseTime = 0;
     private current: TaskInfo | null = null;
@@ -87,8 +106,46 @@ export default class MapTaskTracker extends Component {
         }
         this.rewardGlow = this.make('RewardGlow').addComponent(Graphics);
         this.glowOpacity = this.rewardGlow.node.addComponent(UIOpacity);
+        // 紧贴任务卡右侧的“收起/展开”竖向拉手（与编队侧栏同风格，收起后紧贴左屏边不遮挡左下建筑）
+        this.collapseTab = this.make('CollapseTab');
+        this.collapseTab.addComponent(BlockInputEvents);
+        const tabBtn = this.collapseTab.addComponent(Button);
+        tabBtn.transition = Button.Transition.SCALE; tabBtn.zoomScale = .95; tabBtn.duration = .08;
+        this.collapseBg = this.make('HandleBg', this.collapseTab).addComponent(Graphics);
+        this.collapseArrow = caption(this.collapseTab, 'Arrow', '‹', 0, 18, 24, 15, C.gold, Label.HorizontalAlign.CENTER);
+        this.collapseHint = caption(this.collapseTab, 'Hint', '收\n起', 0, -9, 24, 11, C.text, Label.HorizontalAlign.CENTER);
+        this.collapseHint.enableWrapText = true;
+        this.collapseHint.lineHeight = 14;
+        this.collapseReadyDot = this.make('ReadyDot', this.collapseTab).addComponent(Graphics);
+        this.collapseTab.on(Button.EventType.CLICK, () => this.toggleCollapse());
         EventMgr.on(E.updateTasks, this.queueRefresh, this);
         EventMgr.on(E.protocolRequestChanged, this.queueRefresh, this);
+    }
+
+    public get isCollapsed(): boolean {
+        return this.collapsed;
+    }
+
+    public toggleCollapse(): void {
+        if (!this.body) return;
+        AudioManager.instance.playClick();
+        this.setCollapsed(!this.collapsed, true);
+    }
+
+    public setCollapsed(nextCollapsed: boolean, animate = false): void {
+        const changed = this.collapsed !== nextCollapsed;
+        this.collapsed = nextCollapsed;
+        this.refreshCollapseHandle();
+        const targetX = this.collapsed ? this.collapsedX : this.expandedX;
+        if (!animate || !changed) {
+            this.slideActive = false;
+            this.node.setPosition(targetX, this.centerY);
+            return;
+        }
+        this.slideFromX = this.node.position.x;
+        this.slideToX = targetX;
+        this.slideElapsed = 0;
+        this.slideActive = true;
     }
 
     /** 靠左下、在底部导航上方留出间距，给地图中心与地块详情让出空间。 */
@@ -109,8 +166,15 @@ export default class MapTaskTracker extends Component {
         this.textWidth = contentWidth - (count ? rewardWidth + 12 : 0);
         this.textX = -contentWidth / 2 + this.textWidth / 2;
         const centerY = -this.viewHeight / 2 + Math.min(this.bottomInset, Math.max(12, this.viewHeight - this.height - 88)) + this.height / 2;
-        place(this.node, -this.viewWidth / 2 + margin + this.width / 2, centerY, this.width, this.height);
+        this.expandedX = -this.viewWidth / 2 + margin + this.width / 2;
+        this.collapsedX = -this.viewWidth / 2 - this.width / 2;
+        this.centerY = centerY;
+        const posX = this.slideActive ? this.node.position.x : (this.collapsed ? this.collapsedX : this.expandedX);
+        if (this.slideActive) this.slideToX = this.collapsed ? this.collapsedX : this.expandedX;
+        place(this.node, posX, centerY, this.width, this.height);
         place(this.body, 0, -22, this.width, this.height - 44);
+        place(this.collapseTab, this.width / 2 + TAB_WIDTH / 2 - 1, 0, TAB_WIDTH, TAB_HEIGHT);
+        this.refreshCollapseHandle();
         // 全部按钮与领奖区域分开，避免点开列表时同时触发领奖。
         const headerY = this.height / 2 - 22;
         place(this.all, this.width / 2 - 35, headerY, 56, 44);
@@ -154,7 +218,7 @@ export default class MapTaskTracker extends Component {
 
     protected onEnable(): void { if (this.body) this.render(); }
     protected onDisable(): void {
-        this.unscheduleAllCallbacks(); this.queued = false; this.claimPulse = false;
+        this.unscheduleAllCallbacks(); this.queued = false; this.claimPulse = false; this.slideActive = false;
     }
     protected onDestroy(): void {
         EventMgr.targetOff(this); this.openList = null; this.rewardVersion++;
@@ -162,10 +226,61 @@ export default class MapTaskTracker extends Component {
     }
 
     protected update(dt: number): void {
+        const step = Math.min(dt, .1);
+        if (this.slideActive) {
+            this.slideElapsed += step;
+            const raw = Math.min(1, this.slideElapsed / SLIDE_DURATION);
+            // cubicInOut 丝滑推拉，与编队侧栏收放手感一致
+            const eased = raw < 0.5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2;
+            const curX = this.slideFromX + (this.slideToX - this.slideFromX) * eased;
+            this.node.setPosition(curX, this.centerY);
+            if (raw >= 1) {
+                this.slideActive = false;
+                this.node.setPosition(this.slideToX, this.centerY);
+            }
+        }
         if (!this.claimPulse) return;
-        this.pulseTime += Math.min(dt, .1);
+        this.pulseTime += step;
         const wave = (Math.sin(this.pulseTime * Math.PI) + 1) / 2;
         this.glowOpacity.opacity = 90 + Math.round(wave * 110);
+    }
+
+    private refreshCollapseHandle(): void {
+        if (!this.collapseTab?.isValid) return;
+        this.collapseArrow.string = this.collapsed ? '›' : '‹';
+        this.collapseHint.string = this.collapsed ? '任\n务' : '收\n起';
+        this.collapseHint.color = this.collapsed && this.claimable ? READY_GREEN : C.text;
+        this.collapseArrow.color = this.collapsed && this.claimable ? READY_GREEN : C.gold;
+
+        const g = this.collapseBg;
+        g.clear();
+        const hw = TAB_WIDTH / 2;
+        const hh = TAB_HEIGHT / 2;
+        g.fillColor = HANDLE_BG;
+        g.roundRect(-hw, -hh, TAB_WIDTH, TAB_HEIGHT, 5);
+        g.fill();
+        g.strokeColor = this.collapsed && this.claimable ? READY_GREEN : HANDLE_BORDER;
+        g.lineWidth = 1.1;
+        g.roundRect(-hw + .5, -hh + .5, TAB_WIDTH - 1, TAB_HEIGHT - 1, 5);
+        g.stroke();
+        // 顶部细铜饰线
+        g.strokeColor = new Color(216, 188, 126, 120);
+        g.lineWidth = 1;
+        g.moveTo(-hw + 5, hh - 4);
+        g.lineTo(hw - 5, hh - 4);
+        g.stroke();
+
+        // 收起态且有可领奖任务时，在把手顶部显示翠绿提示点
+        const dot = this.collapseReadyDot;
+        dot.clear();
+        if (this.collapsed && this.claimable) {
+            dot.fillColor = new Color(110, 210, 134, 70);
+            dot.circle(0, hh - 9, 6);
+            dot.fill();
+            dot.fillColor = READY_GREEN;
+            dot.circle(0, hh - 9, 3.2);
+            dot.fill();
+        }
     }
 
     private drawRewardGlow(visible: boolean, busy: boolean): void {
@@ -262,7 +377,7 @@ export default class MapTaskTracker extends Component {
             this.detail.string = info.detail;
             this.progress.string = `${claimable ? info.target : value}/${info.target}`;
             this.renderRewards(info.rewards);
-            button.interactable = cmd.sessionReady && claimable && !busy;
+            button.interactable = cmd.sessionReady && (claimable ? !busy : info.jump > 0);
         } else {
             this.renderRewards([]);
             this.category.string = this.expectedNextId ? '主线任务' : '任务';
@@ -273,6 +388,7 @@ export default class MapTaskTracker extends Component {
             this.progress.string = '';
             button.interactable = false;
         }
+        this.claimable = claimable;
         this.arrange();
         this.detail.node.active = !!this.current;
         this.progress.node.active = !!this.current;
@@ -296,9 +412,18 @@ export default class MapTaskTracker extends Component {
         this.render();
         if (this.current) {
             const task = cmd.tasks.get(this.current.taskId);
-            if (task?.state !== 1 || cmd.requestInFlight(`task:${task.taskId}`)) { this.render(); return; }
-            AudioManager.instance.playClick();
-            if (!cmd.claimTask(task.taskId)) EventMgr.emit(E.showToast, '暂时无法领取，请稍后重试');
+            if (!task) { this.render(); return; }
+            if (task.state === 1) {
+                if (cmd.requestInFlight(`task:${task.taskId}`)) { this.render(); return; }
+                AudioManager.instance.playClick();
+                if (!cmd.claimTask(task.taskId)) EventMgr.emit(E.showToast, '暂时无法领取，请稍后重试');
+            } else if (task.state === 0) {
+                const info = taskPresentation(task);
+                if (info.jump > 0) {
+                    AudioManager.instance.playClick();
+                    EventMgr.emit(E.executeTaskJump, { task, jump: info.jump, cond: info.cond });
+                }
+            }
         }
         this.render();
     }

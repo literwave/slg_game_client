@@ -6,6 +6,7 @@ import re
 import runpy
 import zipfile
 from pathlib import Path
+from siege_entrances import attach_siege_entrances
 
 ROOT = Path(__file__).resolve().parents[2]
 parser = argparse.ArgumentParser()
@@ -17,11 +18,13 @@ if not output.is_relative_to(ROOT):
 # 数据校验不通过时不写出交付包。
 runpy.run_path(str(ROOT / 'tools/tests/fixed-birth-resources-regression.py'), run_name='__main__')
 runpy.run_path(str(ROOT / 'tools/tests/mixed-resource-layout-regression.py'), run_name='__main__')
+runpy.run_path(str(ROOT / 'tools/tests/siege-entrances-regression.py'), run_name='__main__')
 world = json.loads((ROOT / 'assets/resources/world/campaign-map.json').read_text(encoding='utf8'))
 # 玩家出生位置由服务端管理；兼容旧快照时也不把建议出生区交付给服务端。
 world.pop('spawnZones', None)
 landscape = json.loads((ROOT / 'assets/resources/world/original-landscape.json').read_text(encoding='utf8'))
 map_res = json.loads((ROOT / 'assets/resources/config/mapRes_0.json').read_text(encoding='utf8'))
+attach_siege_entrances(world, landscape, map_res['list'], map_res['emptyCells'], verify_snapshot=True)
 fixed = json.loads((ROOT / 'tools/world/fixed-birth-resources.json').read_text(encoding='utf8'))
 inner = json.loads((ROOT / 'tools/world/fixed-inner-resources.json').read_text(encoding='utf8'))
 res_land = json.loads((ROOT / 'assets/resources/config/ResLand.json').read_text(encoding='utf8'))
@@ -132,7 +135,8 @@ map_body = '{\n["w"] = 1000,\n["h"] = 1000,\n["list"] = ' + list_literal + ',\n[
 campaign_header = '''-- 静态州域、关口与系统城池。玩家出生位置由服务端管理，本文件不提供出生点。
 -- topologyVersion=2 使用不规则州域，禁止继续按半径100/285或扇区判定。
 -- regionRows[y+1] 每两个值为：结束列(不含)、州ID；找到第一个 x < row[i] 后返回 row[i+1]。
--- footprintRadius 为方形占地半径：出生州 1 即 3×3，资源州 2 即 5×5，洛阳 4 即 9×9。'''
+-- footprintRadius 为方形占地半径：出生州 1 即 3×3，资源州 2 即 5×5，洛阳 4 即 9×9。
+-- attackEntrances 为内部寻路落脚点；城市使用紧贴正面两侧城墙的两格，关隘保留通路两端。客户端比较可达路线后自动选择，地图不显示入口。'''
 terrain_header = '''-- blockedCells 是山河阻挡，reservedCityCells 是城市占地，元素都是 cellId。
 -- 类型 0 不能一律当作阻挡：可通行空地在 mapRes_0.lua 的 emptyCells。'''
 files = {

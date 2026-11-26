@@ -312,8 +312,15 @@ export default class PlayerServicesPanel extends Component {
             const row = this.card(info.name, info.detail, height);
             const progress = Math.min(info.target, Math.max(0, Number.isFinite(task.progress) ? task.progress : 0));
             const busy = cmd.requestInFlight(`task:${task.taskId}`);
-            this.rowAction(row, busy ? '领取中…' : task.state === 1 ? '领取奖励' : '进行中',
-                () => this.submit(() => cmd.claimTask(task.taskId)), task.state === 1 && !busy && cmd.sessionReady, height);
+            const canJump = task.state === 0 && info.jump > 0;
+            this.rowAction(row, busy ? '领取中…' : task.state === 1 ? '领取奖励' : canJump ? '前往' : '进行中',
+                () => {
+                    if (task.state === 1) this.submit(() => cmd.claimTask(task.taskId));
+                    else if (canJump) {
+                        this.close();
+                        EventMgr.emit(E.executeTaskJump, { task, jump: info.jump, cond: info.cond });
+                    }
+                }, (task.state === 1 && !busy || canJump) && cmd.sessionReady, height);
             taskCard(row, this.rowWidth, info, progress, task.state === 1);
         }
     }

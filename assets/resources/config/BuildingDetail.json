@@ -5,7 +5,7 @@
     "Desc": "势力核心，提升主城等级可解锁更多建筑与功能",
     "Icon": "",
     "Type": 1,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 1,
     "CreateLimit": [],
@@ -18,7 +18,7 @@
     "Desc": "训练场地，提升出征带兵上限",
     "Icon": "",
     "Type": 2,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 0,
     "CreateLimit": [
@@ -36,7 +36,7 @@
     "Desc": "广纳贤才，提升可上阵武将数量",
     "Icon": "",
     "Type": 4,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 0,
     "CreateLimit": [
@@ -54,7 +54,7 @@
     "Desc": "训练步兵，提升步兵训练上限与效率",
     "Icon": "",
     "Type": 2,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 0,
     "CreateLimit": [
@@ -72,7 +72,7 @@
     "Desc": "训练骑兵，提升骑兵训练上限与效率",
     "Icon": "",
     "Type": 2,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 0,
     "CreateLimit": [
@@ -90,7 +90,7 @@
     "Desc": "训练弓兵，提升弓兵训练上限与效率",
     "Icon": "",
     "Type": 2,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 0,
     "CreateLimit": [
@@ -108,7 +108,7 @@
     "Desc": "救治伤兵，提升伤兵收容与治疗效率",
     "Icon": "",
     "Type": 4,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 0,
     "CreateLimit": [
@@ -126,7 +126,7 @@
     "Desc": "研究科技，解锁并加速内政与军事科技",
     "Icon": "",
     "Type": 4,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 0,
     "CreateLimit": [
@@ -162,7 +162,7 @@
     "Desc": "开垦农田，持续产出粮草",
     "Icon": "",
     "Type": 3,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 1,
     "CreateLimit": [
@@ -180,7 +180,7 @@
     "Desc": "采伐木材，持续产出木材",
     "Icon": "",
     "Type": 3,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 1,
     "CreateLimit": [
@@ -198,7 +198,7 @@
     "Desc": "开采矿脉，持续产出铁矿",
     "Icon": "",
     "Type": 3,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 0,
     "CreateLimit": [
@@ -216,13 +216,13 @@
     "Desc": "囤积物资，提升资源保护与存储上限",
     "Icon": "",
     "Type": 4,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
-    "InitLev": 0,
+    "InitLev": 1,
     "CreateLimit": [
       {
         "bid": 1,
-        "lev": 2
+        "lev": 1
       }
     ],
     "OutputItem": 0,
@@ -234,7 +234,7 @@
     "Desc": "招贤纳士，用于武将招募",
     "Icon": "",
     "Type": 4,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 0,
     "CreateLimit": [
@@ -270,7 +270,7 @@
     "Desc": "开山取石，持续产出石料",
     "Icon": "",
     "Type": 3,
-    "MaxLevel": 30,
+    "MaxLevel": 10,
     "LimitNum": 1,
     "InitLev": 0,
     "CreateLimit": [

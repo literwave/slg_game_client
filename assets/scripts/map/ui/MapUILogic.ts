@@ -55,6 +55,15 @@ import { panelButton } from './ManagementStyle';
 import LazyPanelLoader from './LazyPanelLoader';
 import WorldMapArt from '../WorldMapArt';
 import CityTroopsPanel from './CityTroopsPanel';
+import WorldCampaign from '../WorldCampaign';
+import { PLAYER_CITY_FOOTPRINT_RADIUS } from '../PlayerCityAppearance';
+import GuideOverlay, { evaluateTroopReadiness } from './GuideOverlay';
+import { TaskInfo } from '../../progression/ProgressionCommand';
+import { TaskCondInfo } from '../../progression/ProgressionPresentation';
+import WorldCommand from '../../world/WorldCommand';
+import { MapResType } from '../MapProxy';
+import { ArmyCmd } from '../../general/ArmyProxy';
+import RightInfoNodeLogic from './RightInfoNodeLogic';
 
 @ccclass('MapUILogic')
 export default class MapUILogic extends Component {
@@ -221,6 +230,9 @@ export default class MapUILogic extends Component {
     private _servicesPanel: PlayerServicesPanel | null = null;
     private _inventoryPanel: InventoryPanel | null = null;
     private _chatStrip: MapChatStrip | null = null;
+    private _guideOverlay: GuideOverlay | null = null;
+    private _rightSidebarNode: Node | null = null;
+    private _inInnerCity = false;
 
     protected onLoad(): void {
         this.schedule(() => this._panelLoader?.sweep(), 5);
@@ -239,6 +251,7 @@ export default class MapUILogic extends Component {
         this.initTaskTracker();
         this.initChatStrip();
         this.initCampaignFeedback();
+        this.initGuideOverlay();
         this.initResourceIcons();
         this.node.on(Node.EventType.SIZE_CHANGED, this.layoutHud, this);
         this.layoutHud();
@@ -269,6 +282,9 @@ export default class MapUILogic extends Component {
         EventMgr.on(LogicEvent.openCityAbout, this.openCityAbout, this);
         EventMgr.on(LogicEvent.closeCityAbout, this.closeCityAbout, this);
         EventMgr.on(LogicEvent.openFacility, this.openFacility, this);
+        EventMgr.on(LogicEvent.innerCityStateChanged, this.onInnerCityStateChanged, this);
+        EventMgr.on(LogicEvent.openDraw, this.openDraw, this);
+        EventMgr.on(LogicEvent.openMarket, this.openTr, this);
         EventMgr.on(LogicEvent.openPrivateChat, this.onOpenPrivateChat, this);
         EventMgr.on(LogicEvent.openPlayerProfile, this.onOpenPlayerProfile, this);
         EventMgr.on(LogicEvent.openChatPlayerRank, this.onOpenChatPlayerRank, this);
@@ -291,6 +307,7 @@ export default class MapUILogic extends Component {
         EventMgr.on(LogicEvent.showTip, this.showTip, this);
         EventMgr.on(LogicEvent.confirmMoveCity, this.showMoveCityConfirm, this);
         EventMgr.on(LogicEvent.mapEenterChange, this.onMapCenterChange, this);
+        EventMgr.on(LogicEvent.executeTaskJump, this.onExecuteTaskJump, this);
         EventMgr.on(ServerConfig.s2c_gm_command_help, this.onGMCommandHelp, this);
         EventMgr.on(ServerConfig.s2c_tell_me, this.onTellMe, this);
         this.bindGMInput();
@@ -363,6 +380,10 @@ export default class MapUILogic extends Component {
         if (!map.proxy.getResData(id)?.isEmpty || map.cityProxy.getCity(id) || map.buildProxy.getBuild(id)) {
             return '请选择没有城池或建筑的空地';
         }
+        const radius = PLAYER_CITY_FOOTPRINT_RADIUS;
+        for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+            if (WorldCampaign.attackEntranceAt(pos.x + dx, pos.y + dy)) return '请为城门前留出通路';
+        }
         return map.campaignBlockReason(pos.x, pos.y, false);
     }
 
@@ -405,6 +426,141 @@ export default class MapUILogic extends Component {
         if (!hud || hud.getChildByName('CampaignFeedback')) return;
         const node = new Node('CampaignFeedback'); node.layer = hud.layer; hud.addChild(node);
         node.addComponent(MapCampaignFeedback);
+    }
+
+    private initGuideOverlay(): void {
+        if (this._guideOverlay) return;
+        const node = new Node('GuideOverlay'); node.layer = this.node.layer;
+        this.node.addChild(node);
+        node.setSiblingIndex(this.node.children.length - 1);
+        this._guideOverlay = node.addComponent(GuideOverlay);
+        this._guideOverlay.initialize(this.node, this.contentNode);
+    }
+
+    private onExecuteTaskJump(payload: { task?: TaskInfo; jump?: number; cond?: TaskCondInfo }): void {
+        if (!this._uiListenersReady) return;
+        const jump = Number(payload?.jump) || 0;
+        const cond = payload?.cond;
+        this.closeMoreMenu();
+        switch (jump) {
+            case 1: // 内城营造（按 Cond.bid 定位目标建筑）
+                this.openInnerCity(cond?.bid || 1);
+                break;
+            case 2: // 点将台招募
+                this.openDraw();
+                break;
+            case 3: // 出征（先检查部队是否配将、是否补兵，就绪后再定位城外低级资源地）
+                this.jumpToMarchTarget();
+                break;
+            case 4: // 定位对应类型的资源地（1粮/2木/3铁/4石）
+                this.jumpToResourceLand(cond?.item_id);
+                break;
+            case 5: // 提升势力战力（配将 -> 补兵 -> 内城营造）
+                this.jumpToBoostPower();
+                break;
+            case 6: // 部队配将
+                this.openMainCityArmySetting('请先为部队委任上阵主将');
+                break;
+            case 7: // 部队补兵
+                this.openMainCityArmySetting('请点击【快速分兵】并确认补充兵力');
+                break;
+            default:
+                break;
+        }
+        this._guideOverlay?.queueRefresh();
+    }
+
+    private openMainCityArmySetting(toast?: string): void {
+        const city = MapCommand.getInstance().cityProxy.getMyMainCity();
+        const cityId = city ? city.cityId : 0;
+        this.openArmySetting(cityId, 1);
+        if (toast) EventMgr.emit(LogicEvent.showToast, toast);
+    }
+
+    private jumpToMarchTarget(): void {
+        const readiness = evaluateTroopReadiness();
+        if (readiness === 'need_troop_hero') {
+            this.openMainCityArmySetting('出征前请先委任主将');
+            return;
+        }
+        if (readiness === 'need_troop_soldier') {
+            this.openMainCityArmySetting('出征前请先为部队补充兵力');
+            return;
+        }
+        this.focusNearestResourceCell(undefined, 2);
+    }
+
+    private jumpToResourceLand(itemId?: number): void {
+        const mapType = { 1: MapResType.GRAIN, 2: MapResType.WOOD, 3: MapResType.IRON, 4: MapResType.STONE }[Number(itemId) || 0];
+        this.focusNearestResourceCell(mapType, 4);
+    }
+
+    private jumpToBoostPower(): void {
+        const readiness = evaluateTroopReadiness();
+        if (readiness === 'need_troop_hero') {
+            this.openMainCityArmySetting('委任更多武将可大幅提升势力战力');
+            return;
+        }
+        if (readiness === 'need_troop_soldier') {
+            this.openMainCityArmySetting('补充部队兵力可提升势力战力');
+            return;
+        }
+        this.openInnerCity(1);
+    }
+
+    private focusNearestResourceCell(preferredType?: number, maxLevel = 3): void {
+        if (this._inInnerCity) {
+            EventMgr.emit(LogicEvent.exitInnerCity);
+        }
+        const city = MapCommand.getInstance().cityProxy.getMyMainCity();
+        const rolePos = LoginCommand.getInstance().proxy.getRoleData()?.cityPos;
+        const cx = city ? city.x : rolePos ? rolePos.x : -1;
+        const cy = city ? city.y : rolePos ? rolePos.y : -1;
+        if (cx < 0 || cy < 0) {
+            EventMgr.emit(LogicEvent.showToast, '主城坐标正在同步，请稍后重试');
+            return;
+        }
+        const map = MapCommand.getInstance();
+        const world = WorldCommand.getInstance();
+        const uid = idKey(LoginCommand.getInstance().proxy.getRoleData()?.userId);
+        let best: { x: number; y: number; score: number } | null = null;
+        for (let r = 2; r <= 18; r++) {
+            for (let dx = -r; dx <= r; dx++) {
+                for (let dy = -r; dy <= r; dy++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+                    const x = cx + dx, y = cy + dy;
+                    if (!MapUtil.isVaildCellPoint(new Vec2(x, y)) || map.isCityArtCoveredCell(x, y)) continue;
+                    if (map.campaignBlockReason(x, y)) continue;
+                    const id = MapUtil.getIdByCellPoint(x, y);
+                    const res = map.proxy.getResData(id);
+                    if (!res || res.isEmpty || res.type < MapResType.WOOD || res.type > MapResType.GRAIN) continue;
+                    if (preferredType && res.type !== preferredType) continue;
+                    const entity = world.resourceLandAt(x, y);
+                    if (entity && uid && idKey(entity.ownerId) === uid) continue;
+                    const dist = Math.hypot(dx, dy);
+                    const levelPenalty = res.level <= maxLevel ? res.level * 2 : 20 + res.level * 6;
+                    const score = levelPenalty + dist;
+                    if (!best || score < best.score) best = { x, y, score };
+                }
+            }
+            if (best && best.score < 20) break;
+        }
+        if (!best && preferredType) {
+            this.focusNearestResourceCell(undefined, maxLevel);
+            return;
+        }
+        if (!best) {
+            EventMgr.emit(LogicEvent.scrollToMap, cx, cy);
+            EventMgr.emit(LogicEvent.showToast, '请在主城周边点选资源地出征');
+            return;
+        }
+        EventMgr.emit(LogicEvent.scrollToMap, best.x, best.y);
+        const pixel = MapUtil.mapCellToPixelPoint(new Vec2(best.x, best.y));
+        EventMgr.emit(LogicEvent.touchMap, new Vec2(best.x, best.y), pixel, undefined, true);
+        // 如果已有可出征部队且正在执行出征跳转（Jump=3），直接打开出征选队面板以衔接强指引「确认出征」
+        if (evaluateTroopReadiness() === 'troop_ready' && !preferredType) {
+            EventMgr.emit(LogicEvent.openArmySelectUi, ArmyCmd.Attack, best.x, best.y);
+        }
     }
 
     private openServices(section: ServiceSection): void {
@@ -475,7 +631,8 @@ export default class MapUILogic extends Component {
         const height = rootUi.height;
         this.drawHudTopShade(width, height);
         this._chatStrip?.layout(width, height);
-        this._taskTracker?.layout(width, height, chatDockLayout(width, height).taskBottom);
+        this._taskTracker?.layout(width, height, this._inInnerCity ? 14 : chatDockLayout(width, height).taskBottom);
+        this._guideOverlay?.queueRefresh();
         const margin = 12;
         const top = height * 0.5;
         const bottom = -height * 0.5 + margin;
@@ -703,7 +860,7 @@ export default class MapUILogic extends Component {
         this._innerCityButton = entry;
     }
 
-    public openInnerCity(): void {
+    public openInnerCity(focusBuildingType?: number): void {
         AudioManager.instance.playClick();
         const city = MapCommand.getInstance().cityProxy.getMyMainCity();
         if (!this._uiListenersReady || !city || city.cityId <= 0) {
@@ -711,7 +868,44 @@ export default class MapUILogic extends Component {
             return;
         }
         this.closeMoreMenu();
-        this.openFacility(city);
+        const explicitTarget = typeof focusBuildingType === 'number' && focusBuildingType > 0;
+        EventMgr.emit(LogicEvent.enterInnerCity, {
+            cityId: city.cityId,
+            focusBuildingType: explicitTarget ? focusBuildingType : undefined,
+            openDetail: false,
+        });
+    }
+
+    private onInnerCityStateChanged(inCity: boolean): void {
+        this._inInnerCity = !!inCity;
+        this.closeMoreMenu();
+        if (this._inInnerCity && this._cityAboutNode?.active) {
+            this._cityAboutNode.active = false;
+        }
+        if (this.widgetNode?.isValid) this.widgetNode.active = true;
+        const hud = this.node.getChildByName('HudRoot');
+        if (hud) {
+            for (const name of ['BottomNav', 'WarReportButton', 'ActivityButton', 'RankButton']) {
+                const child = hud.getChildByName(name);
+                if (child) child.active = !this._inInnerCity;
+            }
+        }
+        if (this._chatStrip?.node?.isValid) {
+            this._chatStrip.node.active = !this._inInnerCity;
+        }
+        if (!this._rightSidebarNode?.isValid) {
+            this._rightSidebarNode = this.node.getComponentInChildren(RightInfoNodeLogic)?.node || null;
+        }
+        if (this._rightSidebarNode?.isValid) {
+            const sidebar = this._rightSidebarNode.getComponent(RightInfoNodeLogic);
+            if (sidebar) {
+                sidebar.setSidebarVisible(!this._inInnerCity);
+            } else {
+                this._rightSidebarNode.active = !this._inInnerCity;
+            }
+        }
+        this.layoutHud();
+        this._guideOverlay?.queueRefresh();
     }
 
     public toggleMoreMenu(): void {
@@ -759,7 +953,7 @@ export default class MapUILogic extends Component {
         return this.contentNode.children.length + 1;
     }
     /**
-     * 设施
+     * 设施：打开营造依赖路线图弹窗（由独立内城场景的“营造路线图”或旧入口呼出）。
      */
     protected openFacility(data: any): void {
         if (this._facilityNode == null) {
@@ -771,7 +965,7 @@ export default class MapUILogic extends Component {
             this._facilityNode.active = true;
         }
         this._facilityNode.setSiblingIndex(this.topLayer());
-        this._facilityNode.getComponent(CityBuildingPanel).show(data.cityId);
+        this._facilityNode.getComponent(CityBuildingPanel).show(data.cityId, data.focusBuildingType || 1);
     }
 
     protected openArmySetting(cityId: number, order: number, onReturn?: () => void): void {

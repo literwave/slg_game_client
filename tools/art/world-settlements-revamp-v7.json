@@ -1,0 +1,330 @@
+{
+  "version": "v7",
+  "date": "2026-11-18",
+  "scope": {
+    "systemCities": 10,
+    "mountainPasses": 12,
+    "bridgePasses": 6
+  },
+  "direction": "统一低饱和灰石、旧木、暗瓦和土地色；四边围墙连续闭合、转角衔接。州府、都城、宫城分别拥有独立的建筑布局，主城仅作墙体与占格参考。",
+  "assets": [
+    {
+      "path": "assets/resources/ui/world/city-luoyang-revamp-v7.png",
+      "width": 1040,
+      "height": 520,
+      "sha256": "353c9f0f8f8d427dbacd6aec9293af3bc7059ebe5143abe4d3792691c1522491",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-overview-luoyang-revamp-v7.png",
+      "width": 360,
+      "height": 180,
+      "sha256": "05cc14e81463f7fcd94b8a0d362bd012cce8b5c757e903ea2c887254b937d941",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-jingzhou-revamp-v7.png",
+      "width": 1040,
+      "height": 520,
+      "sha256": "efa4afbca5d264772cbdda5ce593ac7ff22dc3858f807a219a7a2d475638e23f",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-overview-jingzhou-revamp-v7.png",
+      "width": 360,
+      "height": 180,
+      "sha256": "aff9d702215dc3b5849ba83c285c54b9b89d149626a2b140559fb35b6c5758bb",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-liangzhou-revamp-v7.png",
+      "width": 1040,
+      "height": 520,
+      "sha256": "b29f6e45cd35943d728d2fe957f7d6571b2a8d7d3cbdf01599a7ab23e45eac82",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-overview-liangzhou-revamp-v7.png",
+      "width": 360,
+      "height": 180,
+      "sha256": "6adc0c892b6bd43b2069219f77c9d4512ad5cbb3b7da490be4e0a6e8be4cadbe",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-guanzhong-revamp-v7.png",
+      "width": 1040,
+      "height": 520,
+      "sha256": "dbfb8ac77f5402f9c8ef404febf91637c68b50fbd254a9edc874ec7bca0e9172",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-overview-guanzhong-revamp-v7.png",
+      "width": 360,
+      "height": 180,
+      "sha256": "f1efb74cf89caf89b7a3951db15e102a2b7b622e1536b21c464368275b288e6d",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-qingzhou-revamp-v7.png",
+      "width": 1040,
+      "height": 520,
+      "sha256": "315283aa53b35798424bced2fec09143df8a3222ede42777723fc6954255ebbf",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-overview-qingzhou-revamp-v7.png",
+      "width": 360,
+      "height": 180,
+      "sha256": "a4694c52a4b107912ccb00e606cbf45430eba590541b2cfa546b91786827a982",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-xuzhou-revamp-v7.png",
+      "width": 1040,
+      "height": 520,
+      "sha256": "b737eea2d528113277c42274cd5f2e5857954f5ae08252bc081564d9741975ee",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-overview-xuzhou-revamp-v7.png",
+      "width": 360,
+      "height": 180,
+      "sha256": "c35c747a9d9d043eabe7f2fbd630ade995ec0040b5d4e36d4374b1aeb0528541",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-youzhou-revamp-v7.png",
+      "width": 1040,
+      "height": 520,
+      "sha256": "1913fa0dd7be03b6bb393ff65716fef9bfb1d6de6ce834415d597f456fbc492a",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-overview-youzhou-revamp-v7.png",
+      "width": 360,
+      "height": 180,
+      "sha256": "c121fce12a8a8a992f70c2f96a204be1ecc1e049afa23919583a3d2e3637f6f2",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-yizhou-revamp-v7.png",
+      "width": 1040,
+      "height": 520,
+      "sha256": "35a9926040dc7cb7541c2f211a5664959d2030eff67fe5dd929ba779aa6d226d",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-overview-yizhou-revamp-v7.png",
+      "width": 360,
+      "height": 180,
+      "sha256": "d9a6c994047e280eca35d184fd2a3bef816e5f4904b76e0f797eaa1add986121",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-hedong-revamp-v7.png",
+      "width": 1040,
+      "height": 520,
+      "sha256": "8b324a3a9f328749f8c7554237184de5bafbc876674f6965a84e4aea3e83acf0",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-overview-hedong-revamp-v7.png",
+      "width": 360,
+      "height": 180,
+      "sha256": "68fda863448948803717efff61f256b9e67cc7a76aef7701b94c2188dea2712a",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-henei-revamp-v7.png",
+      "width": 1040,
+      "height": 520,
+      "sha256": "397c994d00e082cc851b50abe32a120698318d1cef26fd36b0370fc9b56bdd3d",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/city-overview-henei-revamp-v7.png",
+      "width": 360,
+      "height": 180,
+      "sha256": "a8bdf3db869f36da7b0464dbf9eca505b9990bf06dc47299641185a6fd02917f",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/river-pass-revamp-v7.png",
+      "width": 1536,
+      "height": 762,
+      "sha256": "4aa50905e90493242ca1cb1c47545d9e1e0db0f450ec5893f4ec8719f6407124",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    },
+    {
+      "path": "assets/resources/ui/world/mountain-pass-revamp-v7.png",
+      "width": 1280,
+      "height": 853,
+      "sha256": "b1214fe61c0f69b51e6a8bb0c475c81e326a082b6d4df7a233b5ca47146cd54f",
+      "filter": "linear",
+      "wrap": "clamp",
+      "mipmap": false
+    }
+  ],
+  "calibration": {
+    "city": {
+      "canvas": [
+        1040,
+        520
+      ],
+      "overview": [
+        360,
+        180
+      ],
+      "projection": {
+        "scale": 1.152,
+        "centerX": 0.5,
+        "centerY": 0.545
+      },
+      "logicalFootprints": "沿用现有等级对应整格占地"
+    },
+    "mountain": {
+      "canvas": [
+        1280,
+        853
+      ],
+      "anchor": [
+        0.5,
+        0.466
+      ],
+      "heightScale": 0.89,
+      "footprint": "3×3",
+      "notes": "重新生成完整菱形地基，最终版本去除地基外背景 Alpha。"
+    },
+    "bridge": {
+      "canvas": [
+        1536,
+        762
+      ],
+      "anchor": [
+        0.51,
+        0.52
+      ],
+      "heightScale": 1.02,
+      "spanFraction": 0.84,
+      "notes": "保留实际跨河跨度、桥头位置与拱洞透点；两座中式关楼与桥身独立于城池布局。"
+    },
+    "ambience": "每座系统城三个独立活动区；按新版原画重新标定道路、操练位置、固定人物避让和建筑遮挡。关隘六人分布于不同通道。",
+    "nameplate": "在占地多边形内缩小并向前沿移动，让出建筑中心。"
+  },
+  "prompts": {
+    "cityBase": "Create a production-ready Chinese Three Kingdoms strategy-map CITY sprite. The supplied image is ONLY a GEOMETRY template: copy its 2:1 canvas, outer diamond's base corners, full-height four straight continuous walls, directly connected corner towers, orthographic isometric axes, lower-right entrance, and transparent margins. Completely redesign the architecture and interior as described. DO NOT copy its residential wooden lodge or rows of identical sheds.\nART DIRECTION: mature classic Chinese historical strategy game, hand-painted realistic miniature, carefully simplified broad roof masses and crisp masonry silhouette. Natural earthy low-saturation colors to sit on an aged olive/yellow-grass map. No shiny plastic 3D render, no toy diorama, no excessive tiny decorative noise, no bright gold/fluorescent leaves, no colored edge fringe. Strong but controlled silhouette, readable when the whole city is only 200 pixels wide. Use stone/brick fortified buildings, sober Han-style timber and slate tiles, long comfortable streets. Keep enough open ground to distinguish blocks; a handful of tiny townspeople gives life.\nEvery roof ridge, foundation, lane and wall MUST follow the same two isometric axes. Four walls and their base ground diamond remain a simple connected rhombus, no bent edges, protruding gate platforms or isolated towers. All 4 walls equal structural height, corner towers directly seated at their corners. Ground fills the complete diamond, no grass garden outside walls. Tiny roof peaks may rise above the back ground edge. Outside silhouette is transparent. No text, icons, numbers, map terrain, sky, border, or UI.\nOutput ONE wide 2:1 RGBA sprite matching reference ground registration. UNIQUE CITY DESIGN: ",
+    "cities": [
+      {
+        "key": "yizhou",
+        "name": "益州州府",
+        "region": "SICHUAN YIZHOU: a layered governor's hall in the rear-left on a low stone terrace, one restrained bamboo grove and rectangular jade-grey pond with simple bridge in the front-left, long silk-market streets to the right. Sichuan timber and plaster with dark grey tiles. Five coherent building groups; no twin U-shaped courtyards."
+      },
+      {
+        "key": "qingzhou",
+        "name": "青州州府",
+        "region": "EASTERN QINGZHOU: an orderly coastal grain-trade prefecture. Central square watch-and-drum hall behind a broad pedestrian market lane, two dense but legible grain warehouse blocks with timber gantries, rear governor hall, two small windswept pines. Restrained slate-blue banners, sandy grey stone walls. No water outside the walls."
+      },
+      {
+        "key": "xuzhou",
+        "name": "徐州州府",
+        "region": "XUZHOU trade city: a distinctive long low tiled market arcade across the middle, a compact elevated yamen on the rear-right, two residential lanes front-left and a small grain court rear-left. Terracotta pots and ONE covered cart supply scale. Warm dusty brick, deep grey tiles, dark red faded banners."
+      },
+      {
+        "key": "jingzhou",
+        "name": "荆州州府",
+        "region": "JINGZHOU river prefecture: long sweeping tiled governor hall on a terrace at back, a compact internal water courtyard with a willow and stone footbridge on the right, two merchant blocks on left, a broad paved diagonal gate street. Ivory plaster and grey tiles with modest dark teal banners. Water remains inside walls, no external river."
+      },
+      {
+        "key": "liangzhou",
+        "name": "凉州州府",
+        "region": "LIANGZHOU frontier administrative city: substantial pale rammed-earth fortress walls with grey stone plinth, flat simple military platforms and compact tile roof corner towers, a stern low command hall, long horse stable buildings, grain stores and a modest open training yard. Two cypress trees only. Dusty ochre and grey palette, faded crimson flags. No lush southern gardens; not an empty fort."
+      },
+      {
+        "key": "youzhou",
+        "name": "幽州州府",
+        "region": "YOUZHOU northern frontier city: rugged dark-grey brick walls, elevated rectangular command hall and tall square drum tower rear-left, broad stone-paved muster court with tiny soldier groups, two timber barracks wings and a modest stable, sparse dark green pines. Strong cool-grey roof masses, weathered brown timber and muted indigo banners."
+      },
+      {
+        "key": "hedong",
+        "name": "河东都城",
+        "region": "HEDONG COMMANDERY, larger and more developed than a prefecture: a broad administrative palace compound rear-left with two distinct roof tiers, substantial granaries rear-right, compact trade streets front-left, a small shrine with a cypress grove, central avenue with simple stone ceremonial arch. 9-12 clear roof groups. Heavy grey stone walls and refined faded bronze roof trim. No miniature clutter."
+      },
+      {
+        "key": "guanzhong",
+        "name": "关中都城",
+        "region": "GUANZHONG COMMANDERY: austere grand Western Han architecture, a tall drum tower as focal point, long royal office halls with dark tiled straight ridges, deeply ordered axial streets running toward lower-right gate, compact two-storey residential blocks, a regimented armoury court. 9-12 clear roof groups. Dusty buff masonry, charcoal tiles, restrained dark red columns. Distinctive fortified administrative capital, not player's main city."
+      },
+      {
+        "key": "henei",
+        "name": "河内都城",
+        "region": "HENEI COMMANDERY: prosperous spacious regional capital, multi-roof governor's residence and an ornamental walled inner garden rear-right, an L-shaped grand archive hall rear-left, two staggered merchant lanes and civic forecourt in front. 9-12 large readable roof groups, sparse ancient pines, tiny public well. Slate tiles, cool plaster, modest gold-brown ornaments, navy banners."
+      },
+      {
+        "key": "luoyang",
+        "name": "洛阳",
+        "region": "LUOYANG IMPERIAL CAPITAL: unmistakably largest and highest-tier silhouette. Rear half a dignified multi-terrace imperial palace district with a grand double-eaved main hall, a secondary ceremonial hall and flanking administrative wings. Front half four clearly separated residential/market wards, wide avenue from lower-right city gate and stone ceremonial gateways. About 14-18 coherent roof groups; larger than other cities but no tiny clutter. Monumental grey masonry walls, substantial square watchtowers, charcoal slate and muted aged-gold trim, vermilion columns, sparse deep green cypresses. Imperial majesty rather than fantasy gold palace."
+      }
+    ],
+    "mountain": "Redesign this Chinese historical strategy-game mountain pass sprite from scratch. The reference shows the WRONG castle-box silhouette: do NOT retain the enclosed square camping fort or the tent-filled courtyard. Keep ONLY the same elevated orthographic isometric camera, approximately 1280:805 canvas ratio, ground center, and a three-tile diamond ground footprint. A mountain pass should read as ONE formidable transverse grey masonry BARRIER with a prominent central arched timber gate and a substantial two-storey Han Chinese tiled gatehouse over it, between two thick stone shoulders/watchtowers. Wall extends diagonally across the center from screen upper-left to lower-right; passage goes from lower-left to upper-right (axis is important, the game will mirror it for opposite passes). Add a short secondary rear barrier, connected by very short side walls forming a narrow military choke courtyard, rather than a broad square city. Three or four tiny guards at the opening, a few restrained dark red vertical banners. Weathered grey stone, muted charcoal slate roof, brown-red timber. Crisp large roof shapes and a strong readable gate aperture that remains visible at 100 px width. Authentic ancient Chinese frontier gate, no European castle turrets, no fantasy features, no garden, no tents, no clutter. Hand-painted realistic miniature matching an earthy low-saturation olive grassy strategy map, natural soft illumination, solid weight and age, no shiny plastic, no blurring or colored fringe. Preserve a complete diamond ground of subdued dirt/stone inside the 3x3 footprint, with solid wall feet meeting it; the high gate roof can rise above the rear edge. All exterior transparent alpha. No mountains, terrain outside the footprint, text, UI, labels, water, horizon or props outside footprint. Entire structure including roof and flags in frame.",
+    "mountainGeometryCorrection": "Redraw the fortified mountain pass from image 2 with the strict isometric FLOOR FOOTPRINT of image 1. Image 1 supplies ONLY the complete regular diamond stone/earth ground plane and left/right/front/back ground-corner registration; do NOT copy its old box fort or campsite. Image 2 supplies the strong central double-eaved Chinese gatehouse, archway, massive masonry shoulders and military visual identity.\nThe entire ground plane MUST be one clean regular isometric diamond whose left and right tips are at the SAME height, the front tip on the exact canvas centerline, with straight 2:1 isometric slopes. Canvas 1536x1024: target ground left corner (65,590), right corner (1470,590), front corner (768,985), back corner (768,195). All walls and buildings sit INSIDE that diamond ground. The large MAIN gate occupies the middle of the lower-left/front edge between left and front tips; two flanking watchtowers stand directly at those left/front corner positions, and the opposite side of the choke corridor meets a smaller rear gate. No wide transverse wall stretching outside the diamond, no irregular polygon foundation, no corner feet hanging beyond ground. Keep a compact elongated barbican court rather than a full square city; low side walls on the other two edges can define the diamond floor. Keep the largest double-eaved gatehouse as the unmistakable focal point, same robust ancient Chinese construction as image 2. Slate roofs, weathered grey brick, dark brown timber, faded red banners. Tiny guards, no tents. Light earthy ground, subdued olive palette matching map. Sharp hand-painted miniature, no red/yellow fringes, no ground/shadow outside footprint, no mountains, no text or labels. Transparent background.",
+    "bridge": "Edit the supplied fortified bridge game sprite into a beautiful ancient Chinese river-pass landmark. STRICTLY preserve its exact camera, full canvas registration and existing STONE BRIDGE GEOMETRY: both endpoints at the same positions, diagonal lower-left to upper-right passage, the same bridge deck path, same pier positions and the same transparent arched openings underneath. Do not add river, banks, soil, trees or cast shadow outside the bridge. Retain the size and footprint of the central fortified island. Replace the plain western-looking square castle with a commanding Chinese grey-brick river gate: TWO dignified timber gatehouses with broad charcoal slate Han-style roofs directly above the two passage entrances, compact grey stone corner platforms, a small guard court in between and tiny guards. Remove cluttered tents and gratuitous little sheds; use 2 small coherent guard halls only. No fantasy turrets, glossy rendering or excessive ornaments. Muted red-brown timber, dusty cool grey masonry, restrained slate-blue vertical banners, weathered olive traces near pier bases. Hand-painted realistic historical strategy art, clean legible silhouette at map scale, consistent low-saturation palette. Ground/deck and arch silhouettes must stay precisely aligned with reference for existing bridge connections and hit zones. Transparent RGBA background, no words/UI/border. Output the same wide aspect ratio and exact alignment as reference."
+  },
+  "validation": {
+    "editor": "22 张资源经 Image Core 导入并配置，引用、尺寸清单与近远景 Alpha 拾取轮廓已同步。",
+    "staticPassed": [
+      "city-art-fit-regression：20 张实际 PNG、573600 次双线性采样，内圈覆盖至少 99.5%、四边连续铺满",
+      "gate-presentation-regression：18 关隘、两种朝向、四种跨度；桥面连续、拱洞透点、实际点击路由",
+      "city-ownership-regression：42 种名牌边界与归属切换",
+      "city-ambient-regression：占地、路面、警戒、易主、避让",
+      "city-ambient-duty-regression：35000 帧岗位和路线持久性",
+      "city-ambient-crowd-regression：1251610 次动态间距、1559910 次固定人物检查",
+      "city-ambient-occlusion-regression：新版建筑轮廓、街道和边缘滞回",
+      "city-ambient-view-regression：遮挡恢复、缩放、节点复用、关隘人物",
+      "针对更改的纯逻辑脚本 TypeScript no-emit：0 错误"
+    ],
+    "projectTypecheck": "全项目脚本检查仍有 214 项既有用户代码问题；本次涉及的脚本未出现诊断。",
+    "preview": "未启动或操作 Preview；上述模拟测试运行在 Node 环境，不代表实际游戏画面验收。"
+  }
+}

@@ -35,6 +35,7 @@ export default class MapBaseLayerLogic extends Component {
 
     public addItem(areaIndex: number, data: any): Node {
         if (!data) return null;
+        if (!this.isItemAllowed(data)) { this.removeItem(areaIndex, this.getIdByData(data)); return null; }
         if (this._itemMap.has(areaIndex)) {
             let id: number = this.getIdByData(data);
             let item: Node = this.getItem(areaIndex, id);
@@ -53,6 +54,7 @@ export default class MapBaseLayerLogic extends Component {
 
     public updateItem(areaIndex: number, data: any, item: Node = null): void {
         if (!data) return;
+        if (!this.isItemAllowed(data)) { this.removeItem(areaIndex, this.getIdByData(data)); return; }
         if (this._itemMap.has(areaIndex)) {
             let realItem: Node = item;
             if (item == null) {
@@ -64,6 +66,9 @@ export default class MapBaseLayerLogic extends Component {
             }
         }
     }
+
+    /** 入口和更新共同检查，防止 AOI 推送或对象池复用重新显示已遮挡的地块。 */
+    protected isItemAllowed(_data: any): boolean { return true; }
 
     //子类重写
     public setItemData(item: Node, data: any): void {

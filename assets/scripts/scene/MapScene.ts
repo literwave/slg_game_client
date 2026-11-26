@@ -2,11 +2,13 @@ import { _decorator, Camera, Component, Node, Vec2, TiledMap, TiledMapAsset, UIT
 const { ccclass, property } = _decorator;
 
 import MapResBuildLogic from "../map/MapResBuildLogic";
+import { mapGeometryXml } from '../map/MapProjection';
 import MapBuildTipsLogic from "../map/MapBuildTipsLogic";
 import MapCityLogic from "../map/MapCityLogic";
 import { MapCityData } from "../map/MapCityProxy";
 import MapCommand from "../map/MapCommand";
 import MapLogic from "../map/MapLogic";
+import LoginCommand from '../login/LoginCommand';
 import MapArmyLogic from "../map/MapArmyLogic";
 import { MapAreaData, MapResType } from "../map/MapProxy";
 import MapResLogic from "../map/MapResLogic";
@@ -96,17 +98,15 @@ export default class MapScene extends Component {
 
     /** 连续地形已接管绘制，只保留 TMX 的坐标定义，不再解码、构建随后被隐藏的百万格瓦片层。 */
     private initializeMapGeometry(): TiledMap {
-        const header = this._cmd.proxy.tiledMapAsset?.tmxXmlStr?.match(/<map\b[^>]*>/)?.[0];
-        if (!header || !/\borientation=["']isometric["']/.test(header)) throw new Error('等距地图坐标定义缺失');
         this._geometryAsset = new TiledMapAsset();
-        this._geometryAsset.tmxXmlStr = header + '</map>';
+        this._geometryAsset.tmxXmlStr = mapGeometryXml(this._cmd.proxy.tiledMapAsset?.tmxXmlStr);
         const map = this.mapLayer.addComponent(TiledMap);
         map.tmxAsset = this._geometryAsset;
         const size = map.getMapSize(), tile = map.getTileSize();
         if (![size.width, size.height, tile.width, tile.height].every(n => Number.isFinite(n) && n > 0)) {
             throw new Error('地图尺寸无效');
         }
-        // 没有瓦片层时引擎不会自动设置容器尺寸；显式保留原等距投影和半宽锚点。
+        // 没有瓦片层时引擎不会自动设置容器尺寸；容器、拾取和相机边界共用投影尺寸。
         this.mapLayer.getComponent(UITransform).setContentSize(
             (size.width + size.height) * tile.width / 2, (size.width + size.height) * tile.height / 2);
         this._tiledMap = map;
@@ -168,6 +168,12 @@ export default class MapScene extends Component {
                             this._warmupStarted = false;
                             return;
                         }
+                        // 先预热城边细节，再在加载遮罩内准备远景。
+                        // 避免推进跨过细节档位时，近处资源才开始加载。
+                        if (this.prepareLandingOverview()) {
+                            this._warmupStarted = false;
+                            return;
+                        }
                         this._ready = true;
                         EventMgr.emit(CoreEvent.mapReady);
                     }, 0.12);
@@ -176,6 +182,18 @@ export default class MapScene extends Component {
         } catch (error) {
             this.failInitialization(error);
         }
+    }
+
+    private _landingWidePrepared = false;
+
+    private prepareLandingOverview(): boolean {
+        if (this._landingWidePrepared || !LoginCommand.getInstance().pendingFirstLanding) return false;
+        const city = this._cmd.cityProxy.getMyMainCity();
+        const mapLogic = this.node.getComponent(MapLogic);
+        if (!city || !mapLogic) return false;
+        this._landingWidePrepared = true;
+        mapLogic.showLandingFrame(new Vec2(city.x, city.y), 0);
+        return true;
     }
 
     private failInitialization(error: unknown): void {
@@ -309,23 +327,26 @@ export default class MapScene extends Component {
         const resource = this._cmd.proxy.getResData(cellId);
         const build = this._cmd.buildProxy.getBuild(cellId);
         const city = this._cmd.cityProxy.getCity(cellId);
+        const cityGround = this._cmd.isCityGroundCell(x, y);
         if (resource) {
             // 空地、城池等没有 ResLogic 图像，不创建空的资源节点。
-            if (!city && !this._cmd.proxy.getSysCityResData(x, y) && (resource.type === MapResType.SYS_FORTRESS
+            if ((!cityGround || resource.type === MapResType.SYS_FORTRESS && WorldCampaign.gateAt(x, y)) && (resource.type === MapResType.SYS_FORTRESS
                 || (resource.type >= MapResType.WOOD && resource.type <= MapResType.GRAIN))) {
                 layers.res.addItem(areaId, resource);
             }
             if (resource.type === MapResType.SYS_CITY) layers.sysCity.addItem(areaId, resource);
-            if (this._cmd.proxy.isPosTag(x, y)) {
+            if (!cityGround && this._cmd.proxy.isPosTag(x, y)) {
                 layers.tag.addItem(areaId, resource);
             }
         }
         if (build) {
             if (build.type === MapResType.SYS_CITY) layers.sysCity.addItem(areaId, build);
-            else if (build.type === MapResType.SYS_FORTRESS) layers.res.addItem(areaId, build);
-            else layers.build.addItem(areaId, build);
-            layers.facility.addItem(areaId, build);
-            layers.tips.addItem(areaId, build);
+            else if (build.type === MapResType.SYS_FORTRESS && (!cityGround || WorldCampaign.gateAt(x, y))) layers.res.addItem(areaId, build);
+            else if (!cityGround) layers.build.addItem(areaId, build);
+            if (!cityGround) {
+                layers.facility.addItem(areaId, build);
+                layers.tips.addItem(areaId, build);
+            }
         }
         if (city && city.id === cellId) layers.city.addItem(areaId, city);
     }
@@ -335,8 +356,12 @@ export default class MapScene extends Component {
         for (const id of ids) {
             const pos = MapUtil.getCellPointById(id);
             const area = MapUtil.getAreaIdByCellPoint(pos.x, pos.y);
-            if (this._cmd.cityProxy.getCity(id)) {
+            if (this._cmd.isCityGroundCell(pos.x, pos.y)) {
                 this._itemLayers.res.removeItem(area, id);
+                this._itemLayers.build.removeItem(area, id);
+                this._itemLayers.facility.removeItem(area, id);
+                this._itemLayers.tag.removeItem(area, id);
+                this._itemLayers.tips.removeItem(area, id);
             } else this.addMapCell(area, pos.x, pos.y);
         }
     }

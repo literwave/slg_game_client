@@ -182,7 +182,7 @@ function moveArtwork(parent: Node, x: number, y: number, size: number, muted: bo
 
 /** 保留原 Button/序列化回调；图标与文字同属完整命中区域。 */
 export function commandAction(node: Node, text: string, kind: CommandGlyph, x: number, y: number,
-    width: number, height: number, primary = false, vertical = false): void {
+    width: number, height: number, primary = false, vertical = false, centeredText = false): void {
     place(node, x, y, width, height); hideSprite(node);
     const background = node.getChildByName('Background') || node;
     if (background !== node) { place(background, 0, 0, width, height); hideSprite(background); }
@@ -206,7 +206,9 @@ export function commandAction(node: Node, text: string, kind: CommandGlyph, x: n
     }
     const label = background.getComponentInChildren(Label) || caption(background, 'OrderCaption', text, 0, 0, width, 12);
     label.node.active = true;
-    textStyle(label, vertical ? 0 : 12, vertical ? -17 : 0, width - (vertical ? 10 : 37), 12, color, Label.HorizontalAlign.CENTER, 22);
+    // 独占整行时文字对齐按钮中心，两侧等量留白避开左侧图标。
+    const inset = vertical ? 10 : centeredText ? 74 : 37;
+    textStyle(label, vertical || centeredText ? 0 : 12, vertical ? -17 : 0, width - inset, 12, color, Label.HorizontalAlign.CENTER, 22);
     label.string = text; label.isBold = primary; label.overflow = Label.Overflow.SHRINK;
     if (button) { button.target = background; button.transition = Button.Transition.SCALE; button.zoomScale = .97; button.duration = .08; }
 }

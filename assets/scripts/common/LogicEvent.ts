@@ -22,6 +22,7 @@ export class LogicEvent {
     public static updateReportDetail = "updateReportDetail";
     public static updateReportReplay = "updateReportReplay";
     public static updateTasks = "updateTasks";
+    public static executeTaskJump = "executeTaskJump";
     public static updateActivities = "updateActivities";
     public static updateRank = "updateRank";
     public static updateCityBuilds = "updateCityBuilds";
@@ -75,6 +76,11 @@ export class LogicEvent {
     public static openCityAbout:string = "open_city_about";
     public static closeCityAbout:string = "close_city_about";
     public static openFacility:string = "open_facility";
+    public static enterInnerCity:string = "enter_inner_city";
+    public static exitInnerCity:string = "exit_inner_city";
+    public static innerCityStateChanged:string = "inner_city_state_changed";
+    public static openDraw:string = "open_draw";
+    public static openMarket:string = "open_market";
     public static openArmySetting:string = "open_army_setting";
     public static upateMyRoleRes:string = "upate_my_roleRes";
     public static updateMyRole:string = "update_my_role";

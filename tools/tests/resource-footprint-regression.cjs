@@ -4,6 +4,7 @@ const path = require('node:path');
 const ts = require(process.argv[2]);
 const root = path.resolve(__dirname, '../..');
 function load(file, dependencies = {}) {
+    dependencies = { './MapProjection': require('./map-projection-module.cjs')(ts), '../MapProjection': require('./map-projection-module.cjs')(ts), ...dependencies };
     const compiled = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
         compilerOptions: { target: ts.ScriptTarget.ES2019, module: ts.ModuleKind.CommonJS, experimentalDecorators: true },
         fileName: file, reportDiagnostics: true,
@@ -33,6 +34,10 @@ class OwnershipView {
     setCity(data, top, corners) { Object.assign(this, { data, top, corners }); }
     clear() { this.data = null; }
 }
+class AmbientView {
+    setGate(data, mirrored) { Object.assign(this, { data, mirrored }); }
+    clear() { this.data = null; }
+}
 const transform = new UITransform();
 const spriteNode = { getComponent: () => transform,
     setPosition(x, y) { this.x = x; this.y = y; }, setScale(x, y) { this.sx = x; this.sy = y; } };
@@ -47,6 +52,7 @@ const artNames = [], artHashes = new Set();
 const logicType = load('assets/scripts/map/entries/ResLogic.ts', {
     cc, '../MapProxy': { MapResType: { WOOD: 52, IRON: 53, STONE: 54, GRAIN: 55, SYS_FORTRESS: 50 } },
     '../CityOwnershipView': { default: OwnershipView },
+    '../CityAmbientView': { default: AmbientView },
     '../WorldMapArt': { default: { size(name) {
         const png = fs.readFileSync(path.join(root, 'assets/resources/ui/world', name + '.png'));
         return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
@@ -93,23 +99,26 @@ for (const axis of ['x','y']) {
     currentGate = { x:40,y:50,level:8,axis,crossing:'bridge',bridgeSpan:12 };
     logic.setResourceData({type:50,...currentGate});
     assert.equal(logic.node.getComponent(OwnershipView).data, currentGate, '桥关归属层绑定当前实体');
-    assert.equal(artNames.at(-1),'river_pass_citadel');
+    assert.equal(artNames.at(-1),geometry.BRIDGE_ART);
+    assert.equal(logic.node.getComponent(AmbientView).data,currentGate);
+    assert.equal(logic.node.getComponent(AmbientView).mirrored,axis==='x');
     assert.equal(transform.anchorX,geometry.BRIDGE_ANCHOR_X);
     assert.equal(transform.anchorY,geometry.BRIDGE_ANCHOR_Y);
     assert.equal(spriteNode.sx,axis==='x'?-1:1);
-    assert.equal(spriteNode.sy,geometry.BRIDGE_HEIGHT_SCALE);
+    assert.equal(transform.height*spriteNode.sy,geometry.gateHeight(8,currentGate));
     assert.equal(logic.spr.trim,false);
     const mirror=axis==='x', width=geometry.gateWidth(8,currentGate);
     const hit=(x,y)=>geometry.gateHit((x-geometry.BRIDGE_ANCHOR_X)*width*(mirror?-1:1),
         (1-y-geometry.BRIDGE_ANCHOR_Y)*width*geometry.BRIDGE_ASPECT,8,mirror,currentGate);
     assert.ok(hit(.45,.45),'central gate must be clickable');
-    assert.ok(hit(.27,.72),'foreground bridge deck must be clickable');
-    assert.ok(hit(.85,.19),'far approach must be clickable');
+    assert.ok(hit(.24,.75),'SW ferry dock must be clickable');
+    assert.ok(hit(.78,.33),'NE ferry dock must be clickable');
     assert.equal(hit(.12,.12),false,'transparent river corner must not intercept clicks');
-    assert.equal(hit(.88,.86),false,'transparent water below bridge must not intercept clicks');
+    assert.equal(hit(.92,.88),false,'transparent water outside water-fortress must not intercept clicks');
     currentGate=null;
     logic.setResourceData({type:52,level:3,x:40,y:50});
     assert.equal(logic.node.getComponent(OwnershipView).data, null, '复用成资源地时清理旧桥关归属');
+    assert.equal(logic.node.getComponent(AmbientView).data, null, '复用成资源地时清理旧桥关小兵');
     assert.equal(spriteNode.sx,1); assert.equal(spriteNode.sy,1);
     assert.equal(transform.anchorX,.5); assert.equal(transform.anchorY,.5);
 }

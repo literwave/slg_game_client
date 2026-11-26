@@ -14,7 +14,7 @@ import { LogicEvent } from '../common/LogicEvent';
 import WorldMapArt from './WorldMapArt';
 import WorldCampaign from './WorldCampaign';
 import LoginCommand from '../login/LoginCommand';
-import { playerCityFootprint } from './PlayerCityAppearance';
+import { playerCityArt, playerCityFootprint } from './PlayerCityAppearance';
 import { cityFootprintRadius } from './CityFootprint';
 import MapUtil from './MapUtil';
 import { isResourceLandCell } from '../world/ResourceLand';
@@ -242,7 +242,7 @@ export default class MapClickUILogic extends Component {
         AudioManager.instance.playClick();
         if (this._data instanceof MapCityData) {
             if (idKey(this._data.rid) === idKey(MapCommand.getInstance().cityProxy.myId)) {
-                EventMgr.emit(LogicEvent.openCityAbout, this._data);
+                EventMgr.emit(LogicEvent.enterInnerCity, { cityId: this._data.cityId, openDetail: false });
             } else if (hasId(this._data.rid)) EventMgr.emit(LogicEvent.openPlayerProfile, this._data.rid);
         }
         this.node.parent = null;
@@ -289,7 +289,9 @@ export default class MapClickUILogic extends Component {
         }
         const { x, y, type, level } = this._data;
         const world = WorldCommand.getInstance();
-        const reason = MapCommand.getInstance().campaignBlockReason(x, y)
+        const map = MapCommand.getInstance();
+        const reason = (map.isCityArtCoveredCell(x, y) ? '建筑覆盖的地块不可操作' : '')
+            || map.campaignBlockReason(x, y)
             || (empty ? world.emptyLandIssue(x, y) : world.resourceLandIssue(x, y, type, level));
         if (reason) { EventMgr.emit(LogicEvent.showToast, reason); return; }
         // World 协议以真实资源实体为目标，交由服务端判定可达性及战斗占领。
@@ -496,8 +498,8 @@ export default class MapClickUILogic extends Component {
         this.btnMove.node.active = !!mine;
         this.bgMain.active = false;
         this.labelLunxian.string = '';
-        this.labelSoldierCnt.string = '';
-        this.labelUnion.string = city ? mine ? '本盟城池' : hasId(city.allianceId) ? city.allianceName || '其他同盟' : '中立城池'
+        this.labelSoldierCnt.string = !mine && !hasId(ownAlliance) ? '未加入同盟，攻破后城池无归属' : '';
+        this.labelUnion.string = city ? mine ? (city.allianceName ? `本盟 · ${city.allianceName}` : '本盟城池') : hasId(city.allianceId) ? city.allianceName || '其他同盟' : '中立城池'
             : cities.loaded ? '暂无城池情报' : '城池情报同步中';
         this.labelYield.string = city ? `守军  ${city.teamLeft} / ${city.teamCount} 队${mine ? `  ·  驻留 ${city.deployCount || 0} 队` : ''}` : '';
         this.durableNode.active = !!city && city.durabilityMax > 0;
@@ -598,9 +600,12 @@ export default class MapClickUILogic extends Component {
             .filter(([key]) => Number(cfg[key]) > 0).map(([key, art]) => ({ art: `${art}_lv1`, amount: Number(cfg[key]) })) : [];
         const yieldHeight = yields.length ? Math.ceil(yields.length / 2) * 38
             : yieldText && !this._data.isEmpty ? Math.min(3, Math.max(1, Math.ceil(yieldText.length * 12 / contentWidth))) * 20 : 0;
-        // 常态不重复“选择部队”提示；真正的行军、占领进度才占用一行。
-        const showActivity = this.leftInfoNode.active && /出征中|已到达|倒计时/.test(this.labelSoldierCnt.string);
-        const activityHeight = showActivity ? 36 : 0;
+        // 城池说明只出现在城信息面板，野外地块仍只展示真实行军/占领进度。
+        const activityText = this.labelSoldierCnt.string;
+        const cityInfo = this.isAllianceCityTarget();
+        const showActivity = this.leftInfoNode.active && (cityInfo ? !!activityText : /出征中|已到达|倒计时/.test(activityText));
+        const activityHeight = !showActivity ? 0 : cityInfo ? 4 + 18 * activityText.split('\n').reduce((lines, line) =>
+            lines + Math.max(1, Math.ceil(line.length * 12 / Math.max(1, contentWidth - 24))), 0) : 36;
         const durable = this.durableNode.active, showDurableText = durable && !this._occupying;
         const secondaryHeight = Math.ceil(secondary.length / 2) * 42;
         const detailsHeight = yieldHeight + activityHeight + (showDurableText ? 24 : 0) + (this.bgMain.active ? 24 : 0) + (durable ? 12 : 0);
@@ -608,7 +613,7 @@ export default class MapClickUILogic extends Component {
         this._panelHeight = height;
         const selected = this._selectInSidebar; this._selectInSidebar = false;
         const key = JSON.stringify([width, height, this._data.x, this._data.y, this._data.level, this.labelName.string,
-            this.labelUnion.string, this.labelLunxian.string, yieldText, showActivity, showDurableText, this.bgMain.active,
+            this.labelUnion.string, this.labelLunxian.string, yieldText, activityText, showActivity, showDurableText, this.bgMain.active,
             this.labelDurable.string,
             this._occupying, yields, marking, this.buttons().map(b => [b.node.active, b.interactable])]);
         if (key === this._presentationKey) {
@@ -623,7 +628,7 @@ export default class MapClickUILogic extends Component {
         const top = height / 2;
         const resource = { 52: 'forest', 53: 'iron', 54: 'quarry', 55: 'grain' }[this._data.type];
         const art = this._data.isEmpty ? '' : this._data instanceof MapCityData
-            ? `player_city_lv${Math.max(1, Math.min(30, this._data.level || 1))}` : gate ? (gate.crossing === 'bridge' ? BRIDGE_ART : GATE_ART)
+            ? playerCityArt(Math.max(1, Math.min(30, this._data.level || 1))) : gate ? (gate.crossing === 'bridge' ? BRIDGE_ART : GATE_ART)
                 : resource ? `${resource}_lv${Math.max(1, Math.min(10, this._data.level || 1))}`
                     : this._data.type === MapResType.SYS_CITY ? WorldMapArt.citySprite(this._data.level, this._data) : 'fort';
         landPortrait(this._panel, width, top, art);
@@ -739,7 +744,7 @@ export default class MapClickUILogic extends Component {
         const ui = this.bgSelect.getComponent(UITransform);
         const gate = this._data && WorldCampaign.gateAt(this._data.x, this._data.y);
         const city = !gate && this._data?.type === MapResType.SYS_CITY;
-        const key = `${gate?.id || ''}:${city ? 'city' : ''}:${ui.width}:${ui.height}:${Math.round(zoom * 40)}`;
+        const key = `${this._data?.x},${this._data?.y}:${gate?.id || ''}:${city ? 'city' : ''}:${ui.width}:${ui.height}:${Math.round(zoom * 40)}`;
         if (key === this.selectionKey) return;
         this.selectionKey = key;
         for (const name of ['SelectionOutline', 'SelectionPulse']) {
@@ -754,7 +759,8 @@ export default class MapClickUILogic extends Component {
         }
         if (gate) {
             const config = WorldCampaign.config;
-            const paths = gateSelectionPaths(gate.level, gateMirrored(gate.x, gate.y, config.width, config.height, gate), gate);
+            const paths = gateSelectionPaths(gate.level, gateMirrored(gate.x, gate.y, config.width, config.height, gate), gate,
+                MapUtil.tileSize.width, MapUtil.tileSize.height);
             const g = inkSurface(this.bgSelect, 'GateSelection', 1, 1, null, null); g.node.active = true;
             // 基脚和桥头用短角标，屏幕长度有上限，缩近时也不盖住细节。
             for (const [thickness, color] of [[4, new Color(35, 32, 22, 180)], [2, new Color(255, 222, 147, 245)]] as const) {

@@ -1,0 +1,37 @@
+{
+  "change": "校正第二阶段主城左后围墙，使其与右前围墙平行",
+  "mode": "built-in image_gen",
+  "source": "assets/resources/ui/world/player-city-grid-10.png",
+  "output": "assets/resources/ui/world/player-city-grid-10-wall-v2.png",
+  "prompt": "Use case: precise-object-edit. Make a localized geometry correction to this exact transparent 1040 by 520 isometric Chinese courtyard city game sprite. The only intended edit is the rear-left / upper-left outer perimeter wall, the diagonal wall running from the LEFTMOST corner tower toward the TOP/BACK corner tower, behind the main hall. Keep the original identity, every building, the main hall, both courtyard compounds, gate, trees, paved plaza, other three walls and four towers in their exact positions and preserve their existing shapes. Correct the selected wall so its parapet, wall cap, inner base and stone courses each follow clean SINGLE STRAIGHT PARALLEL lines in the same 2:1 isometric grid as the opposite front-right wall. Its direction is up-right with one pixel of vertical rise per two pixels of horizontal run (screen-space slope -0.5). At the left exposed section, eliminate the leaning/bent wall edge and crooked seams immediately to the right of the left corner tower. The wall's vertical seams must remain vertical and its thickness and height must be consistent; no localized wedge, skew, bow, kink, or tapered slab. It joins the existing towers flush and naturally continues behind the main hall. Approximate wall cap guide in source pixels: (125,241) to (497,55), occluded by the hall where appropriate. Ground-side wall guide is parallel, roughly (125,273) to (497,87). These guides are construction instructions, NOT colored marks to draw. Keep the towers, all roof ridges, doorposts and steps unchanged. Preserve the existing hand-painted game style, warm grey stonework and upper-left light, original color palette, texture density, exact overall diamond footprint, complete uncropped silhouette and actual transparent background. This is NOT a redesign or a rotated camera view. Do not enlarge the city, do not move its center, do not change the lower front ground edge, do not add terrain outside. Output just the corrected full sprite with the original 2:1 canvas framing. No text, arrows, guides, borders or checkerboard.",
+  "processing": {
+    "resize": [
+      1040,
+      520
+    ],
+    "fit": "inside",
+    "filter": "bicubic",
+    "transparent": true
+  },
+  "outputHash": "0b31900c02b31136c4af77d8ef009bbd4bc593db97ae4f55078640f839e00f89",
+  "texture": {
+    "filter": "linear",
+    "wrap": "clamp",
+    "mipmap": true
+  },
+  "validation": {
+    "visibleWallAngleDifferenceDegrees": {
+      "before": 3.4566071619502345,
+      "after": 0.8919516572402415
+    },
+    "method": "按真实 PNG alpha≥192，拟合左后墙露出段 x=140..210 的上边缘与右前墙 x=565..655 的下边缘；石砖锯齿造成亚像素采样误差。",
+    "cityLevels": 31,
+    "tileSizes": 4,
+    "opaquePixels": 7567055,
+    "clippedPixels": 0,
+    "changedProfiles": [
+      10
+    ],
+    "runtimePreview": "已恢复 Game View，画面停在登录页；尚未验证登录后的主城实际场景。"
+  }
+}

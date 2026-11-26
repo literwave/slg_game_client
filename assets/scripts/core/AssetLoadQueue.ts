@@ -70,7 +70,7 @@ export default class AssetLoadQueue {
                 if (background) {
                     this.backgroundRunning--;
                     // 每张图/每个界面之间给渲染和输入留出时间，不连续挤占解码。
-                    this.backgroundReadyAt = Date.now() + 120;
+                    this.backgroundReadyAt = Date.now() + 40;
                 }
                 this.schedule();
             });

@@ -1,0 +1,3698 @@
+{
+  "1": {
+    "1": {
+      "Type": 1,
+      "Level": 1,
+      "Name": "1级县城",
+      "Durability": 4000,
+      "Team": [
+        {
+          "mid": 21,
+          "pos": 1
+        },
+        {
+          "mid": 41,
+          "pos": 2
+        },
+        {
+          "mid": 31,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 2,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 300
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 300
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 120
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 180
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 3
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 180
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 180
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 80
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 2
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 120
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 120
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 40
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 80
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 1
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "2": {
+      "Type": 1,
+      "Level": 2,
+      "Name": "2级县城",
+      "Durability": 5000,
+      "Team": [
+        {
+          "mid": 22,
+          "pos": 1
+        },
+        {
+          "mid": 42,
+          "pos": 2
+        },
+        {
+          "mid": 32,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 2,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 300
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 5
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 300
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 300
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 120
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 180
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 3
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 80
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 120
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 2
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "3": {
+      "Type": 1,
+      "Level": 3,
+      "Name": "3级县城",
+      "Durability": 6000,
+      "Team": [
+        {
+          "mid": 23,
+          "pos": 1
+        },
+        {
+          "mid": 43,
+          "pos": 2
+        },
+        {
+          "mid": 33,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 2,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 320
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 480
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 8
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 480
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 480
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 5
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 320
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 320
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 120
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 3
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "4": {
+      "Type": 1,
+      "Level": 4,
+      "Name": "4级县城",
+      "Durability": 7000,
+      "Team": [
+        {
+          "mid": 24,
+          "pos": 1
+        },
+        {
+          "mid": 44,
+          "pos": 2
+        },
+        {
+          "mid": 34,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 3,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 480
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 10
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 6
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 480
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 480
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 4
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "5": {
+      "Type": 1,
+      "Level": 5,
+      "Name": "5级县城",
+      "Durability": 8000,
+      "Team": [
+        {
+          "mid": 25,
+          "pos": 1
+        },
+        {
+          "mid": 45,
+          "pos": 2
+        },
+        {
+          "mid": 35,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 3,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1080
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 13
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1080
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1080
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 640
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 8
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 5
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "6": {
+      "Type": 1,
+      "Level": 6,
+      "Name": "6级县城",
+      "Durability": 9000,
+      "Team": [
+        {
+          "mid": 26,
+          "pos": 1
+        },
+        {
+          "mid": 46,
+          "pos": 2
+        },
+        {
+          "mid": 36,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 4,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 15
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 900
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 9
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 6
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "7": {
+      "Type": 1,
+      "Level": 7,
+      "Name": "7级县城",
+      "Durability": 10000,
+      "Team": [
+        {
+          "mid": 27,
+          "pos": 1
+        },
+        {
+          "mid": 47,
+          "pos": 2
+        },
+        {
+          "mid": 37,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 4,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 3500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 3500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 2100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 18
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 840
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 11
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 560
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 840
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 7
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "8": {
+      "Type": 1,
+      "Level": 8,
+      "Name": "8级县城",
+      "Durability": 11000,
+      "Team": [
+        {
+          "mid": 28,
+          "pos": 1
+        },
+        {
+          "mid": 48,
+          "pos": 2
+        },
+        {
+          "mid": 38,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 5,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 4800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 4800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1920
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 2880
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 20
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2880
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2880
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 12
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1920
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1920
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 760
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 8
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    }
+  },
+  "2": {
+    "1": {
+      "Type": 2,
+      "Level": 1,
+      "Name": "1级郡城",
+      "Durability": 9500,
+      "Team": [
+        {
+          "mid": 21,
+          "pos": 1
+        },
+        {
+          "mid": 41,
+          "pos": 2
+        },
+        {
+          "mid": 31,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 2,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 180
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 4
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 120
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 2
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 180
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 180
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 80
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 2
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "2": {
+      "Type": 2,
+      "Level": 2,
+      "Name": "2级郡城",
+      "Durability": 11000,
+      "Team": [
+        {
+          "mid": 22,
+          "pos": 1
+        },
+        {
+          "mid": 42,
+          "pos": 2
+        },
+        {
+          "mid": 32,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 3,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 760
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 760
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 300
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 460
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 8
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 180
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 5
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 300
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 300
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 120
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 180
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 3
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "3": {
+      "Type": 2,
+      "Level": 3,
+      "Name": "3级郡城",
+      "Durability": 12500,
+      "Team": [
+        {
+          "mid": 23,
+          "pos": 1
+        },
+        {
+          "mid": 43,
+          "pos": 2
+        },
+        {
+          "mid": 33,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 3,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 480
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 11
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 7
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 480
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 480
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 5
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "4": {
+      "Type": 2,
+      "Level": 4,
+      "Name": "4级郡城",
+      "Durability": 14000,
+      "Team": [
+        {
+          "mid": 24,
+          "pos": 1
+        },
+        {
+          "mid": 44,
+          "pos": 2
+        },
+        {
+          "mid": 34,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 4,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1080
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 15
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1080
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1080
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 640
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 9
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 6
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "5": {
+      "Type": 2,
+      "Level": 5,
+      "Name": "5级郡城",
+      "Durability": 15500,
+      "Team": [
+        {
+          "mid": 25,
+          "pos": 1
+        },
+        {
+          "mid": 45,
+          "pos": 2
+        },
+        {
+          "mid": 35,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 5,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2700
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2700
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1080
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1620
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 19
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1620
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1620
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 640
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 980
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 11
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1080
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1080
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 640
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 8
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "6": {
+      "Type": 2,
+      "Level": 6,
+      "Name": "6级郡城",
+      "Durability": 17000,
+      "Team": [
+        {
+          "mid": 26,
+          "pos": 1
+        },
+        {
+          "mid": 46,
+          "pos": 2
+        },
+        {
+          "mid": 36,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 6,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 3760
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 3760
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 2260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 23
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2240
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2240
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 900
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1340
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 14
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 900
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 9
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "7": {
+      "Type": 2,
+      "Level": 7,
+      "Name": "7级郡城",
+      "Durability": 18500,
+      "Team": [
+        {
+          "mid": 27,
+          "pos": 1
+        },
+        {
+          "mid": 47,
+          "pos": 2
+        },
+        {
+          "mid": 37,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 7,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 5240
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 5240
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 2100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 3140
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 26
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 3160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 3160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1900
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 16
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 840
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 11
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "8": {
+      "Type": 2,
+      "Level": 8,
+      "Name": "8级郡城",
+      "Durability": 20000,
+      "Team": [
+        {
+          "mid": 28,
+          "pos": 1
+        },
+        {
+          "mid": 48,
+          "pos": 2
+        },
+        {
+          "mid": 38,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 8,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 7200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 7200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 2880
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 4320
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 30
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 4320
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 4320
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 2600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 18
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2880
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2880
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 12
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    }
+  },
+  "3": {
+    "1": {
+      "Type": 3,
+      "Level": 1,
+      "Name": "1级关隘",
+      "Durability": 14000,
+      "Team": [
+        {
+          "mid": 21,
+          "pos": 1
+        },
+        {
+          "mid": 41,
+          "pos": 2
+        },
+        {
+          "mid": 31,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 3,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 420
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 420
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 4
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 2
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 60
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 2
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "2": {
+      "Type": 3,
+      "Level": 2,
+      "Name": "2级关隘",
+      "Durability": 16000,
+      "Team": [
+        {
+          "mid": 22,
+          "pos": 1
+        },
+        {
+          "mid": 42,
+          "pos": 2
+        },
+        {
+          "mid": 32,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 3,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 700
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 700
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 420
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 7
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 420
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 420
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 4
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 120
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 3
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "3": {
+      "Type": 3,
+      "Level": 3,
+      "Name": "3级关隘",
+      "Durability": 18000,
+      "Team": [
+        {
+          "mid": 23,
+          "pos": 1
+        },
+        {
+          "mid": 43,
+          "pos": 2
+        },
+        {
+          "mid": 33,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 4,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1120
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1120
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 11
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 7
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 180
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 4
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "4": {
+      "Type": 3,
+      "Level": 4,
+      "Name": "4级关隘",
+      "Durability": 20000,
+      "Team": [
+        {
+          "mid": 24,
+          "pos": 1
+        },
+        {
+          "mid": 44,
+          "pos": 2
+        },
+        {
+          "mid": 34,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 5,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 14
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 9
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 280
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 6
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "5": {
+      "Type": 3,
+      "Level": 5,
+      "Name": "5级关隘",
+      "Durability": 22000,
+      "Team": [
+        {
+          "mid": 25,
+          "pos": 1
+        },
+        {
+          "mid": 45,
+          "pos": 2
+        },
+        {
+          "mid": 35,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 6,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2520
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2520
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1520
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 18
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1520
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1520
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 920
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 11
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 7
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "6": {
+      "Type": 3,
+      "Level": 6,
+      "Name": "6级关隘",
+      "Durability": 24000,
+      "Team": [
+        {
+          "mid": 26,
+          "pos": 1
+        },
+        {
+          "mid": 46,
+          "pos": 2
+        },
+        {
+          "mid": 36,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 7,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 3500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 3500
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 2100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 21
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 840
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 13
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 560
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 840
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 9
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "7": {
+      "Type": 3,
+      "Level": 7,
+      "Name": "7级关隘",
+      "Durability": 26000,
+      "Team": [
+        {
+          "mid": 27,
+          "pos": 1
+        },
+        {
+          "mid": 47,
+          "pos": 2
+        },
+        {
+          "mid": 37,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 8,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 4900
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 4900
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1960
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 2940
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 25
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2940
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2940
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1180
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1760
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 15
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1960
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1960
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 780
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1180
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 10
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "8": {
+      "Type": 3,
+      "Level": 8,
+      "Name": "8级关隘",
+      "Durability": 28000,
+      "Team": [
+        {
+          "mid": 28,
+          "pos": 1
+        },
+        {
+          "mid": 48,
+          "pos": 2
+        },
+        {
+          "mid": 38,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 10,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 6720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 6720
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 2680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 4040
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 28
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 4040
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 4040
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1620
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 2420
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 17
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1080
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 11
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    }
+  },
+  "4": {
+    "1": {
+      "Type": 4,
+      "Level": 1,
+      "Name": "1级州府",
+      "Durability": 22500,
+      "Team": [
+        {
+          "mid": 21,
+          "pos": 1
+        },
+        {
+          "mid": 41,
+          "pos": 2
+        },
+        {
+          "mid": 31,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 3,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 240
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 360
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 5
+            },
+            {
+              "reward_type": 1,
+              "item_id": 103,
+              "item_count": 2
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 360
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 360
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 140
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 220
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 3
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 240
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 240
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 100
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 140
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 2
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "2": {
+      "Type": 4,
+      "Level": 2,
+      "Name": "2级州府",
+      "Durability": 25000,
+      "Team": [
+        {
+          "mid": 22,
+          "pos": 1
+        },
+        {
+          "mid": 42,
+          "pos": 2
+        },
+        {
+          "mid": 32,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 4,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 10
+            },
+            {
+              "reward_type": 1,
+              "item_id": 103,
+              "item_count": 2
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 240
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 360
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 6
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 240
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 4
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "3": {
+      "Type": 4,
+      "Level": 3,
+      "Name": "3级州府",
+      "Durability": 27500,
+      "Team": [
+        {
+          "mid": 23,
+          "pos": 1
+        },
+        {
+          "mid": 43,
+          "pos": 2
+        },
+        {
+          "mid": 33,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 5,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 640
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 960
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 15
+            },
+            {
+              "reward_type": 1,
+              "item_id": 103,
+              "item_count": 2
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 960
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 960
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 380
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 580
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 9
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 640
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 640
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 260
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 380
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 6
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "4": {
+      "Type": 4,
+      "Level": 4,
+      "Name": "4级州府",
+      "Durability": 30000,
+      "Team": [
+        {
+          "mid": 24,
+          "pos": 1
+        },
+        {
+          "mid": 44,
+          "pos": 2
+        },
+        {
+          "mid": 34,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 6,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2400
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 960
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 20
+            },
+            {
+              "reward_type": 1,
+              "item_id": 103,
+              "item_count": 2
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 580
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 860
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 12
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 960
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 960
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 380
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 580
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 8
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "5": {
+      "Type": 4,
+      "Level": 5,
+      "Name": "5级州府",
+      "Durability": 32500,
+      "Team": [
+        {
+          "mid": 25,
+          "pos": 1
+        },
+        {
+          "mid": 45,
+          "pos": 2
+        },
+        {
+          "mid": 35,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 7,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 3600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 3600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 2160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 25
+            },
+            {
+              "reward_type": 1,
+              "item_id": 103,
+              "item_count": 2
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2160
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 860
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1300
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 15
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 1440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 1440
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 580
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 860
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 10
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "6": {
+      "Type": 4,
+      "Level": 6,
+      "Name": "6级州府",
+      "Durability": 35000,
+      "Team": [
+        {
+          "mid": 26,
+          "pos": 1
+        },
+        {
+          "mid": 46,
+          "pos": 2
+        },
+        {
+          "mid": 36,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 8,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 5000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 5000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 2000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 3000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 30
+            },
+            {
+              "reward_type": 1,
+              "item_id": 103,
+              "item_count": 2
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 3000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 3000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 18
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 12
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "7": {
+      "Type": 4,
+      "Level": 7,
+      "Name": "7级州府",
+      "Durability": 37500,
+      "Team": [
+        {
+          "mid": 27,
+          "pos": 1
+        },
+        {
+          "mid": 47,
+          "pos": 2
+        },
+        {
+          "mid": 37,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 10,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 7000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 7000
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 2800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 4200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 35
+            },
+            {
+              "reward_type": 1,
+              "item_id": 103,
+              "item_count": 2
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 4200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 4200
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 2520
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 21
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 2800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 2800
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1120
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 1680
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 14
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    },
+    "8": {
+      "Type": 4,
+      "Level": 8,
+      "Name": "8级州府",
+      "Durability": 40000,
+      "Team": [
+        {
+          "mid": 28,
+          "pos": 1
+        },
+        {
+          "mid": 48,
+          "pos": 2
+        },
+        {
+          "mid": 38,
+          "pos": 3
+        }
+      ],
+      "TeamCount": 12,
+      "RankReward": [
+        {
+          "rank": 1,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 9600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 9600
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 3840
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 5760
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 40
+            },
+            {
+              "reward_type": 1,
+              "item_id": 103,
+              "item_count": 3
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 5760
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 5760
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 2300
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 3460
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 24
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "reward": [
+            {
+              "reward_type": 1,
+              "item_id": 1,
+              "item_count": 3840
+            },
+            {
+              "reward_type": 1,
+              "item_id": 2,
+              "item_count": 3840
+            },
+            {
+              "reward_type": 1,
+              "item_id": 3,
+              "item_count": 1540
+            },
+            {
+              "reward_type": 1,
+              "item_id": 4,
+              "item_count": 2300
+            },
+            {
+              "reward_type": 1,
+              "item_id": 100,
+              "item_count": 16
+            }
+          ]
+        }
+      ],
+      "Desc": "守军按单队×队数，伤害前3名有奖"
+    }
+  }
+}

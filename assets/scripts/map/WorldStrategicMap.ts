@@ -4,6 +4,7 @@ import MapUtil from './MapUtil';
 import WorldCampaign, { CampaignCity, CampaignGate } from './WorldCampaign';
 import WorldMapArt from './WorldMapArt';
 import { playerCityAppearance } from './PlayerCityAppearance';
+import PlayerCityGround from './PlayerCityGround';
 import { BRIDGE_ART, GATE_ART } from './GateGeometry';
 import { caption, inkSurface, ManagementColors, place } from './ui/ManagementStyle';
 import CityCommand from '../world/CityCommand';
@@ -12,8 +13,10 @@ import { EventMgr } from '../utils/EventMgr';
 import { LogicEvent } from '../common/LogicEvent';
 import { resolveCityOwner } from './CityOwnership';
 import { cityOwnerColor, drawCityFlag } from './CityMapPresentation';
+import { cityOverviewUsesNearProjection } from './CityFootprint';
+import { groundArtScaleY } from './MapProjection';
 const { ccclass } = _decorator;
-interface GateMarker { node: Node; plate: Graphics; title: Label; gate: CampaignGate; x: number; y: number; ownerKey?: string; }
+interface GateMarker { node: Node; plate: Graphics; title: Label; gate: CampaignGate; x: number; y: number; artHeight: number; ownerKey?: string; }
 interface HomeMarker { node: Node; sprite: Sprite; plate: Graphics; city: { x: number; y: number; level: number }; art: string; height: number; }
 interface CityMarker { node: Node; title: Node; city: CampaignCity; x: number; y: number; width: number; height: number; ownerKey?: string; }
 
@@ -113,7 +116,16 @@ export default class WorldStrategicMap extends Component {
         node.addComponent(UITransform).setAnchorPoint(.5, .5);
         const sprite = node.addComponent(Sprite); sprite.trim = false;
         const width = city.level >= 8 ? 64 : city.level >= 5 ? 52 : 42;
-        WorldMapArt.apply(sprite, WorldMapArt.cityOverviewSprite(city.level, city), width);
+        // 十城总览与近景同源，共用城基四角；缺省旧资源沿用原来的图片比例。
+        if (cityOverviewUsesNearProjection(city)) {
+            const span = city.footprintRadius * 2 + 1;
+            WorldMapArt.applyCity(sprite, city.level, city, width / span,
+                width / span * MapUtil.tileSize.height / MapUtil.tileSize.width, true);
+        } else {
+            WorldMapArt.apply(sprite, WorldMapArt.cityOverviewSprite(city.level, city), width);
+            const ui = node.getComponent(UITransform);
+            ui.setContentSize(width, ui.height * groundArtScaleY(MapUtil.tileSize.width, MapUtil.tileSize.height));
+        }
         const title = this.titles.find(t => t.node.name === 'Region' + city.region)?.node;
         this.cityMarkers.push({ node, title, city, x: point.x, y: point.y, width,
             height: node.getComponent(UITransform).height });
@@ -146,6 +158,8 @@ export default class WorldStrategicMap extends Component {
         art.addComponent(UITransform).setAnchorPoint(.5, .5);
         const sprite = art.addComponent(Sprite); sprite.trim = false;
         WorldMapArt.apply(sprite, gate.crossing === 'bridge' ? BRIDGE_ART : GATE_ART, 50);
+        const artUi = art.getComponent(UITransform);
+        artUi.setContentSize(50, artUi.height * groundArtScaleY(MapUtil.tileSize.width, MapUtil.tileSize.height));
         art.setPosition(0, 8);
         const plate = inkSurface(root, 'Nameplate', 94, 24, null, null); plate.node.setPosition(0, -22);
         const title = caption(plate.node, 'Name', gate.name, 0, 0, 86, 14, ManagementColors.text, Label.HorizontalAlign.CENTER);
@@ -154,19 +168,19 @@ export default class WorldStrategicMap extends Component {
         badge.node.setPosition(32, 7);
         const level = caption(badge.node, 'Level', String(gate.level), 0, 0, 16, 11, ManagementColors.gold, Label.HorizontalAlign.CENTER);
         place(level.node, 0, 0, 16, 18);
-        this.gateMarkers.push({ node: root, plate, title, gate, x: point.x, y: point.y });
+        this.gateMarkers.push({ node: root, plate, title, gate, x: point.x, y: point.y, artHeight: artUi.height });
     }
 
     /** 命中实际显示的关城图和名称牌，点击名称也定位到关城中心。 */
     public pickGate(point: Vec2): CampaignGate | null {
         this.lateUpdate();
         if (!this.root?.active || !this.camera) return null;
-        const scale = this.camera.orthoHeight * 2 / Math.max(1, view.getVisibleSize().height);
         let nearest: CampaignGate = null, distance = Infinity;
         for (const marker of this.gateMarkers) {
             if (!marker.node.active) continue;
+            const scale = marker.node.scale.x;
             const x = (point.x - marker.x) / scale, y = (point.y - marker.y) / scale;
-            const iconHit = Math.abs(x) <= 28 && y >= -10 && y <= 32;
+            const iconHit = Math.abs(x) <= 28 && Math.abs(y - 8) <= marker.artHeight / 2 + 3;
             const titleHit = marker.plate.node.active && Math.abs(x) <= 47 && y >= -36 && y <= -10;
             const score = x * x + y * y;
             if ((iconHit || titleHit) && score < distance) { nearest = marker.gate; distance = score; }
@@ -202,7 +216,9 @@ export default class WorldStrategicMap extends Component {
         }
         const marker = this.homeMarker, art = playerCityAppearance(home.level).art;
         if (marker.art !== art) {
-            WorldMapArt.apply(marker.sprite, art, 40);
+            WorldMapArt.apply(marker.sprite, art, 40, () => PlayerCityGround.apply(marker.sprite, art));
+            const ui = marker.sprite.node.getComponent(UITransform);
+            ui.setContentSize(40, 40 * MapUtil.tileSize.height / MapUtil.tileSize.width);
             marker.art = art;
             marker.height = marker.sprite.node.getComponent(UITransform).height;
             marker.plate.node.setPosition(0, -marker.height / 2 - 12, 0);

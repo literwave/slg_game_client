@@ -1,6 +1,8 @@
 import { _decorator, Component, Sprite, Label, UITransform } from 'cc';
 const { ccclass, property } = _decorator;
 import WorldMapArt from '../WorldMapArt';
+import MapUtil from '../MapUtil';
+import { groundArtScaleY } from '../MapProjection';
 
 import DateUtil from "../../utils/DateUtil";
 import { MapBuildData } from "../MapBuildProxy";
@@ -36,8 +38,10 @@ export default class FacilityBuildLogic extends Component {
 
         if (this._data) {
         if (this._data.type == MapResType.FORTRESS){
-        WorldMapArt.apply(this.spr, 'fort', 185);
-        this.spr.node.getComponent(UITransform).setAnchorPoint(.5, .25);
+        WorldMapArt.apply(this.spr, 'fort', MapUtil.tileSize.width * .925);
+        const transform = this.spr.node.getComponent(UITransform);
+        transform.setAnchorPoint(.5, .25);
+        transform.setContentSize(transform.width, transform.height * groundArtScaleY(MapUtil.tileSize.width, MapUtil.tileSize.height));
 
         let resData: MapResData = MapCommand.getInstance().proxy.getResData(this._data.id);
         let resCfg: MapResConfig = MapCommand.getInstance().proxy.getResConfig(resData.type, resData.level);

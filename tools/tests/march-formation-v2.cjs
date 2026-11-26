@@ -2,6 +2,20 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), ts = require(process.argv[2]);
 const root = path.resolve(__dirname, '../..'), cache = new Map(), loads = [];
+const { Jimp } = require('../../extensions/cocos-ai-copilot/lib/asset-preview/image-core');
+function posePixels(bitmap, frame) {
+    let count = 0, red = 0, blue = 0, bottom = -1, edge = 0;
+    const { x: ox, y: oy, width: w, height: h } = frame.rect;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const p = ((oy + y) * bitmap.width + ox + x) * 4, d = bitmap.data;
+        if (d[p + 3] < 32) continue;
+        count++; bottom = y;
+        if (x < 3 || y < 3 || x >= w - 3 || y >= h - 3) edge++;
+        if (d[p] > d[p + 1] * 1.5 && d[p] > d[p + 2] * 1.6 && d[p] > 70) red++;
+        if (d[p + 2] > d[p] * 1.07 && d[p + 1] > d[p] * 1.02) blue++;
+    }
+    return { count, red, blue, bottom: bottom - frame.offset.y, edge };
+}
 let now = 1000;
 class Vec2 {
     constructor(x = 0, y = 0) { this.x = x; this.y = y; }
@@ -63,9 +77,10 @@ const cc = { Vec2, UITransform, Sprite, SpriteFrame, Graphics, AnimationClip, An
         queueMicrotask(() => callback(null, sheet));
     } }
 };
-const project = p => new Vec2((p.x - p.y) * 128, -(p.x + p.y) * 64);
+const tileHeight = Number(process.env.MAP_TEST_TILE_HEIGHT || 128);
+const project = p => new Vec2((p.x - p.y) * 128, -(p.x + p.y) * tileHeight / 2);
 const stubs = {
-    'map/MapUtil': { default: { mapCellToPixelPoint: project } },
+    'map/MapUtil': { default: { mapCellToPixelPoint: project, tileSize: { width: 256, height: tileHeight } } },
     'utils/DateUtil': { default: { monotonicNow: () => now } }
 };
 function load(name) {
@@ -84,6 +99,8 @@ function create(t = troop) { const host = new Node('Army'), formation = new Form
 const emptyPath = { path: { length: 0 } };
 function update(f, dx = 1, dy = 0, moving = false) { now += 16; f.update(emptyPath, { position: { x: 10, y: 10 }, towards: { x: 10 + dx, y: 10 + dy }, moving }); }
 async function main() {
+    const standingPixels = (await Jimp.read(path.join(root, 'assets/resources/ui/march/guard_march_walk12.png'))).bitmap;
+    const kneelingPixels = (await Jimp.read(path.join(root, 'assets/resources/ui/march/guard-kneel-redplume-v2.png'))).bitmap;
     const renderLayer = new Node('WorldDepthActors'), host = new Node('Army');
     renderLayer.addChild(host); host.setPosition(project({ x: 10, y: 10 }));
     const detached = new Formation(host, renderLayer); detached.configure(troop, true);
@@ -117,13 +134,15 @@ async function main() {
     assert.equal(f.members.length, 7);
     assert.equal(f.members.filter(m => m.lag === 0).length, 1, '多武将部队仍由一个视觉主将领队');
     assert.ok(f.members.every(m => m.sprite.node.active && m.moving && m.sprite.node.scale.x === -1), '资源完成后直接进入当前左行朝向');
-    assert.equal(loads.length, 7, '骑马步行动作、分段腿、独立站姿、步兵及驻守图集在多支部队之间共享');
+    assert.equal(loads.length, 6, '骑马步行动作、分段腿、独立站姿、步兵及驻守图集在多支部队之间共享');
     assert.ok(loads.includes('ui/march/guard_march_walk12/spriteFrame'), '步兵必须使用完整十二帧步态');
     assert.ok(loads.includes('ui/march/commander_walk_grounded_primary_v6/spriteFrame'), '骑将必须使用重绘朝向和四蹄的十二帧步态');
     assert.ok(!loads.some(name => /march_(sheet|diagonal|front_walk|side_walk)|guard_march_cycle/.test(name)),
         '增加动作帧后不能继续加载旧的整张补丁图集');
-    assert.equal(loads.filter(name => name === 'ui/march/guard_defend_sheet/spriteFrame').length, 1,
-        '半跪持盾图集只能共享加载一次');
+    assert.equal(loads.filter(name => name === 'ui/march/guard-kneel-redplume-v2/spriteFrame').length, 1,
+        '同一红缨蓝甲枪兵的蹲姿图集只能共享加载一次');
+    assert.ok(!loads.some(name => /guard_defend_sheet|formation_idle_sheet/.test(name)),
+        '操练和占领不能加载会换衣服的旧版士兵或骑将');
     for (const kind of ['cavalry', 'infantry']) {
         const set = await load('map/entries/MarchAnimationLibrary').loadMarchAnimations(kind);
         assert.equal(set.clips.length, 8); assert.equal(set.idleFrames.length, 8);
@@ -148,14 +167,27 @@ async function main() {
             assert.equal(pick(179).clip.name, 'cavalry_walk_l');
             assert.equal(pick(-179).clip.name, 'cavalry_walk_l', '跨越角度零点不反复切换');
         }
-        const guardColumns = kind === 'cavalry' ? 4 : 3;
-        const guardIndices = kind === 'cavalry' ? [0, 1, 2, 1, 0, 7, 6, 7] : [0, 1, 2, 1, 0, 3, 4, 3];
+        const guardColumns = kind === 'cavalry' ? 5 : 3;
+        const guardIndices = [0, 1, 2, 1, 0, 3, 4, 3];
         for (const [i, index] of guardIndices.entries()) {
-            assert.equal(set.guardFrames[i].rect.x, index % guardColumns * 256, '哨兵朝向必须使用对应的侧/斜/正视列');
-            assert.equal(set.guardFrames[i].rect.y, Math.floor(index / guardColumns) * 256,
+            assert.equal(set.guardFrames[i].rect.x, index % guardColumns * 192, '哨兵朝向必须使用对应的侧/斜/正视列');
+            assert.equal(set.guardFrames[i].rect.y, Math.floor(index / guardColumns) * 192,
                 '前后防区不能都误用正面图');
-            if (kind === 'infantry') assert.ok(set.guardFrames[i].name.startsWith('guard_defend_sheet_'),
-                '占领必须使用真正半跪姿势，不能把站立图片压扁');
+            if (kind === 'infantry') {
+                assert.ok(set.guardFrames[i].name.startsWith('guard-kneel-redplume-v2_'),
+                    '占领必须使用同角色的真正半跪姿势，不能把站立图片压扁');
+                assert.deepEqual(set.guardFrames[i].originalSize, set.idleFrames[i].originalSize,
+                    '站立和蹲伏使用同一画布与落脚点，切换不得改变缩放');
+                assert.notEqual(set.guardFrames[i], set.idleFrames[i]);
+                const standing = posePixels(standingPixels, set.idleFrames[i]);
+                const kneeling = posePixels(kneelingPixels, set.guardFrames[i]);
+                assert.equal(kneeling.bottom, standing.bottom, '实际 PNG 鞋底在站立/蹲伏切换时必须对齐');
+                assert.equal(kneeling.edge, 0, '枪尖和靴子不能溢出格子或串入相邻方向');
+                assert.ok(kneeling.count > 1000 && kneeling.count < 192 * 192 * .4,
+                    '蹲姿必须是带透明留白的人物，不是空帧或带背景的矩形');
+                assert.ok(kneeling.red / kneeling.count > .07 && kneeling.blue / kneeling.count > .06,
+                    '每个方向均保留红缨和蓝甲，不能回退到无红缨的褐甲盾兵');
+            } else assert.equal(set.guardFrames[i], set.idleFrames[i], '骑将驻守保持当前待机外观');
         }
         for (const [i, row] of [0, 1, 2, 1, 0, 3, 4, 3].entries()) {
             assert.equal(set.clips[i].frames.length, 12);
@@ -184,7 +216,7 @@ async function main() {
             });
         }
     }
-    console.log('PASS 七张共享图集、十二帧切片、骑马独立周期、正背面比例、站姿与驻守姿势');
+    console.log('PASS 六张共享图集、十二帧切片、骑马独立周期、正背面比例、同角色站姿与驻守姿势');
 
     const rigFormation = create(); await tick();
     update(rigFormation, 1, 0, true);
@@ -281,13 +313,20 @@ async function main() {
         const length = Math.hypot(dx, dy), forward = new Vec2(dx / length, dy / length);
         for (const m of formation.members) {
             assert.equal(m.facing, facing, '八个行进方向对应正确的正面/背面/镜像帧');
-            const foot = project({ x: 10 - forward.x * m.lag - forward.y * m.side, y: 10 - forward.y * m.lag + forward.x * m.side });
-            assert.ok(Vec2.distance(m.foot, foot) < .0001, '每个方向均先按地面队形排列再投影');
+            const center = project({x:10,y:10});
+            const foot = m.kind === 'infantry'
+                ? new Vec2(center.x + (m.attackIndex % 3 - 1) * 256 * .20,
+                    center.y + (.5 - Math.floor(m.attackIndex / 3)) * tileHeight * .35)
+                : center;
+            assert.ok(Vec2.distance(m.foot, foot) < .0001, '停驻前后两排水平对齐');
+            const offset = m.foot.clone().subtract(project({x:10,y:10}));
+            const cellX = offset.x / 256 - offset.y / tileHeight, cellY = -offset.x / 256 - offset.y / tileHeight;
+            assert.ok(Math.abs(cellX) <= .5 && Math.abs(cellY) <= .5, '停驻落脚点保持在同一格内');
         }
         for (const a of formation.members) for (const b of formation.members) {
             const dx = a.foot.x - b.foot.x, dy = a.foot.y - b.foot.y;
-            const cellDistance = Math.hypot(dx / 256 - dy / 128, -dx / 256 - dy / 128);
-            assert.ok(cellDistance <= .4, '紧凑两排护卫的落脚点不超过 0.4 格，避免摊开占多格');
+        const cellDistance = Math.hypot(dx / 256 - dy / tileHeight, -dx / 256 - dy / tileHeight);
+            assert.ok(cellDistance <= .79, '停驻队形展开但不跨出本格');
         }
         const ordered = formation.root.children.slice(1).map(n => n.position.y);
         assert.deepEqual(ordered, ordered.slice().sort((a, b) => b - a), '人物按落脚点遮挡排序');
@@ -323,7 +362,7 @@ async function main() {
         assert.equal(commandPoses.size,8,'commander must raise, point and recover during every siege cycle');
         assert.ok(formation.getSiegeVolley().sources.every(source=>source.index>=0),'commander never creates a fake projectile');
         formation.members.forEach((m,i)=>assert.equal(m.animation.stops,stopCounts[i],'no repeated animation stop'));
-        const groundFeet=formation.members.map(m=>({x:m.foot.x/256-m.foot.y/128,y:-m.foot.x/256-m.foot.y/128}));
+    const groundFeet=formation.members.map(m=>({x:m.foot.x/256-m.foot.y/tileHeight,y:-m.foot.x/256-m.foot.y/tileHeight}));
         const rank=p=>(p.x-10)*forward.x+(p.y-10)*forward.y;
         assert.ok(groundFeet.slice(1).every(p=>rank(p)>rank(groundFeet[0])),'commander behind both infantry ranks');
         formation.setSiegeTarget(new Vec2(10-dx,10-dy));
@@ -353,8 +392,8 @@ async function main() {
             for (const m of compact.members) {
                 const expected = project({ x: sample.position.x - m.lag, y: sample.position.y + m.side });
                 assert.ok(Vec2.distance(m.foot, expected) < .001, '共享平移不会产生速度相关的追赶距离');
-                assert.ok(Math.hypot((m.foot.x-center.x)/256-(m.foot.y-center.y)/128,
-                    -(m.foot.x-center.x)/256-(m.foot.y-center.y)/128) <= .4);
+        assert.ok(Math.hypot((m.foot.x-center.x)/256-(m.foot.y-center.y)/tileHeight,
+            -(m.foot.x-center.x)/256-(m.foot.y-center.y)/tileHeight) <= .4);
             }
         }
         compact.destroy();
@@ -372,7 +411,7 @@ async function main() {
         now += 16; exiting.update(exitPlayback, exitPlayback.sample(now));
         for (const member of exiting.members) {
             assert.equal(member.node.active, true, '在城内和城墙处均不能隐藏士兵');
-            const x = member.foot.x / 256 - member.foot.y / 128, y = -member.foot.x / 256 - member.foot.y / 128;
+        const x = member.foot.x / 256 - member.foot.y / tileHeight, y = -member.foot.x / 256 - member.foot.y / tileHeight;
             assert.ok(Math.abs(x - (10 - exitPlayback.distance + member.lag)) < .00001);
             assert.ok(Math.abs(y - (10 - member.side)) < .00001, '整队保持阵位沿服务端直线前进');
             assert.equal(member.sprite.color, undefined, '正常行走不额外使用透明度渐变');
@@ -402,7 +441,7 @@ async function main() {
     assert.deepEqual(arrival.members.map(m => [m.foot.x, m.foot.y, m.facing, m.animation.plays]), stopped, '驻留位置朝向和动画不反复跳动');
     assert.equal(march.state, 1, '显示层不改服务端业务状态');
     const jitter = create(); await tick();
-    const angle = deg => { const a = deg * Math.PI / 180, sx = Math.cos(a), sy = Math.sin(a); update(jitter, sx / 256 - sy / 128, -sx / 256 - sy / 128, true); };
+    const angle = deg => { const a = deg * Math.PI / 180, sx = Math.cos(a), sy = Math.sin(a); update(jitter, sx / 256 - sy / tileHeight, -sx / 256 - sy / tileHeight, true); };
     angle(20); const before = jitter.members[0].animation.plays;
     for (let i = 0; i < 20; i++) angle(i % 2 ? 23 : 20);
     assert.equal(jitter.members[0].animation.plays, before, '朝向边界的小幅变化不反复切动画');
@@ -452,7 +491,13 @@ async function main() {
         defense.setGuarding(false);
         for (let i = 0; i < 100; i++) update(defense, 1, 0, false);
         assert.ok(defense.members.every(m => !m.guardPose && !m.moving), '结束占领后收拢并恢复站姿');
-        for (const m of escorts) assert.ok(Vec2.distance(m.foot, project({ x: 10 - m.lag, y: 10 + m.side })) < .001);
+        const columns = escorts.length === 6 ? 3 : 2;
+        for (const m of escorts) {
+            const center = project({x:10,y:10});
+            const expected = new Vec2(center.x + (m.attackIndex % columns - (columns - 1) / 2) * 256 * .20,
+                center.y + (.5 - Math.floor(m.attackIndex / columns)) * tileHeight * .35);
+            assert.ok(Vec2.distance(m.foot, expected) < .001);
+        }
         defense.setGuarding(true);
         for (let i = 0; i < 30; i++) update(defense, 1, 0, true);
         assert.equal(defense.guardWeight, 0, '行军期间不能展开守备阵形');

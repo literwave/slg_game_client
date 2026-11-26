@@ -9,7 +9,7 @@ export interface MarchAnimationSet {
     /** 回放按自己的时间轴采样，与大地图共用图集而不启动独立动画时钟。 */
     walkFrames: SpriteFrame[][];
     idleFrames: SpriteFrame[];
-    /** 占领驻守姿势：步兵半跪举盾持枪，骑将留在中央警戒。 */
+    /** 同角色驻守姿势：红缨蓝甲步兵半跪持枪，骑将沿用当前坐骑和盔甲警戒。 */
     guardFrames?: SpriteFrame[];
     mirrored: boolean[];
     /** 骑将补充陡斜视角；停驻、驻守、攻城仍保留原八方向索引。 */
@@ -76,6 +76,7 @@ function loadSheet(path: string, columns: number, rows: number, canvasScale = 1,
         });
     });
     sheets.set(key, pending);
+    void pending.catch(() => { if (sheets.get(key) === pending) sheets.delete(key); });
     return pending;
 }
 
@@ -84,13 +85,24 @@ export function loadMarchAnimations(kind: MarchUnitKind): Promise<MarchAnimation
     let pending = sets.get(kind);
     if (pending) return pending;
     pending = (kind === 'cavalry' ? loadCavalryWalk() : loadInfantryWalk())
-        .then(set => loadGuardFrames(kind).then(guardFrames => {
-            set.guardFrames = guardFrames;
+        .then(set => {
+            // 先显示行走和待机；警戒姿势在后台补齐，不阻塞整支部队出现。
+            set.guardFrames = set.idleFrames;
+            void loadGuardFrames(kind, set.idleFrames).then(guardFrames => {
+                set.guardFrames = guardFrames;
+            }, error => {
+                // 姿势资源缺失时保持同角色站姿，不能退回另一套服装；共享加载只报一次。
+                console.warn('[MarchAnimation] guard', kind, error);
+                set.guardFrames = set.idleFrames;
+            });
             return set;
-        }, () => set));
+        });
     sets.set(kind, pending);
     // 同一图集加载失败只报告一次，避免每个队员重复刷屏；不自动重试或覆盖资源。
-    void pending.catch(error => console.error('[MarchAnimation]', kind, error));
+    void pending.catch(error => {
+        if (sets.get(kind) === pending) sets.delete(kind);
+        console.error('[MarchAnimation]', kind, error);
+    });
     return pending;
 }
 
@@ -137,16 +149,17 @@ async function loadCavalryWalk(): Promise<MarchAnimationSet> {
 }
 
 /** 驻守与行军图集分离，半跪姿势保持相同的身体比例和落脚点。 */
-function loadGuardFrames(kind: MarchUnitKind): Promise<SpriteFrame[]> {
+function loadGuardFrames(kind: MarchUnitKind, idleFrames: SpriteFrame[]): Promise<SpriteFrame[]> {
     if (kind === 'infantry') {
+        // 与 guard_march_walk12 同一红缨蓝甲枪兵，固定 192 方格和落脚点。
         // 3×2：右、右后、背 / 右前、正、左前。左侧沿用行军的镜像规则。
-        return loadSheet('ui/march/guard_defend_sheet', 3, 2).then(frames =>
-            [0, 1, 2, 1, 0, 3, 4, 3].map(index => frames[index]));
+        return loadSheet('ui/march/guard-kneel-redplume-v2', 3, 2).then(frames => {
+            // 对齐各朝向站姿的鞋底高度，仅移动画布内的落脚点，不缩放身体。
+            const offsetsY = [2, 2, 6, 8, 13, 8];
+            frames.forEach((frame, index) => { frame.offset = new Vec2(0, offsetsY[index]); });
+            return DIRECTION_ROWS.map(index => frames[index]);
+        });
     }
-    return loadSheet('ui/march/formation_idle_sheet', 4, 4).then(frames => {
-        // 骑将位于旧图集上两行：右、右后、背、左后、左、左前、正、右前。
-        // 与行走共用镜像规则，左侧必须选择对应的右侧原帧再翻转。
-        const indices = [0, 1, 2, 1, 0, 7, 6, 7];
-        return indices.map(index => frames[index]);
-    });
+    // 主将没有跪姿，保持当前骑将待机帧，避免占领时换成旧版人马。
+    return Promise.resolve(idleFrames);
 }

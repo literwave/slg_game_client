@@ -11,6 +11,10 @@ import { LogicEvent } from '../common/LogicEvent';
 @ccclass('MapBuildTagLogic')
 export default class MapBuildTagLogic extends MapBaseLayerLogic {
 
+    protected isItemAllowed(data: MapResData): boolean {
+        return !this._cmd.isCityGroundCell(data.x, data.y);
+    }
+
     private tagCamera: Camera = null;
     private tagZoom = -1;
 

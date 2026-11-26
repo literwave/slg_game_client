@@ -143,6 +143,17 @@ for (const [targetType, order, destinationName] of [[2, '讨伐', '敌营'], [3,
 }
 console.log('PASS 军令与实际城池名称随当前任务切换，未知地名使用简短地类');
 
+const standby = { ...route, targetType: 4, targetId: 0, state: 2, troopState: 2,
+    startPos: { x: 16, y: 26 }, endPos: { x: 16, y: 26 }, path: [{ x: 16, y: 26 }], startTime: 300, endTime: 300 };
+marches.set(2, standby); now = 310000;
+item.onClickTop(); expectFocus(16, 26);
+item.onClickOrigin(); expectEndpoint(16, 26);
+item.onClickDestination(); expectEndpoint(16, 26);
+assert.equal(item.routePoints().order, '待命');
+item.update(); assert.equal(item.labelPos.string, '原地待命 (16, 26)');
+assert.equal(marches.get(2), standby, '定位和文案不改服务器待命状态');
+console.log('PASS 攻城后待命坐标与双端定位都保留原入口，明确显示原地待命');
+
 marches.set(2, { ...route, startPos: undefined, endPos: undefined });
 item.onClickOrigin(); expectEndpoint(10, 20);
 item.onClickDestination(); expectEndpoint(14, 26);

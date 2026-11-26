@@ -7,6 +7,8 @@ const root = path.resolve(__dirname, '../..');
 process.on('uncaughtException', error => { console.error(error); process.exit(1); });
 const engine = {
     Component: class {},
+    Node: { EventType: { SIZE_CHANGED: 'size' } },
+    Tween: { stopAllByTarget() {} },
     _decorator: { ccclass: () => type => type, property: () => () => {} },
 };
 const asDefault = value => ({ default: value });
@@ -39,7 +41,7 @@ function fixture() {
         '../common/LogicEvent': { LogicEvent }, '../network/socket/NetInterface': netInterface,
         '../network/socket/NetManager': { NetManager: { getInstance: () => ({ send: data => sent.push(data) }) } },
         '../network/pto/ProtoManager': { ProtoManager: { getInstance: () => ({
-            encode: () => new Uint8Array([1]), isReady: () => true, getIdByMsgType: () => 1,
+            encode: (_, data) => data, isReady: () => true, getIdByMsgType: () => 1,
         }) } },
         './HeadIconProxy': asDefault(class { clear() {} }),
         '../systemopen/SystemOpenCommand': asDefault({ getInstance: () => ({
@@ -65,8 +67,10 @@ function test(name, run) { run(); passed++; console.log(`PASS ${name}`); }
 test('an account without a character stays on creation without world/resource requests', () => {
     const f = fixture();
     let creates = 0;
-    f.EventMgr.on(LogicEvent.createRole, () => creates++, {});
-    f.EventMgr.emit(ServerConfig.s2c_user_base_info, { name: '' });
+    const offers = [{ key: 1, name: '青州', route: '临淄关 → 河东' }];
+    f.EventMgr.on(LogicEvent.createRole, zones => { creates++; assert.deepEqual(zones, offers); }, {});
+    f.EventMgr.emit(ServerConfig.s2c_user_base_info, { name: '', birthZones: offers });
+    assert.equal(f.command.role_create('无州', 1, 0), false);
     f.command.beginMapLoading();
     assert.equal(creates, 1);
     assert.equal(f.entries, 0);
@@ -77,9 +81,11 @@ test('an account without a character stays on creation without world/resource re
 test('new character immediately enters loading even when resources have not returned', () => {
     const f = fixture();
     assert.equal(f.command.proxy.getRoleResData(), null);
-    f.EventMgr.emit(ServerConfig.s2c_user_create, { name: '时序测试', sex: 1 });
+    f.EventMgr.emit(ServerConfig.s2c_user_create, { name: '时序测试', sex: 1, cityPos: {x: 840, y: 688} });
     assert.equal(f.entries, 1, 'entry must be emitted in the create response callback');
+    assert.equal(f.command.pendingFirstLanding, true, '新角色回包才安排落城剧情');
     assert.equal(f.command.proxy.getRoleData().name, '时序测试');
+    assert.deepEqual(f.command.proxy.getRoleData().cityPos, {x: 840, y: 688});
     assert.equal(f.command.proxy.getRoleResData(), null, 'entry must not synthesize a resource response');
     assert.equal(f.sent.length, 0, 'creation callback must not start world requests');
     assert.equal(f.systemRequests, 0);
@@ -98,7 +104,7 @@ test('resources received before creation do not open the map without a character
     const f = fixture();
     f.EventMgr.emit(ServerConfig.s2c_req_user_res, { resList: [] });
     assert.equal(f.entries, 0);
-    f.EventMgr.emit(ServerConfig.s2c_user_create, { name: '先资源后角色', sex: 2 });
+    f.EventMgr.emit(ServerConfig.s2c_user_create, { name: '先资源后角色', sex: 2, cityPos: {x: 31, y: 70} });
     assert.equal(f.entries, 1);
     f.EventMgr.emit(ServerConfig.s2c_req_user_res, { resList: [{ k: 2, v: 200 }] });
     assert.equal(f.entries, 1);
@@ -108,9 +114,11 @@ test('failed creation remains on the create page; existing characters still ente
     const f = fixture();
     f.EventMgr.emit(ServerConfig.s2c_user_create, null);
     f.EventMgr.emit(ServerConfig.s2c_user_create, { name: '' });
+    f.EventMgr.emit(ServerConfig.s2c_user_create, { name: '无落点' });
     assert.equal(f.entries, 0);
     f.EventMgr.emit(ServerConfig.s2c_user_base_info, { name: '已有角色', sex: 1 });
     assert.equal(f.entries, 1);
+    assert.equal(f.command.pendingFirstLanding, false, '已有角色直接回城');
     assert.equal(f.command.proxy.getRoleResData(), null);
     assert.equal(f.sent.length, 0, 'existing characters also wait for the loading page');
     f.command.beginMapLoading();
@@ -143,8 +151,10 @@ test('create page does not preload map assets and rapid clicks still send only o
         '../libs/NameDict': { createName: () => '测试新角色' },
         '../common/AudioManager': { AudioManager: { instance: { playClick() {} } } },
         '../common/LogicEvent': { LogicEvent },
+        '../map/ui/ManagementStyle': {},
     }).default;
     const create = new Create();
+    create.node = { on() {} };
     create.editName = { string: '' }; create.manToggle = { isChecked: true };
     create.createButton = { interactable: true }; create.createButtonLabel = { string: '' };
     create.statusLabel = { string: '' };
@@ -155,15 +165,45 @@ test('create page does not preload map assets and rapid clicks still send only o
     };
     create.onLoad();
     assert.equal(tasks.length, 0, 'opening creation must not schedule map/config downloads');
+    create.onClickCreate();
+    assert.equal(f.sent.pop().name, ServerConfig.c2s_user_base_info, 'missing options must never trigger random placement');
+    const zone = { key: 2, name: '徐州' };
+    create.zones = [zone];
+    create.selected = zone;
+    create.map = { width: 1000, height: 1000 };
     create.onClickCreate(); create.onClickCreate();
     assert.equal(create.createButton.interactable, false);
     tasks.find(task => task.delay === 0).callback();
     assert.equal(f.sent.length, 1);
     assert.equal(f.sent[0].name, ServerConfig.c2s_user_create);
-    f.EventMgr.emit(ServerConfig.s2c_user_create, { name: create.editName.string });
+    assert.equal(f.sent[0].msg.birthZone, 2);
+    f.EventMgr.emit(ServerConfig.s2c_user_create, { result: 3 });
+    assert.equal(create.createButton.interactable, false, '无出生点时需要重新选州');
+    assert.equal(create.selected, null);
+    assert.equal(create.editName.string, '测试新角色');
+    assert.equal(f.entries, 0);
+    create.zones = [{ key: 1, name: '青州' }];
+    create.selected = create.zones[0];
+    create.onClickCreate();
+    tasks.filter(task => task.delay === 0).pop().callback();
+    const ack = { name: create.editName.string, cityPos: {x: 51, y: 89} };
+    f.EventMgr.emit(ServerConfig.s2c_user_create, ack);
+    f.EventMgr.emit(ServerConfig.s2c_user_create, ack);
+    f.EventMgr.emit(ServerConfig.s2c_user_base_info, ack);
     assert.equal(f.entries, 1);
     assert.equal(tasks.some(task => task.delay === 12), false, 'successful response cancels the request timeout');
+    // Creator 先销毁子节点时，父组件中的 Label 引用仍在，但 Label.node 为 null。
+    const stopped = [], mapTarget = {}, opacityTarget = {};
+    const previousStop = engine.Tween.stopAllByTarget;
+    engine.Tween.stopAllByTarget = target => stopped.push(target);
+    create.mapNode = mapTarget;
+    create.zoneName = { node: null };
+    create.zoneOpacity = opacityTarget;
     create.onDestroy();
+    assert.deepEqual(stopped, [mapTarget, opacityTarget]);
+    assert.equal(create.zoneOpacity, null);
+    assert.doesNotThrow(() => create.onDestroy(), '重复清理以及子节点已销毁均安全');
+    engine.Tween.stopAllByTarget = previousStop;
 });
 
 console.log(`PASS ${passed} login/create entry regression groups`);

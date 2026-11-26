@@ -12,7 +12,7 @@
 
 当前地形版本2、美术布局版本6：`natural_terrain.py` 以平原盆地生成不规则州域，采用曲折山带、16条余脉、干流和10条支流；外围改为水岸。取消同心圆州界、直线放射山脉和外围方形山墙。关口沿新州界重新定位，仍保持18关与10州的通行关系。州域查询和远景轮廓均读取同一份生成数据，不再套用半径公式。数据约定与联机同步见 [自然山河地图](../../docs/自然山河地图.md)。
 
-山体使用连体山脊、低山肩和新增的 `mountain_massif_natural`、`mountain_saddle_natural` 四种轮廓。连续地段共享高低起伏趋势，主峰、鞍部与缓坡交错，实际PNG透明轮廓验证连续覆盖。线性采样并开启mipmap。`python tools/world/mountain_layout.py` 只重排美术；`python tools/world/build-campaign-map.py` 重建整张地形和资源，生成器先检查孤立区域及关口连接，再写出数据；TMX须由AssetDB保存。验证使用 `campaign-map-regression.py`、`natural-terrain-regression.py`、`mountain-continuity-regression.py` 和 `mountain-renderer-regression.cjs`。
+山体使用连体山脊、低山肩和新增的 `mountain_massif_natural`、`mountain_saddle_natural` 四种轮廓。主峰、低鞍部与支脉错位重叠；美术偏移独立于整数逻辑坐标，禁止水平镜像，以保留左上光照。共享材质将半透明山脚融入世界坐标下的草地底纹。实际 PNG 透明轮廓验证连续覆盖，线性采样并开启 mipmap。`python tools/world/mountain_layout.py` 只重排美术，可用 `--output` 先生成审核配置；`python tools/world/build-campaign-map.py` 重建整张地形和资源。当前山口采用整格布局，验证使用 `mountain-natural-regression.py`、`pass-grid-regression.py`、`mountain-renderer-regression.cjs`、`city-ground-landscape.cjs` 和 `pass-entrance-shader.cjs`。旧的 `mountain-continuity-regression.py` 对应自由山肩布局。
 
 新山体由内置imagegen生成，经Cocos Image Core透明裁边、等比例缩放和AssetDB导入。提示词要点：历史中国2:1等距策略地图、连接的宽缓灰绿山脊或低山肩、不等高峰与松林坡面、左上柔光、窄而自然的透明山脚；无尖柱、方形底座、建筑、文字或发光。
 

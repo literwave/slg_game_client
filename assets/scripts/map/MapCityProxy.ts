@@ -309,6 +309,9 @@ export default class MapCityProxy {
         return this.worldCells.get(id) || this._mapCitys[id];
     }
 
+    /** 当前 AOI 与本人主城的占地索引，供画面初始化，避免扫描整张地图。 */
+    public getOccupiedCellIds(): number[] { return [...this.worldCells.keys()]; }
+
     public getMyMainCity(): MapCityData {
         if (this._myCitys.length > 0) {
             return this._myCitys[0];

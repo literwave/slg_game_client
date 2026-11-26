@@ -8,7 +8,7 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-MOUNTAIN_ART = ('mountain_ridge_connected', 'mountain_shoulder', 'mountain_massif_natural', 'mountain_saddle_natural')
+MOUNTAIN_ART = ('mountain_ridge_scree_v9', 'mountain_shoulder_scree_v9', 'mountain_massif_scree_v9', 'mountain_saddle_scree_v9')
 
 
 def read_alpha(name):
@@ -55,6 +55,11 @@ def pixel(x, y):
     return (x - y) * 100, (999 - x - y) * 50
 
 
+def patch_pixel(patch):
+    x, y = pixel(patch['x'], patch['y'])
+    return x + patch.get('offsetX', 0), y + patch.get('offsetY', 0)
+
+
 class Coverage:
     def __init__(self):
         self.frames = {name: read_alpha(name) for name in MOUNTAIN_ART}
@@ -62,7 +67,7 @@ class Coverage:
 
     def alpha_at(self, patch, px, py):
         width, height, alpha = self.frames[patch['art']]
-        x, y = pixel(patch['x'], patch['y'])
+        x, y = patch_pixel(patch)
         h = patch['width'] * height / width * patch.get('heightScale', 1)
         u = (px - x) / patch['width'] + .5
         if patch.get('flipX'):
@@ -74,7 +79,7 @@ class Coverage:
 
     def ellipse_at(self, patch, px, py):
         width, height, _ = self.frames[patch['art']]
-        x, y = pixel(patch['x'], patch['y'])
+        x, y = patch_pixel(patch)
         h = patch['width'] * height / width * patch.get('heightScale', 1)
         dx = (px - x) / (patch['width'] * .39)
         dy = (py - y - (.5 - patch.get('anchorY', .22)) * h) / (h * .39)
@@ -82,7 +87,7 @@ class Coverage:
 
     def add(self, patch):
         width, height, _ = self.frames[patch['art']]
-        x, y = pixel(patch['x'], patch['y'])
+        x, y = patch_pixel(patch)
         h = patch['width'] * height / width * patch.get('heightScale', 1)
         ay = patch.get('anchorY', .22)
         for by in range(math.floor((y - ay * h) / 256), math.floor((y + (1 - ay) * h) / 256) + 1):
@@ -109,7 +114,7 @@ def build_mountain_patches(mountains, gates, blocked, noise):
                  for dy in (-1, 0, 1) for dx in (-1, 0, 1)
                  if not blocked[(g['y'] + dy) * 1000 + g['x'] + dx]]
     def clear_pass(p):
-        px, py = pixel(p['x'], p['y'])
+        px, py = patch_pixel(p)
         return all(not cover.ellipse_at(p, x, y) and cover.alpha_at(p, x, y) < 64
                    for x, y in protected if abs(px - x) < 650 and abs(py - y) < 650)
 
@@ -128,7 +133,7 @@ def build_mountain_patches(mountains, gates, blocked, noise):
 
     def covered_points(p):
         width, height, alpha = cover.frames[p['art']]
-        px, py = pixel(p['x'], p['y'])
+        px, py = patch_pixel(p)
         h = p['width'] * height / width * p['heightScale']
         left, bottom = px - p['width'] / 2, py - p['anchorY'] * h
         result = []
@@ -159,21 +164,32 @@ def build_mountain_patches(mountains, gates, blocked, noise):
         x, y = idx % 1000, idx // 1000
         h, angle = noise(x, y), direction(x, y)
         distance = min(max(abs(x - g['x']), abs(y - g['y'])) for g in gates)
-        # 连续地段共享起伏趋势：主峰成组抬升，经过低鞍部再转入下一组山势。
-        relief = .5 + .27 * math.sin((x+y)/23+.7) + .23 * math.sin((x-y)/37-1.2)
+        # 连续山势中穿插低鞍部和支脉，不按同一个直线中轴铺满长山贴片。
+        relief = .5 + .28 * math.sin((x+y)/11+.7) + .22 * math.sin((x-y)/17-1.2)
+        branch = noise(x + 43, y + 97) % 5 == 0
         if distance < 5:
             art = MOUNTAIN_ART[1]
-        elif relief > .62:
-            art = MOUNTAIN_ART[0 if h % 5 == 0 else 2]
-        elif relief < .38:
+        elif branch:
+            art = MOUNTAIN_ART[1]
+        elif relief > .58:
+            art = MOUNTAIN_ART[0 if h % 9 == 0 else 2]
+        elif relief < .42:
             art = MOUNTAIN_ART[3]
         else:
-            art = MOUNTAIN_ART[1 if h % 3 == 0 else 3 if h % 3 == 1 else 2]
-        width = round(660 + relief*300 + h % 190)
+            art = MOUNTAIN_ART[1 if h % 3 == 0 else 2]
+        width = round((540 if branch else 650) + relief*220 + h % 170)
+        height_scale = .72 + relief*.37 + (h % 9)/100
+        # 位置扰动只影响美术。整数逻辑坐标仍用于点击与阻挡。
+        sway = 65 * math.sin((x+y)*.29 + math.sin((x-y)*.11)) + 26 * math.sin((x-y)*.37)
+        along = (noise(x+71, y+13) % 45) - 22
+        offset_x = round(-math.sin(angle)*sway + math.cos(angle)*along)
+        offset_y = round((math.cos(angle)*sway + math.sin(angle)*along)*.6)
         if distance < 5:
             width = 180 + distance * 75
-        p = dict(x=x, y=y, art=art, width=width, heightScale=round(.8 + relief*.32 + (h % 7)/100, 2),
-                 anchorY=round(.34 + (h % 9)/100,2), role='range', flipX=angle > 0)
+            offset_x = offset_y = 0
+        p = dict(x=x, y=y, art=art, width=width, heightScale=round(height_scale, 2),
+                 anchorY=round(.34 + (h % 9)/100,2), role='range', flipX=False,
+                 offsetX=offset_x, offsetY=offset_y, tier='foothill' if branch else 'ridge')
         if not clear_pass(p):
             continue
         covered = covered_points(p)
@@ -197,6 +213,33 @@ def build_mountain_patches(mountains, gates, blocked, noise):
         for j in ids:
             uncovered[j] = 0
 
+    # 主脊错位后，少量尖角会露底；仅在这些缺口补低山肩，不重新铺一排高峰。
+    for point_id, value in enumerate(uncovered):
+        if not value:
+            continue
+        px, py = points[point_id]
+        row = (999 * 50 - py) / 100
+        sx, sy = row + px / 200, row - px / 200
+        if any(max(abs(sx-g['x']), abs(sy-g['y'])) <= 5 for g in gates):
+            continue
+        anchors = [(x, y) for x in {math.floor(sx), math.ceil(sx)}
+                   for y in {math.floor(sy), math.ceil(sy)} if y*1000+x in mountains]
+        for x, y in sorted(anchors, key=lambda p: (p[0]-sx)**2+(p[1]-sy)**2):
+            bx, by = pixel(x, y)
+            p = dict(x=x, y=y, art=MOUNTAIN_ART[1], width=480, heightScale=.74,
+                     anchorY=.50, role='range', tier='foothill', flipX=False,
+                     offsetX=round(px-bx, 2), offsetY=round(py-by, 2))
+            if not clear_pass(p):
+                continue
+            ids = covered_points(p)
+            if point_id not in ids:
+                continue
+            selected.append(len(candidates))
+            candidates.append((p, ids))
+            for j in ids:
+                uncovered[j] = 0
+            break
+
     # 去掉后续山体已经完全遮住的候选，保留最少必要的衔接。
     counts = collections.Counter(j for i in selected for j in candidates[i][1])
     patches = []
@@ -217,7 +260,8 @@ def build_mountain_patches(mountains, gates, blocked, noise):
             raise ValueError(f'山脊未覆盖: {(x, y)}')
     # 关口仍保留真实通路，用低矮山脚填上原先整片避让留下的露底。
     from gate_shoulders import build_gate_shoulders
-    return build_gate_shoulders(patches, mountains, gates, blocked, cover, pixel)
+    from pass_grid import pass_mountain_patches
+    return pass_mountain_patches(build_gate_shoulders(patches, mountains, gates, blocked, cover, pixel), gates)
 
 
 if __name__ == '__main__':
@@ -226,13 +270,17 @@ if __name__ == '__main__':
     spec = importlib.util.spec_from_file_location('campaign', ROOT / 'tools/world/build-campaign-map.py')
     campaign = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(campaign)
-    target = ROOT / 'assets/resources/world/original-landscape.json'
-    landscape = json.loads(target.read_text(encoding='utf8'))
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--output', type=Path, default=ROOT / 'assets/resources/world/original-landscape.json')
+    args = parser.parse_args()
+    target = args.output
+    landscape = json.loads((ROOT / 'assets/resources/world/original-landscape.json').read_text(encoding='utf8'))
     world = json.loads((ROOT / 'assets/resources/world/campaign-map.json').read_text(encoding='utf8'))
     blocked = bytearray(landscape['width'] * landscape['height'])
     for idx in landscape['mountainCells'] + landscape['riverCells']:
         blocked[idx] = 1
     landscape['patches'] = build_mountain_patches(set(landscape['mountainCells']), world['gates'], blocked, campaign.noise)
-    landscape['version'] = 6
+    landscape['version'] = 9
     target.write_text(json.dumps(landscape, separators=(',', ':')), encoding='utf8')
     print(json.dumps(dict(patches=len(landscape['patches']), art=dict(collections.Counter(p['art'] for p in landscape['patches'])))))

@@ -175,7 +175,13 @@ def build():
                     bridge_reserved.add(idx)
                     resources[idx] = [0,0]
     empty_cells = sorted(set(empty_cells) | bridge_reserved)
-    reserved_landmarks = bridge_reserved | {g['y']*SIZE+g['x'] for g in gates}
+    from pass_grid import apply_pass_grid, pass_mountain_patches
+    pass_empty = set(empty_cells)
+    pass_reserved = apply_pass_grid(gates, SIZE, resources, pass_empty, blocked, river_mask)
+    empty_cells = sorted(pass_empty)
+    river = [idx for idx, wet in enumerate(river_mask) if wet and blocked[idx]]
+    bridge_water = [idx for idx, wet in enumerate(river_mask) if wet and not blocked[idx]]
+    reserved_landmarks = bridge_reserved | pass_reserved | {g['y']*SIZE+g['x'] for g in gates}
     fixed = json.loads((ROOT / 'tools/world/fixed-birth-resources.json').read_text(encoding='utf8'))
     fixed, migrated_birth = migrate_fixed(fixed, ids, blocked, cities, noise, reserved_landmarks)
     if fixed.get('schemaVersion') != 2 or fixed['width'] != SIZE or fixed['height'] != SIZE:
@@ -224,9 +230,13 @@ def build():
     rivers = set(river)
     mountains = [i for i, value in enumerate(blocked) if value and i not in rivers]
     from mountain_layout import build_mountain_patches
-    patches = build_mountain_patches(set(mountains), gates, blocked, noise)
+    patches = pass_mountain_patches(build_mountain_patches(set(mountains), gates, blocked, noise), gates)
+    strategy['passLayoutVersion'] = 1
     print(f'Mountain coverage complete: {len(patches)} patches', flush=True)
-    landscape = dict(version=6, topologyVersion=2, width=SIZE, height=SIZE, seed=SEED, riverCells=river, bridgeWaterCells=bridge_water, mountainCells=mountains, patches=patches)
+    landscape = dict(version=9, topologyVersion=2, width=SIZE, height=SIZE, seed=SEED, riverCells=river, bridgeWaterCells=bridge_water, mountainCells=mountains, patches=patches)
+    from siege_entrances import attach_siege_entrances, reserve_siege_entrance_ground
+    reserve_siege_entrance_ground(strategy, landscape, resources, empty_cells, all_fixed_ids)
+    attach_siege_entrances(strategy, landscape, resources, empty_cells)
     world = ROOT / 'assets/resources/world'
     (ROOT / 'assets/resources/config/mapRes_0.json').write_text(json.dumps(dict(w=SIZE, h=SIZE, list=resources, emptyCells=empty_cells), separators=(',', ':')), encoding='utf8')
     (world / 'original-landscape.json').write_text(json.dumps(landscape, separators=(',', ':')), encoding='utf8')

@@ -52,6 +52,7 @@ const cc = {
     _decorator: { ccclass: () => type => type, property: () => () => {} },
 };
 function load(file, imports = {}, clock = Date, engine = cc) {
+    imports = { './MapProjection': require('./map-projection-module.cjs')(ts), '../map/MapProjection': require('./map-projection-module.cjs')(ts), ...imports };
     const source = fs.readFileSync(path.join(root, file), 'utf8');
     const result = ts.transpileModule(source, { compilerOptions: {
         target: ts.ScriptTarget.ES2017, module: ts.ModuleKind.CommonJS, experimentalDecorators: true,
@@ -74,7 +75,7 @@ const { LogicEvent } = load('assets/scripts/common/LogicEvent.ts');
 const { CoreEvent } = load('assets/scripts/core/CoreEvent.ts');
 const portraitPaths = load('assets/scripts/general/GeneralPortrait.ts');
 const shared = { '../utils/EventMgr': { EventMgr }, '../common/LogicEvent': { LogicEvent } };
-const command = { proxy: null };
+const command = { proxy: null, isCityGroundCell: () => false };
 const MapCommand = { getInstance: () => command };
 const MapUtil = load('assets/scripts/map/MapUtil.ts', { './MapCommand': asDefault(MapCommand) }).default;
 MapUtil.initMapConfig({
@@ -259,6 +260,12 @@ test('adding/removing a bookmark updates visible and retiring areas without per-
     EventMgr.emit(LogicEvent.updateTag);
     assert.ok(tags.getItem(area, id));
     assert.equal(EventMgr.events.get(LogicEvent.updateTag).length, 1);
+    command.isCityGroundCell = () => true;
+    EventMgr.emit(LogicEvent.updateTag);
+    assert.equal(tags.getItem(area,id), null, '收藏推送不得复活城池覆盖格的标签');
+    command.isCityGroundCell = () => false;
+    EventMgr.emit(LogicEvent.updateTag);
+    assert.ok(tags.getItem(area,id), '迁走后保留的收藏数据可恢复显示');
     tags.removeArea(area);
     proxy.updateMapPosTags([]);
     EventMgr.emit(LogicEvent.updateTag);
@@ -352,7 +359,7 @@ test('empty cells create no invisible resource/tag nodes while cities and real r
     scene._itemLayers = Object.fromEntries(['res', 'build', 'facility', 'tag', 'tips', 'city', 'sysCity']
         .map(name => [name, { addItem: () => calls.push(name) }]));
     let type = 0, marked = false;
-    scene._cmd = { proxy: { getResData: () => ({ id: 1, type }), isPosTag: () => marked, getSysCityResData: () => null },
+    scene._cmd = { isCityGroundCell: () => false, proxy: { getResData: () => ({ id: 1, type }), isPosTag: () => marked, getSysCityResData: () => null },
         buildProxy: { getBuild: () => null }, cityProxy: { getCity: () => null } };
     scene.addMapCell(1, 1, 1);
     assert.deepEqual(calls, []);
@@ -363,5 +370,25 @@ test('empty cells create no invisible resource/tag nodes while cities and real r
     marked = true;
     scene.addMapCell(1, 1, 1);
     assert.deepEqual(calls, ['res', 'tag']);
+});
+test('city ground suppresses all non-city layers and relocation restores their original data', () => {
+    const scene = new MapScene(), calls = [], removed = [];
+    scene._itemLayers = Object.fromEntries(['res','build','facility','tag','tips','city','sysCity'].map(name => [name, {
+        addItem: () => calls.push(name), removeItem: (_area,id) => removed.push([name,id]),
+    }]));
+    const id = MapUtil.getIdByCellPoint(12,12);
+    const resource = { id, x:12, y:12, type:MapResType.GRAIN, level:3 };
+    const build = { ...resource };
+    let covered = true, city = { id, x:12, y:12 };
+    scene._cmd = { isCityGroundCell: () => covered, cityProxy: { getCity: () => city },
+        proxy: { getResData: () => resource, isPosTag: () => true }, buildProxy: { getBuild: () => build } };
+    scene.addMapCell(1,12,12); assert.deepEqual(calls.splice(0), ['city']);
+    scene.onPlayerCityTiles([id]);
+    assert.deepEqual(removed.map(row=>row[0]).sort(), ['build','facility','res','tag','tips']);
+    covered = false; city = null; scene.onPlayerCityTiles([id]);
+    assert.deepEqual(calls.splice(0), ['res','tag','build','facility','tips']);
+    assert.equal(resource.type, MapResType.GRAIN); assert.equal(resource.level, 3);
+    covered = true; resource.type = MapResType.SYS_CITY; build.type = MapResType.SYS_CITY;
+    scene.addMapCell(1,12,12); assert.ok(calls.every(name=>name==='sysCity'), '系统城本体保留');
 });
 console.log(`${passed} regression groups passed.`);

@@ -1,0 +1,101 @@
+{
+  "version": 9,
+  "title": "方案二：岩壁—碎石坡—灌木草地过渡",
+  "generation": "built-in image_gen",
+  "reference": "用户提供的方案二效果图；现有山体用于投影与占地参考",
+  "prompts": {
+    "initialDesign": "Use case: style-transfer. Asset: ONE transparent mountain massif sprite for this existing 2.5D historical strategy game. Inputs: the screenshot headed 方案二 is the STYLE AND GEOLOGICAL TRANSITION reference; the olive-colored elongated isolated mountain sprite is the EDIT TARGET and projection/footprint reference. Redesign that isolated sprite into the scheme-two mountain style, preserving its broad low isometric footprint and upper-left diffuse lighting. Create a cohesive asymmetric group of 3 unequal rugged grey rock peaks joined by saddles, a branching low shoulder, clear broad fractured rock faces. The essential change is a REAL built-in scree apron around the visible lower slope: exposed rock gives way to irregular fallen boulders, then several pale-grey gravel fans and muted grey-brown earthen ramps, sparse low olive shrubs and grass tufts at the outer margin. Stones have varied sizes, clustered naturally, not uniform polka dots. Put sparse dark pine clumps mostly in crevices and rear slopes; show much more bare rock and scree than the old grassy sprite. Match the reference's detailed hand-painted game art but restrain its yellow soil and saturation to the existing muted olive map. Orthographic 2:1 isometric camera, approx 30 degree down view, no horizon, no perspective vanishing points. Long axis gently upper-left to lower-right, broad footprint, full isolated mountain fits with 5% transparent padding. The apron must have a broken irregular silhouette with individual edge rocks and tufts tapering to actual transparency; no rectangular/diamond/oval platform, no blurred glowing halo, no flat green carpet. Keep the opaque core continuous so mountain segments can overlap. No river, water, surrounding landscape, sky, text, UI, labels, buildings, people or cast-shadow blob. Landscape canvas. Output actual transparent background.",
+    "massif": "Use case: precise-object-edit. Edit the attached isolated mountain sprite ONLY to restore the top of the highest peak and fit the complete asset within the canvas. Zoom out the entire mountain about 15 percent, keeping the exact rock/scree/shrub style, lighting, palette, layout and geological detail. Reconstruct a natural complete apex where the top is currently cut off. Leave 8% empty transparent padding on every side. No mountain, stone or foliage may touch any image border. True transparent background. No added scene, text, water or horizon.",
+    "ridge": "Use case: style-transfer. Make ONE transparent 2D terrain sprite for the same historical isometric strategy-game mountain family as the attached image. Use that image as the style, palette, upper-left daylight and geological-transition reference. Clear broad fractured warm-grey and cool-grey rock, restrained muted olive shrubs, grey-brown earth, pale-grey scree fans, scattered unequal boulders; sparse dark pine clumps. Detailed hand-painted, readable at small game scale. Essential: real layered transition from rock face to broken stone/scree to earthen slope to sparse shrubs/grass, with a broken irregular transparent perimeter. Keep ground foliage sparse enough to reveal the rocky slope. Orthographic 2:1 isometric projection, about 30 degree down view. No camera perspective, no horizon. No mirrored lighting, yellow carpet, geometric ground plate, fog, halo, river, water, sky, surrounding scene, text, labels, people or buildings. Landscape canvas with 8% EMPTY TRANSPARENT MARGIN on ALL FOUR sides; the COMPLETE peaks, foot rocks and shrubs must remain inside the image. True transparent background, not black/checkerboard pixels. Subject: an elongated winding MAIN RIDGE segment made of three unequal joined peaks, left lower, middle dominant, right end descending to a low shoulder. Broad solid connected footprint gently extending upper-left to lower-right; relatively narrow rear slopes and a generous front scree apron with two irregular drainage fans. Unequal peak spacing, not a row of identical triangles. The broad core and ground apron must connect continuously for overlapping neighboring map segments.",
+    "shoulder": "Use case: style-transfer. Make ONE transparent 2D terrain sprite for the same historical isometric strategy-game mountain family as the attached image. Use that image as the style, palette, upper-left daylight and geological-transition reference. Clear broad fractured warm-grey and cool-grey rock, restrained muted olive shrubs, grey-brown earth, pale-grey scree fans, scattered unequal boulders; sparse dark pine clumps. Detailed hand-painted, readable at small game scale. Essential: real layered transition from rock face to broken stone/scree to earthen slope to sparse shrubs/grass, with a broken irregular transparent perimeter. Keep ground foliage sparse enough to reveal the rocky slope. Orthographic 2:1 isometric projection, about 30 degree down view. No camera perspective, no horizon. No mirrored lighting, yellow carpet, geometric ground plate, fog, halo, river, water, sky, surrounding scene, text, labels, people or buildings. Landscape canvas with 8% EMPTY TRANSPARENT MARGIN on ALL FOUR sides; the COMPLETE peaks, foot rocks and shrubs must remain inside the image. True transparent background, not black/checkerboard pixels. Subject: a COMPACT LOW FOOTHILL / MOUNTAIN SHOULDER used beside gate roads. One small broad crag, two rounded bare-rock outcrops, mostly an uneven talus and soil apron with natural boulder clusters and sparse olive bushes. This must be much lower than the reference main massif, with no tall peak or cliff wall. Ground footprint about twice as wide as deep, rounded but very irregular, complete opaque rocky center suitable for overlapping, sparse pine clump at the rear only.",
+    "saddle": "Use case: style-transfer. Make ONE transparent 2D terrain sprite for the same historical isometric strategy-game mountain family as the attached image. Use that image as the style, palette, upper-left daylight and geological-transition reference. Clear broad fractured warm-grey and cool-grey rock, restrained muted olive shrubs, grey-brown earth, pale-grey scree fans, scattered unequal boulders; sparse dark pine clumps. Detailed hand-painted, readable at small game scale. Essential: real layered transition from rock face to broken stone/scree to earthen slope to sparse shrubs/grass, with a broken irregular transparent perimeter. Keep ground foliage sparse enough to reveal the rocky slope. Orthographic 2:1 isometric projection, about 30 degree down view. No camera perspective, no horizon. No mirrored lighting, yellow carpet, geometric ground plate, fog, halo, river, water, sky, surrounding scene, text, labels, people or buildings. Landscape canvas with 8% EMPTY TRANSPARENT MARGIN on ALL FOUR sides; the COMPLETE peaks, foot rocks and shrubs must remain inside the image. True transparent background, not black/checkerboard pixels. Subject: a LOW WINDING SADDLE SEGMENT connecting larger mountain groups. Two different low rock knolls at the ends joined by a broad low stony saddle, visibly lower in the middle. Lots of visible broken rock and scree, two sloping gravel fans leading into sparse bushes at the foreground foot, a few larger angular fallen blocks, small pines confined to the back. Long connected footprint gently upper-left to lower-right, strongly asymmetric, no empty hole in the opaque central ground.",
+    "surfaceRevision": "Use case: precise-object-edit. Revise ONLY the surface/vegetation treatment of this isolated transparent game mountain sprite. Preserve its exact mountain shapes, height, perspective, peak positions, ground footprint, complete uncropped silhouette, upper-left lighting and transparent background. In the current image the bare grey rock overwhelms the small game view. Make this a natural temperate rocky mountain with a readable, layered foothill transition: dark muted olive-green shrubs in uneven CLUMPS covering about 25 percent of the lower slope, visible clumps in cracks and around the larger boulders, muted olive grass on shallow soil pockets, and a few dark pine clusters in the rear/side recesses. Retain clearly exposed angular grey rock faces and broad grey scree fans, with open low-saturation grey-brown soil strips BETWEEN the clumps. Keep the rock -> rubble -> shrubs -> grass transition broken and irregular, not a continuous hedge or uniformly green painted carpet. Darken the brightest stone highlights slightly (about 8 percent), keep the palette earthy grey-green rather than white-grey or bright yellow. Sparse grass tufts and shrubs should be large enough to read at game-map size; no extra tiny dot noise. Preserve the original detailed hand-painted strategy-game look and all existing boulders/scree geometry. This is a localized naturalization pass, NOT a new scene. No water, buildings, horizon, text, frame, ground plate, dramatic shadow, fog or blur. Keep transparent padding on all sides and output actual transparency."
+  },
+  "processing": [
+    {
+      "type": "trimTransparent",
+      "alphaThreshold": 8
+    },
+    {
+      "type": "resize",
+      "fit": "inside",
+      "maintainAspectRatio": true,
+      "interpolation": "bicubic"
+    }
+  ],
+  "settings": {
+    "filter": "linear",
+    "wrap": "clamp",
+    "mipmap": true
+  },
+  "assets": [
+    {
+      "role": "massif",
+      "path": "assets/resources/ui/world/mountain_massif_scree_v9.png",
+      "width": 1024,
+      "height": 538,
+      "sourceHash": "49c02c456f5d1e1af55c127acb3fe16248922c3f1ab0b7e0f06b4f3f975400db",
+      "outputHash": "bda151c9b32e6c480af5b16d8296b0582c37845610ab1fe6dbfa9b622c1e4bf4",
+      "transparent": true,
+      "assetDBImported": true,
+      "settingsVerified": true
+    },
+    {
+      "role": "ridge",
+      "path": "assets/resources/ui/world/mountain_ridge_scree_v9.png",
+      "width": 1024,
+      "height": 477,
+      "sourceHash": "c5410a2d1df4e6d0e16abac623a9d7b037647c143041d14879b5a5a63bbdbd85",
+      "outputHash": "ddadd222070f4a9bc463a06883c22832f5fe4a425cfc03e81b4ecd3cd37c834b",
+      "transparent": true,
+      "assetDBImported": true,
+      "settingsVerified": true
+    },
+    {
+      "role": "shoulder",
+      "path": "assets/resources/ui/world/mountain_shoulder_scree_v9.png",
+      "width": 768,
+      "height": 280,
+      "sourceHash": "265a2bdc5786b9ae3d279673ac3314b5b30c128d90407ad297ad6fd943f319dd",
+      "outputHash": "4a9725eb0992bafc404fa8b3360017b7c8f06efc9235ad7b457718b70e5ca9fd",
+      "transparent": true,
+      "assetDBImported": true,
+      "settingsVerified": true
+    },
+    {
+      "role": "saddle",
+      "path": "assets/resources/ui/world/mountain_saddle_scree_v9.png",
+      "width": 1024,
+      "height": 459,
+      "sourceHash": "0642ca46c8c32d33455a9755674cce21439c7c5048265f96b5fc2fd148b346d1",
+      "outputHash": "bc379518bc1aa2eabfe57ae550a57badd7aaa59a513b450f6ca1ad26ca8b3853",
+      "transparent": true,
+      "assetDBImported": true,
+      "settingsVerified": true
+    }
+  ],
+  "validation": {
+    "layoutVersion": 9,
+    "patches": 2410,
+    "coverageSamples": 177016,
+    "uncoveredSamples": 0,
+    "mountainPasses": 12,
+    "passEntrances": 24,
+    "gateClickTargets": 18,
+    "gameplayTerrainUnchanged": true,
+    "previewStarted": false,
+    "offlineCompositions": [
+      "河岸山带",
+      "斜向山带",
+      "潼关入口"
+    ],
+    "typescript": {
+      "existingDiagnostics": 214,
+      "changedScriptDiagnostics": 0
+    },
+    "streaming": {
+      "passedChecks": 17,
+      "remainingIssue": "Hero 源配置与已有 boot-configs 打包缓存不一致；本轮未修改英雄数值和启动配置"
+    }
+  }
+}

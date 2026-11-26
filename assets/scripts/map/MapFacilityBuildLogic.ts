@@ -11,6 +11,10 @@ import { LogicEvent } from '../common/LogicEvent';
 @ccclass('MapFacilityBuildLogic')
 export default class MapFacilityBuildLogic extends MapBaseLayerLogic {
 
+    protected isItemAllowed(data: MapBuildData): boolean {
+        return !this._cmd.isCityGroundCell(data.x, data.y);
+    }
+
     protected onLoad(): void {
         super.onLoad();
         EventMgr.on(LogicEvent.updateBuilds, this.onUpdateBuilds, this);

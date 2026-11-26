@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -11,7 +12,8 @@ sys.path.insert(0, str(ROOT / 'tools/world'))
 from mountain_layout import read_alpha
 
 def generate():
-    art = 'river_pass_citadel'
+    geometry = (ROOT / 'assets/scripts/map/GateGeometry.ts').read_text(encoding='utf-8')
+    art = re.search(r"export const BRIDGE_ART = '([^']+)'", geometry).group(1)
     width, height, alpha = read_alpha(art)
     columns = 384
     count = math.ceil(columns * height / width)

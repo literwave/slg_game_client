@@ -1,5 +1,6 @@
 import type { FacilityConfig } from './MapUIProxy';
 import { buildingGoalConditions } from './BuildingProgressionGraph';
+import { playerCityArt } from '../PlayerCityAppearance';
 
 /** 路线图可查看未来等级；只有真实下一等级允许发送升级请求。 */
 export function buildingGoalPresentation(cfg: FacilityConfig, targetLevel: number, levels: ReadonlyMap<number, number>,
@@ -79,10 +80,31 @@ export function buildingNextUnlocks(type: number, levels: ReadonlyMap<number, nu
     return result.sort((a, b) => a.requiredLevel - b.requiredLevel || a.type - b.type);
 }
 
-/** Icon 配置优先；未配置时使用项目现有的同类建筑/资源插画。 */
+/** 内城 16 栋建筑对应的统一 2.5D 精绘立绘路径（位于 resources/ui/city_buildings/）。 */
+export const INNER_CITY_BUILDING_ART: Readonly<Record<number, string>> = {
+    1: 'ui/city_buildings/main_city',
+    2: 'ui/city_buildings/drill_ground',
+    3: 'ui/city_buildings/recruitment_hall',
+    4: 'ui/city_buildings/infantry_camp',
+    5: 'ui/city_buildings/cavalry_camp',
+    6: 'ui/city_buildings/archery_camp',
+    7: 'ui/city_buildings/infirmary',
+    8: 'ui/city_buildings/academy',
+    9: 'ui/city_buildings/city_wall',
+    10: 'ui/city_buildings/farm',
+    11: 'ui/city_buildings/lumberyard',
+    12: 'ui/city_buildings/iron_mine',
+    13: 'ui/city_buildings/warehouse',
+    14: 'ui/city_buildings/command_platform',
+    15: 'ui/city_buildings/market',
+    16: 'ui/city_buildings/quarry',
+};
+
+/** Icon 配置优先；其次使用内城 2.5D 专用精绘立绘，最后兜底世界地图建筑图。 */
 export function buildingArt(cfg: FacilityConfig, level: number): string {
     if (cfg.icon) return cfg.icon.replace(/\.(png|jpg|jpeg)$/i, '').replace(/\/spriteFrame$/, '');
-    if (cfg.type === 1) return `ui/world/player_city_lv${Math.max(1, Math.min(30, level || 1))}`;
+    if (INNER_CITY_BUILDING_ART[cfg.type]) return INNER_CITY_BUILDING_ART[cfg.type];
+    if (cfg.type === 1) return `ui/world/${playerCityArt(Math.max(1, Math.min(30, level || 1)))}`;
     const resources: { [key: number]: string } = { 10: 'grain', 11: 'forest', 12: 'iron', 16: 'quarry' };
     if (resources[cfg.type]) return `ui/world/${resources[cfg.type]}_lv${Math.max(1, Math.min(10, level || 1))}`;
     if (cfg.type === 9) return 'ui/world/mountain_pass';

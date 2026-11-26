@@ -19,6 +19,7 @@ class Node {
     setScale(x, y, z) { this.scale = { x, y, z }; }
 }
 function load(file, imports) {
+    imports = { './MapProjection': require('./map-projection-module.cjs')(ts), ...imports };
     const output = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
         compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, experimentalDecorators: true },
         reportDiagnostics: true,

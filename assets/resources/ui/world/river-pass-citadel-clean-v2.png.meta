@@ -1,0 +1,134 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "22580dcd-fb64-4bdf-81e3-5d9b25416e3b",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "22580dcd-fb64-4bdf-81e3-5d9b25416e3b@6c48a",
+      "displayName": "river-pass-citadel-clean-v2",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "clamp-to-edge",
+        "wrapModeT": "clamp-to-edge",
+        "imageUuidOrDatabaseUri": "22580dcd-fb64-4bdf-81e3-5d9b25416e3b",
+        "isUuid": true,
+        "visible": false,
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "linear",
+        "anisotropy": 0
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "22580dcd-fb64-4bdf-81e3-5d9b25416e3b@f9941",
+      "displayName": "river-pass-citadel-clean-v2",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": 66,
+        "offsetY": 0,
+        "trimX": 209,
+        "trimY": 43,
+        "width": 1250,
+        "height": 676,
+        "rawWidth": 1536,
+        "rawHeight": 762,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": true,
+        "pixelsToUnit": 100,
+        "pivotX": 0.51,
+        "pivotY": 0.52,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -625,
+            -338,
+            0,
+            625,
+            -338,
+            0,
+            -625,
+            338,
+            0,
+            625,
+            338,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            209,
+            719,
+            1459,
+            719,
+            209,
+            43,
+            1459,
+            43
+          ],
+          "nuv": [
+            0.13606770833333334,
+            0.05643044619422572,
+            0.9498697916666666,
+            0.05643044619422572,
+            0.13606770833333334,
+            0.9435695538057742,
+            0.9498697916666666,
+            0.9435695538057742
+          ],
+          "minPos": [
+            -625,
+            -338,
+            0
+          ],
+          "maxPos": [
+            625,
+            338,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "22580dcd-fb64-4bdf-81e3-5d9b25416e3b@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "22580dcd-fb64-4bdf-81e3-5d9b25416e3b@6c48a"
+  }
+}

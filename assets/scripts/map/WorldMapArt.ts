@@ -1,9 +1,10 @@
-import { Color, EffectAsset, Graphics, isValid, JsonAsset, Node, resources, Sprite, SpriteFrame, UITransform } from 'cc';
+import { Color, EffectAsset, Graphics, isValid, JsonAsset, Material, Node, resources, Sprite, SpriteFrame, UITransform, Vec4 } from 'cc';
 import AssetLoadQueue, { AssetPriority, AssetRequestCancelled } from '../core/AssetLoadQueue';
-import { cityArtAsset, cityArtWidth, cityOverviewAsset, CityArtIdentity, SYSTEM_CITY_ARTS } from './CityFootprint';
-import { GATE_ART, BRIDGE_ART } from './GateGeometry';
-import { PLAYER_CITY_MAX_LEVEL } from './PlayerCityAppearance';
+import { cityArtAsset, cityArtWidth, cityOverviewAsset, cityArtLayout, CityArtIdentity, CityArtLayout, SYSTEM_CITY_ARTS } from './CityFootprint';
+import { GATE_ART, BRIDGE_ART, GateAppearance, gateArtLayout } from './GateGeometry';
+import { playerCityArt, PLAYER_CITY_MAX_LEVEL } from './PlayerCityAppearance';
 import PlayerCityGround from './PlayerCityGround';
+import { setWorldWaterData } from './WorldWater';
 
 const CITY_ASSETS = [...new Set([...[4, 7, 10].map(level => cityArtAsset(level)),
     ...[4, 7, 10].map(level => cityOverviewAsset(level)),
@@ -11,22 +12,25 @@ const CITY_ASSETS = [...new Set([...[4, 7, 10].map(level => cityArtAsset(level))
 
 export const MAP_BOOKMARK_ART = 'map-bookmark-v2';
 
+/** 岩壁、碎石坡、灌木草地分层过渡；同一组用于地图绑定和首屏预载。 */
+export const MOUNTAIN_ARTS = ['mountain_ridge_scree_v9', 'mountain_shoulder_scree_v9',
+    'mountain_massif_scree_v9', 'mountain_saddle_scree_v9'];
+
 /** 显式列出运行中的素材，保留在目录里的历史原画不会进入首屏解码和显存。 */
 export function worldArtNames(): string[] {
-    const names = ['plains', 'water', 'mountain_ridge_connected', 'mountain_shoulder', 'mountain_massif_natural', 'mountain_saddle_natural',
+    const names = ['plains', 'water', ...MOUNTAIN_ARTS,
         'town', 'county', 'fort', GATE_ART, BRIDGE_ART, MAP_BOOKMARK_ART, 'forest', 'iron', 'quarry', 'grain',
         'wild_forest', 'wild_iron', 'wild_quarry', 'wild_grain', ...CITY_ASSETS];
     for (const resource of ['forest', 'iron', 'quarry', 'grain']) {
         for (let level = 1; level <= 10; level++) names.push(`${resource}_lv${level}`);
     }
-    for (let level = 1; level <= PLAYER_CITY_MAX_LEVEL; level++) names.push(`player_city_lv${level}`);
+    for (let level = 1; level <= PLAYER_CITY_MAX_LEVEL; level++) names.push(playerCityArt(level));
     return [...new Set(names)];
 }
 
-export const WORLD_CORE_ART = ['plains', 'water', 'mountain_ridge_connected', 'mountain_shoulder',
-    'mountain_massif_natural', 'mountain_saddle_natural', MAP_BOOKMARK_ART];
+export const WORLD_CORE_ART = ['plains', 'water', ...MOUNTAIN_ARTS, MAP_BOOKMARK_ART];
 
-interface ArtBinding { name: string; ready?: () => void; }
+interface ArtBinding { name: string; ready?: () => void; displayed?: string; applied?: boolean; }
 
 /** 地形常驻，建筑和资源图按可见节点请求；坐标与点击几何始终独立于贴图。 */
 export default class WorldMapArt {
@@ -38,6 +42,8 @@ export default class WorldMapArt {
     private static loading = new Map<string, Promise<SpriteFrame>>();
     private static failures = new Map<string, { error: Error; at: number }>();
     private static sizes: Record<string, [number, number]> = {};
+    private static cityMaterials = new Map<string, Material>();
+    private static cityFrames = new Map<string, SpriteFrame>();
     private static nextSweep = 0;
     static effect: EffectAsset = null;
     static landscape: any = null;
@@ -54,6 +60,62 @@ export default class WorldMapArt {
     static citySprite(level: number, city?: CityArtIdentity): string { return cityArtAsset(level, city); }
 
     static cityOverviewSprite(level: number, city?: CityArtIdentity): string { return cityOverviewAsset(level, city); }
+
+    static cityLayout(level: number, city?: CityArtIdentity, tileWidth = 200, tileHeight = tileWidth / 2): CityArtLayout {
+        const size = this.size(this.citySprite(level, city));
+        return cityArtLayout(level, size.width, size.height, tileWidth, tileHeight, city);
+    }
+
+    /** 近景和同源总览共用校正；固定画布与点击都限制在真实占地内。 */
+    static applyCity(sprite: Sprite, level: number, city: CityArtIdentity, tileWidth: number, tileHeight: number, overview = false): CityArtLayout {
+        const layout = this.cityLayout(level, city, tileWidth, tileHeight);
+        const name = overview ? this.cityOverviewSprite(level, city) : this.citySprite(level, city);
+        return this.applyFitted(sprite, name, layout);
+    }
+
+    static applyGate(sprite: Sprite, level: number, gate: GateAppearance & { x: number; y: number }, tileWidth: number, tileHeight: number): CityArtLayout {
+        const layout = gateArtLayout(level, gate, tileWidth, tileHeight);
+        const ui = sprite.node.getComponent(UITransform);
+        const fit = () => { ui.setAnchorPoint(layout.anchorX, layout.anchorY); ui.setContentSize(layout.width, layout.height); };
+        this.apply(sprite, GATE_ART, layout.width, fit);
+        sprite.trim = false;
+        fit();
+        return layout;
+    }
+
+    private static applyFitted(sprite: Sprite, name: string, layout: CityArtLayout): CityArtLayout {
+        this.apply(sprite, name, layout.width, () => {
+            // 自动裁边的 SpriteFrame 会缩小渲染四边形，投影材质必须使用完整 0..1 画布。
+            // 只创建共享纹理的运行时帧，不修改导入资源或复制纹理。
+            let frame = this.cityFrames.get(name);
+            if (!frame) {
+                frame = new SpriteFrame(); frame.texture = this.frame(name).texture;
+                frame.packable = false; frame.addRef(); this.cityFrames.set(name, frame);
+            }
+            sprite.spriteFrame = frame;
+            let material = this.cityMaterials.get(name);
+            if (!material) {
+                if (!this.effect) throw new Error('城池投影材质未就绪');
+                const [a,b,c,d,e,f] = layout.fit.inverse;
+                material = new Material(); material.initialize({ effectAsset: this.effect, technique: 2 });
+                const roof = layout.fit.roof;
+                material.setProperty('cityUvX', new Vec4(a,b,c,roof ? 1 : 0));
+                material.setProperty('cityUvY', new Vec4(d,e,f,0));
+                material.setProperty('cityRender', new Vec4(1,roof?.height ?? 1,0,roof?.y ?? 0));
+                const [ua,ub,uc,ud,ue,uf] = layout.fit.upperInverse;
+                material.setProperty('cityUpperUvX', new Vec4(ua,ub,uc,0));
+                material.setProperty('cityUpperUvY', new Vec4(ud,ue,uf,0));
+                this.cityMaterials.set(name, material);
+            }
+            sprite.customMaterial = material;
+        });
+        sprite.trim = false;
+        const ui = sprite.node.getComponent(UITransform);
+        const drawHeight = layout.fit.roof?.height ?? 1;
+        // 扩展后侧塔顶画布，地面中心和前侧墙脚保持不动。
+        ui.setAnchorPoint(.5, .5 / drawHeight); ui.setContentSize(layout.width, layout.height * drawHeight);
+        return layout;
+    }
 
     static prepare(): Promise<void> {
         if (this.pending) return this.pending;
@@ -82,6 +144,7 @@ export default class WorldMapArt {
             new Promise<void>((resolve, reject) => resources.load('world/original-landscape', JsonAsset, (error, config) => {
                 if (error) return reject(error);
                 this.landscape = config.json;
+                setWorldWaterData(this.landscape);
                 metadataReady();
                 resolve();
             })),
@@ -143,25 +206,28 @@ export default class WorldMapArt {
         return request;
     }
 
-    static apply(sprite: Sprite, name: string, width: number, ready?: () => void): void {
+    static apply(sprite: Sprite, name: string, width: number, ready?: () => void, preserveUntilReady = false): void {
         name = name === 'capital' ? cityArtAsset(10) : name;
         const size = this.size(name);
-        const binding: ArtBinding = { name, ready };
+        const previous = this.bindings.get(sprite);
+        const preserve = preserveUntilReady && previous?.displayed && sprite.spriteFrame?.isValid;
+        const binding: ArtBinding = { name, ready, displayed: preserve ? previous.displayed : undefined };
         this.bindings.set(sprite, binding);
-        sprite.customMaterial = null;
-        sprite.spriteFrame = null;
+        if (!preserve) { sprite.customMaterial = null; sprite.spriteFrame = null; }
         sprite.sizeMode = Sprite.SizeMode.CUSTOM;
         sprite.type = Sprite.Type.SIMPLE;
         sprite.color = Color.WHITE;
-        sprite.node.getComponent(UITransform).setContentSize(width, width * size.height / size.width);
+        if (!preserve) sprite.node.getComponent(UITransform).setContentSize(width, width * size.height / size.width);
         this.bind(sprite, binding);
     }
 
     private static bind(sprite: Sprite, binding: ArtBinding): void {
         const apply = (frame: SpriteFrame) => {
             if (!isValid(sprite, true) || this.bindings.get(sprite) !== binding) return;
+            sprite.customMaterial = null;
             sprite.spriteFrame = frame;
             binding.ready?.();
+            binding.displayed = binding.name; binding.applied = true;
         };
         const frame = this.frames.get(binding.name);
         if (frame?.isValid) { this.lastUsed.set(binding.name, Date.now()); apply(frame); return; }
@@ -180,7 +246,7 @@ export default class WorldMapArt {
     static get visibleState(): { pending: number; error: Error | null } {
         const names = new Set<string>();
         for (const [sprite, binding] of this.bindings) {
-            if (isValid(sprite, true) && sprite.node.activeInHierarchy && !sprite.spriteFrame?.isValid) names.add(binding.name);
+            if (isValid(sprite, true) && sprite.node.activeInHierarchy && (!binding.applied || !sprite.spriteFrame?.isValid)) names.add(binding.name);
         }
         return { pending: names.size, error: [...names].map(name => this.failures.get(name)?.error).find(Boolean) || null };
     }
@@ -191,7 +257,10 @@ export default class WorldMapArt {
             if (!isValid(sprite, true)) { this.bindings.delete(sprite); continue; }
             if (!sprite.node.activeInHierarchy) continue;
             used.add(binding.name); this.lastUsed.set(binding.name, now);
-            if (!sprite.spriteFrame?.isValid && !this.loading.has(binding.name)
+            if (binding.displayed && sprite.spriteFrame?.isValid) {
+                used.add(binding.displayed); this.lastUsed.set(binding.displayed, now);
+            }
+            if ((!binding.applied || !sprite.spriteFrame?.isValid) && !this.loading.has(binding.name)
                 && now - (this.failures.get(binding.name)?.at || 0) > 5000) this.bind(sprite, binding);
         }
         if (now < this.nextSweep) return;
@@ -200,11 +269,16 @@ export default class WorldMapArt {
         const idle = [...this.frames.keys()].filter(name => !used.has(name))
             .sort((a, b) => (this.lastUsed.get(a) || 0) - (this.lastUsed.get(b) || 0));
         for (const name of idle) {
-            if (bytes <= 96 * 1024 * 1024 && now - (this.lastUsed.get(name) || 0) < 30000) continue;
-            for (const [sprite, binding] of this.bindings) if (binding.name === name) {
+            if (bytes <= 96 * 1024 * 1024 && now - (this.lastUsed.get(name) || 0) < 120000) continue;
+            for (const [sprite, binding] of this.bindings) if (binding.displayed === name) {
                 sprite.customMaterial = null; sprite.spriteFrame = null;
+                binding.displayed = undefined; binding.applied = false;
             }
             PlayerCityGround.releaseArt(name);
+            const material = this.cityMaterials.get(name);
+            if (material) { material.destroy(); this.cityMaterials.delete(name); }
+            const cityFrame = this.cityFrames.get(name);
+            if (cityFrame) { cityFrame.decRef(); this.cityFrames.delete(name); }
             const frame = this.frames.get(name);
             bytes -= frame.originalSize.width * frame.originalSize.height * 4;
             this.frames.delete(name); this.lastUsed.delete(name);
@@ -213,7 +287,8 @@ export default class WorldMapArt {
     }
 
     static prefetch(names: string[]): void {
-        for (const name of new Set(names)) void this.ensure(name, AssetPriority.Background).catch(() => {});
+        // 临近地图与下一阶段主城优先于全量背包、武将图片，仍受后台限流约束。
+        for (const name of new Set(names)) void this.ensure(name, AssetPriority.Warmup).catch(() => {});
     }
 
     static get statistics() {

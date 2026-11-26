@@ -347,21 +347,52 @@ export default class CityArmySettingLogic extends Component {
                 this.sliders[i].enabled = enabled;
             });
         }
+        this.updateAllocationState();
         updateTroopPanelStatus(this);
     }
 
-    protected setCurConscriptForIndex(index: number, cnt: number = 0): void {
+    private getConscriptLimit(index: number): number {
         let maxCnt = Math.max(0, this._totalSoldiers[index] - this._soldiers[index]);
         if (!this._data) {
             const allocated = this._curConscripts.reduce((sum, value, i) => sum + (i === index ? 0 : value), 0);
             maxCnt = Math.min(maxCnt, Math.max(0, this.getReserveSoldiers() - allocated));
         }
+        return maxCnt;
+    }
+
+    protected setCurConscriptForIndex(index: number, cnt: number = 0): void {
+        const maxCnt = this.getConscriptLimit(index);
         cnt = Number.isFinite(cnt) ? Math.max(0, Math.min(Math.floor(cnt), maxCnt)) : 0;
-        const range = Math.max(0, this._totalSoldiers[index] - this._soldiers[index]);
-        const percent = range > 0 ? cnt / range : 0;
+        const percent = maxCnt > 0 ? cnt / maxCnt : 0;
         this.editBoxs[index].string = cnt + "";
         this.sliders[index].progress = percent;
         this._curConscripts[index] = cnt;
+    }
+
+    private updateAllocationState(): void {
+        if (!this._soldiers || !this._curConscripts) return;
+        const command = TroopCommand.getInstance(), reserve = this.getReserveSoldiers();
+        const total = this.getTotalConscriptCnt();
+        this.visualState.allocations = this.editBoxs.map((edit, i) => {
+            const occupied = !this.tipNodes[i].active;
+            const limit = occupied ? this.getConscriptLimit(i) : 0;
+            const allowed = this._data ? edit.enabled
+                : this._isUnlock && command.listReady && !command.editingTroopIdx;
+            const editable = occupied && allowed && limit > 0;
+            const added = this._curConscripts[i];
+            this.sliders[i].progress = limit > 0 ? added / limit : 0;
+            if (!this._data) { edit.enabled = editable; this.sliders[i].enabled = editable; }
+            // 保留已选兵力的调整入口；库存耗尽后隐藏输入和滑条。
+            edit.node.active = editable;
+            this.sliders[i].node.active = editable;
+            const reason = !occupied ? '' : !this._data && reserve <= 0 ? '暂无预备兵'
+                : !this._data && command.editingTroopIdx ? '分配中…'
+                : !allowed ? '暂不可增援' : limit <= 0 ? (this._data ? '兵力已满' : '预备兵已分配') : '';
+            return { occupied, current: this._soldiers[i], added, editable, reason };
+        });
+        const eligible = this.visualState.allocations.some(slot => slot.editable);
+        this.visualState.canQuick = eligible && (this._data ? true : reserve > total);
+        this.visualState.canConfirm = eligible && total > 0 && (this._data ? true : total <= reserve);
     }
 
     protected getTotalConscriptCnt(): number {
@@ -377,6 +408,7 @@ export default class CityArmySettingLogic extends Component {
         this.visualState.supply = !this._data;
         this.visualState.reserve = this.getReserveSoldiers();
         this.visualState.allocated = totalCnt;
+        this.updateAllocationState();
         updateTroopPanelStatus(this);
         if (!this._data) {
             const reserve = this.getReserveSoldiers();
@@ -407,7 +439,7 @@ export default class CityArmySettingLogic extends Component {
     protected onChangeSlider(slider: Slider): void {
         let index: number = this.sliders.indexOf(slider);
         if (index >= 0) {
-            let maxCnt: number = this._totalSoldiers[index] - this._soldiers[index];
+            const maxCnt = this.getConscriptLimit(index);
             this.setCurConscriptForIndex(index, Math.floor(this.sliders[index].progress * maxCnt));
             this.updateResCost();
         }

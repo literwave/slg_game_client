@@ -396,6 +396,12 @@ export default class RightInfoNodeLogic extends Component {
         });
     }
 
+    /** 统一控制右侧侧边栏主体及其外部“收起/展开”把手的显隐（进入独立内城时完整隐藏，避免把手悬浮残留）。 */
+    public setSidebarVisible(visible: boolean): void {
+        if (this.node?.isValid) this.node.active = visible;
+        if (this._tabNode?.isValid) this._tabNode.active = visible;
+    }
+
     onToggleCollapse(): void {
         if (this._animating) {
             return;

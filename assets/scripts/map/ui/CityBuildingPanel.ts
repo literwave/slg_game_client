@@ -1,5 +1,5 @@
 import { _decorator, BlockInputEvents, Button, Canvas, Color, Component, Graphics, Label, Mask, Node, SafeArea,
-    ScrollView, Sprite, SpriteFrame, UITransform, Vec2, Widget, resources, view } from 'cc';
+    ScrollView, Sprite, SpriteFrame, Tween, tween, UIOpacity, UITransform, Vec2, Vec3, Widget, resources, view } from 'cc';
 import BuildCommand from '../../build/BuildCommand';
 import { buildingArt, buildingGoalPresentation, buildingNextUnlocks } from './BuildingPresentation';
 import { BuildingGraphEdge, BuildingGraphNode, buildingGoalKey, buildingGraphFocus,
@@ -80,6 +80,8 @@ export default class CityBuildingPanel extends Component {
     private loadingFrames = new Map<string, Promise<SpriteFrame>>();
     private imageKeys = new WeakMap<Sprite, string>();
     private preparingView = false;
+    private lastKnownLevels = new Map<number, number>();
+    private upgradeToast: Node | null = null;
 
     /** 在不可见时准备建筑卡片与图片，仅使用本地快照。 */
     public prepareView(): void {
@@ -93,17 +95,18 @@ export default class CityBuildingPanel extends Component {
         try { this.layout(); } finally { this.preparingView = false; }
     }
 
-    show(cityId: number): void {
+    show(cityId: number, focusBuildingType = 1): void {
         this.cityId = cityId;
         if (!this.panel) this.build();
         this.category = 0;
-        this.selected = 1;
-        this.selectedLevel = this.nextLevel(1);
+        this.selected = focusBuildingType > 0 ? focusBuildingType : 1;
+        this.selectedLevel = this.nextLevel(this.selected);
         this.detailOnly = false;
         this.syncRetries = 0;
         this.unschedule(this.retrySync);
         this.retryScheduled = false;
         this.node.active = true;
+        this.snapshotLevels();
         this.safe.getComponent(SafeArea).updateArea();
         this.layout();
         this.focusSelected();
@@ -581,9 +584,84 @@ export default class CityBuildingPanel extends Component {
     protected onEnable(): void {
         view.on('canvas-resize', this.queueLayout, this);
         view.on('design-resolution-changed', this.queueLayout, this);
-        for (const event of [LogicEvent.updateCityBuilds, LogicEvent.protocolRequestChanged, LogicEvent.upateMyRoleRes]) {
+        this.snapshotLevels();
+        EventMgr.on(LogicEvent.updateCityBuilds, this.onCityBuildsUpdated, this);
+        for (const event of [LogicEvent.protocolRequestChanged, LogicEvent.upateMyRoleRes]) {
             EventMgr.on(event, this.refresh, this);
         }
+    }
+
+    private snapshotLevels(): void {
+        this.lastKnownLevels.clear();
+        BuildCommand.getInstance().levels.forEach((lv, bid) => this.lastKnownLevels.set(bid, lv));
+    }
+
+    private onCityBuildsUpdated(): void {
+        const b = BuildCommand.getInstance();
+        const configs = MapUICommand.getInstance().proxy.getFacilityConfigs();
+        let upgraded: { cfg: FacilityConfig; from: number; to: number } | null = null;
+        if (this.lastKnownLevels.size > 0) {
+            b.levels.forEach((lv, bid) => {
+                const prev = this.lastKnownLevels.get(bid) || 0;
+                if (lv > prev) {
+                    const cfg = configs.find(item => item.type === bid);
+                    if (cfg) upgraded = { cfg, from: prev, to: lv };
+                }
+            });
+        }
+        this.snapshotLevels();
+        this.refresh();
+        if (upgraded && this.node.activeInHierarchy) {
+            this.playUpgradeFeedback(upgraded.cfg, upgraded.from, upgraded.to);
+        }
+    }
+
+    /** 建造/升级成功时播放立绘金光弹跳与浮空升阶喜报，避免静默改数字显得枯燥。 */
+    private playUpgradeFeedback(cfg: FacilityConfig, fromLv: number, toLv: number): void {
+        if (this.detailArt?.node?.isValid && cfg.type === this.selected) {
+            Tween.stopAllByTarget(this.detailArt.node);
+            this.detailArt.node.setScale(1, 1, 1);
+            tween(this.detailArt.node)
+                .to(0.12, { scale: new Vec3(1.12, 1.12, 1) }, { easing: 'quadOut' })
+                .to(0.24, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' })
+                .start();
+        }
+        if (!this.detail?.isValid) return;
+        if (!this.upgradeToast?.isValid) {
+            this.upgradeToast = this.makeNode('UpgradeCelebration', this.detail);
+            this.upgradeToast.addComponent(UIOpacity);
+            caption(this.upgradeToast, 'Label', '', 0, 0, 260, 18, new Color(255, 226, 152), Label.HorizontalAlign.CENTER);
+        }
+        const toast = this.upgradeToast;
+        toast.active = true;
+        toast.setSiblingIndex(this.detail.children.length - 1);
+        const label = toast.getChildByName('Label')?.getComponent(Label);
+        const text = fromLv <= 0 ? `${cfg.name} 建成！` : `${cfg.name} 升至 ${toLv} 级！`;
+        if (label) {
+            label.string = text;
+            label.isBold = true;
+            label.outlineColor = new Color(18, 12, 6);
+            label.outlineWidth = 2;
+        }
+        inkSurface(toast, 'Surface', 240, 40, new Color(26, 32, 24, 240), new Color(238, 198, 114, 235));
+        const opacity = toast.getComponent(UIOpacity);
+        Tween.stopAllByTarget(toast);
+        Tween.stopAllByTarget(opacity);
+        const startY = 80;
+        toast.setPosition(0, startY, 0);
+        toast.setScale(0.86, 0.86, 1);
+        opacity.opacity = 0;
+        tween(toast)
+            .to(0.18, { scale: new Vec3(1, 1, 1), position: new Vec3(0, startY + 14, 0) }, { easing: 'backOut' })
+            .delay(0.85)
+            .to(0.32, { position: new Vec3(0, startY + 38, 0) }, { easing: 'quadIn' })
+            .call(() => { if (toast.isValid) toast.active = false; })
+            .start();
+        tween(opacity)
+            .to(0.16, { opacity: 255 })
+            .delay(0.85)
+            .to(0.32, { opacity: 0 })
+            .start();
     }
 
     protected onDisable(): void {

@@ -10,11 +10,11 @@ export function validChatTarget(value: unknown): boolean {
 
 export function chatDockLayout(width: number, height: number) {
     const narrow = width < 720, margin = narrow ? 12 : 20;
-    // 横屏与任务卡等宽；窄屏为右侧战报入口保留空间。
-    const w = Math.min(344, Math.max(1, narrow ? width - margin * 2 - 76 : width - 440 - margin * 2));
-    const h = 84, bottom = narrow ? 100 : 20;
+    // 图标和消息预览共用一行，窄屏抬高以避开底部导航。
+    const w = Math.min(344, Math.max(1, width - margin * 2));
+    const h = 56, bottom = narrow ? 100 : 20;
     return { width: w, height: h, x: -width / 2 + margin + w / 2,
-        y: -height / 2 + bottom + h / 2, taskBottom: Math.max(124, bottom + h + 12) };
+        y: -height / 2 + bottom + h / 2, taskBottom: bottom + h + 12 };
 }
 
 export function chatPanelLayout(width: number, height: number) {

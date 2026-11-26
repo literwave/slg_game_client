@@ -19,7 +19,7 @@ function harness() {
             assert.ok(packet.msg instanceof Uint8Array);
             sent.push({ name: packet.name, data: proto.decode(packet.name, packet.msg) });
         } }) } },
-        'map/ui/ManagementStyle': {},
+        'map/ui/ManagementStyle': { ManagementColors: { text: 'text', muted: 'muted' } },
         'chat/ChatView': {},
     };
     const cc = { _decorator: { ccclass: () => v => v }, Component: class {} };
@@ -166,6 +166,7 @@ test('宽窄屏消息栏避开任务和导航，聊天面板包含完整输入�
     const h = harness(), { chatDockLayout, chatPanelLayout } = h.load('chat/ChatPresentation');
     for (const [w, h] of [[1280, 720], [960, 540], [844, 390], [390, 844], [360, 640]]) {
         const dock = chatDockLayout(w, h), panel = chatPanelLayout(w, h);
+        assert.ok(dock.width >= 280, '消息预览不能退化成单个图标');
         assert.ok(dock.x - dock.width / 2 >= -w / 2 && dock.x + dock.width / 2 <= w / 2);
         assert.ok(dock.taskBottom > dock.y + h / 2 + dock.height / 2);
         if (w < 720) assert.ok(dock.y - dock.height / 2 + h / 2 >= 92);
@@ -192,5 +193,31 @@ test('联盟权限变化会重新排版且保留输入，不滞留禁用状态',
     h.join(19); panel.refresh(); assert.equal(layouts, 2); assert.equal(panel.allianceLocked, false);
     h.join(0); panel.refresh(); assert.equal(layouts, 3); assert.equal(panel.allianceLocked, true);
     assert.equal(panel.input.string, '保留草稿');
+});
+test('地图显示最新真实消息，预览点击对应会话且不误清未读', () => {
+    const h = harness(), Strip = h.load('chat/MapChatStrip').default, strip = new Strip(), opened = [];
+    strip.sender = {}; strip.message = {}; strip.unread = {};
+    strip.open = (...args) => opened.push(args);
+    h.receive(h.S.s2c_sync_chat, { msg: message(1, 3, peer, me, '在城外等你') });
+    strip.render();
+    assert.equal(strip.sender.string, '私聊'); assert.equal(strip.message.string, '青山：在城外等你');
+    strip.openPreview(); assert.deepEqual(opened.pop(), [3, peer, '青山']);
+    assert.equal(h.proxy.unreadCount(3, peer), 1, '预览本身不是已读');
+    h.receive(h.S.s2c_sync_chat, { msg: message(2, 1, peer2, 0, '世界新消息') });
+    strip.render(); strip.openPreview();
+    assert.equal(strip.sender.string, '世界');
+    assert.equal(strip.message.string, '青山：世界新消息'); assert.equal(opened.pop()[0], 1);
+    strip.openChat(); assert.deepEqual(opened.pop(), [3, peer, '青山'], '图标仍能进入未读私聊');
+    assert.equal(h.sent.filter(p => p.name === h.S.c2s_chat).length, 0);
+});
+test('预览长消息省略，退盟或注销后不残留旧内容', () => {
+    const h = harness(), Strip = h.load('chat/MapChatStrip').default, strip = new Strip();
+    strip.sender = {}; strip.message = {}; strip.unread = {}; strip.textWidth = 140;
+    h.join(19);
+    h.receive(h.S.s2c_sync_chat, { msg: message(1, 2, peer, 0, '同袍们请在城外集合，准备一起出征，不要落下补给。') });
+    strip.render(); assert.ok(strip.message.string.endsWith('…')); assert.ok(Array.from(strip.message.string).length <= 10);
+    h.join(0); strip.render(); assert.equal(strip.message.string, '暂无消息');
+    h.receive(h.S.s2c_sync_chat, { msg: message(2) }); strip.render();
+    h.logout(); strip.render(); assert.equal(strip.message.string, '暂无消息'); assert.equal(strip.unread.active, false);
 });
 console.log(`通过 ${passed} 项聊天回归`);

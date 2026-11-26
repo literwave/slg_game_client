@@ -44,9 +44,11 @@ let marches = [];
 const util = { areaCellSize: {}, mapSize: { width: 1000, height: 1000 }, tileSize: { width: 200, height: 100 },
     getIdByCellPoint: (x, y) => y * 1000 + x,
     mapCellToPixelPoint: p => new Vec2((p.x - p.y) * 100, (20 - p.x - p.y) * 50) };
+const cityGround = new Set();
 const stubs = {
     'map/WorldCampaign': { default: { gateAt: () => null } },
-    'map/MapUtil': { default: util }, 'map/MapCommand': { default: { getInstance: () => ({ proxy: { getResData: () => ({ type: 52 }) } }) } },
+    'map/MapUtil': { default: util }, 'map/MapCommand': { default: { getInstance: () => ({
+        isCityGroundCell: (x, y) => cityGround.has(y * 1000 + x), proxy: { getResData: () => ({ type: 52 }) } }) } },
     'map/MapProxy': { MapResType: { SYS_FORTRESS: 50, WOOD: 52, GRAIN: 55 } },
     'map/entries/ResLogic': { default: class {} },
     'world/WorldCommand': { default: { getInstance: () => world }, MarchTargetType: { OccupyResource: 3 } },
@@ -82,6 +84,12 @@ assert.equal(res.landClaims.get(10010).owner, 'mine'); assert.equal(res.landClai
 assert.equal(res.territoryLayer.parent, map); assert.ok(res.territoryLayer.getSiblingIndex() > resources.getSiblingIndex());
 const other = res.claimViews.get(10011); assert.ok(other.node.activeInHierarchy);
 assert.equal(other.node.children.length, 1, '已占领地块仅有轻薄边界，不创建旗帜');
+cityGround.add(10010); res.refreshOwnership();
+assert.equal(res.claimViews.has(10010), false, '迁入城市覆盖格清理已有领地标记');
+res.refreshOverview(true); res.refreshOverview(false);
+assert.equal(res.claimViews.has(10010), false, '远近LOD不能复活城内领地');
+cityGround.clear(); res.refreshOwnership();
+assert.ok(res.claimViews.has(10010), '城市迁走后从原始AOI恢复领地，无数据改写');
 res.refreshOverview(true); resources.active = false;
 const refreshOwnership = res.refreshOwnership;
 let repeatedRefreshes = 0;
@@ -103,6 +111,9 @@ marches = [{ targetType: 3, state: 2, endPos: { x: 9, y: 9 }, startTime: 995, en
 res.refreshOwnership(); assert.equal(res.landClaims.get(10009).owner, 'pending');
 assert.equal(res.landClaims.get(9009).owner, 'pending'); assert.equal(res.landClaims.has(8008), false, '在路上不画占领完成/占领中');
 assert.ok(res.claimViews.get(9009).node.getChildByName('OccupyBar').active, '无资源的占领中空地也有读条');
+cityGround.add(9009); res.refreshOwnership();
+assert.equal(res.claimViews.has(9009), false, '实体和行军两条路径都不能在城内画占领读条');
+cityGround.clear(); res.refreshOwnership();
 const pending = res.claimViews.get(9009), timerData = { ...world.entities.get(7) };
 now = 1009; res.tickOccupyProgress();
 assert.match(pending.node.getChildByName('OccupyPending').getComponent(Label).string, /占领中 1秒/);

@@ -50,7 +50,7 @@ function harness(loadFacilities = true) {
     const login = { proxy: { getRoleData: () => role, getRoleResData: () => balances, hasItemCount: () => false,
         getItemCount: id => Number(balances.resList.find(row => row.k === id)?.v || 0) } };
     class EmptyProxy { initData() {} clearData() {} updateMapPosTags() {} isPosTag() { return false; } }
-    const actual = new Set(['utils/EventMgr', 'common/LogicEvent', 'config/ServerConfig', 'config/Basci',
+    const actual = new Set(['map/MapProjection', 'utils/EventMgr', 'common/LogicEvent', 'config/ServerConfig', 'config/Basci',
         'network/pto/ProtoManager', 'network/pto/ProtocolCommand', 'network/pto/SnapshotStore', 'network/socket/NetInterface',
         'core/ConfigManager', 'common/ItemPresentation', 'utils/ConfigIcon', 'world/WorldCommand', 'world/ResourceLand', 'build/BuildCommand', 'map/ui/BuildingPresentation',
         'map/MapCityProxy', 'map/MapCommand', 'map/MapCityLogic', 'map/MapBaseLayerLogic', 'map/PlayerCityAppearance', 'map/entries/FacilityBuildLogic',
@@ -63,6 +63,7 @@ function harness(loadFacilities = true) {
         'utils/DateUtil': { default: { leftTimeStr: () => '00:01' } },
         'map/MapUtil': { default: util }, 'map/MapProxy': { default: EmptyProxy, MapResType: { WOOD: 52, GRAIN: 55, SYS_CITY: 51, SYS_FORTRESS: 50, FORTRESS: 30 } },
         'map/MapBuildProxy': { default: EmptyProxy },
+        'map/CityGround': { isSystemCityGroundCell: () => false },
         'common/AudioManager': { AudioManager: { instance: { playClick() {} } } },
         'network/socket/NetManager': { NetManager: { getInstance: () => ({ send(p) {
             assert.ok(p.msg instanceof Uint8Array); assert.ok(proto.getIdByMsgType(p.name) > 0);
@@ -245,7 +246,7 @@ test('AOI 名称和主城等级经真实编解码进入地图，改名升级原�
     const initial = p.getCity(cell);
     assert.equal(h.world.entities.get(entityId).name, '洛阳城主');
     assert.equal(initial.name, '洛阳城主'); assert.equal(initial.level, 3);
-    assert.equal(playerCityAppearance(initial.level).art, 'player_city_lv3');
+    assert.equal(playerCityAppearance(initial.level).art, 'player-city-grid-01');
     assert.equal(initial.entityId, entityId, '新增字段不能损失 int64 身份');
 
     const layer = new (h.load('map/MapCityLogic').default)();
@@ -258,7 +259,7 @@ test('AOI 名称和主城等级经真实编解码进入地图，改名升级原�
     h.receive(h.S.s2c_aoi_update, { entities: [{ ...entity, name: '新洛阳', level: 30 }] });
     const updated = p.getCity(cell);
     assert.equal(updated.cityId, initial.cityId); assert.equal(updated.name, '新洛阳');
-    assert.equal(playerCityAppearance(updated.level).art, 'player_city_lv30');
+    assert.equal(playerCityAppearance(updated.level).art, 'player-city-grid-30');
     assert.deepEqual(refreshed, [updated]); assert.equal(added.length, 0); assert.equal(removed.length, 0);
     assert.equal(p.getCity(cell + 1), updated, '原有九格点击区域也引用新数据');
     h.receive(h.S.s2c_aoi_update, { entities: [{ ...entity, name: '新洛阳', level: 30 }] });
@@ -267,7 +268,7 @@ test('AOI 名称和主城等级经真实编解码进入地图，改名升级原�
     h.receive(h.S.s2c_aoi_leave, { entityIds: [entityId] }); assert.equal(p.getCity(cell), undefined);
     h.receive(h.S.s2c_aoi_enter, { entities: [{ ...entity, name: '重返洛阳', level: 4 }] });
     assert.equal(p.getCity(cell).cityId, initial.cityId); assert.equal(p.getCity(cell).name, '重返洛阳');
-    assert.equal(playerCityAppearance(p.getCity(cell).level).art, 'player_city_lv4');
+    assert.equal(playerCityAppearance(p.getCity(cell).level).art, 'player-city-grid-01');
 });
 
 test('AOI 兼容缺失名称等级，不使用 cfgId 或角色等级推断主城外观', () => {
@@ -504,10 +505,19 @@ test('分层连线在窄屏与横屏内完整容纳卡片，同行同列不重�
         }));
     }
 });
-test('内城入口直达新建筑面板', () => {
+test('内城入口进入独立全景内城场景', () => {
     const h = harness(), hud = new (h.load('map/ui/MapUILogic').default)();
-    hud._uiListenersReady = true; hud.closeMoreMenu = () => {}; let opened = null; hud.openFacility = city => opened = city;
-    hud.openInnerCity(); assert.equal(opened.cityId, 1);
+    hud._uiListenersReady = true; hud.closeMoreMenu = () => {};
+    let entered = null;
+    h.events.on(h.E.enterInnerCity, payload => { entered = payload; }, hud);
+    hud.openInnerCity();
+    assert.equal(entered.cityId, 1);
+    assert.equal(entered.focusBuildingType, undefined);
+    assert.equal(entered.openDetail, false);
+    hud.openInnerCity(8);
+    assert.equal(entered.focusBuildingType, 8);
+    assert.equal(entered.openDetail, false);
+    h.events.targetOff(hud);
 });
 
 test('资源栏粮木铁石四项图标/数量对应且不显示令牌', () => {
@@ -539,22 +549,28 @@ test('资源栏粮木铁石四项图标/数量对应且不显示令牌', () => {
     h.balances.resList = h.balances.resList.filter(r => r.k !== 4); hud.updateRoleRes();
     assert.equal(bar.children[3].getChildByName('New Label').getComponent(Label).string, '石 0');
 });
-test('主城 1—30 级随 Build 回包逐级换独立外观，AOI 未知等级不推断', () => {
+test('主城 1—30 级按五级分阶段更换外观，AOI 未知等级不推断', () => {
     const h = harness();
     const { playerCityAppearance, PLAYER_CITY_MAX_LEVEL } = h.load('map/PlayerCityAppearance');
     assert.equal(PLAYER_CITY_MAX_LEVEL, table('BuildingDetail').find(row => row.Id === 1).MaxLevel);
-    const arts = new Set();
+    const arts = new Set(); let previousArt = '';
     for (let level = 1; level <= PLAYER_CITY_MAX_LEVEL; level++) {
         h.receive(h.S.s2c_sync_build, { bid: 1, level });
         const city = h.map.cityProxy.getMyMainCity();
         const art = playerCityAppearance(city.level);
         assert.equal(art.level, level);
         assert.equal(art.width, 600, '主城原图地脚与 3×3 占地同宽');
-        assert.equal(art.y, -150, '主城地脚前角与占地前角一致');
+        assert.equal(art.y, 0, '主城画布以九格占地中心定位');
+        assert.equal(art.height, 300, '整座主城不得高出九格画布');
+        if (level > 1) {
+            if ((level - 1) % 5 === 0) assert.notEqual(art.art, previousArt, '跨阶段更换外观');
+            else assert.equal(art.art, previousArt, '同一阶段维持城内布局');
+        }
+        previousArt = art.art;
         arts.add(art.art);
         assert.equal(h.map.cityProxy.getCity(util.getIdByCellPoint(11, 19)), city);
     }
-    assert.equal(arts.size, 30);
+    assert.equal(arts.size, 6);
     for (const value of [0, -1, NaN, Infinity]) assert.equal(playerCityAppearance(value).level, 0);
     assert.equal(playerCityAppearance(999).level, 30);
     h.receive(h.S.s2c_aoi_enter, { entities: [h.entity()] });

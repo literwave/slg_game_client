@@ -1,15 +1,23 @@
-import { BlockInputEvents, Button, Color, EditBox, Graphics, Label, Node, ProgressBar, Slider, Sprite, UITransform, Widget, view } from 'cc';
+import { BlockInputEvents, Button, Color, EditBox, Graphics, Label, Node, ProgressBar, Slider, Sprite, UIOpacity, UITransform, Widget, view } from 'cc';
 import { caption, headerRule, hideSprite, inkSurface, ManagementColors as C, manualLayout, panelButton, place, textStyle } from './ManagementStyle';
 import { styleGeneralPageBackground } from './GeneralPageBackground';
 import { gameCloseButton } from './TaskBoardView';
 import { troopAttributeIcon, TroopAttributeIcon } from './TroopAttributeIcons';
 import { troopPortrait } from './TroopSidebarCard';
 
-const SURFACE = new Color(151, 144, 117, 25);
 const CONTROL = new Color(151, 144, 117, 46);
 const LINE = new Color(190, 166, 119, 105);
 const RULE = new Color(190, 166, 119, 50);
 const TITLE_INSET = 26;
+const soldierNumber = (value: number): string => String(Math.max(0, Math.floor(value || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+/** 两行始终保留独立空间，库存异步更新时只切换控件显隐。 */
+export function troopAllocationLayout(cardWidth: number) {
+    return { height: 88, valueY: 22, fieldY: -24,
+        sliderWidth: Math.max(24, cardWidth - 144),
+        sliderLeft: -cardWidth / 2 + 16,
+        inputX: cardWidth / 2 - 52, inputWidth: 72, plusX: cardWidth / 2 - 98 };
+}
 
 function polygon(g: Graphics, points: number[][]): void {
     g.moveTo(points[0][0], points[0][1]);
@@ -78,6 +86,8 @@ function arrowButton(node: Node | null, x: number, y: number, direction: number)
 export interface TroopVisualState {
     soldiers: number | null; wounded: number; reserve: number; allocated: number;
     speed: number; attack: number; supply: boolean;
+    allocations?: { occupied: boolean; current: number; added: number; editable: boolean; reason: string }[];
+    canQuick?: boolean; canConfirm?: boolean;
 }
 
 /** 只更新可视数据，不触发请求或重建卡槽，滑杆和拖动过程保持原节点。 */
@@ -104,11 +114,57 @@ export function updateTroopPanelStatus(parts: TroopPanelParts): void {
     if (!footer) return;
     const reserve = footer.getChildByName('ReserveValue')?.getComponent(Label);
     const allocated = footer.getChildByName('AllocatedValue')?.getComponent(Label);
-    if (reserve) { reserve.string = String(state.reserve); reserve.node.active = state.supply; }
-    if (allocated) { allocated.string = '+' + state.allocated; allocated.node.active = state.supply; }
+    if (reserve) { reserve.string = soldierNumber(state.reserve); reserve.node.active = state.supply; }
+    if (allocated) { allocated.string = '+' + soldierNumber(state.allocated); allocated.node.active = state.supply; }
+    const reserveStatus = footer.getChildByName('ReserveStatus')?.getComponent(Label);
+    if (reserveStatus) {
+        reserveStatus.node.active = state.supply;
+        reserveStatus.string = state.reserve <= 0 ? '暂无预备兵' : `待分配 ${soldierNumber(Math.max(0, state.reserve - state.allocated))}`;
+    }
     if (parts.labelResCost) parts.labelResCost.node.active = !state.supply;
     for (const name of ['ReserveTitle', 'ReserveGlyph', 'AllocatedTitle', 'AllocatedGlyph']) {
         const node = footer.getChildByName(name); if (node) node.active = state.supply;
+    }
+    state.allocations?.forEach((slot, index) => {
+        const summary = footer.getChildByName('AllocationSummary' + index)?.getComponent(Label);
+        const after = footer.getChildByName('AllocationAfter' + index)?.getComponent(Label);
+        const status = footer.getChildByName('AllocationStatus' + index)?.getComponent(Label);
+        if (summary) { summary.node.active = slot.occupied; summary.string = `现有 ${soldierNumber(slot.current)}`; }
+        if (after) {
+            after.node.active = slot.occupied;
+            after.string = slot.added > 0 ? `→ ${soldierNumber(slot.current + slot.added)}` : '增援 +0';
+            after.color = slot.added > 0 ? C.gold : C.muted;
+            after.fontSize = slot.added > 0 ? 18 : 12;
+        }
+        if (status) { status.node.active = slot.occupied && !!slot.reason && slot.reason !== '暂无预备兵'; status.string = slot.reason; }
+        const plus = footer.getChildByName('AllocationPlus' + index); if (plus) plus.active = slot.editable;
+        // 兵力集中在卡片下方的一处，卡片内不再重复一个小号兵力数字。
+        const logic = parts.generalLayer?.children[index]?.getComponent('CityGeneralItemLogic') as any;
+        const oldSoldiers = logic?.infoNode?.getChildByName('soldierNode'); if (oldSoldiers) oldSoldiers.active = !state.supply;
+        const slider = parts.sliders[index];
+        if (!slider) return;
+        const width = slider.node.getComponent(UITransform)?.width || 0;
+        const fill = inkSurface(slider.node, 'AllocationFill', width, 3, null, null);
+        fill.node.setSiblingIndex(slider.handle ? slider.handle.node.getSiblingIndex() : 0);
+        fill.fillColor = slot.editable ? C.gold : C.muted;
+        const selectedWidth = Math.max(0, Math.min(1, slider.progress)) * width;
+        if (selectedWidth > 0) { fill.rect(-width / 2, -1.5, selectedWidth, 3); fill.fill(); }
+        if (slider.handle) {
+            slider.handle.node.setSiblingIndex(slider.node.children.length - 1);
+            place(slider.handle.node, (slider.progress - .5) * width, 0, 32, 32);
+        }
+    });
+    for (const [name, enabled] of [['btnQuick', state.canQuick], ['btnSure', state.canConfirm]] as const) {
+        const node = footer.getChildByName(name);
+        if (!node || enabled === undefined) continue;
+        const button = node.getComponent(Button); if (button) button.interactable = enabled;
+        const opacity = node.getComponent(UIOpacity) || node.addComponent(UIOpacity);
+        opacity.opacity = enabled ? 255 : 110;
+        const bg = node.getChildByName('Background') || node, ui = node.getComponent(UITransform);
+        if (ui) inkSurface(bg, 'ManagementButton', ui.width, ui.height,
+            enabled ? (name === 'btnSure' ? new Color(116, 94, 54) : CONTROL) : new Color(65, 65, 59),
+            enabled ? (name === 'btnSure' ? C.gold : LINE) : RULE);
+        const label = node.getComponentInChildren(Label); if (label) label.color = enabled ? C.text : C.muted;
     }
 }
 
@@ -283,11 +339,12 @@ export function styleTroopPanel(parts: TroopPanelParts): void {
     const cardAreaWidth = usable - summaryWidth - gutter;
     const cardWidth = (cardAreaWidth - cardGap * 2) / 3;
     const cardsX = left + summaryWidth + gutter + cardAreaWidth / 2;
-    const allocationHeight = compact ? 76 : 88;
+    const allocation = troopAllocationLayout(cardWidth);
+    const allocationHeight = allocation.height;
     const actionHeight = compact ? 40 : 44;
     const actionGap = compact ? 12 : 18;
     const footerHeight = allocationHeight + actionGap + actionHeight;
-    const rowGap = compact ? 12 : 16;
+    const rowGap = 4;
     const availableTop = height / 2 - (compact ? 82 : 108);
     const availableHeight = height - (compact ? 102 : 136);
     const groupHeight = Math.min(availableHeight, 400 + rowGap + footerHeight);
@@ -370,21 +427,39 @@ export function styleTroopPanel(parts: TroopPanelParts): void {
     removeDecoration(footer, 'ConscriptSurface');
     removeDecoration(footer, 'ConscriptHint');
     const allocationY = footerHeight / 2 - allocationHeight / 2;
-    const fieldY = allocationY + allocationHeight / 2 - 20;
+    const fieldY = allocationY + allocation.fieldY;
     const allocationLabelHeight = 24;
     const oldTitle = footer.getChildByName('ConscriptTitle'); if (oldTitle) oldTitle.active = false;
-    troopAttributeIcon(footer, 'ReserveGlyph', 'reserve', left + 28, allocationY, 36);
-    caption(footer, 'ReserveTitle', '预备兵', left + summaryWidth / 2 + 12, allocationY + 17,
+    troopAttributeIcon(footer, 'ReserveGlyph', 'reserve', left + 28, allocationY + 5, 30);
+    caption(footer, 'ReserveTitle', '预备兵', left + summaryWidth / 2 + 12, allocationY + 22,
         summaryWidth - 66, 12, C.muted, Label.HorizontalAlign.CENTER);
-    const reserveValue = caption(footer, 'ReserveValue', '—', left + summaryWidth / 2 + 12, allocationY - 11,
+    const reserveValue = caption(footer, 'ReserveValue', '—', left + summaryWidth / 2 + 12, allocationY - 1,
         summaryWidth - 60, 26, C.text, Label.HorizontalAlign.CENTER);
     reserveValue.isBold = true; reserveValue.overflow = Label.Overflow.SHRINK;
+    caption(footer, 'ReserveStatus', '', left + summaryWidth / 2 + 12, allocationY - 25,
+        summaryWidth - 48, 12, C.muted, Label.HorizontalAlign.CENTER);
     for (let index = 0; index < 3; index++) {
         const x = cardsX + (index - 1) * (cardWidth + cardGap);
-        const surface = inkSurface(footer, 'AllocationColumn' + index, cardWidth, allocationHeight, SURFACE, LINE);
+        const surface = inkSurface(footer, 'AllocationColumn' + index, cardWidth, allocationHeight, null, null);
         surface.node.setPosition(x, allocationY, 0);
+        surface.strokeColor = RULE; surface.lineWidth = 1;
+        surface.moveTo(-cardWidth / 2 + 16, allocationHeight / 2 - 2);
+        surface.lineTo(cardWidth / 2 - 16, allocationHeight / 2 - 2); surface.stroke();
+        const valueY = allocationY + allocation.valueY;
+        const summary = caption(footer, 'AllocationSummary' + index, '', x - cardWidth * .21, valueY,
+            cardWidth * .5, 17, C.text, Label.HorizontalAlign.LEFT);
+        summary.isBold = false;
+        summary.overflow = Label.Overflow.SHRINK;
+        const after = caption(footer, 'AllocationAfter' + index, '', x + cardWidth * .26, valueY,
+            cardWidth * .4 - 12, 18, C.gold, Label.HorizontalAlign.RIGHT);
+        after.overflow = Label.Overflow.SHRINK;
+        caption(footer, 'AllocationStatus' + index, '', x, fieldY,
+            cardWidth - 20, 13, C.muted, Label.HorizontalAlign.CENTER);
+        caption(footer, 'AllocationPlus' + index, '+', x + allocation.plusX, fieldY,
+            12, 15, C.gold, Label.HorizontalAlign.CENTER);
         const title = footer.getChildByName('title' + (index + 1));
         if (title) {
+            title.active = false;
             hideSprite(title);
             place(title, x - cardWidth / 2 + 29, fieldY, 26, allocationLabelHeight);
             const label = title.getComponentInChildren(Label);
@@ -393,34 +468,37 @@ export function styleTroopPanel(parts: TroopPanelParts): void {
         }
         const edit = parts.editBoxs[index];
         if (edit) {
-            place(edit.node, x + cardWidth / 2 - 58, fieldY, 84, 30);
+            place(edit.node, x + allocation.inputX, fieldY, allocation.inputWidth, 32);
             hideSprite(edit.node);
             if (edit.textLabel) { edit.textLabel.fontSize = 16; edit.textLabel.color = C.text; }
             if (edit.placeholderLabel) { edit.placeholderLabel.fontSize = 16; edit.placeholderLabel.color = C.muted; }
             const bg = edit.node.getChildByName('BACKGROUND_SPRITE') || edit.node;
-            if (bg !== edit.node) place(bg, 0, 0, 84, 30);
+            if (bg !== edit.node) place(bg, 0, 0, allocation.inputWidth, 32);
             hideSprite(bg);
-            inkSurface(bg, 'InputSurface', 84, 30, CONTROL, LINE);
+            inkSurface(bg, 'InputSurface', allocation.inputWidth, 32, new Color(29, 30, 24, 150), RULE);
         }
         const slider = parts.sliders[index];
-        const sliderWidth = cardWidth - 40;
+        const sliderWidth = allocation.sliderWidth;
         if (slider) {
-            place(slider.node, x, allocationY - allocationHeight / 2 + 21, sliderWidth, 32);
+            place(slider.node, x + allocation.sliderLeft + sliderWidth / 2, fieldY, sliderWidth, 32);
             const bg = slider.node.getChildByName('Background');
             if (bg) {
                 place(bg, 0, 0, sliderWidth, 3);
                 hideSprite(bg);
-                inkSurface(bg, 'AllocationTrack', sliderWidth, 3, new Color(172, 156, 123, 95), null);
+                inkSurface(bg, 'AllocationTrack', sliderWidth, 3, new Color(172, 156, 123, 65), null);
             }
             if (slider.handle) {
                 place(slider.handle.node, (slider.progress - .5) * sliderWidth, 0, 32, 32);
                 hideSprite(slider.handle.node);
-                inkSurface(slider.handle.node, 'SliderHandle', 14, 20, C.gold, LINE);
+                const handle = inkSurface(slider.handle.node, 'SliderHandle', 32, 32, null, null);
+                handle.fillColor = C.gold; handle.circle(0, 0, 5); handle.fill();
+                handle.strokeColor = new Color(54, 46, 29); handle.lineWidth = 1;
+                handle.circle(0, 0, 5); handle.stroke();
             }
         }
         const tip = parts.tipNodes[index];
         if (tip) {
-            place(tip, x, allocationY - 6, cardWidth - 24, 30);
+            place(tip, x, valueY, cardWidth - 24, 30);
             const label = tip.getComponent(Label); if (label) label.enabled = false;
             troopAttributeIcon(tip, 'EmptyAllocation', 'soldiers', -17, 0, 21, true);
             caption(tip, 'EmptyAmount', '—', 14, 0, 34, 16, C.muted, Label.HorizontalAlign.CENTER);

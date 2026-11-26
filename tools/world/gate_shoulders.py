@@ -11,6 +11,9 @@ def inside_polygon(point, polygon):
 
 
 def gate_ground(gate, pixel):
+    if gate.get('footprintRadius') == 1 and gate.get('crossing') == 'pass':
+        cx, cy = pixel(gate['x'], gate['y'])
+        return [(cx-300,cy),(cx,cy+150),(cx+300,cy),(cx,cy-150)]
     width = 760 if gate['level'] >= 8 else 680 if gate['level'] >= 6 else 600
     height = width * 805 / 1280
     cx, cy = pixel(gate['x'], gate['y'])
@@ -42,6 +45,8 @@ def build_gate_shoulders(patches, mountains, gates, blocked, coverage, pixel):
     for gate in gates:
         if gate.get('crossing') != 'pass':
             continue
+        if gate.get('footprintRadius') == 1:
+            continue  # 整格山口由 pass_mountain_patches 补齐，不再用自由椭圆肩部。
         gx, gy = gate['x'], gate['y']
         protected = pass_protected_points(gate, blocked, pixel)
         ground = gate_ground(gate, pixel)
@@ -59,7 +64,7 @@ def build_gate_shoulders(patches, mountains, gates, blocked, coverage, pixel):
                   if not inside_polygon(pixel(x,y),ground) and not coverage.covered(x,y)]
         candidates = []
         for x,y in cells:
-            for art in ('mountain_shoulder','mountain_saddle_natural'):
+            for art in ('mountain_shoulder_scree_v9','mountain_saddle_scree_v9'):
                 for width in (280,360,440,520):
                     for height in (.68,.84):
                         for anchor in (.36,.50):

@@ -5,7 +5,7 @@ $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $shapes = [ordered]@{}
 $appearanceSource = [IO.File]::ReadAllText((Join-Path $projectRoot 'assets\scripts\map\CityFootprint.ts'))
 $regionalArt = [regex]::Matches($appearanceSource, "near: '([^']+)'") | ForEach-Object { $_.Groups[1].Value }
-$artNames = @('town-prefecture-v2', 'county-commandery-v4', 'capital-imperial-v2') + @($regionalArt) | Select-Object -Unique
+$artNames = @($regionalArt) | Select-Object -Unique
 foreach ($art in $artNames) {
     $source = Join-Path $projectRoot ('assets\resources\ui\world\' + $art + '.png')
     $bitmap = [Drawing.Bitmap]::FromFile($source)

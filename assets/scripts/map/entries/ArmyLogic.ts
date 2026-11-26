@@ -12,6 +12,7 @@ import SiegeEffect from './SiegeEffect';
 import { siegePhase, siegeWallContact } from './SiegeContact';
 import CityCommand from '../../world/CityCommand';
 import WorldCampaign from '../WorldCampaign';
+import { isWaterPosition, navalSiegeAnchor } from '../WorldWater';
 import { cityFootprintRadius } from '../CityFootprint';
 import { idKey } from '../../network/pto/ProtocolCommand';
 
@@ -177,8 +178,9 @@ export default class ArmyLogic {
         if (this.siegeTarget) {
             const city = CityCommand.getInstance().cities.get(this.siegeCityId);
             const configured = WorldCampaign.config?.cities.find(c => c.x === this.siegeTarget.x && c.y === this.siegeTarget.y);
-            this.siegeRadius = configured?.footprintRadius ?? (WorldCampaign.gateAt(this.siegeTarget.x, this.siegeTarget.y)
-                ? 1 : cityFootprintRadius(city?.level || 1));
+            const gate = WorldCampaign.gateAt(this.siegeTarget.x, this.siegeTarget.y);
+            this.siegeRadius = configured?.footprintRadius ?? (gate
+                ? (gate.footprintRadius ?? 2) : cityFootprintRadius(city?.level || 1));
             if (!this.siegeEffect) this.siegeEffect = new SiegeEffect(aniNode);
         }
         const color = sieging ? new Color(228, 142, 99, 230)
@@ -194,9 +196,9 @@ export default class ArmyLogic {
         }
         marker.active = true; marker.setSiblingIndex(0);
         const g = marker.getComponent(Graphics); g.clear();
-        g.strokeColor = color; g.lineWidth = 2;
-        g.fillColor = new Color(color.r, color.g, color.b, 45);
-        g.ellipse(0, 0, 20, 9); g.fill(); g.stroke();
+        g.strokeColor = new Color(color.r, color.g, color.b, 90); g.lineWidth = 1;
+        g.fillColor = new Color(color.r, color.g, color.b, 12);
+        g.ellipse(0, 0, 14, 12 * MapUtil.tileSize.height / MapUtil.tileSize.width); g.fill(); g.stroke();
     }
 
     private setMotion(march: MarchMotion, aniNode: Node, arrowNode: Node, routeColor: Color): void {
@@ -245,9 +247,18 @@ export default class ArmyLogic {
         this.aniNode.active = true; this.aniNode.setPosition(pixel.x, pixel.y, 0);
         this.arrowNode.active = sample.moving;
         this.drawRemainingMarchRoute(pixel);
+        const onWater = isWaterPosition(sample.position.x, sample.position.y);
+        const navalSiege = !sample.moving && !!this.siegeTarget
+            && WorldCampaign.gateAt(Math.round(this.siegeTarget.x), Math.round(this.siegeTarget.y))?.crossing === 'bridge';
+        const navalAnchor = navalSiege && this.siegeTarget
+            ? navalSiegeAnchor(sample.position, this.siegeTarget) : null;
+        const naval = onWater || navalSiege;
+        const marker = this.aniNode.getChildByName('WorldTroopMarker');
+        if (marker && this.formation) marker.active = !naval;
         let hit: Vec2 | null = null;
         if (this.siegeTarget && !sample.moving) {
-            const contact = siegeWallContact(sample.position, this.siegeTarget, this.siegeRadius);
+            const origin = navalAnchor || sample.position;
+            const contact = siegeWallContact(origin, this.siegeTarget, this.siegeRadius);
             hit = MapUtil.mapCellToPixelPoint(new Vec2(contact.x, contact.y)).subtract(pixel);
             hit.y += 22; // 受击点抬到墙脚上方，不向城心凭空投射。
         }
@@ -256,7 +267,9 @@ export default class ArmyLogic {
             const cellX = Math.round(sample.position.x), cellY = Math.round(sample.position.y);
             const occupying = !sample.moving && !!WorldCommand.getInstance()
                 .occupyCountdownAt(cellX, cellY, DateUtil.getServerTime() / 1000);
-            this.formation.setGuarding(!this.siegeTarget && occupying);
+            // 占领读条期间向外警戒；普通停留仍使用自然站姿，攻城与涉水使用独立表现。
+            this.formation.setGuarding(!this.siegeTarget && occupying && !naval);
+            this.formation.setNaval?.(naval, navalAnchor);
             this.formation.update(this.playback, sample);
             const volley = this.formation.getSiegeVolley();
             this.siegeEffect?.update(hit, volley.seconds, siegePhase(city),

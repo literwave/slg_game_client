@@ -3,13 +3,17 @@ const { ccclass, property } = _decorator;
 import WorldMapArt from '../WorldMapArt';
 import { isOwnPlayerCity, playerCityAppearance, playerCityFootprint, PLAYER_CITY_ANCHOR_Y } from '../PlayerCityAppearance';
 import PlayerCityGround from '../PlayerCityGround';
+import CityAmbientView from '../CityAmbientView';
 import MapUtil from '../MapUtil';
+import { DEFAULT_MAP_HEIGHT } from '../MapProjection';
+import { cityNameplatePlacement } from '../CityMapPresentation';
 
 import DateUtil from "../../utils/DateUtil";
 import { MapCityData } from "../MapCityProxy";
 import MapCommand from "../MapCommand";
 import { EventMgr } from '../../utils/EventMgr';
 import { LogicEvent } from '../../common/LogicEvent';
+const NAME_CORNERS = [[-1,0], [0,1], [1,0], [0,-1]];
 
 @ccclass('CityLogic')
 export default class CityLogic extends Component {
@@ -26,10 +30,12 @@ export default class CityLogic extends Component {
     private selected = false;
     private nameplate: Node | null = null;
     private nameCamera: Camera | null = null;
-    private nameAnchorY = 0;
+    private nameHalfWidth = 0;
+    private nameHalfHeight = 0;
     private showNameplate = false;
     private readonly nameWorldPoint = new Vec3();
     private readonly nameUiPoint = new Vec3();
+    private readonly nameCorners = [[0,0], [0,0], [0,0], [0,0]];
     protected onLoad(): void {
         this._limitTime = MapCommand.getInstance().proxy.getWarFree();
     }
@@ -71,26 +77,34 @@ export default class CityLogic extends Component {
         if (this._data) {
         this.labelName.string = this._data.name;
         const footprint = playerCityFootprint(MapUtil.tileSize.width, MapUtil.tileSize.height);
+        this.nameHalfWidth = footprint.width / 2; this.nameHalfHeight = footprint.height / 2;
         const appearance = PlayerCityGround.layout(playerCityAppearance(this._data.level,
             MapUtil.tileSize.width, MapUtil.tileSize.height), footprint.height);
         const ownCity = isOwnPlayerCity(this._data, MapCommand.getInstance().cityProxy.myId);
+        const ambient = this.node.getComponent(CityAmbientView) || this.node.addComponent(CityAmbientView);
+        const displayedCity = { ...this._data };
         const rootUi = this.node.getComponent(UITransform);
         rootUi.setAnchorPoint(.5, .5);
         rootUi.setContentSize(footprint.width, footprint.height);
         const icon = this.node.getChildByName('sprite')?.getComponent(Sprite);
         if (icon) {
             icon.trim = false;
-            icon.node.setScale(1, 1, 1); icon.node.setPosition(appearance.x, appearance.y, 0);
+            icon.node.setScale(1, 1, 1);
             icon.node.getComponent(UITransform).setAnchorPoint(.5, PLAYER_CITY_ANCHOR_Y);
             WorldMapArt.apply(icon, appearance.art, appearance.width, () => {
-                PlayerCityGround.apply(icon, appearance.art, appearance.width, appearance.height, footprint.height, appearance.sourceHeight);
-            });
-            icon.node.getComponent(UITransform).setContentSize(appearance.width, appearance.height);
+                PlayerCityGround.apply(icon, appearance.art);
+                icon.node.setPosition(appearance.x, appearance.y, 0);
+                icon.node.getComponent(UITransform).setContentSize(appearance.width, appearance.height);
+                ambient.setPlayerCity(displayedCity);
+            }, true);
+        }
+        if (ownCity && this._data.level > 0 && this._data.level < 26) {
+            WorldMapArt.prefetch([playerCityAppearance(this._data.level + 5).art]);
         }
         WorldMapArt.ownership(this.node, this.upSpr, this.downSpr,
             WorldMapArt.factionColor(this._data, MapCommand.getInstance().cityProxy), footprint.width, footprint.height);
         this.drawSelection();
-        this.drawNameplate(appearance.top, !ownCity);
+        this.drawNameplate(!ownCity);
         this.lateUpdate();
         this.drawOwnCity(ownCity, footprint.width, footprint.height);
         this.mianNode?.setPosition(120, 30, 0);
@@ -105,8 +119,7 @@ export default class CityLogic extends Component {
         }
         }
     }
-    private drawNameplate(top: number, visible: boolean): void {
-        this.nameAnchorY = top;
+    private drawNameplate(visible: boolean): void {
         this.showNameplate = visible;
         this.labelName.node.active = false;
         const oldPlate = this.node.getChildByName('CityNameplate');
@@ -155,31 +168,33 @@ export default class CityLogic extends Component {
         g.fillColor = new Color(28, 34, 29, 225);
         g.strokeColor = new Color(190, 166, 116, 155); g.lineWidth = 1;
         g.roundRect(-width / 2, -14, width, 28, 3); g.fill(); g.stroke();
-        g.strokeColor = new Color(221, 197, 145, 180);
-        g.moveTo(0, -14); g.lineTo(0, -20); g.stroke();
-        g.moveTo(0, -20); g.lineTo(2, -22); g.lineTo(0, -24); g.lineTo(-2, -22); g.close();
-        g.fillColor = new Color(221, 197, 145, 220); g.fill();
     }
 
     protected lateUpdate(): void {
         if (!this.showNameplate || !this._data) return;
-        if (!this.nameplate?.isValid) this.drawNameplate(this.nameAnchorY, true);
+        if (!this.nameplate?.isValid) this.drawNameplate(true);
         if (!this.nameplate?.isValid) return;
         if (!this.nameCamera?.isValid) {
             this.nameCamera = this.node.scene?.getChildByPath('Canvas/Map Camera')?.getComponent(Camera);
         }
-        if (!this.nameCamera) { this.nameplate.active = false; return; }
-        // 摄像机先完成当帧移动，再把城楼顶端投影到 UI，字号不随地图缩放。
-        this.node.getComponent(UITransform).convertToWorldSpaceAR(
-            this.nameWorldPoint.set(0, this.nameAnchorY, 0), this.nameWorldPoint);
+        if (!this.nameCamera || this.nameCamera.orthoHeight < DEFAULT_MAP_HEIGHT - .01) { this.nameplate.active = false; return; }
+        // 与城池共用占地内的居中标签，拉近时隐藏，避免继续遮住后侧地块。
+        const transform = this.node.getComponent(UITransform);
         this.nameCamera.camera?.update();
-        this.nameCamera.convertToUINode(this.nameWorldPoint, this.nameplate.parent, this.nameUiPoint);
-        const size = view.getVisibleSize(), x = this.nameUiPoint.x, y = this.nameUiPoint.y + 24;
-        const halfWidth = this.nameplate.getComponent(UITransform).width / 2;
-        const visible = !this.selected && x + halfWidth > -size.width / 2
-            && x - halfWidth < size.width / 2 && y + 14 > -size.height / 2 && y - 24 < size.height / 2;
+        for (let i = 0; i < NAME_CORNERS.length; i++) {
+            transform.convertToWorldSpaceAR(this.nameWorldPoint.set(NAME_CORNERS[i][0] * this.nameHalfWidth,
+                NAME_CORNERS[i][1] * this.nameHalfHeight, 0), this.nameWorldPoint);
+            this.nameCamera.convertToUINode(this.nameWorldPoint, this.nameplate.parent, this.nameUiPoint);
+            this.nameCorners[i][0] = this.nameUiPoint.x; this.nameCorners[i][1] = this.nameUiPoint.y;
+        }
+        const plateWidth = this.nameplate.getComponent(UITransform).width;
+        const placement = cityNameplatePlacement(this.nameCorners, plateWidth + 4, 34);
+        const size = view.getVisibleSize(), x = placement.x, y = placement.y;
+        const halfWidth = (plateWidth + 4) * placement.scale / 2;
+        const visible = placement.visible && !this.selected && x + halfWidth > -size.width / 2
+            && x - halfWidth < size.width / 2 && y + 17 > -size.height / 2 && y - 17 < size.height / 2;
         this.nameplate.active = visible;
-        if (visible) this.nameplate.setPosition(x, y, 0);
+        if (visible) { this.nameplate.setPosition(x, y, 0); this.nameplate.setScale(placement.scale, placement.scale, 1); }
     }
     /** 自己的主城用贴地边界识别；不改变城图、占地或其他玩家名称。 */
     private drawOwnCity(visible: boolean, width: number, height: number): void {

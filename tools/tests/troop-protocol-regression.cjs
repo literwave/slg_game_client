@@ -569,6 +569,12 @@ test('新协议主城不依赖旧 ArmyData：快速分兵守恒、保留伤兵�
     assert.equal(settings.editBoxs[0].enabled, true);
     settings.onClickQuick();
     assert.deepEqual(plain(settings._curConscripts), [501, 0, 500]);
+    assert.equal(settings.visualState.canQuick, false, '全部预备兵已选入方案');
+    assert.equal(settings.visualState.canConfirm, true, '选满后仍可提交');
+    assert.equal(settings.sliders[0].progress, 1);
+    assert.equal(settings.sliders[2].progress, 1);
+    assert.equal(settings.visualState.allocations[0].current, 50);
+    assert.equal(settings.visualState.allocations[0].added, 501);
     settings.onClickSure();
     const packet = h.sent.at(-1);
     assert.equal(packet.name, h.server.c2s_edit_troop);
@@ -587,6 +593,48 @@ test('新协议主城不依赖旧 ArmyData：快速分兵守恒、保留伤兵�
     assert.equal(h.command.proxy.getTroop(1).getSoldier(1001).count, 551);
     assert.equal(settings.sliders[0].progress, 0);
     assert.equal(settings.editBoxs[0].enabled, false);
+    assert.equal(settings.sliders[0].node.active, false);
+    assert.equal(settings.visualState.allocations[0].reason, '暂无预备兵');
+    assert.equal(settings.visualState.canQuick, false);
+    assert.equal(settings.visualState.canConfirm, false);
+});
+
+test('无预备兵保留现有兵力，补充库存后恢复控件，未选择时不能确认', () => {
+    const h = harness();
+    h.ready([{ troopIdx: 1, posMap: { 1: { heroIdx: 1001, soldier: { count: 1200, hurtCount: 0 } } } }]);
+    const settings = h.createSettings();
+    const slot = settings.visualState.allocations[0];
+    assert.equal(slot.current, 1200); assert.equal(slot.added, 0);
+    assert.equal(slot.reason, '暂无预备兵');
+    assert.equal(settings.sliders[0].node.active, false);
+    assert.equal(settings.visualState.canQuick, false); assert.equal(settings.visualState.canConfirm, false);
+    h.role.soldierInfo.count = 100; h.events.emit(h.logic.updateSoldier);
+    assert.equal(settings.sliders[0].node.active, true);
+    assert.equal(settings.editBoxs[0].enabled, true);
+    assert.equal(settings.visualState.canQuick, true); assert.equal(settings.visualState.canConfirm, false);
+    settings.sliders[0].progress = .6; settings.onChangeSlider(settings.sliders[0]);
+    assert.equal(settings.visualState.allocations[0].added, 60);
+    assert.equal(settings.visualState.allocations[0].current, 1200);
+    assert.equal(settings.visualState.canConfirm, true);
+    h.role.soldierInfo.count = 0; h.events.emit(h.logic.updateSoldier);
+    assert.equal(settings.visualState.allocations[0].added, 0);
+    assert.equal(settings.visualState.canConfirm, false);
+});
+
+test('滑条按扣除其他武将后可用兵力填充，调整方案不会超分', () => {
+    const h = harness(); h.role.soldierInfo.count = 100;
+    h.ready([{ troopIdx: 1, posMap: {
+        1: { heroIdx: 1001, soldier: { count: 1200, hurtCount: 0 } },
+        2: { heroIdx: 1002, soldier: { count: 100, hurtCount: 0 } },
+    } }]);
+    const settings = h.createSettings();
+    settings.setCurConscriptForIndex(0, 75); settings.updateResCost();
+    settings.sliders[1].progress = 1; settings.onChangeSlider(settings.sliders[1]);
+    assert.deepEqual(plain(settings._curConscripts), [75, 25, 0]);
+    assert.equal(settings.sliders[0].progress, 1); assert.equal(settings.sliders[1].progress, 1);
+    settings.setCurConscriptForIndex(0, 50); settings.updateResCost();
+    assert.equal(settings.sliders[1].progress, .5);
+    assert.equal(settings.visualState.canQuick, true);
 });
 
 test('手动分兵处理空值/负数且多将不能超用城中兵力，切队清空草稿', () => {

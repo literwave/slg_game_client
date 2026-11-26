@@ -6,10 +6,11 @@ import LoginCommand from '../login/LoginCommand';
 import MapCommand from './MapCommand';
 import MapUtil from './MapUtil';
 import { CityCaptureCue, CityOwner, resolveCityOwner } from './CityOwnership';
-import { cityOwnerColor, drawCityFlag, drawSystemCityNameplate, systemCityIdentity } from './CityMapPresentation';
+import { cityOwnerColor, drawCityFlag, drawSystemCityNameplate, systemCityIdentity, cityNameplatePlacement } from './CityMapPresentation';
 import { cityDeploymentCount } from './CityDeployment';
 import { caption, inkSurface, ManagementColors as C } from './ui/ManagementStyle';
 import { Label } from 'cc';
+import { DEFAULT_MAP_HEIGHT } from './MapProjection';
 const { ccclass } = _decorator;
 
 /** 可见城池和关隘共用归属表现；随地图对象池回收，不改占地与拾取轮廓。 */
@@ -17,7 +18,8 @@ const { ccclass } = _decorator;
 export default class CityOwnershipView extends Component {
     private data: { x: number; y: number; level: number; name?: string } | null = null;
     private corners: number[][] = [];
-    private top = 0;
+    private groundOutline: number[][] = [];
+    private readonly projectedCorners: number[][] = [];
     private owner: CityOwner = resolveCityOwner(undefined, 0);
     private styleKey = '';
     private camera: Camera | null = null;
@@ -29,7 +31,7 @@ export default class CityOwnershipView extends Component {
     private captureTime = 0;
     private readonly cue = new CityCaptureCue();
     private readonly worldPoint = new Vec3();
-    private readonly uiPoint = new Vec3();
+    private readonly footprintPoint = new Vec3();
 
     protected onEnable(): void {
         EventMgr.on(LogicEvent.updateAllianceCities, this.refreshOwner, this);
@@ -41,9 +43,12 @@ export default class CityOwnershipView extends Component {
     protected onDisable(): void { EventMgr.targetOff(this); this.clear(); }
     protected onDestroy(): void { EventMgr.targetOff(this); this.plate?.destroy(); this.plate = null; }
 
-    setCity(data: { x: number; y: number; level: number; name?: string }, top: number, corners: number[][]): void {
+    setCity(data: { x: number; y: number; level: number; name?: string }, _top: number, corners: number[][],
+        groundOutline?: number[][]): void {
         if (this.data?.x !== data.x || this.data?.y !== data.y) this.clear();
-        this.data = data; this.top = top; this.corners = corners;
+        this.data = data; this.corners = corners; this.groundOutline = groundOutline || corners;
+        this.projectedCorners.length = corners.length;
+        for (let i = 0; i < corners.length; i++) if (!this.projectedCorners[i]) this.projectedCorners[i] = [0, 0];
         this.styleKey = ''; this.unit = 0;
         this.refreshOwner();
     }
@@ -70,7 +75,10 @@ export default class CityOwnershipView extends Component {
         this.owner = identity.owner; this.cue.sync(this.owner); this.styleKey = key;
         if (previousId !== this.owner.allianceId) this.captureTime = 0;
         if (!this.plate?.isValid) this.createNameplate();
-        if (this.plate) drawSystemCityNameplate(this.plate, identity);
+        if (this.plate) {
+            drawSystemCityNameplate(this.plate, identity, count);
+            this.plate.getComponent(Button).target = this.plate.getChildByName('CityTitlePlate');
+        }
         if (this.plate) this.drawTroopEntry(count);
         if (!this.ground) this.ground = this.createGraphic('CityTerritory', true);
         this.ground.node.active = this.owner.occupied;
@@ -104,9 +112,11 @@ export default class CityOwnershipView extends Component {
         }
         entry.active = count > 0 && this.owner.relation === 'mine';
         if (!entry.active) return;
-        entry.getComponent(UITransform).setContentSize(124, 30); entry.setPosition(0, -62, 0);
-        inkSurface(entry, 'Plate', 124, 30, new Color(27, 42, 34, 245), C.gold);
-        const label = caption(entry, 'Count', `队伍 × ${count}  ›`, 0, 0, 116, 15, C.text, Label.HorizontalAlign.CENTER);
+        entry.getComponent(UITransform).setContentSize(46, 30);
+        entry.setPosition(this.plate.getComponent(UITransform).width / 2 - 24, 0, 0);
+        inkSurface(entry, 'Plate', 44, 24, new Color(39, 57, 46, 235), null);
+        const label = caption(entry, 'Count', `驻${count > 99 ? '99+' : count}`, 0, 0, 40, 13, C.text, Label.HorizontalAlign.CENTER);
+        label.node.getComponent(UITransform).setContentSize(40, 28);
         label.isBold = true;
     }
 
@@ -132,7 +142,7 @@ export default class CityOwnershipView extends Component {
         this.plate.on(Button.EventType.CLICK, () => {
             if (!this.data) return;
             const cell = new Vec2(this.data.x, this.data.y), point = MapUtil.mapCellToPixelPoint(cell);
-            EventMgr.emit(LogicEvent.touchMap, cell, point, point);
+            EventMgr.emit(LogicEvent.touchMap, cell, point, point, true);
         }, this);
     }
 
@@ -146,8 +156,8 @@ export default class CityOwnershipView extends Component {
     }
 
     private outline(g: Graphics, expansion = 1): void {
-        for (let i = 0; i < this.corners.length; i++) {
-            const [x, y] = this.corners[i];
+        for (let i = 0; i < this.groundOutline.length; i++) {
+            const [x, y] = this.groundOutline[i];
             if (i) g.lineTo(x * expansion, y * expansion); else g.moveTo(x * expansion, y * expansion);
         }
         g.close();
@@ -156,10 +166,13 @@ export default class CityOwnershipView extends Component {
     private drawGround(): void {
         if (!this.ground || !this.owner.occupied) return;
         const g = this.ground, color = cityOwnerColor(this.owner);
+        const fitted = this.groundOutline !== this.corners;
         g.clear(); g.fillColor = new Color(color.r, color.g, color.b, 13);
-        this.outline(g); g.fill();
-        g.lineWidth = 4 * this.unit; g.strokeColor = new Color(28, 35, 28, 170); this.outline(g); g.stroke();
-        g.lineWidth = 2 * this.unit; g.strokeColor = new Color(color.r, color.g, color.b, 240); this.outline(g); g.stroke();
+        if (!fitted) { this.outline(g); g.fill(); }
+        g.lineWidth = (fitted ? 2.5 : 4) * this.unit; g.strokeColor = new Color(28, 35, 28, fitted ? 100 : 170); this.outline(g); g.stroke();
+        g.lineWidth = (fitted ? 1.25 : 2) * this.unit; g.strokeColor = new Color(color.r, color.g, color.b, fitted ? 175 : 240); this.outline(g); g.stroke();
+        // 贴脚轮廓只保留细线，不能再从四角拉长直线覆盖墙外地块。
+        if (fitted) return;
         // 转角加粗，远一点仍能辨认；城池图片保持原色，不周期闪亮。
         g.lineWidth = 4 * this.unit; g.strokeColor = new Color(color.r, color.g, color.b, 255);
         for (let i = 0; i < this.corners.length; i++) {
@@ -196,12 +209,27 @@ export default class CityOwnershipView extends Component {
                 this.flags[i].setScale(unit * .9, unit * .9, 1);
             }
         }
-        this.node.getComponent(UITransform).convertToWorldSpaceAR(this.worldPoint.set(0, this.top, 0), this.worldPoint);
-        this.camera.camera?.update(); this.camera.convertToUINode(this.worldPoint, this.plate.parent, this.uiPoint);
-        const x = this.uiPoint.x, y = this.uiPoint.y + 50, half = this.plate.getComponent(UITransform).width / 2;
-        this.plate.active = x + half > -size.width / 2 && x - half < size.width / 2
-            && y + 24 > -size.height / 2 && y - 78 < size.height / 2;
-        if (this.plate.active) this.plate.setPosition(x, y, 0);
+        // 正交相机半高越小，画面越放大；近看建筑和人物时收起整块城名标签。
+        if (this.camera.orthoHeight < DEFAULT_MAP_HEIGHT - .01) {
+            this.plate.active = false;
+            this.animateCapture(dt);
+            return;
+        }
+        const transform = this.node.getComponent(UITransform);
+        this.camera.camera?.update();
+        for (let i = 0; i < this.corners.length; i++) {
+            const [px, py] = this.corners[i];
+            transform.convertToWorldSpaceAR(this.worldPoint.set(px, py, 0), this.worldPoint);
+            this.camera.convertToUINode(this.worldPoint, this.plate.parent, this.footprintPoint);
+            this.projectedCorners[i][0] = this.footprintPoint.x; this.projectedCorners[i][1] = this.footprintPoint.y;
+        }
+        const plateSize = this.plate.getComponent(UITransform);
+        const placement = cityNameplatePlacement(this.projectedCorners, plateSize.width, plateSize.height);
+        const x = placement.x, y = placement.y;
+        const half = plateSize.width * placement.scale / 2, halfHeight = plateSize.height * placement.scale / 2;
+        this.plate.active = placement.visible && x + half > -size.width / 2 && x - half < size.width / 2
+            && y + halfHeight > -size.height / 2 && y - halfHeight < size.height / 2;
+        if (this.plate.active) { this.plate.setScale(placement.scale, placement.scale, 1); this.plate.setPosition(x, y, 0); }
         this.animateCapture(dt);
     }
 
@@ -214,6 +242,6 @@ export default class CityOwnershipView extends Component {
         if (!g) return;
         g.node.active = this.captureTime > 0; g.clear();
         g.lineWidth = 3 * this.unit; g.strokeColor = new Color(255, 222, 145, Math.round(210 * (1 - progress)));
-        this.outline(g, 1 + .08 * progress); g.stroke();
+        this.outline(g, this.groundOutline === this.corners ? 1 + .08 * progress : 1); g.stroke();
     }
 }

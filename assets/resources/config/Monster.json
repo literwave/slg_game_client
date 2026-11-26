@@ -10,8 +10,8 @@
     "Defense": 55,
     "Speed": 40,
     "Crit": 28,
-    "Soldier": 1200,
-    "Power": 1400
+    "Soldier": 600,
+    "Power": 700
   },
   "2": {
     "Id": 2,
@@ -24,8 +24,8 @@
     "Defense": 42,
     "Speed": 52,
     "Crit": 36,
-    "Soldier": 1000,
-    "Power": 1120
+    "Soldier": 500,
+    "Power": 560
   },
   "3": {
     "Id": 3,
@@ -38,8 +38,8 @@
     "Defense": 50,
     "Speed": 62,
     "Crit": 40,
-    "Soldier": 1600,
-    "Power": 2050
+    "Soldier": 800,
+    "Power": 1020
   },
   "4": {
     "Id": 4,
@@ -52,8 +52,8 @@
     "Defense": 72,
     "Speed": 42,
     "Crit": 32,
-    "Soldier": 2000,
-    "Power": 3080
+    "Soldier": 1000,
+    "Power": 1540
   },
   "5": {
     "Id": 5,
@@ -66,8 +66,8 @@
     "Defense": 64,
     "Speed": 48,
     "Crit": 38,
-    "Soldier": 2600,
-    "Power": 4000
+    "Soldier": 1300,
+    "Power": 2000
   },
   "6": {
     "Id": 6,
@@ -80,8 +80,8 @@
     "Defense": 52,
     "Speed": 60,
     "Crit": 48,
-    "Soldier": 2800,
-    "Power": 4200
+    "Soldier": 1400,
+    "Power": 2100
   },
   "7": {
     "Id": 7,
@@ -94,8 +94,8 @@
     "Defense": 78,
     "Speed": 50,
     "Crit": 40,
-    "Soldier": 3600,
-    "Power": 6590
+    "Soldier": 1800,
+    "Power": 3290
   },
   "8": {
     "Id": 8,
@@ -108,8 +108,8 @@
     "Defense": 70,
     "Speed": 72,
     "Crit": 50,
-    "Soldier": 4200,
-    "Power": 7640
+    "Soldier": 2100,
+    "Power": 3820
   },
   "9": {
     "Id": 9,
@@ -122,8 +122,8 @@
     "Defense": 88,
     "Speed": 58,
     "Crit": 52,
-    "Soldier": 5000,
-    "Power": 10300
+    "Soldier": 2500,
+    "Power": 5150
   },
   "10": {
     "Id": 10,
@@ -136,8 +136,8 @@
     "Defense": 92,
     "Speed": 64,
     "Crit": 58,
-    "Soldier": 6200,
-    "Power": 13400
+    "Soldier": 3100,
+    "Power": 6700
   },
   "11": {
     "Id": 11,
@@ -150,8 +150,8 @@
     "Defense": 100,
     "Speed": 68,
     "Crit": 62,
-    "Soldier": 7500,
-    "Power": 17250
+    "Soldier": 3750,
+    "Power": 8630
   },
   "12": {
     "Id": 12,
@@ -164,8 +164,8 @@
     "Defense": 110,
     "Speed": 52,
     "Crit": 46,
-    "Soldier": 4200,
-    "Power": 9160
+    "Soldier": 2100,
+    "Power": 4580
   },
   "13": {
     "Id": 13,
@@ -178,8 +178,8 @@
     "Defense": 115,
     "Speed": 60,
     "Crit": 55,
-    "Soldier": 6800,
-    "Power": 16520
+    "Soldier": 3400,
+    "Power": 8260
   },
   "14": {
     "Id": 14,
@@ -192,7 +192,343 @@
     "Defense": 125,
     "Speed": 74,
     "Crit": 70,
-    "Soldier": 10000,
-    "Power": 26500
+    "Soldier": 5000,
+    "Power": 13250
+  },
+  "21": {
+    "Id": 21,
+    "Name": "1级守军刀盾",
+    "Desc": "城池守军的刀盾兵，结阵挡在阵前",
+    "Icon": "",
+    "Level": 1,
+    "Attack": 72,
+    "Hp": 48,
+    "Defense": 80,
+    "Speed": 42,
+    "Crit": 30,
+    "Soldier": 540,
+    "Power": 820
+  },
+  "31": {
+    "Id": 31,
+    "Name": "1级守军弓手",
+    "Desc": "城头放箭的守军弓手",
+    "Icon": "",
+    "Level": 1,
+    "Attack": 84,
+    "Hp": 46,
+    "Defense": 50,
+    "Speed": 55,
+    "Crit": 40,
+    "Soldier": 450,
+    "Power": 600
+  },
+  "41": {
+    "Id": 41,
+    "Name": "1级守军校尉",
+    "Desc": "统领一队守军的校尉",
+    "Icon": "",
+    "Level": 1,
+    "Attack": 80,
+    "Hp": 60,
+    "Defense": 78,
+    "Speed": 50,
+    "Crit": 42,
+    "Soldier": 600,
+    "Power": 950
+  },
+  "22": {
+    "Id": 22,
+    "Name": "2级守军刀盾",
+    "Desc": "城池守军的刀盾兵，结阵挡在阵前",
+    "Icon": "",
+    "Level": 2,
+    "Attack": 79,
+    "Hp": 52,
+    "Defense": 88,
+    "Speed": 44,
+    "Crit": 33,
+    "Soldier": 720,
+    "Power": 1200
+  },
+  "32": {
+    "Id": 32,
+    "Name": "2级守军弓手",
+    "Desc": "城头放箭的守军弓手",
+    "Icon": "",
+    "Level": 2,
+    "Attack": 92,
+    "Hp": 50,
+    "Defense": 55,
+    "Speed": 58,
+    "Crit": 44,
+    "Soldier": 600,
+    "Power": 880
+  },
+  "42": {
+    "Id": 42,
+    "Name": "2级守军校尉",
+    "Desc": "统领一队守军的校尉",
+    "Icon": "",
+    "Level": 2,
+    "Attack": 88,
+    "Hp": 65,
+    "Defense": 85,
+    "Speed": 52,
+    "Crit": 45,
+    "Soldier": 800,
+    "Power": 1380
+  },
+  "23": {
+    "Id": 23,
+    "Name": "3级守军刀盾",
+    "Desc": "城池守军的刀盾兵，结阵挡在阵前",
+    "Icon": "",
+    "Level": 3,
+    "Attack": 86,
+    "Hp": 56,
+    "Defense": 96,
+    "Speed": 46,
+    "Crit": 36,
+    "Soldier": 900,
+    "Power": 1640
+  },
+  "33": {
+    "Id": 33,
+    "Name": "3级守军弓手",
+    "Desc": "城头放箭的守军弓手",
+    "Icon": "",
+    "Level": 3,
+    "Attack": 100,
+    "Hp": 54,
+    "Defense": 60,
+    "Speed": 61,
+    "Crit": 48,
+    "Soldier": 750,
+    "Power": 1200
+  },
+  "43": {
+    "Id": 43,
+    "Name": "3级守军校尉",
+    "Desc": "统领一队守军的校尉",
+    "Icon": "",
+    "Level": 3,
+    "Attack": 96,
+    "Hp": 70,
+    "Defense": 92,
+    "Speed": 54,
+    "Crit": 48,
+    "Soldier": 1000,
+    "Power": 1880
+  },
+  "24": {
+    "Id": 24,
+    "Name": "4级守军刀盾",
+    "Desc": "城池守军的刀盾兵，结阵挡在阵前",
+    "Icon": "",
+    "Level": 4,
+    "Attack": 93,
+    "Hp": 60,
+    "Defense": 104,
+    "Speed": 48,
+    "Crit": 39,
+    "Soldier": 1170,
+    "Power": 2300
+  },
+  "34": {
+    "Id": 34,
+    "Name": "4级守军弓手",
+    "Desc": "城头放箭的守军弓手",
+    "Icon": "",
+    "Level": 4,
+    "Attack": 108,
+    "Hp": 58,
+    "Defense": 65,
+    "Speed": 64,
+    "Crit": 52,
+    "Soldier": 975,
+    "Power": 1690
+  },
+  "44": {
+    "Id": 44,
+    "Name": "4级守军校尉",
+    "Desc": "统领一队守军的校尉",
+    "Icon": "",
+    "Level": 4,
+    "Attack": 104,
+    "Hp": 75,
+    "Defense": 99,
+    "Speed": 56,
+    "Crit": 51,
+    "Soldier": 1300,
+    "Power": 2640
+  },
+  "25": {
+    "Id": 25,
+    "Name": "5级守军刀盾",
+    "Desc": "城池守军的刀盾兵，结阵挡在阵前",
+    "Icon": "",
+    "Level": 5,
+    "Attack": 100,
+    "Hp": 64,
+    "Defense": 112,
+    "Speed": 50,
+    "Crit": 42,
+    "Soldier": 1260,
+    "Power": 2670
+  },
+  "35": {
+    "Id": 35,
+    "Name": "5级守军弓手",
+    "Desc": "城头放箭的守军弓手",
+    "Icon": "",
+    "Level": 5,
+    "Attack": 116,
+    "Hp": 62,
+    "Defense": 70,
+    "Speed": 67,
+    "Crit": 56,
+    "Soldier": 1050,
+    "Power": 1950
+  },
+  "45": {
+    "Id": 45,
+    "Name": "5级守军校尉",
+    "Desc": "统领一队守军的校尉",
+    "Icon": "",
+    "Level": 5,
+    "Attack": 112,
+    "Hp": 80,
+    "Defense": 106,
+    "Speed": 58,
+    "Crit": 54,
+    "Soldier": 1400,
+    "Power": 3050
+  },
+  "26": {
+    "Id": 26,
+    "Name": "6级守军刀盾",
+    "Desc": "城池守军的刀盾兵，结阵挡在阵前",
+    "Icon": "",
+    "Level": 6,
+    "Attack": 107,
+    "Hp": 68,
+    "Defense": 120,
+    "Speed": 52,
+    "Crit": 45,
+    "Soldier": 1620,
+    "Power": 3680
+  },
+  "36": {
+    "Id": 36,
+    "Name": "6级守军弓手",
+    "Desc": "城头放箭的守军弓手",
+    "Icon": "",
+    "Level": 6,
+    "Attack": 124,
+    "Hp": 66,
+    "Defense": 75,
+    "Speed": 70,
+    "Crit": 60,
+    "Soldier": 1350,
+    "Power": 2690
+  },
+  "46": {
+    "Id": 46,
+    "Name": "6级守军校尉",
+    "Desc": "统领一队守军的校尉",
+    "Icon": "",
+    "Level": 6,
+    "Attack": 120,
+    "Hp": 85,
+    "Defense": 113,
+    "Speed": 60,
+    "Crit": 57,
+    "Soldier": 1800,
+    "Power": 4190
+  },
+  "27": {
+    "Id": 27,
+    "Name": "7级守军刀盾",
+    "Desc": "城池守军的刀盾兵，结阵挡在阵前",
+    "Icon": "",
+    "Level": 7,
+    "Attack": 114,
+    "Hp": 72,
+    "Defense": 128,
+    "Speed": 54,
+    "Crit": 48,
+    "Soldier": 1890,
+    "Power": 4570
+  },
+  "37": {
+    "Id": 37,
+    "Name": "7级守军弓手",
+    "Desc": "城头放箭的守军弓手",
+    "Icon": "",
+    "Level": 7,
+    "Attack": 132,
+    "Hp": 70,
+    "Defense": 80,
+    "Speed": 73,
+    "Crit": 64,
+    "Soldier": 1575,
+    "Power": 3340
+  },
+  "47": {
+    "Id": 47,
+    "Name": "7级守军校尉",
+    "Desc": "统领一队守军的校尉",
+    "Icon": "",
+    "Level": 7,
+    "Attack": 128,
+    "Hp": 90,
+    "Defense": 120,
+    "Speed": 62,
+    "Crit": 60,
+    "Soldier": 2100,
+    "Power": 5210
+  },
+  "28": {
+    "Id": 28,
+    "Name": "8级守军刀盾",
+    "Desc": "城池守军的刀盾兵，结阵挡在阵前",
+    "Icon": "",
+    "Level": 8,
+    "Attack": 121,
+    "Hp": 76,
+    "Defense": 136,
+    "Speed": 56,
+    "Crit": 51,
+    "Soldier": 2250,
+    "Power": 5780
+  },
+  "38": {
+    "Id": 38,
+    "Name": "8级守军弓手",
+    "Desc": "城头放箭的守军弓手",
+    "Icon": "",
+    "Level": 8,
+    "Attack": 140,
+    "Hp": 74,
+    "Defense": 85,
+    "Speed": 76,
+    "Crit": 68,
+    "Soldier": 1875,
+    "Power": 4220
+  },
+  "48": {
+    "Id": 48,
+    "Name": "8级守军校尉",
+    "Desc": "统领一队守军的校尉",
+    "Icon": "",
+    "Level": 8,
+    "Attack": 136,
+    "Hp": 95,
+    "Defense": 127,
+    "Speed": 64,
+    "Crit": 63,
+    "Soldier": 2500,
+    "Power": 6580
   }
 }

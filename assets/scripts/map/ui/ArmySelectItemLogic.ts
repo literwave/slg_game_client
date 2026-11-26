@@ -126,7 +126,10 @@ export default class ArmySelectItemLogic extends Component {
                 EventMgr.emit(LogicEvent.closeArmyAelectUi); return;
             }
             const empty = !!cell?.isEmpty;
-            const blocked = (!empty && !isResourceLandCell(cell)) || !!map.cityProxy.getCity(MapUtil.getIdByCellPoint(this._toX, this._toY));
+            const blocked = (!empty && !isResourceLandCell(cell))
+                || !!map.cityProxy.getCity(MapUtil.getIdByCellPoint(this._toX, this._toY))
+                || !!map.proxy.getSysCityResData(this._toX, this._toY)
+                || map.isCityArtCoveredCell(this._toX, this._toY);
             const reason = blocked ? '目标已失效，请重新选择空地或资源地'
                 : map.campaignBlockReason(this._toX, this._toY)
                     || (empty ? world.emptyLandIssue(this._toX, this._toY) : world.resourceLandIssue(this._toX, this._toY, cell.type, cell.level));

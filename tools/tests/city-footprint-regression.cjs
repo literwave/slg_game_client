@@ -9,9 +9,11 @@ class Vec2 {
     add(p) { this.x += p.x; this.y += p.y; return this; }
     subtract(p) { this.x -= p.x; this.y -= p.y; return this; }
 }
-const campaign = { config: null };
-const cc = { Vec2, v2: (x, y) => new Vec2(x, y), size: (width, height) => ({ width, height }),
-    Component: class {}, Prefab: class {}, Node: class {},
+class OwnershipView {}
+class AmbientView { setCity(data) { this.data = data; } }
+class Sprite { static SizeMode = { CUSTOM: 1 }; static Type = { SIMPLE: 1 }; }
+const cc = { Vec2, Sprite, UITransform: class {}, v2: (x, y) => new Vec2(x, y), size: (width, height) => ({ width, height }),
+    Component: class { unscheduleAllCallbacks() {} }, Prefab: class {}, Node: class {},
     _decorator: { ccclass: () => type => type, property: () => () => {} },
     Color: class {}, view: { getVisibleSize: () => ({ width: 1280, height: 720 }) } };
 const cache = new Map();
@@ -25,10 +27,11 @@ function load(file) {
     new Function('require', 'module', 'exports', code)(id => {
         if (id === 'cc') return cc;
         if (id.endsWith('/MapCommand')) return { default: {} };
-        if (id.endsWith('/DateUtil')) return { default: {} };
+        if (id.endsWith('/DateUtil')) return { default: { getServerTime: () => 0 } };
         if (id.endsWith('/EventMgr')) return { EventMgr: { emit() {} } };
         if (id.endsWith('/LogicEvent')) return { LogicEvent: {} };
-        if (id.endsWith('/WorldCampaign')) return { default: campaign };
+        if (id.endsWith('/CityOwnershipView')) return { default: OwnershipView };
+        if (id.endsWith('/CityAmbientView')) return { default: AmbientView };
         if (id.endsWith('/MapArmyLogic') || id.endsWith('/MapLogic')) return { default: class {} };
         if (id.endsWith('/WorldLandscape') || id.endsWith('/MapClickUILogic')) return { default: class {} };
         return load(path.relative(scripts, path.resolve(path.dirname(full), id)));
@@ -38,6 +41,7 @@ function load(file) {
 const MapUtil = load('map/MapUtil').default, Proxy = load('map/MapProxy').default;
 const { MapBuildData } = load('map/MapBuildProxy');
 const Art = load('map/WorldMapArt').default;
+const campaign = load('map/WorldCampaign').default;
 MapUtil.initMapConfig({ node: { getComponent: () => ({ width: 200000, height: 100000, anchorX: .5, anchorY: .5 }) },
     getMapSize: () => ({ width: 1000, height: 1000 }), getTileSize: () => ({ width: 200, height: 100 }) });
 const cities = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/world/campaign-map.json'), 'utf8')).cities;
@@ -64,6 +68,7 @@ console.log('PASS 10城池：配置、3/5/9占地、整圈点击、边界、三�
 
 const Footprint = load('map/CityFootprint');
 const Geometry = load('map/SystemCityGeometry');
+const { cityArtPoint, cityArtToFootprint, cityArtToSource, CITY_BASE_FILL } = load('map/CityArtFit');
 const masks = load('map/SystemCitySilhouettes').SYSTEM_CITY_SILHOUETTES;
 const crypto = require('node:crypto'), nearNames = new Set(), farNames = new Set(), imageHashes = new Set();
 assert.equal(Footprint.SYSTEM_CITY_ARTS.length, cities.length, '每座已配置城池都有独立外观');
@@ -87,13 +92,14 @@ for (const city of cities) {
             assert.equal(masks[name].height, png.readUInt32BE(20));
         }
     }
-    const shape = masks[near], width = Footprint.cityArtWidth(city.level), height = width * shape.height / shape.width;
+    const shape = masks[near], layout = Footprint.cityArtLayout(city.level, shape.width, shape.height, 200, 100, city);
+    const { width, height, anchorX, anchorY } = layout;
     let hits = 0;
     for (let row = 4; row < shape.rows.length; row += 7) for (let column = 4; column < shape.columns; column += 7) {
         const opaque = (parseInt(shape.rows[row][column >> 2], 16) & (1 << (column & 3))) !== 0;
-        const dx = ((column + .5) / shape.columns - .5) * width;
-        const dy = (1 - Footprint.cityArtAnchorY(city.level, city) - (row + .5) / shape.rows.length) * height;
-        assert.equal(Geometry.systemCityHit(dx, dy, city.level, 200, city), opaque, city.name + ' 显示与点击一致');
+        const p = cityArtToFootprint(layout.fit, (column + .5) / shape.columns, (row + .5) / shape.rows.length);
+        const dx = p.x * width, dy = p.y * height;
+        assert.equal(Geometry.systemCityHit(dx, dy, city.level, 200, city), opaque && Math.abs(p.x)+Math.abs(p.y)<=.5, city.name + ' 显示与点击一致');
         if (opaque) hits++;
     }
     assert.ok(hits > 50, city.name + ' 具有有效点击轮廓');
@@ -106,14 +112,72 @@ assert.equal(Art.citySprite(4), 'town-prefecture-v2', '未识别城池保留兼�
 assert.equal(Art.citySprite(4, { x: 1, y: 1, name: '洛阳' }), 'town-prefecture-v2', '有坐标时不被错误名称覆盖');
 console.log('PASS 十城独立近景/总览、坐标身份、原画哈希与透明拾取一致');
 
-// 真实输入路由：城墙边缘同一格内，点草地与点城墙必须分别选择地块和城池。
-campaign.config = { cities, gates: [] };
+// 四个城基角对应占地四角；执行实际 SysCityLogic 验证渲染画布。
+Art.sizes = JSON.parse(fs.readFileSync(path.join(root, 'assets/resources/world/art-sizes.json'), 'utf8'));
+const SysCity = load('map/entries/SysCityLogic').default;
+function transform() {
+    return { width: 0, height: 0, anchorX: .5, anchorY: .5,
+        setContentSize(width, height) { this.width = width; this.height = height; },
+        setAnchorPoint(x, y) { this.anchorX = x; this.anchorY = y; } };
+}
+let aligned = 0;
+for (const city of cities) {
+    const appearance = Footprint.SYSTEM_CITY_ARTS.find(row => row.name === city.name), ground = appearance.ground;
+    if (!ground) continue;
+    const layout = Art.cityLayout(city.level, city), span = city.footprintRadius * 2 + 1;
+    const project = ([x,y]) => {
+        const p = cityArtToFootprint(layout.fit, x / ground.canvasWidth, y / ground.canvasHeight);
+        return [p.x, p.y];
+    };
+    const left = project(ground.left), right = project(ground.right), front = project(ground.front);
+    assert.ok(Math.abs(front[0] - left[0] - left[1] + front[1]) < 1e-9, '左墙平行格轴');
+    assert.ok(Math.abs(right[0] - front[0] - right[1] + front[1]) < 1e-9, '右墙平行格轴');
+    const shape = masks[appearance.near], back = project(ground.back);
+    for (const [actual, expected] of [[left,[-.5,0]],[right,[.5,0]],[front,[0,-.5]],[back,[0,.5]]]) {
+        for (let axis=0;axis<2;axis++) assert.ok(Math.abs(actual[axis]-expected[axis]*CITY_BASE_FILL)<1e-9,'城基必须贴满四角');
+    }
+    for(let x=-.49;x<.5;x+=.01) {
+        const a=cityArtPoint(layout.fit.inverse,x,0), b=cityArtPoint(layout.fit.upperInverse,x,0);
+        assert.ok(Math.hypot(a.x-b.x,a.y-b.y)<1e-9,'上下城图衔接不能跳变');
+        for(const y of [-.01,.01]) {
+            const uv=cityArtToSource(layout.fit,x,y), p=cityArtToFootprint(layout.fit,uv.x,uv.y);
+            assert.ok(Math.hypot(p.x-x,p.y-y)<1e-9,'渲染和拾取双向变换一致');
+        }
+    }
+    const twice = Footprint.cityArtLayout(city.level, shape.width, shape.height, 400, 200, city);
+    assert.equal(twice.width, layout.width * 2); assert.equal(twice.height, layout.height * 2);
+    assert.deepEqual(Footprint.cityArtLayout(city.level, shape.width/4, shape.height/4, 200, 100, city), layout, '同图缩略图共享地面比例');
+    const iconTransform = transform(), footprintTransform = transform();
+    const icon = { node: { activeInHierarchy: false, getComponent: () => iconTransform, setPosition() {} } };
+    let footprint;
+    const ownership = { setCity(_data, _height, corners) { footprint = corners; } };
+    const node = { setScale() {}, getChildByName: name => name === 'cityicon' ? { getComponent: () => icon } : null,
+        getComponent: type => type === OwnershipView ? ownership : type === AmbientView ? new AmbientView() : footprintTransform };
+    const logic = new SysCity(); logic.node = node; logic.mianNode = { setPosition() {} };
+    logic.setCityData({ ...city, type: 51, parentId: 0 });
+    assert.equal(icon.trim, false);
+    assert.deepEqual([iconTransform.width, iconTransform.height, iconTransform.anchorX, iconTransform.anchorY],
+        [layout.width, layout.height, layout.anchorX, layout.anchorY], '实际渲染必须使用相同非等比画布和锚点');
+    assert.deepEqual([footprintTransform.width, footprintTransform.height], [span * 200, span * 100]);
+    assert.deepEqual(footprint, [[-span * 100,0],[0,span * 50],[span * 100,0],[0,-span * 50]]);
+    aligned++;
+}
+assert.equal(aligned, 10);
+console.log('PASS 十城城基四角贴格、上下无接缝、渲染和拾取共用变换');
+
+// 真实输入路由：覆盖格的透明角落不能透选空地；直接点击城墙仅打开城池情报。
+Art.campaign = { width: 1000, height: 1000, cities, gates: [] };
 const Touch = load('map/MapTouchLogic').default, touch = new Touch();
 const resources = new Map(), buildings = new Map(), playerCities = new Map();
 let selected = null, removed = false, mountain = null;
 touch._cmd = {
-    proxy: { getResData: id => resources.get(id), getSysCityResData: (x, y) => proxy.getSysCityResData(x, y) },
+    proxy: { getResData: id => resources.get(id), getSysCityResData: (x, y) => {
+        const city = proxy.getSysCityResData(x, y);
+        return city ? resources.get(MapUtil.getIdByCellPoint(city.x,city.y)) : null;
+    } },
     buildProxy: { getBuild: id => buildings.get(id) }, cityProxy: { getCity: id => playerCities.get(id) },
+    isCityArtCoveredCell: (x, y) => cities.some(city => Geometry.systemCityCoversCell(x - city.x, y - city.y,
+        city.level, 200, 100, city)),
 };
 touch.node = { getComponent: () => null, getComponentInChildren: () => ({ blockerAt: () => mountain }) };
 touch.showClickUINode = (data, point) => { selected = { data, point }; };
@@ -127,10 +191,10 @@ for (const city of cities) {
     resources.set(MapUtil.getIdByCellPoint(city.x, city.y), { ...city, type: 51 });
 }
 const luoyang = cities.find(city => city.name === '洛阳');
-assert.equal(Footprint.cityArtAnchorY(10, luoyang), .44, '已确认的洛阳城图锚点必须用于拾取');
+assert.equal(Art.cityLayout(10,luoyang).anchorY,.5,'洛阳完整轮廓居中于真实占地');
 const center = MapUtil.mapCellToPixelPoint(luoyang);
 const cityData = resources.get(MapUtil.getIdByCellPoint(luoyang.x, luoyang.y));
-let mixedTiles = 0;
+let adjacentTiles = 0;
 const radius = luoyang.footprintRadius;
 for (let x = luoyang.x - radius - 2; x <= luoyang.x + radius + 2; x++) {
     for (let y = luoyang.y - radius - 2; y <= luoyang.y + radius + 2; y++) {
@@ -142,26 +206,34 @@ for (let x = luoyang.x - radius - 2; x <= luoyang.x + radius + 2; x++) {
             const pointer = new Vec2(p.x + dx, p.y + dy);
             samples.push({ pointer, hit: Geometry.systemCityHit(pointer.x - center.x, pointer.y - center.y, 10, 200, luoyang) });
         }
-        const grass = samples.find(sample => !sample.hit), wall = samples.find(sample => sample.hit);
-        if (!grass || !wall) continue;
-        mixedTiles++;
+        assert.ok(samples.every(sample => !sample.hit), '任何城外格内都不能再出现城图像素');
+        adjacentTiles++;
         const id = MapUtil.getIdByCellPoint(x, y), empty = { id, x, y, type: 0, isEmpty: true };
+        if (campaign.attackEntrances(luoyang.x, luoyang.y).some(p => p.x === x && p.y === y)) continue;
         resources.set(id, empty);
-        assert.equal(pick(cell, grass.pointer), empty, '选框碰到城墙，草地落点仍选择外围空格');
-        assert.equal(pick(cell, wall.pointer), cityData, '直接点击城墙仍选择城池');
+        assert.equal(pick(cell, p), empty, '城外格不被额外隐形阻挡');
         const resource = { ...empty, type: 52, isEmpty: false };
         resources.set(id, resource);
-        assert.equal(pick(cell, grass.pointer), resource, '外围资源地正常选择');
+        assert.equal(pick(cell, p), resource, '城外资源正常选择');
         const owned = { ...resource, isSysCity: () => false };
         buildings.set(id, owned);
-        assert.equal(pick(cell, grass.pointer), owned, '外围已占领地优先使用归属数据');
+        assert.equal(pick(cell, p), owned, '城外领地保留归属');
         buildings.delete(id);
         resources.set(id, { ...empty, isEmpty: false });
-        assert.equal(pick(cell, grass.pointer), undefined, '河流或不可通行格仍不可选择');
+        assert.equal(pick(cell, p), undefined, '河流或不可通行格仍不可选择');
         assert.equal(removed, false, '不可通行格不清空现有操作');
     }
 }
-assert.ok(mixedTiles >= 8, '覆盖多个城墙边缘与城门道路，不能只检查一个角');
+assert.ok(adjacentTiles >= 40, '覆盖城外完整两圈，不能只检查一个角');
+const exposed = new Vec2(450, 451), exposedId = MapUtil.getIdByCellPoint(exposed.x, exposed.y);
+const freeResource = { id: exposedId, x: exposed.x, y: exposed.y, type: 52, isEmpty: false };
+resources.set(exposedId, freeResource);
+assert.equal(pick(exposed, MapUtil.mapCellToPixelPoint(exposed)), freeResource, '城图外完整露出的资源地仍能选择');
+for (const city of cities) for (const entrance of campaign.attackEntrances(city.x, city.y)) {
+    const cell = new Vec2(entrance.x, entrance.y);
+    assert.equal(pick(cell, MapUtil.mapCellToPixelPoint(cell)), resources.get(MapUtil.getIdByCellPoint(city.x, city.y)),
+        '换图后的固定入口仍选择对应城池');
+}
 for (let dx = -radius; dx <= radius; dx++) for (let dy = -radius; dy <= radius; dy++) {
     const cell = new Vec2(luoyang.x + dx, luoyang.y + dy);
     assert.equal(pick(cell, MapUtil.mapCellToPixelPoint(cell)), cityData, '城池九乘九实际占地仍选城');
@@ -169,4 +241,4 @@ for (let dx = -radius; dx <= radius; dx++) for (let dy = -radius; dy <= radius; 
 const playerCell = new Vec2(450, 450), player = { x: 450, y: 450, rid: 7 };
 playerCities.set(MapUtil.getIdByCellPoint(450, 450), player);
 assert.equal(pick(playerCell, MapUtil.mapCellToPixelPoint(playerCell)), player, '玩家主城拾取不变');
-console.log(`PASS ${mixedTiles} 个城边混合格：草地/城墙分开选取，资源地、已占领地、不可通行格与城内占地不回归`);
+console.log(`PASS ${adjacentTiles} 个城外格零越界，资源可选；固定入口、城内透明角与玩家城拾取不回归`);
